@@ -30,12 +30,12 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Chromaticのデプロイ
-        uses: ./.github/actions/chromatic
+        uses: ./.github/workflows/chromatic.yml
         with:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Code Rabbitのコードレビュー
-        uses: ./.github/actions/code-rabbit
+        uses: ./.github/workflows/code-rabbit.yml
         with:
           node-version: ${{ env.NODE_VERSION }}
 
