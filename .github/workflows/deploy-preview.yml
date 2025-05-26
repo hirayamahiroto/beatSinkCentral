@@ -29,6 +29,16 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
+      - name: Chromaticのデプロイ
+        uses: ./.github/actions/chromatic
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Code Rabbitのコードレビュー
+        uses: ./.github/actions/code-rabbit
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
       - name: 🔧 Vercel CLIのインストール
         run: npm install --global vercel@latest
 
