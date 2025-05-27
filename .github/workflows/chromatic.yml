@@ -1,50 +1,38 @@
-name: "Chromatic Deployment"
+name: "Chromatic"
 
-on:
-  push:
-    paths:
-      - "packages/ui/**"
-  pull_request:
-    paths:
-      - "packages/ui/**"
-  workflow_dispatch:
+on: push
 
 jobs:
-  deploy:
+  chromatic:
+    name: Run Chromatic
     runs-on: ubuntu-latest
 
+    # packages/uiディレクトリ内で実行
     defaults:
       run:
         working-directory: packages/ui
 
-    env:
-      CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
-
     steps:
-      - name: 📥 Checkout code
+      - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: 🔧 Setup Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22.12.0"
+          node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
 
-      - name: 📦 Install root dependencies
+      - name: Install root dependencies
         run: npm ci
         working-directory: .
 
-      - name: 📦 Install UI dependencies
+      - name: Install UI dependencies
         run: npm ci
 
-      - name: 🎨 Run Chromatic
+      - name: Run Chromatic
         uses: chromaui/action@latest
         with:
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
           workingDir: packages/ui
-          onlyChanged: true
-          exitZeroOnChanges: true
-          # Turboの場合、ビルドスクリプトを指定
-          buildScriptName: "build-storybook"
