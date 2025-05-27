@@ -30,7 +30,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Chromaticのデプロイ
-        uses: ./.github/actions/run-chromatic
+        uses: ./.github/workflows/chromatic.yml
         with:
           node-version: ${{ env.NODE_VERSION }}
 
