@@ -3,7 +3,7 @@ name: "Chromatic"
 on:
   pull_request:
     paths:
-      - "src/components/**"
+      - "./../../packages/ui/**"
 
 jobs:
   chromatic:
