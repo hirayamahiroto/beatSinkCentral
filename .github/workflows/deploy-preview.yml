@@ -29,16 +29,6 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      - name: Chromaticのデプロイ
-        uses: ./.github/workflows/chromatic.yml
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Code Rabbitのコードレビュー
-        uses: ./.github/workflows/code-rabbit.yml
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
       - name: 🔧 Vercel CLIのインストール
         run: npm install --global vercel@latest
 
@@ -92,9 +82,3 @@ jobs:
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_API_SERVER_PROJECT_ID }}
-
-  call-chromatic:
-    uses: ./.github/workflows/chromatic.yml
-    with:
-      node-version: ${{ env.NODE_VERSION }}
-    secrets: inherit
