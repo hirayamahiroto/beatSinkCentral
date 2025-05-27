@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "packages/ui/**"
+  push:
 
 jobs:
   chromatic:
@@ -23,3 +24,5 @@ jobs:
         uses: chromaui/action@latest
         with:
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+          buildScriptName: "build-storybook"
+          outputDir: "/tmp/chromatic-output"
