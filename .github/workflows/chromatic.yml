@@ -13,7 +13,6 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
-    # packages/ui配下でのみ実行
     defaults:
       run:
         working-directory: packages/ui
@@ -39,14 +38,6 @@ jobs:
 
       - name: 📦 Install UI dependencies
         run: npm ci
-
-      - name: 🏗️ Build UI package
-        run: |
-          # ルートディレクトリからTurboでUIパッケージをビルド
-          cd ../..
-          npm run build --filter=@your-org/ui
-          # または
-          # npx turbo run build --filter=ui
 
       - name: 🎨 Run Chromatic
         uses: chromaui/action@latest
