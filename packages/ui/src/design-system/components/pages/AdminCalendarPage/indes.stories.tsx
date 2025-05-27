@@ -1,15 +1,15 @@
-import type { Meta, StoryObj } from "@storybook/react";
-import AdminCalendarPage from "./index";
+// import type { Meta, StoryObj } from "@storybook/react";
+// import AdminCalendarPage from "./index";
 
-const meta = {
-  title: "pages/AdminCalendarPage",
-  component: AdminCalendarPage,
-} satisfies Meta<typeof AdminCalendarPage>;
+// const meta = {
+//   title: "pages/AdminCalendarPage",
+//   component: AdminCalendarPage,
+// } satisfies Meta<typeof AdminCalendarPage>;
 
-export default meta;
+// export default meta;
 
-type Story = StoryObj<typeof meta>;
+// type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {
-  args: {},
-};
+// export const Default: Story = {
+//   args: {},
+// };

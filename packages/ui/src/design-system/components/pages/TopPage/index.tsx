@@ -77,7 +77,7 @@ const TopPage = () => {
       time: "12:00 - 20:00",
       type: "大会",
       location: "東京都渋谷区",
-      venue: "渋谷ストリームホール",
+      venue: "渋谷ストリームホー",
       capacity: 128,
       entries: 75,
       description:
