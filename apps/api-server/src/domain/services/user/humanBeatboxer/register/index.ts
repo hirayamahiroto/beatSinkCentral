@@ -1,6 +1,7 @@
 import { User } from "../../../../entities/user";
 import { HumanBeatboxer } from "../../../../entities/roles/humanBeatboxer";
 import { HumanBeatboxerProfile } from "../../../../entities/profiles/humanBeatboxerProfile";
+import { Email, UserId } from "../../../../valueObjects";
 
 export interface RegisterRequest {
   email: string;
@@ -36,8 +37,8 @@ export async function register(
 
   // Create entities with generated IDs
   const user = new User({
-    id: userId,
-    email: request.email,
+    id: new UserId(userId),
+    email: new Email(request.email),
     password: request.password, // In production, hash the password
   });
 
