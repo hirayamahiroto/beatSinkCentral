@@ -3,6 +3,9 @@ import {
   UserService,
   RegisterRequest,
 } from "../../../../domain/services/user/humanBeatboxer";
+import { userToJson } from "../../../../domain/entities/user";
+import { humanBeatboxerToJson } from "../../../../domain/entities/roles/humanBeatboxer";
+import { humanBeatboxerProfileToJson } from "../../../../domain/entities/profiles/humanBeatboxerProfile";
 
 // In-memory service instance (in production, use dependency injection)
 const userService = new UserService();
@@ -28,12 +31,9 @@ const app = new Hono().post("/register", async (c) => {
       {
         success: true,
         data: {
-          user: {
-            id: result.user.id,
-            email: result.user.email,
-          },
-          humanBeatboxer: result.humanBeatboxer.toJSON(),
-          profile: result.profile.toJSON(),
+          user: userToJson(result.user),
+          humanBeatboxer: humanBeatboxerToJson(result.humanBeatboxer),
+          profile: humanBeatboxerProfileToJson(result.profile),
         },
       },
       201
