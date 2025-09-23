@@ -1,6 +1,6 @@
 import { User, createUser } from "../../../../entities/user";
-import { HumanBeatboxer } from "../../../../entities/roles/humanBeatboxer";
-import { HumanBeatboxerProfile } from "../../../../entities/profiles/humanBeatboxerProfile";
+import { HumanBeatboxer, createHumanBeatboxer } from "../../../../entities/roles/humanBeatboxer";
+import { HumanBeatboxerProfile, createHumanBeatboxerProfile } from "../../../../entities/profiles/humanBeatboxerProfile";
 
 export interface RegisterRequest {
   email: string;
@@ -34,25 +34,25 @@ export async function register(
   const profileId = mockDbGenerateId("hbb_profile");
   const humanBeatboxerId = mockDbGenerateId("hbb");
 
-  // Create user entity
+  // Create entities using functional style
   const user = createUser(request.email, request.password);
 
-  const profile = new HumanBeatboxerProfile({
-    id: profileId,
-    artistName: request.artistName,
-    age: request.age,
-    sex: request.sex,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  });
+  const profile = createHumanBeatboxerProfile(
+    profileId,
+    request.artistName,
+    request.age,
+    request.sex
+  );
 
-  const humanBeatboxer = new HumanBeatboxer({
-    id: humanBeatboxerId,
-    userId: userId,
-    profileId: profileId,
-    profile: profile,
-  });
+  const humanBeatboxer = createHumanBeatboxer(
+    humanBeatboxerId,
+    userId,
+    profileId,
+    profile
+  );
 
+  // Store in memory (userId from generated user won't match mockDbGenerateId)
+  // In production, DB would handle ID generation consistently
   storage.users.set(userId, user);
   storage.profiles.set(profileId, profile);
   storage.humanBeatboxers.set(humanBeatboxerId, humanBeatboxer);
