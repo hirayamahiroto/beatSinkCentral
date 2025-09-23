@@ -1,32 +1,30 @@
-import { HumanBeatboxerProfile } from "../../profiles/humanBeatboxerProfile";
+import { HumanBeatboxerProfile, humanBeatboxerProfileToJson } from "../../profiles/humanBeatboxerProfile";
 
-export interface HumanBeatboxerProps {
-  id: string;
-  userId: string;
-  profileId: string;
-  profile: HumanBeatboxerProfile;
+export interface HumanBeatboxer {
+  readonly id: string;
+  readonly userId: string;
+  readonly profileId: string;
+  readonly profile: HumanBeatboxerProfile;
+  readonly createdAt: Date;
 }
 
-export class HumanBeatboxer {
-  readonly id?: string;
-  readonly userId?: string;
-  profileId: string;
+export const createHumanBeatboxer = (
+  id: string,
+  userId: string,
+  profileId: string,
+  profile: HumanBeatboxerProfile
+): HumanBeatboxer => ({
+  id,
+  userId,
+  profileId,
+  profile,
+  createdAt: new Date(),
+});
 
-  profile: HumanBeatboxerProfile;
-
-  constructor(props: HumanBeatboxerProps) {
-    this.id = props.id;
-    this.userId = props.userId;
-    this.profileId = props.profileId;
-    this.profile = props.profile;
-  }
-
-  toJSON() {
-    return {
-      id: this.id,
-      userId: this.userId,
-      profileId: this.profileId,
-      profile: this.profile.toJSON(),
-    };
-  }
-}
+export const humanBeatboxerToJson = (hbb: HumanBeatboxer) => ({
+  id: hbb.id,
+  userId: hbb.userId,
+  profileId: hbb.profileId,
+  profile: humanBeatboxerProfileToJson(hbb.profile),
+  createdAt: hbb.createdAt.toISOString(),
+});

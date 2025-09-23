@@ -1,37 +1,31 @@
-export interface HumanBeatboxerProfileProps {
-  id: string;
-  artistName: string;
-  age: number;
-  sex: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export class HumanBeatboxerProfile {
+export interface HumanBeatboxerProfile {
   readonly id: string;
-  artistName: string;
-  age: number;
-  sex: string;
+  readonly artistName: string;
+  readonly age: number;
+  readonly sex: string;
   readonly createdAt: Date;
-  updatedAt: Date;
-
-  constructor(props: HumanBeatboxerProfileProps) {
-    this.id = props.id;
-    this.artistName = props.artistName;
-    this.age = props.age;
-    this.sex = props.sex;
-    this.createdAt = props.createdAt;
-    this.updatedAt = props.updatedAt;
-  }
-
-  toJSON() {
-    return {
-      id: this.id,
-      artistName: this.artistName,
-      age: this.age,
-      sex: this.sex,
-      createdAt: this.createdAt,
-      updatedAt: this.updatedAt,
-    };
-  }
+  readonly updatedAt: Date;
 }
+
+export const createHumanBeatboxerProfile = (
+  id: string,
+  artistName: string,
+  age: number,
+  sex: string
+): HumanBeatboxerProfile => ({
+  id,
+  artistName,
+  age,
+  sex,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+});
+
+export const humanBeatboxerProfileToJson = (profile: HumanBeatboxerProfile) => ({
+  id: profile.id,
+  artistName: profile.artistName,
+  age: profile.age,
+  sex: profile.sex,
+  createdAt: profile.createdAt.toISOString(),
+  updatedAt: profile.updatedAt.toISOString(),
+});
