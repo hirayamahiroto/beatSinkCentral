@@ -1,19 +1,17 @@
-export class Email {
-  private readonly _value: string;
-
-  constructor(value: string) {
-    if (!this.isValid(value)) {
-      throw new Error("Invalid email format");
-    }
-    this._value = value;
-  }
-
-  private isValid(email: string): boolean {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email) && email.length <= 254;
-  }
-
-  toJSON(): string {
-    return this._value;
-  }
+export interface Email {
+  readonly value: string;
 }
+
+const isValidEmail = (email: string): boolean => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email) && email.length <= 254;
+};
+
+export const createEmail = (value: string): Email => {
+  if (!isValidEmail(value)) {
+    throw new Error("Invalid email format");
+  }
+  return { value };
+};
+
+export const emailToJson = (email: Email): string => email.value;

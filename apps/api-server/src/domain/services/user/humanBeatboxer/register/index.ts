@@ -1,7 +1,6 @@
-import { User } from "../../../../entities/user";
+import { User, createUser } from "../../../../entities/user";
 import { HumanBeatboxer } from "../../../../entities/roles/humanBeatboxer";
 import { HumanBeatboxerProfile } from "../../../../entities/profiles/humanBeatboxerProfile";
-import { Email, UserId } from "../../../../valueObjects";
 
 export interface RegisterRequest {
   email: string;
@@ -35,12 +34,8 @@ export async function register(
   const profileId = mockDbGenerateId("hbb_profile");
   const humanBeatboxerId = mockDbGenerateId("hbb");
 
-  // Create entities with generated IDs
-  const user = new User({
-    id: new UserId(userId),
-    email: new Email(request.email),
-    password: request.password, // In production, hash the password
-  });
+  // Create user entity
+  const user = createUser(request.email, request.password);
 
   const profile = new HumanBeatboxerProfile({
     id: profileId,
