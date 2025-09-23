@@ -1,4 +1,4 @@
-import { Email, createEmail, emailToJson, UserId } from "../../valueObjects";
+import { Email, createEmail, emailToJson, UserId, generateUserId, userIdToJson } from "../../valueObjects";
 
 export interface User {
   readonly id: UserId;
@@ -7,12 +7,12 @@ export interface User {
 }
 
 export const createUser = (email: string, password: string): User => ({
-  id: UserId.generate(),
+  id: generateUserId(),
   email: createEmail(email),
   password,
 });
 
 export const userToJson = (user: User) => ({
-  id: user.id.toJSON(),
+  id: userIdToJson(user.id),
   email: emailToJson(user.email),
 });
