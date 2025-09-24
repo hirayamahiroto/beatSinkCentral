@@ -14,15 +14,35 @@ const app = new Hono().post("/register", async (c) => {
   try {
     const body = (await c.req.json()) as RegisterRequest;
 
-    if (!body.email || !body.password || !body.artistName) {
+    if (
+      typeof body.email !== "string" ||
+      typeof body.password !== "string" ||
+      typeof body.artistName !== "string" ||
+      !body.email.trim() ||
+      !body.password.trim() ||
+      !body.artistName.trim()
+    ) {
       return c.json(
         { error: "Missing required fields: email, password, artistName" },
         400
       );
     }
 
-    if (!body.age || !body.sex) {
-      return c.json({ error: "Missing required fields: age, sex" }, 400);
+    if (
+      typeof body.age !== "number" ||
+      !Number.isFinite(body.age) ||
+      body.age <= 0 ||
+      body.age > 120
+    ) {
+      return c.json({ error: "Invalid field: age must be 1-120 number" }, 400);
+    }
+
+    const allowedSex = ["male", "female", "other"];
+    if (typeof body.sex !== "string" || !allowedSex.includes(body.sex)) {
+      return c.json(
+        { error: 'Invalid field: sex must be "male" | "female" | "other"' },
+        400
+      );
     }
 
     const result = await userService.register(body);
