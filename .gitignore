@@ -10,6 +10,11 @@
 !.yarn/releases
 !.yarn/versions
 .turbo
+
+# packages
+packages/*/node_modules
+packages/*/dist
+packages/*/build
 # testing
 /coverage
 

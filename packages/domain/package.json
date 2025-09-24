@@ -1,0 +1,35 @@
+{
+  "name": "@beatSink/domain",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "default": "./index.ts"
+    },
+    "./entities/*": {
+      "types": "./entities/*/index.ts",
+      "default": "./entities/*/index.ts"
+    },
+    "./valueObjects/*": {
+      "types": "./valueObjects/*/index.ts",
+      "default": "./valueObjects/*/index.ts"
+    },
+    "./services/*": {
+      "types": "./services/*/index.ts",
+      "default": "./services/*/index.ts"
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^3.0.0"
+  },
+  "scripts": {
+    "test": "vitest",
+    "type-check": "tsc --noEmit"
+  }
+}
