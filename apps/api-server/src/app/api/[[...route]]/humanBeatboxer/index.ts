@@ -4,8 +4,8 @@ import {
   RegisterRequest,
 } from "../../../../domain/services/user/humanBeatboxer";
 import { userToJson } from "../../../../domain/entities/user";
-import { humanBeatboxerToJson } from "../../../../domain/entities/roles/humanBeatboxer";
-import { humanBeatboxerProfileToJson } from "../../../../domain/entities/profiles/humanBeatboxerProfile";
+import { humanBeatboxerToJson } from "../../../../domain/entities/HumanBeatboxer/toJson";
+import { humanBeatboxerProfileToJson } from "../../../../domain/entities/HumanBeatboxer/profile/toJson";
 
 // In-memory service instance (in production, use dependency injection)
 const userService = new UserService();

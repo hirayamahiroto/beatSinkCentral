@@ -1,6 +1,6 @@
 import { User } from "../../../entities/user";
-import { HumanBeatboxer } from "../../../entities/roles/humanBeatboxer";
-import { HumanBeatboxerProfile } from "../../../entities/profiles/humanBeatboxerProfile";
+import { HumanBeatboxer } from "../../../entities/HumanBeatboxer/types";
+import { HumanBeatboxerProfile } from "../../../entities/HumanBeatboxer/types";
 import { register, RegisterRequest, RegisterResponse } from "./register";
 
 export type { RegisterRequest };

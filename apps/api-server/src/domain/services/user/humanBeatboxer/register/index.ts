@@ -1,6 +1,10 @@
 import { User, createUser } from "../../../../entities/user";
-import { HumanBeatboxer, createHumanBeatboxer } from "../../../../entities/roles/humanBeatboxer";
-import { HumanBeatboxerProfile, createHumanBeatboxerProfile } from "../../../../entities/profiles/humanBeatboxerProfile";
+import { createHumanBeatboxer } from "../../../../entities/HumanBeatboxer/create";
+import { createHumanBeatboxerProfile } from "../../../../entities/HumanBeatboxer/profile/create";
+import {
+  HumanBeatboxer,
+  HumanBeatboxerProfile,
+} from "../../../../entities/HumanBeatboxer/types";
 
 export interface RegisterRequest {
   email: string;
