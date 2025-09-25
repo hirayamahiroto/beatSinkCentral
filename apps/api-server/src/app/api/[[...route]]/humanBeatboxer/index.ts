@@ -2,7 +2,6 @@ import { Hono } from "hono";
 import {
   UserService,
   RegisterRequest,
-  userToJson,
   humanBeatboxerToJson,
   humanBeatboxerProfileToJson,
 } from "@beatSink/domain";
@@ -51,7 +50,7 @@ const app = new Hono().post("/register", async (c) => {
       {
         success: true,
         data: {
-          user: userToJson(result.user),
+          user: result.user.toJson(result.user),
           humanBeatboxer: humanBeatboxerToJson(result.humanBeatboxer),
           profile: humanBeatboxerProfileToJson(result.profile),
         },

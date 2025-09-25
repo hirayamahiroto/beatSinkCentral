@@ -1,4 +1,5 @@
-import { User, createUser } from "../../../../entities/user";
+import { User } from "../../../../entities/user";
+import { Role } from "../../../../entities/Role";
 import { createHumanBeatboxer } from "../../../../entities/HumanBeatboxer/create";
 import { createHumanBeatboxerProfile } from "../../../../entities/HumanBeatboxer/profile/create";
 import {
@@ -39,7 +40,11 @@ export async function register(
   const humanBeatboxerId = mockDbGenerateId("hbb");
 
   // Create entities using functional style
-  const user = createUser(request.email, request.password);
+  const user = new User(
+    request.email,
+    request.password,
+    new Role("humanBeatboxer")
+  );
 
   const profile = createHumanBeatboxerProfile(
     profileId,
