@@ -1,18 +1,32 @@
-import { Email, createEmail, emailToJson, UserId, generateUserId, userIdToJson } from "../../valueObjects";
+import { v4 as uuidv4 } from "uuid";
+import { Role } from "../Role";
 
-export interface User {
-  readonly id: UserId;
-  readonly email: Email;
-  readonly password: string;
+type UserJson = {
+  id: string;
+  email: string;
+  password: string;
+  role: Role;
+};
+
+export class User {
+  private _id: string;
+  private _email: string;
+  private _password: string;
+  private _role: Role;
+
+  constructor(email: string, password: string, role: Role) {
+    this._id = uuidv4();
+    this._email = email;
+    this._password = password;
+    this._role = role;
+  }
+
+  public toJson(user: User): UserJson {
+    return {
+      id: user._id,
+      email: user._email,
+      password: user._password,
+      role: user._role,
+    };
+  }
 }
-
-export const createUser = (email: string, password: string): User => ({
-  id: generateUserId(),
-  email: createEmail(email),
-  password,
-});
-
-export const userToJson = (user: User) => ({
-  id: userIdToJson(user.id),
-  email: emailToJson(user.email),
-});
