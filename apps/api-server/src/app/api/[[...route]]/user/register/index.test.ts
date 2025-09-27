@@ -20,7 +20,9 @@ describe("HumanBeatboxer API", () => {
 
       expect(res.status).toBe(400);
       const json = await res.json();
-      expect(json.error).toBe("Missing required fields: email, password, artistName");
+      expect(json.error).toBe(
+        "Missing required fields: email, password, artistName"
+      );
     });
 
     it("空文字列フィールドの検証", async () => {
@@ -40,7 +42,9 @@ describe("HumanBeatboxer API", () => {
 
       expect(res.status).toBe(400);
       const json = await res.json();
-      expect(json.error).toBe("Missing required fields: email, password, artistName");
+      expect(json.error).toBe(
+        "Missing required fields: email, password, artistName"
+      );
     });
 
     it("age が0の場合は拒否される", async () => {
@@ -120,7 +124,9 @@ describe("HumanBeatboxer API", () => {
 
       expect(res.status).toBe(400);
       const json = await res.json();
-      expect(json.error).toBe('Invalid field: sex must be "male" | "female" | "other"');
+      expect(json.error).toBe(
+        'Invalid field: sex must be "male" | "female" | "other"'
+      );
     });
   });
 });
