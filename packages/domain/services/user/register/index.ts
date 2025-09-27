@@ -1,6 +1,6 @@
 import { User } from "../../../entities/user";
-import { Role } from "../../../entities/Role";
 import { UserFactory } from "../../../factory/UserFactory";
+import { RoleFactory } from "../../../factory/RoleFactory";
 
 export type RegisterRequest = {
   email: string;
@@ -11,16 +11,16 @@ export type RegisterResponse = {
   user: User;
 };
 
-export async function register(
+export const register = async (
   request: RegisterRequest
-): Promise<RegisterResponse> {
+): Promise<RegisterResponse> => {
   const user = UserFactory.register({
     email: request.email,
     password: request.password,
-    role: new Role("audience"),
+    role: RoleFactory.createAudience(),
   });
 
   return {
     user,
   };
-}
+};
