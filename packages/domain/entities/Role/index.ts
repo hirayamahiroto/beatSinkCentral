@@ -6,8 +6,4 @@ export class Role {
   constructor(name: RoleName) {
     this._name = name;
   }
-
-  public toJson(role: RoleName): RoleName {
-    return role;
-  }
 }
