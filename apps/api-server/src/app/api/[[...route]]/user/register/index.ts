@@ -1,22 +1,22 @@
 import { Hono } from "hono";
-import {
-  RegisterRequest,
-  register as userService,
-} from "@beatSink/domain/services/user/register";
+import { zValidator } from "@hono/zod-validator";
+import { register as userService } from "@beatSink/domain/services/user/register";
+import { z } from "zod";
 
-const app = new Hono().post("/register", async (c) => {
-  try {
-    const body = (await c.req.json()) as RegisterRequest;
+const request = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+});
 
-    if (
-      typeof body.email !== "string" ||
-      typeof body.password !== "string" ||
-      !body.email.trim() ||
-      !body.password.trim()
-    ) {
-      return c.json({ error: "Missing required fields: email, password" }, 400);
+const app = new Hono().post(
+  "/register",
+  zValidator("json", request, (result, c) => {
+    if (!result.success) {
+      return c.text("Invalid!", 400);
     }
-
+  }),
+  async (c) => {
+    const body = c.req.valid("json");
     const result = await userService(body);
 
     return c.json(
@@ -28,10 +28,7 @@ const app = new Hono().post("/register", async (c) => {
       },
       201
     );
-  } catch (error) {
-    console.error("Error registering user:", error);
-    return c.json({ error: "Internal server error" }, 500);
   }
-});
+);
 
 export default app;
