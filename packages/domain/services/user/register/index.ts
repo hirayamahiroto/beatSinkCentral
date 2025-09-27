@@ -20,6 +20,12 @@ export const register = async (
     role: RoleFactory.createAudience(),
   });
 
+  // DBへの保存
+  // 保存処理可否の判定
+  // 保存処理の実行
+  // 保存処理の結果を返す
+  // 保存できなかったらerrorを返す。
+
   return {
     user,
   };
