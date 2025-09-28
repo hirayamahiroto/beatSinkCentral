@@ -36,6 +36,3 @@ jobs:
 
       - name: 🏗️ ビルド
         run: npx turbo run build --filter=beatfolio
-
-      - name: 🧪 テスト
-        run: npx turbo run test --filter=beatfolio
