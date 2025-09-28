@@ -1,0 +1,36 @@
+name: "Build and Test"
+description: "Build and test a specific package"
+
+inputs:
+  package-filter:
+    description: "Package filter for turbo (e.g., api-server, beatfolio)"
+    required: true
+  node-version:
+    description: "Node.js version to use"
+    required: false
+    default: "20"
+
+runs:
+  using: "composite"
+  steps:
+    - name: 📦 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: "npm"
+
+    - name: 📦 Install dependencies
+      run: npm ci
+      shell: bash
+
+    - name: 🏗️ Build
+      run: npx turbo run build --filter=${{ inputs.package-filter }}
+      shell: bash
+
+    - name: 🧪 Run tests
+      run: npx turbo run test --filter=${{ inputs.package-filter }}
+      shell: bash
+
+    - name: 🔍 Type check
+      run: npx turbo run type-check --filter=${{ inputs.package-filter }} || true
+      shell: bash

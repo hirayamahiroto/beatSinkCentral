@@ -17,9 +17,86 @@ permissions:
   deployments: write
 
 jobs:
-  deploy-preview:
-    name: 🔮 プレビューデプロイ
+  # ビルドとテスト
+  test-api-server:
+    name: 🧪 APIサーバーテスト
     runs-on: ubuntu-latest
+    steps:
+      - name: 📥 コードのチェックアウト
+        uses: actions/checkout@v4
+
+      - name: 🏗️ ビルド＆テスト
+        uses: ./.github/actions/build-and-test
+        with:
+          package-filter: api-server
+          node-version: ${{ env.NODE_VERSION }}
+
+  test-beatfolio:
+    name: 🧪 Beatfolioテスト
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 コードのチェックアウト
+        uses: actions/checkout@v4
+
+      - name: 🏗️ ビルド＆テスト
+        uses: ./.github/actions/build-and-test
+        with:
+          package-filter: beatfolio
+          node-version: ${{ env.NODE_VERSION }}
+
+  # APIサーバーのデプロイ（テスト完了後に実行）
+  deploy-api-server:
+    name: 🔮 APIサーバープレビューデプロイ
+    runs-on: ubuntu-latest
+    needs: test-api-server  # テスト完了後に実行
+    outputs:
+      api-url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - name: 📥 コードのチェックアウト
+        uses: actions/checkout@v4
+
+      - name: 📦 依存関係のインストール
+        uses: ./.github/actions/install-dependencies
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: 🔧 Vercel CLIのインストール
+        run: npm install --global vercel@latest
+
+      - name: 🌐 APIサーバー環境情報の取得
+        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_API_SERVER_PROJECT_ID }}
+
+      - name: 🔍 APIサーバー環境変数の設定
+        run: |
+          vercel env rm DEBUG_URL preview --yes --token=${{ secrets.VERCEL_TOKEN }} || true
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_API_SERVER_PROJECT_ID }}
+
+      - name: 🏗️ APIサーバービルド
+        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_API_SERVER_PROJECT_ID }}
+
+      - name: 🚀 APIサーバーデプロイ
+        id: deploy
+        run: |
+          OUTPUT=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$OUTPUT" >> $GITHUB_OUTPUT
+          echo "APIサーバーURL: $OUTPUT"
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_API_SERVER_PROJECT_ID }}
+
+  # Beatfolioのデプロイ（APIサーバーのデプロイ完了後に実行）
+  deploy-beatfolio:
+    name: 🔮 Beatfolioプレビューデプロイ
+    runs-on: ubuntu-latest
+    needs: [test-beatfolio, deploy-api-server]  # テストとAPIサーバーのデプロイが完了してから実行
     steps:
       - name: 📥 コードのチェックアウト
         uses: actions/checkout@v4
@@ -41,6 +118,8 @@ jobs:
       - name: 🔍 Beatfolio環境変数の設定
         run: |
           vercel env rm DEBUG_URL preview --yes --token=${{ secrets.VERCEL_TOKEN }} || true
+          # APIサーバーのURLを環境変数として設定（必要に応じて）
+          echo "API_URL=${{ needs.deploy-api-server.outputs.api-url }}"
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_BEATFOLIO_PROJECT_ID }}
@@ -52,33 +131,9 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_BEATFOLIO_PROJECT_ID }}
 
       - name: 🚀 Beatfolioデプロイ
-        run: vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}
+        run: |
+          OUTPUT=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
+          echo "BeatfolioURL: $OUTPUT"
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_BEATFOLIO_PROJECT_ID }}
-
-      # APIサーバーのデプロイ準備と実行
-      - name: 🌐 APIサーバー環境情報の取得
-        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_API_SERVER_PROJECT_ID }}
-
-      - name: 🔍 APIサーバー環境変数の設定
-        run: |
-          vercel env rm DEBUG_URL preview --yes --token=${{ secrets.VERCEL_TOKEN }} || true
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_API_SERVER_PROJECT_ID }}
-
-      - name: 🏗️ APIサーバービルド
-        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_API_SERVER_PROJECT_ID }}
-
-      - name: 🚀 APIサーバーデプロイ
-        run: vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_API_SERVER_PROJECT_ID }}
