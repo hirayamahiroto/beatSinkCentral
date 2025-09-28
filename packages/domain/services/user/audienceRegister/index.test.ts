@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { register, type RegisterRequest } from "./index";
-import { UserFactory } from "../../../factory/UserFactory";
-import { RoleFactory } from "../../../factory/RoleFactory";
+import { audienceRegister, type RegisterRequest } from "./index";
+import { UserFactory } from "../../../factories/User";
+import { RoleFactory } from "../../../factories/Role";
 import { User } from "../../../entities/user";
 import { Role } from "../../../entities/Role";
 
-vi.mock("../../../factory/UserFactory");
-vi.mock("../../../factory/RoleFactory");
+vi.mock("../../../factories/User");
+vi.mock("../../../factories/Role");
 
 describe("register service", () => {
   beforeEach(() => {
@@ -31,7 +31,7 @@ describe("register service", () => {
         password: "password123",
       };
 
-      const result = await register(request);
+      const result = await audienceRegister(request);
 
       expect(RoleFactory.createAudience).toHaveBeenCalledOnce();
       expect(UserFactory.register).toHaveBeenCalledWith({

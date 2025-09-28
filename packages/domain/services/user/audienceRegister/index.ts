@@ -1,6 +1,6 @@
 import { User } from "../../../entities/user";
-import { UserFactory } from "../../../factory/UserFactory";
-import { RoleFactory } from "../../../factory/RoleFactory";
+import { UserFactory } from "../../../factories/User";
+import { RoleFactory } from "../../../factories/Role";
 
 export type RegisterRequest = {
   email: string;
@@ -11,7 +11,7 @@ export type RegisterResponse = {
   user: User;
 };
 
-export const register = async (
+export const audienceRegister = async (
   request: RegisterRequest
 ): Promise<RegisterResponse> => {
   const user = UserFactory.register({
