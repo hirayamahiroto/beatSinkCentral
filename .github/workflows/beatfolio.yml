@@ -39,4 +39,3 @@ jobs:
 
       - name: 🧪 テスト
         run: npx turbo run test --filter=beatfolio
-        continue-on-error: true
