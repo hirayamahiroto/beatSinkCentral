@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { register as audienceRegister } from "@beatSink/domain/services/user/register";
+import { audienceRegister } from "@beatSink/domain/services/user/audienceRegister";
 import { z } from "zod";
 
 const request = z.object({
