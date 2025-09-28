@@ -25,18 +25,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: 📦 依存関係のインストール
-        uses: actions/setup-node@v4
+      - name: 🏗️ ビルド＆テスト
+        uses: ./.github/actions/build-and-test
         with:
-          node-version: 20
-          cache: "npm"
-
-      - name: 📦 パッケージインストール
-        run: npm ci
-
-      - name: 🏗️ ビルド
-        run: npx turbo run build --filter=api-server
-
-      - name: 🧪 テスト
-        run: npx turbo run test --filter=api-server
-        continue-on-error: true
+          package-filter: api-server
+          node-version: "20"
