@@ -3,7 +3,7 @@ import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 
 export const rolesTable = pgTable("roles", {
   id: uuid("id").primaryKey().defaultRandom(),
-  name: varchar("name", { length: 100 }).notNull(),
+  name: varchar("name", { length: 100 }).notNull().unique(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   deletedAt: timestamp("deleted_at"),

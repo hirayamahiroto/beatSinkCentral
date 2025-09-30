@@ -14,5 +14,7 @@ export const usersTable = pgTable("users", {
   deletedAt: timestamp("deleted_at"),
 });
 
-export const userSelectSchema = createSelectSchema(usersTable);
+export const userSelectSchema = createSelectSchema(usersTable).omit({
+  password: true,
+});
 export const userInsertSchema = createInsertSchema(usersTable);
