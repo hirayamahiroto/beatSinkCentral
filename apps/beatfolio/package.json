@@ -11,6 +11,7 @@
     "test:watch": "vitest --watch"
   },
   "dependencies": {
+    "@auth0/nextjs-auth0": "^4.10.0",
     "@hono/zod-validator": "^0.4.3",
     "data": "*",
     "database": "*",
