@@ -1,13 +1,19 @@
 import { createMiddleware } from "hono/factory";
-import type { NextRequest } from "next/server";
+import { NextRequest } from "next/server";
 import { auth0 } from "../../libs/auth0";
 
-export const auth0Middleware = createMiddleware(async (c) => {
-  const request = c.req.raw as NextRequest;
+export const requireAuthMiddleware = createMiddleware(async (c, next) => {
+  const session = await auth0.getSession(c.req.raw as NextRequest);
+  if (!session) {
+    const url = new URL(c.req.url);
+    const returnTo = url.pathname + url.search;
+    return c.redirect(
+      new URL(
+        `/auth/login?returnTo=${encodeURIComponent(returnTo)}`,
+        c.req.url
+      ).toString()
+    );
+  }
 
-  const response = await auth0.middleware(request);
-
-  return response;
+  return next();
 });
-
-export const auth0RouteMiddleware = auth0Middleware;
