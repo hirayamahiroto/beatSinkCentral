@@ -1,5 +1,3 @@
-"use client";
-
 import Image from "next/image";
 import {
   Mic,
@@ -9,115 +7,18 @@ import {
   Star,
   Globe,
   Trophy,
-  Users,
-  Check,
-  XCircle,
 } from "lucide-react";
 import Link from "next/link";
 import Header from "@ui/design-system/components/molecules/header";
-import { useState } from "react";
+import { auth0 } from "../libs/auth0";
+import { redirect } from "next/navigation";
 
-// エントリーボタンコンポーネント
-const EntryButton = ({
-  capacity,
-  entries,
-  onEntry,
-}: {
-  capacity: number;
-  entries: number;
-  onEntry: () => void;
-}) => {
-  const [isLoading, setIsLoading] = useState(false);
+export default async function Home() {
+  const session = await auth0.getSession();
 
-  const handleClick = async () => {
-    try {
-      setIsLoading(true);
-      await onEntry();
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  if (entries >= capacity) {
-    return (
-      <button
-        disabled
-        className="w-full px-6 py-3 bg-gray-600/20 text-gray-400 rounded-full flex items-center justify-center gap-2"
-      >
-        <XCircle className="w-5 h-5" />
-        定員に達しました
-      </button>
-    );
+  if (!session) {
+    return redirect("/auth/login");
   }
-
-  return (
-    <button
-      onClick={handleClick}
-      disabled={isLoading}
-      className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-full font-medium transition-all flex items-center justify-center gap-2"
-    >
-      {isLoading ? (
-        "処理中..."
-      ) : (
-        <>
-          <Check className="w-5 h-5" />
-          エントリーする
-        </>
-      )}
-    </button>
-  );
-};
-
-export default function Home() {
-  const [events, setEvents] = useState([
-    {
-      id: 1,
-      title: "Beatbox Championship 2024",
-      date: "2024.03.21",
-      time: "12:00 - 20:00",
-      type: "大会",
-      location: "東京都渋谷区",
-      venue: "渋谷ストリームホール",
-      capacity: 128,
-      entries: 75,
-      description:
-        "日本一のビートボクサーを決める年に一度の大会。優勝者は世界大会への切符を手にします。",
-      image: "/image1.jpeg",
-      price: "5,000円",
-    },
-    // ... 他のイベントデータ
-  ]);
-
-  const handleEntry = async (eventId: number) => {
-    try {
-      // ここで実際のAPIコールを行う
-      // const response = await fetch('/api/events/entry', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //   },
-      //   body: JSON.stringify({ eventId }),
-      // });
-
-      // 仮の実装：エントリー数を増やす
-      setEvents(
-        events.map((event) => {
-          if (event.id === eventId) {
-            return {
-              ...event,
-              entries: event.entries + 1,
-            };
-          }
-          return event;
-        })
-      );
-
-      alert("エントリーが完了しました！");
-    } catch (error) {
-      console.error("エントリーに失敗しました:", error);
-      alert("エントリーに失敗しました。もう一度お試しください。");
-    }
-  };
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -206,65 +107,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Events Section */}
-      <section className="py-32 bg-black">
-        <div className="container mx-auto px-4">
-          <h2 className="text-4xl font-bold text-center mb-20">イベント情報</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {events.map((event) => (
-              <div
-                key={event.id}
-                className="backdrop-blur-md bg-white/5 rounded-2xl overflow-hidden"
-              >
-                <div className="relative h-48">
-                  <Image
-                    src={event.image}
-                    alt={event.title}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-                <div className="p-6">
-                  <span className="inline-block px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-sm mb-4">
-                    {event.type}
-                  </span>
-                  <h3 className="text-xl font-bold mb-2">{event.title}</h3>
-                  <div className="space-y-2 text-gray-400 mb-4">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4" />
-                      <span>{event.date}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Users className="w-4 h-4" />
-                      <span>
-                        参加者: {event.entries}/{event.capacity}名
-                      </span>
-                    </div>
-                  </div>
-                  <p className="text-gray-400 mb-6 line-clamp-2">
-                    {event.description}
-                  </p>
-                  <div className="space-y-3">
-                    <EntryButton
-                      capacity={event.capacity}
-                      entries={event.entries}
-                      onEntry={() => handleEntry(event.id)}
-                    />
-                    <Link
-                      href={`/eventDetail?id=${event.id}`}
-                      className="block w-full px-6 py-3 bg-white/10 hover:bg-white/20 rounded-full font-medium text-center transition-all"
-                    >
-                      詳細を見る
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Features */}
       <section className="py-32 bg-black">
         <div className="container mx-auto px-4">
           <h2 className="text-4xl font-bold text-center mb-20">主な機能</h2>
