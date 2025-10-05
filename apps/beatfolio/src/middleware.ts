@@ -1,7 +1,18 @@
-export { middleware } from "./middlewares/auth0";
+import { Hono } from "hono";
+import { except } from "hono/combine";
+import { handle } from "hono/vercel";
+import { basicAuthMiddleware } from "./middlewares/basicAuth";
+import { auth0RouteMiddleware } from "./middlewares/auth0";
+
+const app = new Hono();
+
+app.use("*", except("/auth/*", basicAuthMiddleware));
+app.use("*", auth0RouteMiddleware);
+
+export const middleware = handle(app);
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)",
+    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

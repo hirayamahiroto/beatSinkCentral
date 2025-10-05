@@ -1,12 +1,12 @@
-import type { NextRequest } from "next/server";
+import { createMiddleware } from "hono/factory";
 import { auth0 } from "../../libs/auth0";
 
-export async function middleware(request: NextRequest) {
-  return await auth0.middleware(request);
-}
+export const auth0Middleware = createMiddleware(async (c) => {
+  const request = c.req.raw as any;
 
-export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)",
-  ],
-};
+  const response = await auth0.middleware(request);
+
+  return response;
+});
+
+export const auth0RouteMiddleware = auth0Middleware;
