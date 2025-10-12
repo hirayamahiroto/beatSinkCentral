@@ -11,7 +11,6 @@
   },
   "dependencies": {
     "@auth0/nextjs-auth0": "^4.10.0",
-    "@beatSink/domain": "*",
     "@hono/client": "^0.0.3",
     "@hono/zod-validator": "^0.4.3",
     "hono": "^4.0.0",
