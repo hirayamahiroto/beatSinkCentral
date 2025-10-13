@@ -2,8 +2,6 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { requireAuthMiddleware } from "../../../../../middlewares/auth0";
-import { auth0 } from "../../../../../infrastructure/auth0";
-import { NextRequest } from "next/server";
 
 const requestSchema = z.object({
   username: z.string().min(1),
@@ -24,13 +22,8 @@ const app = new Hono().post(
   async (c) => {
     const body = c.req.valid("json");
 
-    // Auth0のセッションからユーザー情報を取得
-    const session = await auth0.getSession(c.req.raw as NextRequest);
-    if (!session?.user) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
-    const auth0User = session.user;
+    // ミドルウェアで設定されたAuth0ユーザー情報を取得
+    const auth0User = c.get("auth0User");
 
     // TODO: CreateUserUseCaseを呼び出す
     // const createUserUseCase = new CreateUserUseCase(userRepository);
