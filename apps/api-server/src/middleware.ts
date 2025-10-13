@@ -2,12 +2,16 @@ import { Hono } from "hono";
 import { except } from "hono/combine";
 import { handle } from "hono/vercel";
 import { basicAuthMiddleware } from "./middlewares/basicAuth";
-import { requireAuthMiddleware } from "./middlewares/auth0";
+import {
+  requireAuthMiddleware,
+  requireVerifiedMiddleware,
+} from "./middlewares/auth0";
 
 const app = new Hono();
 
 app.use("*", except("/auth/*", basicAuthMiddleware));
 app.use("*", requireAuthMiddleware);
+app.use("*", except("/auth/*", requireVerifiedMiddleware));
 
 export const middleware = handle(app);
 
