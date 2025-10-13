@@ -11,7 +11,7 @@ const requestSchema = z.object({
 });
 
 const app = new Hono().post(
-  "/register",
+  "/create",
   requireAuthMiddleware,
   zValidator("json", requestSchema, (result, c) => {
     if (!result.success) {
