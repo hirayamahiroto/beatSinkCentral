@@ -32,9 +32,9 @@ const app = new Hono().post(
 
     const auth0User = session.user;
 
-    // TODO: RegisterUserUseCaseを呼び出す
-    // const registerUserUseCase = new RegisterUserUseCase(userRepository);
-    // const result = await registerUserUseCase.execute({
+    // TODO: CreateUserUseCaseを呼び出す
+    // const createUserUseCase = new CreateUserUseCase(userRepository);
+    // const result = await createUserUseCase.execute({
     //   auth0UserId: auth0User.sub,
     //   email: auth0User.email,
     //   username: body.username,
