@@ -14,6 +14,7 @@ describe("UserFactory", () => {
   describe("create", () => {
     it("新しいUserインスタンスを作成できる", () => {
       const dto = {
+        auth0UserId: "auth0|123456",
         email: "test@example.com",
         username: "testuser",
         attributes: { role: "audience" },
@@ -23,6 +24,7 @@ describe("UserFactory", () => {
 
       expect(user).toBeInstanceOf(User);
       expect(user.id).toBe("test-uuid-123");
+      expect(user.auth0UserId).toBe("auth0|123456");
       expect(user.email).toBe("test@example.com");
       expect(user.username).toBe("testuser");
       expect(user.attributes).toEqual({ role: "audience" });
@@ -32,6 +34,7 @@ describe("UserFactory", () => {
 
     it("attributesが省略された場合は空オブジェクトになる", () => {
       const dto = {
+        auth0UserId: "auth0|123456",
         email: "test@example.com",
         username: "testuser",
       };
@@ -46,6 +49,7 @@ describe("UserFactory", () => {
     it("既存データからUserインスタンスを再構成できる", () => {
       const data = {
         id: "existing-uuid",
+        auth0UserId: "auth0|existing",
         email: "existing@example.com",
         username: "existinguser",
         attributes: { plan: "premium" },
@@ -57,6 +61,7 @@ describe("UserFactory", () => {
 
       expect(user).toBeInstanceOf(User);
       expect(user.id).toBe("existing-uuid");
+      expect(user.auth0UserId).toBe("auth0|existing");
       expect(user.email).toBe("existing@example.com");
       expect(user.username).toBe("existinguser");
       expect(user.attributes).toEqual({ plan: "premium" });

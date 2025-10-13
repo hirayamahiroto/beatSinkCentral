@@ -5,6 +5,7 @@ import {
 } from "../../../repositories/IUserRepository";
 
 export interface RegisterUserInput {
+  auth0UserId: string;
   email: string;
   username: string;
   attributes?: Record<string, unknown>;
@@ -18,30 +19,40 @@ export interface RegisterUserOutput {
 /**
  * ユーザー登録ユースケース
  *
+ * Auth0で認証済みのユーザーのプロフィール情報を自社DBに登録する
+ *
  * 機能:
- * - ユーザーを新規登録
+ * - Auth0ユーザーIDで既存チェック
+ * - 既存の場合は既存ユーザーを返す
+ * - 新規の場合はユーザーを作成
  * - 登録時点ではアーティストではない
  */
 export class RegisterUserUseCase {
   constructor(private readonly userRepository: IUserRepository) {}
 
   async execute(input: RegisterUserInput): Promise<RegisterUserOutput> {
-    // メールアドレスの重複チェック
-    const existingUser = await this.userRepository.findByEmail(input.email);
+    // Auth0ユーザーIDで既存チェック
+    const existingUser = await this.userRepository.findByAuth0UserId(
+      input.auth0UserId
+    );
     if (existingUser) {
-      throw new Error(`User with email ${input.email} already exists`);
+      // 既に登録済みの場合は既存ユーザーを返す
+      return {
+        user: existingUser,
+        isArtist: false,
+      };
     }
 
-    // ユーザーを作成
+    // 新規ユーザーを作成
     const createDto: CreateUserDto = {
+      auth0UserId: input.auth0UserId,
       email: input.email,
       username: input.username,
       attributes: input.attributes || {},
     };
 
     const user = await this.userRepository.create(createDto);
-    console.log("user-------", user);
-    // 登録時点ではアーティストではない
+
     return {
       user,
       isArtist: false,

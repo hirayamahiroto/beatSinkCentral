@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from "uuid";
 import { User } from "../../entities/user";
 
 type CreateUserDto = {
+  auth0UserId: string;
   email: string;
   username: string;
   attributes?: Record<string, unknown>;
@@ -12,6 +13,7 @@ export class UserFactory {
     const now = new Date();
     return new User(
       uuidv4(),
+      dto.auth0UserId,
       dto.email,
       dto.username,
       dto.attributes || {},
@@ -22,6 +24,7 @@ export class UserFactory {
 
   public static reconstitute(data: {
     id: string;
+    auth0UserId: string;
     email: string;
     username: string;
     attributes: Record<string, unknown>;
@@ -30,6 +33,7 @@ export class UserFactory {
   }): User {
     return new User(
       data.id,
+      data.auth0UserId,
       data.email,
       data.username,
       data.attributes,
