@@ -1,12 +1,6 @@
+import { CreateUserDto } from "../../repositories/IUserRepository";
 import { v4 as uuidv4 } from "uuid";
 import { User } from "../../entities/user";
-
-type CreateUserDto = {
-  auth0UserId: string;
-  email: string;
-  username: string;
-  attributes?: Record<string, unknown>;
-};
 
 export class UserFactory {
   public static create(dto: CreateUserDto): User {
