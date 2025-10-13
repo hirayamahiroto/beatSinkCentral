@@ -1,27 +1,38 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { audienceRegister } from "../../../../../domain/services/user/audienceRegister";
 import { z } from "zod";
 
-const request = z.object({
+const requestSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(8),
+  username: z.string().min(1),
+  attributes: z.record(z.unknown()).optional(),
 });
 
 const app = new Hono().post(
   "/register",
-  zValidator("json", request, (result, c) => {
+  zValidator("json", requestSchema, (result, c) => {
     if (!result.success) {
-      return c.json({ error: "request is invalid" }, 400);
+      return c.json(
+        { error: "Invalid request", issues: result.error.issues },
+        400
+      );
     }
   }),
   async (c) => {
     const body = c.req.valid("json");
-    const result = await audienceRegister(body);
+
+    // TODO: RegisterUserUseCaseを呼び出す
+    // const registerUserUseCase = new RegisterUserUseCase(userRepository);
+    // const result = await registerUserUseCase.execute(body);
 
     return c.json(
       {
-        user: result.user,
+        user: {
+          id: "dummy-id",
+          email: body.email,
+          username: body.username,
+        },
+        isArtist: false,
       },
       201
     );
