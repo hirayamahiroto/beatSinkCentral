@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { handle } from "hono/vercel";
-import test from "./test/index";
+import test from "./test";
 import user from "./user/register";
 import usersRegister from "./users/register";
 
