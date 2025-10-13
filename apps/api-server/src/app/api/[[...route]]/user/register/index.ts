@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { requireAuthMiddleware } from "../../../../../middlewares/auth0";
-import { auth0 } from "../../../../../libs/auth0";
+import { auth0 } from "../../../../../infrastructure/auth0";
 import { NextRequest } from "next/server";
 
 const requestSchema = z.object({
