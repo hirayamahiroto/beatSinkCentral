@@ -4,6 +4,7 @@
       "mode": "auto"
     }
   ],
+  "workbench.panel.defaultLocation": "right", // "bottom" や "left" も指定可能
   "editor.formatOnSave": true,
   "prettier.configPath": ".vscode/.prettierrc"
 }
