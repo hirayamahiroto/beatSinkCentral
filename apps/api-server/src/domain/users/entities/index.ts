@@ -1,4 +1,4 @@
-import { createEmail } from "../../valueObjects/Email";
+import { createEmail } from "../valueObjects/Email";
 
 type CreateUserParams = {
   auth0UserId: string;
