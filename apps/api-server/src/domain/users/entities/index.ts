@@ -1,7 +1,6 @@
 import { createEmail } from "../../valueObjects/Email";
 
 type CreateUserParams = {
-  id: string;
   auth0UserId: string;
   email: string;
   username: string;
@@ -69,10 +68,11 @@ export class User {
   }
 
   private static ensureUsername(username: string): void {
-    if (!username || username.trim().length === 0) {
+    const trimmedUsername = username.trim();
+    if (trimmedUsername.length === 0) {
       throw new Error("username is required");
     }
-    if (username.length > 255) {
+    if (trimmedUsername.length > 255) {
       throw new Error("username must be 255 characters or less");
     }
   }
