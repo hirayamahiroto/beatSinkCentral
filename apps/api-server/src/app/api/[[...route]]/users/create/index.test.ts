@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import app from "./index";
+import usersCreate from "./index";
 
 describe("User Create API", () => {
   describe("POST /create - Auth0統合", () => {
@@ -8,7 +8,7 @@ describe("User Create API", () => {
         username: "testuser",
       };
 
-      const res = await app.request("/create", {
+      const res = await usersCreate.request("/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -23,7 +23,7 @@ describe("User Create API", () => {
         username: "",
       };
 
-      const res = await app.request("/create", {
+      const res = await usersCreate.request("/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(invalidPayload),
@@ -39,7 +39,7 @@ describe("User Create API", () => {
         username: 12345678,
       };
 
-      const res = await app.request("/create", {
+      const res = await usersCreate.request("/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(invalidPayload),
@@ -51,7 +51,7 @@ describe("User Create API", () => {
     it("必須フィールド(username)が欠けている場合は拒否される", async () => {
       const invalidPayload = {};
 
-      const res = await app.request("/create", {
+      const res = await usersCreate.request("/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(invalidPayload),
