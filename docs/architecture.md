@@ -10,15 +10,19 @@ api-serverはクリーンアーキテクチャの原則に基づいて設計さ�
 apps/api-server/src/
 ├── app/api/[[...route]]/     # Hono ルーティング（プレゼンテーション層）
 │   ├── route.ts              # メインルーター
-│   ├── user/create/          # POST /api/user/create
+│   ├── test/                 # GET/POST /api/test
 │   └── users/create/         # POST /api/users/create
 │
-├── domain/                   # ドメイン層
-│   ├── entities/user/        # User エンティティ
-│   ├── repositories/         # IUserRepository インターフェース
-│   ├── usecases/user/        # CreateUserUseCase
-│   ├── factories/User/       # User ファクトリー
-│   └── valueObjects/         # Email, UserId 値オブジェクト
+├── domain/                   # ドメイン層（オブジェクト単位のコンポジション構造）
+│   ├── users/                # ユーザードメイン
+│   │   ├── entities/         # User エンティティ
+│   │   ├── factories/        # UserFactory
+│   │   ├── repositories/     # IUserRepository インターフェース
+│   │   └── usecases/         # CreateUserUseCase
+│   │
+│   └── valueObjects/         # 共通値オブジェクト
+│       ├── Email/
+│       └── UserId/
 │
 ├── infrastructure/           # インフラストラクチャ層
 │   └── auth0/                # Auth0 クライアント
@@ -31,6 +35,20 @@ apps/api-server/src/
     ├── client/               # Hono クライアント生成
     └── config/               # 設定管理
 ```
+
+### ドメイン層の構造について
+
+ドメイン層はオブジェクト単位のコンポジション構造を採用しています。
+
+```
+# 従来の構造（レイヤー単位）
+domain/{layer}/{object}/
+
+# 現在の構造（オブジェクト単位）
+domain/{object}/{layer}/
+```
+
+この構造により、関連するコードが近くに配置され、ドメインオブジェクトの凝集度が高まります。
 
 ## レイヤー構成
 
@@ -85,7 +103,7 @@ HTTPリクエスト/レスポンスの処理を担当。
 | `requireVerifiedMiddleware` | メールアドレス検証チェック |
 | `basicAuthMiddleware` | ベーシック認証（オプション） |
 
-### ユースケース層 (`domain/usecases/`)
+### ユースケース層 (`domain/{object}/usecases/`)
 
 ビジネスロジックを実装。
 
@@ -96,7 +114,7 @@ HTTPリクエスト/レスポンスの処理を担当。
 - 新規の場合は新しいユーザーを作成
 ```
 
-### リポジトリ層 (`domain/repositories/`)
+### リポジトリ層 (`domain/{object}/repositories/`)
 
 データアクセスの抽象化。
 
@@ -107,7 +125,7 @@ interface IUserRepository {
 }
 ```
 
-### エンティティ層 (`domain/entities/`)
+### エンティティ層 (`domain/{object}/entities/`)
 
 ビジネスルールを持つドメインオブジェクト。
 
@@ -125,14 +143,14 @@ class User {
 
 ### 値オブジェクト層 (`domain/valueObjects/`)
 
-不変でバリデーションを持つ値。
+複数のドメインオブジェクトで共有される不変でバリデーションを持つ値。
 
 | 値オブジェクト | 責務 |
 |---------------|------|
 | `Email` | メールアドレス形式バリデーション（最大254文字） |
 | `UserId` | フォーマット: `user_<timestamp>_<random9chars>` |
 
-### ファクトリー層 (`domain/factories/`)
+### ファクトリー層 (`domain/{object}/factories/`)
 
 エンティティ生成の一元化。
 
@@ -173,11 +191,9 @@ class UserFactory {
 | メソッド | パス | 説明 |
 |---------|------|------|
 | GET/POST | `/api/test` | ヘルスチェック |
-| POST | `/api/user/create` | ユーザー作成 |
-| POST | `/api/users/create` | ユーザー作成（重複） |
+| POST | `/api/users/create` | ユーザー作成 |
 
 ## TODO
 
 - [ ] リポジトリ実装（データベースアクセス）
 - [ ] API ハンドラーでユースケースの接続
-- [ ] エンドポイント統一（`/user/create` と `/users/create` の整理）
