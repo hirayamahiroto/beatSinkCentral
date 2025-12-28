@@ -37,7 +37,6 @@ export class UserRepository implements IUserRepository {
 
   private toEntity(record: typeof usersTable.$inferSelect): User {
     return User.reconstitute({
-      id: record.id,
       auth0UserId: record.auth0UserId,
       email: record.email,
       username: record.username,

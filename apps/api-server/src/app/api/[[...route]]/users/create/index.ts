@@ -54,7 +54,6 @@ const app = new Hono().post(
     return c.json(
       {
         user: {
-          id: profile.id,
           auth0UserId: profile.auth0UserId,
           email: profile.email,
           username: profile.username,
