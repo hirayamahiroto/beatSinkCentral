@@ -1,11 +1,5 @@
 import { User } from "../entities";
-
-export interface CreateUserDto {
-  auth0UserId: string;
-  email: string;
-  username: string;
-  attributes?: Record<string, unknown>;
-}
+import { CreateUserDto } from "../dataTransferObjects";
 
 export interface IUserRepository {
   /**
