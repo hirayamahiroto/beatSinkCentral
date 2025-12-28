@@ -1,6 +1,6 @@
-import { CreateUserDto } from "../../repositories/IUserRepository";
+import { CreateUserDto } from "../repositories";
 import { v4 as uuidv4 } from "uuid";
-import { User } from "../../entities/user";
+import { User } from "../entities";
 
 export class UserFactory {
   public static create(dto: CreateUserDto): User {

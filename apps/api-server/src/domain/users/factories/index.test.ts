@@ -1,6 +1,6 @@
 import { vi, describe, it, expect, beforeEach } from "vitest";
 import { UserFactory } from ".";
-import { User } from "../../entities/user";
+import { User } from "../entities";
 
 vi.mock("uuid", () => ({
   v4: vi.fn(() => "test-uuid-123"),

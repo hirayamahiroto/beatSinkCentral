@@ -1,4 +1,4 @@
-import { User } from "../../entities/user";
+import { User } from "../entities";
 
 export interface CreateUserDto {
   auth0UserId: string;
