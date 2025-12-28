@@ -1,5 +1,6 @@
 import { User } from "../entities";
-import { IUserRepository, CreateUserDto } from "../repositories";
+import { IUserRepository } from "../repositories";
+import { CreateUserDto } from "../dataTransferObjects";
 
 export interface CreateUserInput {
   auth0UserId: string;
