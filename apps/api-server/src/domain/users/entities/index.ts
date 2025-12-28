@@ -10,7 +10,6 @@ type CreateUserParams = {
 };
 
 type PublicProfile = {
-  id: string;
   auth0UserId: string;
   email: string;
   username: string;
@@ -18,7 +17,6 @@ type PublicProfile = {
 
 export class User {
   private constructor(
-    private readonly _id: string,
     private readonly _auth0UserId: string,
     private _email: string,
     private _username: string,
@@ -38,7 +36,6 @@ export class User {
     User.ensureTimestamps(createdAt, updatedAt);
 
     return new User(
-      params.id,
       params.auth0UserId,
       params.email,
       params.username,
@@ -54,7 +51,6 @@ export class User {
 
   public toPublicProfile(): PublicProfile {
     return {
-      id: this._id,
       auth0UserId: this._auth0UserId,
       email: this._email,
       username: this._username,
