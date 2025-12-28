@@ -1,9 +1,12 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
+import * as schema from "./schema";
 
-async function main() {
-  const client = postgres(process.env.DATABASE_URL!);
-  const db = drizzle({ client });
+export type Database = ReturnType<typeof createDatabase>;
+
+export function createDatabase(databaseUrl: string) {
+  const client = postgres(databaseUrl);
+  return drizzle(client, { schema });
 }
 
-main();
+export * from "./schema";
