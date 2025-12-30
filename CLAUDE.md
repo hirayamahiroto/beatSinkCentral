@@ -32,6 +32,22 @@ npm run build
 入力 → 関数 → 出力
 ```
 
+### アサーションルール
+
+オブジェクトや配列の検証には `toStrictEqual` を使用する。
+
+```typescript
+// Good: toStrictEqual（厳密な比較）
+expect(user.attributes).toStrictEqual({ role: "admin" });
+expect(user.createdAt).toStrictEqual(new Date("2024-01-01T00:00:00.000Z"));
+
+// Bad: toEqual（緩い比較）
+expect(user.attributes).toEqual({ role: "admin" });
+```
+
+- `toStrictEqual`: 型とプロパティを厳密に比較（推奨）
+- `toBe`: プリミティブ値の比較に使用
+
 ### 層ごとのテスト責務
 
 ```
