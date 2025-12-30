@@ -115,16 +115,64 @@ HTTPリクエスト/レスポンスの処理を担当。
 - 新規の場合は新しいユーザーを作成
 ```
 
-### リポジトリ層 (`domain/{object}/repositories/`)
+### リポジトリ層
 
-データアクセスの抽象化。
+リポジトリは**インターフェース（ドメイン層）**と**実装（インフラ層）**に分離される。
+
+#### インターフェース (`domain/{object}/repositories/`)
 
 ```typescript
+// ドメイン層：インターフェース定義
 interface IUserRepository {
   create(params: CreateUserParams): Promise<User>;
   findByAuth0UserId(auth0UserId: string): Promise<User | null>;
 }
 ```
+
+#### 実装 (`infrastructure/repositories/{object}/`)
+
+```typescript
+// インフラ層：実装
+export const createUserRepository = (db: Database): IUserRepository => ({
+  async create(params) {
+    const [result] = await db.insert(usersTable).values({...}).returning();
+    return toEntity(result);  // DBレコード → Entity変換
+  },
+  async findByAuth0UserId(auth0UserId) {
+    // ...
+  },
+});
+
+// Entity変換関数
+const toEntity = (record): User => {
+  return createUser({
+    auth0UserId: record.auth0UserId,
+    email: record.email,
+    username: record.username,
+    attributes: record.attributes,
+  });
+};
+```
+
+#### 層間のアクセス方向
+
+```
+UseCase → Repository（インターフェース） → Entity
+              ↑
+        Repository（実装） → DB
+```
+
+| 層 | アクセス先 | 役割 |
+|---|---|---|
+| UseCase | Repository（抽象） | DBに直接アクセスしない |
+| Repository実装 | Entity + DB | DBとEntityの橋渡し |
+| Entity | Value Objects | ビジネスルールの適用 |
+
+#### なぜ分離するか
+
+1. **依存関係の逆転（DIP）**: インフラ層がドメイン層に依存する
+2. **テスト容易性**: UseCaseテスト時にRepositoryをモック可能
+3. **交換可能性**: DB変更時もドメイン層は影響なし
 
 ### エンティティ層 (`domain/{object}/entities/`)
 
