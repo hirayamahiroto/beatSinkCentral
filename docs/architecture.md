@@ -14,18 +14,20 @@ apps/api-server/src/
 │   └── users/create/         # POST /api/users/create
 │
 ├── domain/                   # ドメイン層（オブジェクト単位のコンポジション構造）
-│   ├── users/                # ユーザードメイン
-│   │   ├── entities/         # User エンティティ
-│   │   ├── factories/        # UserFactory
-│   │   ├── repositories/     # IUserRepository インターフェース
-│   │   └── usecases/         # CreateUserUseCase
-│   │
-│   └── valueObjects/         # 共通値オブジェクト
-│       ├── Email/
-│       └── UserId/
+│   └── users/                # ユーザードメイン
+│       ├── entities/         # User エンティティ
+│       ├── repositories/     # IUserRepository インターフェース
+│       └── valueObjects/     # 値オブジェクト
+│           ├── Auth0UserId/
+│           ├── Email/
+│           └── Username/
+│
+├── usecases/                 # ユースケース層（アプリケーション層）
+│   └── users/                # CreateUserUseCase
 │
 ├── infrastructure/           # インフラストラクチャ層
-│   └── auth0/                # Auth0 クライアント
+│   ├── auth0/                # Auth0 クライアント
+│   └── repositories/         # リポジトリ実装
 │
 ├── middlewares/              # ミドルウェア
 │   ├── auth0/                # Auth0 認証・メール検証
@@ -78,8 +80,7 @@ API Handlers
   ├─→ CreateUserUseCase
   │    └─→ IUserRepository (interface)
   │         └─→ User Entity
-  │              ├─→ UserFactory
-  │              └─→ Value Objects (Email, UserId)
+  │              └─→ Value Objects (Auth0UserId, Email, Username)
   └─→ Infrastructure (Auth0 client)
 ```
 
@@ -103,9 +104,9 @@ HTTPリクエスト/レスポンスの処理を担当。
 | `requireVerifiedMiddleware` | メールアドレス検証チェック |
 | `basicAuthMiddleware` | ベーシック認証（オプション） |
 
-### ユースケース層 (`domain/{object}/usecases/`)
+### ユースケース層 (`usecases/`)
 
-ビジネスロジックを実装。
+ビジネスロジックを実装。ドメイン層の外側に配置し、ドメインオブジェクトを組み合わせてユースケースを実現。
 
 ```typescript
 // CreateUserUseCase の責務
@@ -120,45 +121,69 @@ HTTPリクエスト/レスポンスの処理を担当。
 
 ```typescript
 interface IUserRepository {
-  create(dto: CreateUserDto): Promise<User>;
+  create(params: CreateUserParams): Promise<User>;
   findByAuth0UserId(auth0UserId: string): Promise<User | null>;
 }
 ```
 
 ### エンティティ層 (`domain/{object}/entities/`)
 
-ビジネスルールを持つドメインオブジェクト。
+ビジネスルールを持つドメインオブジェクト。interface + ファクトリ関数パターンで実装。
 
 ```typescript
-class User {
-  id: string;
-  auth0UserId: string;
-  email: string;
-  username: string;
-  attributes: Record<string, unknown>;
-  createdAt: Date;
-  updatedAt: Date;
-}
+// 型定義
+export type User = {
+  readonly auth0UserId: string;
+  readonly email: string;
+  readonly username: string;
+  readonly attributes: Record<string, unknown>;
+  readonly createdAt: Date;
+  readonly updatedAt: Date;
+};
+
+// ファクトリ関数（バリデーション付き）
+export const createUser = (params: CreateUserParams): User => {
+  const auth0UserId = createAuth0UserId(params.auth0UserId);
+  const username = createUsername(params.username);
+  const email = createEmail(params.email);
+  // ...
+};
 ```
 
-### 値オブジェクト層 (`domain/valueObjects/`)
+### 値オブジェクト層 (`domain/{object}/valueObjects/`)
 
-複数のドメインオブジェクトで共有される不変でバリデーションを持つ値。
+ドメインオブジェクトで使用される不変でバリデーションを持つ値。各ドメイン内に配置。
 
 | 値オブジェクト | 責務 |
 |---------------|------|
+| `Auth0UserId` | Auth0ユーザーID（空文字禁止） |
 | `Email` | メールアドレス形式バリデーション（最大254文字） |
-| `UserId` | フォーマット: `user_<timestamp>_<random9chars>` |
+| `Username` | ユーザー名（空文字禁止、最大255文字、トリム処理） |
 
-### ファクトリー層 (`domain/{object}/factories/`)
+#### 値オブジェクトの実装パターン
 
-エンティティ生成の一元化。
+interface + ファクトリ関数パターンを採用。
 
 ```typescript
-class UserFactory {
-  static create(dto: CreateUserDto): User;      // 新規作成
-  static reconstitute(data: UserData): User;    // 既存データから復元
+// 型定義
+export interface Username {
+  readonly value: string;
 }
+
+// ファクトリ関数（バリデーション内包）
+export const createUsername = (value: string): Username => {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    throw new Error("username is required");
+  }
+  if (trimmed.length > 255) {
+    throw new Error("username must be 255 characters or less");
+  }
+  return { value: trimmed };
+};
+
+// JSON変換
+export const usernameToJson = (username: Username): string => username.value;
 ```
 
 ### インフラストラクチャ層 (`infrastructure/`)
@@ -166,7 +191,7 @@ class UserFactory {
 外部サービスとの連携。
 
 - Auth0 クライアント設定
-- （将来）データベース接続
+- リポジトリ実装（データベースアクセス）
 
 ## 使用技術
 
@@ -181,10 +206,34 @@ class UserFactory {
 ## 設計パターン
 
 1. **クリーンアーキテクチャ**: ドメイン層がフレームワークに依存しない
-2. **DDD**: エンティティ、値オブジェクト、ファクトリーの実装
-3. **リポジトリパターン**: インターフェース経由のデータアクセス抽象化
-4. **ユースケースパターン**: ビジネスロジックの分離
-5. **ファクトリーパターン**: エンティティ生成の一元化
+2. **DDD**: エンティティ、値オブジェクトの実装
+3. **関数型アプローチ**: interface + ファクトリ関数パターン
+4. **リポジトリパターン**: インターフェース経由のデータアクセス抽象化
+5. **ユースケースパターン**: ビジネスロジックの分離
+
+### なぜ関数型アプローチを採用するか
+
+| 観点 | class | interface + 関数 |
+|------|-------|-----------------|
+| Tree Shaking | 使わないメソッドも含まれる | 使う関数だけimport |
+| TypeScript相性 | 型とインスタンスの区別が必要 | 型推論が効きやすい |
+| テスト | モック/スパイが必要な場合あり | 純粋関数で直接テスト |
+| 不変性 | ミュータブル（内部変更） | イミュータブル（新オブジェクト返却） |
+
+## テスト方針
+
+各層の責務を分離し、テストの重複を避ける。
+
+```
+User Entity テスト
+├── IO確認（入力パラメータ → 出力User）
+└── 値オブジェクト呼び出し確認（spy）
+
+Value Objects テスト
+├── Auth0UserId: バリデーション詳細
+├── Username: バリデーション詳細
+└── Email: バリデーション詳細
+```
 
 ## API エンドポイント
 
@@ -192,8 +241,3 @@ class UserFactory {
 |---------|------|------|
 | GET/POST | `/api/test` | ヘルスチェック |
 | POST | `/api/users/create` | ユーザー作成 |
-
-## TODO
-
-- [ ] リポジトリ実装（データベースアクセス）
-- [ ] API ハンドラーでユースケースの接続
