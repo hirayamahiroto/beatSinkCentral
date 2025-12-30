@@ -1,6 +1,6 @@
-import { createAuth0UserId } from "../valueObjects/Auth0UserId";
-import { createEmail } from "../valueObjects/Email";
-import { createUsername } from "../valueObjects/Username";
+import { createAuth0UserId } from "../valueObjects/auth0UserId";
+import { createEmail } from "../valueObjects/email";
+import { createUsername } from "../valueObjects/username";
 
 export type User = {
   readonly auth0UserId: string;

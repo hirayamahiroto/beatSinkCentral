@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { createUser } from "./index";
-import * as Auth0UserIdModule from "../valueObjects/Auth0UserId";
-import * as EmailModule from "../valueObjects/Email";
-import * as UsernameModule from "../valueObjects/Username";
+import * as Auth0UserIdModule from "../valueObjects/auth0UserId";
+import * as EmailModule from "../valueObjects/email";
+import * as UsernameModule from "../valueObjects/username";
 
 describe("User Entity", () => {
   beforeEach(() => {
