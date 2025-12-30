@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createEmail, emailToJson } from "./index";
+import { createEmail } from "./index";
 
 describe("Email", () => {
   describe("createEmail", () => {
@@ -36,12 +36,12 @@ describe("Email", () => {
     });
 
     it("254文字を超えるメールアドレスは拒否される", () => {
-      const longEmail = "a".repeat(243) + "@example.com"; // 255文字
+      const longEmail = "a".repeat(243) + "@example.com";
       expect(() => createEmail(longEmail)).toThrow("Invalid email format");
     });
 
     it("254文字のメールアドレスは許可される", () => {
-      const maxLengthEmail = "a".repeat(242) + "@example.com"; // 254文字
+      const maxLengthEmail = "a".repeat(242) + "@example.com";
       const emailObj = createEmail(maxLengthEmail);
       expect(emailObj.value).toBe(maxLengthEmail);
     });
@@ -50,24 +50,6 @@ describe("Email", () => {
       const email = "test@日本.jp";
       const emailObj = createEmail(email);
       expect(emailObj.value).toBe(email);
-    });
-  });
-
-  describe("emailToJson", () => {
-    it("EmailオブジェクトをJSON文字列に変換できる", () => {
-      const email = createEmail("test@example.com");
-      const json = emailToJson(email);
-
-      expect(json).toBe("test@example.com");
-      expect(typeof json).toBe("string");
-    });
-
-    it("複雑なメールアドレスも正しくJSON変換される", () => {
-      const complexEmail = "user+tag.name@sub.example.co.jp";
-      const email = createEmail(complexEmail);
-      const json = emailToJson(email);
-
-      expect(json).toBe(complexEmail);
     });
   });
 });

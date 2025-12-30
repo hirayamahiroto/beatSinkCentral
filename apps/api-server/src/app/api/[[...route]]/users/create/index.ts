@@ -6,7 +6,7 @@ import { requireAuthMiddleware } from "../../../../../middlewares/auth0";
 import { auth0 } from "../../../../../infrastructure/auth0";
 import { db } from "../../../../../infrastructure/database";
 import { UserRepository } from "../../../../../infrastructure/repositories";
-import { CreateUserUseCase } from "../../../../../domain/users/usecases";
+import { CreateUserUseCase } from "../../../../../usecases/users";
 
 const requestSchema = z.object({
   username: z.string().min(1),
@@ -49,14 +49,12 @@ const app = new Hono().post(
       attributes: body.attributes,
     });
 
-    const profile = result.user.toPublicProfile();
-
     return c.json(
       {
         user: {
-          auth0UserId: profile.auth0UserId,
-          email: profile.email,
-          username: profile.username,
+          auth0UserId: result.user.auth0UserId,
+          email: result.user.email,
+          username: result.user.username,
         },
         isArtist: result.isArtist,
       },

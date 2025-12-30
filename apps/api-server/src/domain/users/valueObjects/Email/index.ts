@@ -1,6 +1,6 @@
-export interface Email {
+export type Email = {
   readonly value: string;
-}
+};
 
 const isValidEmail = (email: string): boolean => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -13,5 +13,3 @@ export const createEmail = (value: string): Email => {
   }
   return { value };
 };
-
-export const emailToJson = (email: Email): string => email.value;

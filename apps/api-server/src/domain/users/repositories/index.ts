@@ -1,14 +1,13 @@
 import { User } from "../entities";
-import { CreateUserDto } from "../dataTransferObjects";
+
+export type CreateUserParams = {
+  auth0UserId: string;
+  email: string;
+  username: string;
+  attributes?: Record<string, unknown>;
+};
 
 export interface IUserRepository {
-  /**
-   * ユーザーを作成
-   */
-  create(dto: CreateUserDto): Promise<User>;
-
-  /**
-   * Auth0ユーザーIDでユーザーを取得
-   */
+  create(params: CreateUserParams): Promise<User>;
   findByAuth0UserId(auth0UserId: string): Promise<User | null>;
 }
