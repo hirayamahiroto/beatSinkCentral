@@ -5,7 +5,7 @@ import { NextRequest } from "next/server";
 import { requireAuthMiddleware } from "../../../../../middlewares/auth0";
 import { auth0 } from "../../../../../infrastructure/auth0";
 import { db } from "../../../../../infrastructure/database";
-import { UserRepository } from "../../../../../infrastructure/repositories";
+import { createUserRepository } from "../../../../../infrastructure/repositories";
 import { CreateUserUseCase } from "../../../../../usecases/users";
 
 const requestSchema = z.object({
@@ -14,7 +14,7 @@ const requestSchema = z.object({
 });
 
 // DI: リポジトリとユースケースの組み立て
-const userRepository = new UserRepository(db);
+const userRepository = createUserRepository(db);
 const createUserUseCase = new CreateUserUseCase(userRepository);
 
 const app = new Hono().post(

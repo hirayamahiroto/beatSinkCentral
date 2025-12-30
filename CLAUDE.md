@@ -119,9 +119,28 @@ afterEach(() => {
 
 ## コーディング規約
 
+### ファイル配置ルール
+
+実装ファイルは `{FuncName}/index.ts` の形式で配置する。
+
+```
+# Good
+userRepository/
+├── index.ts        # 実装
+└── index.test.ts   # テスト
+
+email/
+├── index.ts        # 実装
+└── index.test.ts   # テスト
+
+# Bad
+UserRepository.ts   # ディレクトリにしない
+Email.ts
+```
+
 ### 実装パターン
 
-- **Entity/Value Object**: type + ファクトリ関数パターン
+- **Entity/Value Object/Repository**: type + ファクトリ関数パターン
 - **class不使用**: 純粋関数で実装し、テスタビリティを向上
 
 ```typescript
@@ -141,14 +160,31 @@ export const createUsername = (value: string): Username => {
 
 ```
 domain/{object}/
-├── entities/       # Entity定義 + ファクトリ関数
-├── repositories/   # リポジトリインターフェース
-└── valueObjects/   # 値オブジェクト（ドメイン内に配置）
-    ├── Auth0UserId/
-    ├── Email/
-    └── Username/
+├── entities/           # Entity定義 + ファクトリ関数
+│   ├── index.ts
+│   └── index.test.ts
+├── repositories/       # リポジトリインターフェース
+│   └── index.ts
+└── valueObjects/       # 値オブジェクト（ドメイン内に配置）
+    ├── auth0UserId/
+    │   ├── index.ts
+    │   └── index.test.ts
+    ├── email/
+    │   ├── index.ts
+    │   └── index.test.ts
+    └── userName/
+        ├── index.ts
+        └── index.test.ts
 
-usecases/           # ユースケース（ドメイン外）
+infrastructure/
+└── repositories/
+    └── userRepository/
+        ├── index.ts
+        └── index.test.ts
+
+usecases/               # ユースケース（ドメイン外）
+└── users/
+    └── index.ts
 ```
 
 ## アーキテクチャ
