@@ -1,19 +1,19 @@
-import { Hono } from "hono";
-import { except } from "hono/combine";
-import { handle } from "hono/vercel";
-import { basicAuthMiddleware } from "./middlewares/basicAuth";
-import {
-  requireAuthMiddleware,
-  requireVerifiedMiddleware,
-} from "./middlewares/auth0";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { createBasicAuthMiddleware } from "./middlewares/basicAuth";
 
-const app = new Hono();
+const basicAuthMiddleware = createBasicAuthMiddleware({
+  excludePaths: ["/auth"],
+});
 
-app.use("*", except("/auth/*", basicAuthMiddleware));
-app.use("*", requireAuthMiddleware);
-app.use("*", except("/auth/*", requireVerifiedMiddleware));
+export function middleware(request: NextRequest) {
+  const basicAuthResponse = basicAuthMiddleware(request);
+  if (basicAuthResponse) {
+    return basicAuthResponse;
+  }
 
-export const middleware = handle(app);
+  return NextResponse.next();
+}
 
 export const config = {
   matcher: [
