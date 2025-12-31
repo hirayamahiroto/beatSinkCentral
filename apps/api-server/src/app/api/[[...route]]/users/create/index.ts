@@ -3,12 +3,19 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { requireAuthMiddleware } from "../../../../../middlewares/auth0";
 import { auth0 } from "../../../../../infrastructure/auth0";
-import { NextRequest } from "next/server";
+import { db } from "../../../../../infrastructure/database";
+import { createUserRepository } from "../../../../../infrastructure/repositories";
+import { CreateUserUseCase } from "../../../../../usecases/users";
 
 const requestSchema = z.object({
+  accountId: z.string().min(1),
+  auth0UserId: z.string().min(1),
   username: z.string().min(1),
-  attributes: z.record(z.unknown()).optional(),
 });
+
+// DI: リポジトリとユースケースの組み立て
+const userRepository = createUserRepository(db);
+const createUserUseCase = new CreateUserUseCase(userRepository);
 
 const app = new Hono().post(
   "/",
@@ -24,32 +31,32 @@ const app = new Hono().post(
   async (c) => {
     const body = c.req.valid("json");
 
-    // Auth0のセッションからユーザー情報を取得
-    const session = await auth0.getSession(c.req.raw as NextRequest);
-    if (!session?.user) {
+    const session = await auth0.getSession();
+
+    if (!session) {
       return c.json({ error: "Unauthorized" }, 401);
     }
 
     const auth0User = session.user;
 
-    // TODO: CreateUserUseCaseを呼び出す
-    // const createUserUseCase = new CreateUserUseCase(userRepository);
-    // const result = await createUserUseCase.execute({
-    //   auth0UserId: auth0User.sub,
-    //   email: auth0User.email,
-    //   username: body.username,
-    //   attributes: body.attributes,
-    // });
+    if (!auth0User.sub || !auth0User.email) {
+      return c.json({ error: "Invalid user session" }, 401);
+    }
+
+    const result = await createUserUseCase.execute({
+      auth0UserId: auth0User.sub,
+      email: auth0User.email,
+      username: body.username,
+    });
 
     return c.json(
       {
         user: {
-          id: "dummy-id",
-          auth0UserId: auth0User.sub,
-          email: auth0User.email,
-          username: body.username,
+          auth0UserId: result.user.auth0UserId,
+          email: result.user.email,
+          username: result.user.username,
         },
-        isArtist: false,
+        isArtist: result.isArtist,
       },
       201
     );

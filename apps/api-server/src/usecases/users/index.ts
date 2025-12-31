@@ -1,8 +1,5 @@
-import { User } from "../../../entities/user";
-import {
-  IUserRepository,
-  CreateUserDto,
-} from "../../../repositories/IUserRepository";
+import { User } from "../../domain/users/entities";
+import { IUserRepository } from "../../domain/users/repositories";
 
 export interface CreateUserInput {
   auth0UserId: string;
@@ -44,14 +41,12 @@ export class CreateUserUseCase {
     }
 
     // 新規ユーザーを作成
-    const createDto: CreateUserDto = {
+    const user = await this.userRepository.create({
       auth0UserId: input.auth0UserId,
       email: input.email,
       username: input.username,
       attributes: input.attributes || {},
-    };
-
-    const user = await this.userRepository.create(createDto);
+    });
 
     return {
       user,

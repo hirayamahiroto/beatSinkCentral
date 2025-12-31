@@ -1,5 +1,11 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import usersCreate from "./index";
+
+vi.mock("../../../../../infrastructure/database", () => ({
+  db: {
+    insert: vi.fn(),
+  },
+}));
 
 describe("User Create API", () => {
   describe("POST /create - Auth0統合", () => {
