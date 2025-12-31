@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { createBasicAuthMiddleware } from "./middlewares/basicAuth/nextjs";
+import { createBasicAuthMiddleware } from "./middlewares/basicAuth";
 
 const basicAuthMiddleware = createBasicAuthMiddleware({
   excludePaths: ["/auth"],

@@ -20,10 +20,11 @@ const app = new Hono<RequestContextEnv>().post(
   }),
   async (c) => {
     const apiClient = c.get("apiClient");
+    const body = c.req.valid("json");
 
     const res = await apiClient.api.users.$post({
       json: {
-        username: "test",
+        username: body.username,
       },
     });
 
