@@ -8,7 +8,7 @@ type ClientOptions = {
 
 export const createBffServerClient = (options?: ClientOptions) => {
   if (!bffServerConfig.baseUrl) {
-    throw new Error("BFF_SERVER_BASE_URL is not set");
+    throw new Error("API_SERVER_BASE_URL is not set");
   }
 
   return hc<AppType>(bffServerConfig.baseUrl, {
