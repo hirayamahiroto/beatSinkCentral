@@ -1,5 +1,4 @@
 import { createMiddleware } from "hono/factory";
-import { NextRequest } from "next/server";
 import { auth0 } from "../../infrastructure/auth0";
 
 // Auth0セッションからユーザー情報の型を抽出
@@ -15,7 +14,7 @@ declare module "hono" {
 
 export const requireAuthMiddleware = createMiddleware(async (c, next) => {
   // Auth0のセッションを取得
-  const session = await auth0.getSession(c.req.raw as NextRequest);
+  const session = await auth0.getSession();
   if (!session?.user) {
     return c.json({ error: "Unauthorized" }, 401);
   }
