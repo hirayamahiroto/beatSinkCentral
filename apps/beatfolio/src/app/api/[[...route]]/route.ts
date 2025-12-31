@@ -1,12 +1,19 @@
 import { Hono } from "hono";
 import { handle } from "hono/vercel";
+import {
+  requestContextMiddleware,
+  type RequestContextEnv,
+} from "../../../middlewares/requestContext";
 import test from "./test";
-import users from "./users";
+import usersCreate from "./users/create";
 
-const app = new Hono()
+export type Env = RequestContextEnv;
+
+const app = new Hono<Env>()
   .basePath("/api")
+  .use("*", requestContextMiddleware)
   .route("/test", test)
-  .route("/users", users);
+  .route("/users", usersCreate);
 
 export type AppType = typeof app;
 
