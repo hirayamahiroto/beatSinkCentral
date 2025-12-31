@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { NextRequest } from "next/server";
 import { requireAuthMiddleware } from "../../../../../middlewares/auth0";
 import { auth0 } from "../../../../../infrastructure/auth0";
 import { db } from "../../../../../infrastructure/database";
@@ -9,8 +8,9 @@ import { createUserRepository } from "../../../../../infrastructure/repositories
 import { CreateUserUseCase } from "../../../../../usecases/users";
 
 const requestSchema = z.object({
+  accountId: z.string().min(1),
+  auth0UserId: z.string().min(1),
   username: z.string().min(1),
-  attributes: z.record(z.unknown()).optional(),
 });
 
 // DI: リポジトリとユースケースの組み立て
@@ -31,8 +31,9 @@ const app = new Hono().post(
   async (c) => {
     const body = c.req.valid("json");
 
-    const session = await auth0.getSession(c.req.raw as NextRequest);
-    if (!session?.user) {
+    const session = await auth0.getSession();
+
+    if (!session) {
       return c.json({ error: "Unauthorized" }, 401);
     }
 
@@ -46,7 +47,6 @@ const app = new Hono().post(
       auth0UserId: auth0User.sub,
       email: auth0User.email,
       username: body.username,
-      attributes: body.attributes,
     });
 
     return c.json(
