@@ -1,3 +1,3 @@
 export const bffServerConfig = {
-  baseUrl: process.env.NEXT_PUBLIC_URL,
+  baseUrl: process.env.API_SERVER_BASE_URL,
 };
