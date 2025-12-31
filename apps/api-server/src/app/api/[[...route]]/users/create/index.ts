@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { requireAuthMiddleware } from "../../../../../middlewares/auth0";
 import { auth0 } from "../../../../../infrastructure/auth0";
 
 const requestSchema = z.object({
@@ -11,7 +10,6 @@ const requestSchema = z.object({
 
 const app = new Hono().post(
   "/",
-  requireAuthMiddleware,
   zValidator("json", requestSchema, (result, c) => {
     if (!result.success) {
       return c.json(
@@ -22,8 +20,6 @@ const app = new Hono().post(
   }),
   async (c) => {
     const body = c.req.valid("json");
-
-    // Auth0のセッションからユーザー情報を取得
     const session = await auth0.getSession();
 
     if (!session?.user) {
