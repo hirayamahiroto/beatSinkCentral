@@ -7,11 +7,9 @@
       "outputs": [".next/**", "!.next/cache/**"]
     },
     "beatfolio#build": {
-      "env": [],
       "outputs": [".next/**", "!.next/cache/**", "dist/**"]
     },
     "api-server#build": {
-      "env": [],
       "outputs": [".next/**", "!.next/cache/**", "dist/**"]
     },
     "lint": {
