@@ -1,34 +1,34 @@
-import { createAuth0UserId } from "../valueObjects/auth0UserId";
+import { createSub } from "../valueObjects/sub";
 import { createEmail } from "../valueObjects/email";
-import { createUsername } from "../valueObjects/username";
+import { createName } from "../valueObjects/name";
 
 export type User = {
-  readonly auth0UserId: string;
+  readonly accountId: string;
+  readonly sub: string;
   readonly email: string;
-  readonly username: string;
-  readonly attributes: Record<string, unknown>;
+  readonly name: string;
   readonly createdAt: Date;
   readonly updatedAt: Date;
 };
 
 type CreateUserParams = {
-  auth0UserId: string;
+  accountId: string;
+  sub: string;
   email: string;
-  username: string;
-  attributes?: Record<string, unknown>;
+  name: string;
 };
 
 export const createUser = (params: CreateUserParams): User => {
-  const auth0UserId = createAuth0UserId(params.auth0UserId);
-  const username = createUsername(params.username);
+  const sub = createSub(params.sub);
+  const name = createName(params.name);
   const email = createEmail(params.email);
   const now = new Date();
 
   return {
-    auth0UserId: auth0UserId.value,
+    accountId: params.accountId,
+    sub: sub.value,
     email: email.value,
-    username: username.value,
-    attributes: params.attributes ?? {},
+    name: name.value,
     createdAt: now,
     updatedAt: now,
   };

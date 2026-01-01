@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { Database, usersTable } from "database";
+import { DatabaseClient, usersTable } from "database";
 import { createUser, User } from "../../../domain/users/entities";
 import {
   CreateUserParams,
@@ -8,33 +8,33 @@ import {
 
 const toEntity = (record: typeof usersTable.$inferSelect): User => {
   return createUser({
-    auth0UserId: record.auth0UserId,
+    accountId: record.accountId,
+    sub: record.sub,
     email: record.email,
-    username: record.username,
-    attributes: (record.attributes as Record<string, unknown>) || {},
+    name: record.name,
   });
 };
 
-export const createUserRepository = (db: Database): IUserRepository => ({
+export const createUserRepository = (db: DatabaseClient): IUserRepository => ({
   async create(params: CreateUserParams): Promise<User> {
     const [result] = await db
       .insert(usersTable)
       .values({
-        auth0UserId: params.auth0UserId,
+        accountId: params.accountId,
+        sub: params.sub,
         email: params.email,
-        username: params.username,
-        attributes: params.attributes || {},
+        name: params.name,
       })
       .returning();
 
     return toEntity(result);
   },
 
-  async findByAuth0UserId(auth0UserId: string): Promise<User | null> {
+  async findBySub(sub: string): Promise<User | null> {
     const results = await db
       .select()
       .from(usersTable)
-      .where(eq(usersTable.auth0UserId, auth0UserId))
+      .where(eq(usersTable.sub, sub))
       .limit(1);
 
     if (results.length === 0) {

@@ -2,10 +2,14 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { auth0 } from "../../../../../infrastructure/auth0";
+import { db } from "../../../../../infrastructure/database";
+import { createUserRepository } from "../../../../../infrastructure/repositories/userRepository";
+import { CreateUserUseCase } from "../../../../../usecases/users";
 
 const requestSchema = z.object({
-  username: z.string().min(1),
-  attributes: z.record(z.unknown()).optional(),
+  name: z.string().min(1),
+  email: z.string().email(),
+  accountId: z.string().min(1),
 });
 
 const app = new Hono().post(
@@ -22,30 +26,28 @@ const app = new Hono().post(
     const body = c.req.valid("json");
     const session = await auth0.getSession();
 
-    if (!session?.user) {
+    if (!session || !session.user) {
       return c.json({ error: "Unauthorized" }, 401);
     }
 
-    const auth0User = session.user;
-
-    // TODO: CreateUserUseCaseを呼び出す
-    // const createUserUseCase = new CreateUserUseCase(userRepository);
-    // const result = await createUserUseCase.execute({
-    //   auth0UserId: auth0User.sub,
-    //   email: auth0User.email,
-    //   username: body.username,
-    //   attributes: body.attributes,
-    // });
+    const userRepository = createUserRepository(db);
+    const createUserUseCase = new CreateUserUseCase(userRepository);
+    const result = await createUserUseCase.execute({
+      sub: session.user.sub,
+      email: body.email,
+      name: body.name,
+      accountId: body.accountId,
+    });
 
     return c.json(
       {
         user: {
-          id: "dummy-id",
-          auth0UserId: auth0User.sub,
-          email: auth0User.email,
-          username: body.username,
+          accountId: result.user.accountId,
+          sub: result.user.sub,
+          email: result.user.email,
+          name: result.user.name,
         },
-        isArtist: false,
+        isArtist: result.isArtist,
       },
       201
     );
