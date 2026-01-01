@@ -2,10 +2,10 @@ import { User } from "../../domain/users/entities";
 import { IUserRepository } from "../../domain/users/repositories";
 
 export interface CreateUserInput {
-  auth0UserId: string;
+  accountId: string;
+  sub: string;
   email: string;
-  username: string;
-  attributes?: Record<string, unknown>;
+  name: string;
 }
 
 export interface CreateUserOutput {
@@ -19,7 +19,7 @@ export interface CreateUserOutput {
  * Auth0で認証済みのユーザーのプロフィール情報を自社DBに作成する
  *
  * 機能:
- * - Auth0ユーザーIDで既存チェック
+ * - subで既存チェック
  * - 既存の場合は既存ユーザーを返す（冪等性）
  * - 新規の場合はユーザーを作成
  * - 作成時点ではアーティストではない
@@ -28,10 +28,8 @@ export class CreateUserUseCase {
   constructor(private readonly userRepository: IUserRepository) {}
 
   async execute(input: CreateUserInput): Promise<CreateUserOutput> {
-    // Auth0ユーザーIDで既存チェック
-    const existingUser = await this.userRepository.findByAuth0UserId(
-      input.auth0UserId
-    );
+    // subで既存チェック
+    const existingUser = await this.userRepository.findBySub(input.sub);
     if (existingUser) {
       // 既に存在する場合は既存ユーザーを返す（冪等性）
       return {
@@ -42,10 +40,10 @@ export class CreateUserUseCase {
 
     // 新規ユーザーを作成
     const user = await this.userRepository.create({
-      auth0UserId: input.auth0UserId,
+      accountId: input.accountId,
+      sub: input.sub,
       email: input.email,
-      username: input.username,
-      attributes: input.attributes || {},
+      name: input.name,
     });
 
     return {

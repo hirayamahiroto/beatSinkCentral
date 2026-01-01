@@ -4,8 +4,9 @@ import { z } from "zod";
 import type { RequestContextEnv } from "../../../../../middlewares/requestContext";
 
 const requestSchema = z.object({
-  username: z.string().min(1),
-  attributes: z.record(z.unknown()).optional(),
+  name: z.string().min(1).max(255),
+  email: z.string().email(),
+  accountId: z.string().min(1),
 });
 
 const app = new Hono<RequestContextEnv>().post(
@@ -24,13 +25,15 @@ const app = new Hono<RequestContextEnv>().post(
 
     const res = await apiClient.api.users.$post({
       json: {
-        username: body.username,
+        name: body.name,
+        email: body.email,
+        accountId: body.accountId,
       },
     });
 
     if (!res.ok) {
       const error = await res.json();
-      return c.json(error, res.status as 400 | 401 | 500);
+      return c.json(error, res.status);
     }
 
     const data = await res.json();

@@ -24,10 +24,10 @@ describe("createUserRepository", () => {
   describe("create", () => {
     it("ユーザーを作成してEntityを返す", async () => {
       const mockRecord = {
-        auth0UserId: "auth0|123456789",
+        accountId: "acc_123456789",
+        sub: "auth0|123456789",
         email: "test@example.com",
-        username: "testuser",
-        attributes: { role: "user" },
+        name: "testuser",
         createdAt: new Date("2024-01-01"),
         updatedAt: new Date("2024-01-01"),
       };
@@ -35,75 +35,51 @@ describe("createUserRepository", () => {
       mockDb.returning.mockResolvedValue([mockRecord]);
 
       const result = await repository.create({
-        auth0UserId: "auth0|123456789",
+        accountId: "acc_123456789",
+        sub: "auth0|123456789",
         email: "test@example.com",
-        username: "testuser",
-        attributes: { role: "user" },
+        name: "testuser",
       });
 
       expect(mockDb.insert).toHaveBeenCalled();
       expect(mockDb.values).toHaveBeenCalledWith({
-        auth0UserId: "auth0|123456789",
+        accountId: "acc_123456789",
+        sub: "auth0|123456789",
         email: "test@example.com",
-        username: "testuser",
-        attributes: { role: "user" },
+        name: "testuser",
       });
-      expect(result.auth0UserId).toBe("auth0|123456789");
+      expect(result.accountId).toBe("acc_123456789");
+      expect(result.sub).toBe("auth0|123456789");
       expect(result.email).toBe("test@example.com");
-      expect(result.username).toBe("testuser");
-    });
-
-    it("attributesが未指定の場合は空オブジェクトで保存", async () => {
-      const mockRecord = {
-        auth0UserId: "auth0|123456789",
-        email: "test@example.com",
-        username: "testuser",
-        attributes: {},
-        createdAt: new Date("2024-01-01"),
-        updatedAt: new Date("2024-01-01"),
-      };
-
-      mockDb.returning.mockResolvedValue([mockRecord]);
-
-      await repository.create({
-        auth0UserId: "auth0|123456789",
-        email: "test@example.com",
-        username: "testuser",
-      });
-
-      expect(mockDb.values).toHaveBeenCalledWith({
-        auth0UserId: "auth0|123456789",
-        email: "test@example.com",
-        username: "testuser",
-        attributes: {},
-      });
+      expect(result.name).toBe("testuser");
     });
   });
 
-  describe("findByAuth0UserId", () => {
+  describe("findBySub", () => {
     it("ユーザーが存在する場合はEntityを返す", async () => {
       const mockRecord = {
-        auth0UserId: "auth0|123456789",
+        accountId: "acc_123456789",
+        sub: "auth0|123456789",
         email: "test@example.com",
-        username: "testuser",
-        attributes: {},
+        name: "testuser",
         createdAt: new Date("2024-01-01"),
         updatedAt: new Date("2024-01-01"),
       };
 
       mockDb.limit.mockResolvedValue([mockRecord]);
 
-      const result = await repository.findByAuth0UserId("auth0|123456789");
+      const result = await repository.findBySub("auth0|123456789");
 
       expect(result).not.toBeNull();
-      expect(result?.auth0UserId).toBe("auth0|123456789");
+      expect(result?.accountId).toBe("acc_123456789");
+      expect(result?.sub).toBe("auth0|123456789");
       expect(result?.email).toBe("test@example.com");
     });
 
     it("ユーザーが存在しない場合はnullを返す", async () => {
       mockDb.limit.mockResolvedValue([]);
 
-      const result = await repository.findByAuth0UserId("auth0|nonexistent");
+      const result = await repository.findBySub("auth0|nonexistent");
 
       expect(result).toBeNull();
     });
