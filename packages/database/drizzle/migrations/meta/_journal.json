@@ -1,12 +1,12 @@
 {
-  "version": "5",
-  "dialect": "pg",
+  "version": "7",
+  "dialect": "postgresql",
   "entries": [
     {
       "idx": 0,
       "version": "7",
-      "when": 1746253193144,
-      "tag": "0000_careful_johnny_storm",
+      "when": 1767239097692,
+      "tag": "0000_reflective_spot",
       "breakpoints": true
     }
   ]
