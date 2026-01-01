@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, timestamp } from "drizzle-orm/pg-core";
 import {
   createInsertSchema,
   createSelectSchema,
@@ -7,10 +7,10 @@ import {
 
 export const usersTable = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
+  accountId: varchar("account_id", { length: 255 }).notNull().unique(),
   sub: varchar("sub", { length: 255 }).notNull().unique(),
   email: varchar("email", { length: 255 }).notNull().unique(),
   name: varchar("name", { length: 255 }).notNull(),
-  attributes: jsonb("attributes").default({}).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull().defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow().notNull().defaultNow(),
 });
