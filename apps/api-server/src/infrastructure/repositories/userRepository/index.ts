@@ -1,5 +1,8 @@
 import { eq } from "drizzle-orm";
-import { DatabaseClient, usersTable } from "database";
+import {
+  DatabaseClient,
+  usersTable,
+} from "../../../../../../packages/database/src/utils/createClient";
 import { createUser, User } from "../../../domain/users/entities";
 import {
   CreateUserParams,

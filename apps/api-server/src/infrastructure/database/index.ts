@@ -1,4 +1,4 @@
-import { createDatabaseClient } from "database";
+import { createDatabaseClient } from "../../../../../packages/database/src/utils/createClient";
 
 const databaseUrl = process.env.DATABASE_URL;
 
