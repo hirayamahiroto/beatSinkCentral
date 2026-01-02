@@ -1,5 +1,17 @@
-import { createDatabaseClient } from "../../../../../packages/database/src/utils/createClient";
+import {
+  createDatabaseClient,
+  DatabaseClient,
+} from "../../../../../packages/database/src/utils/createClient";
 
-const databaseUrl = process.env.DATABASE_URL!;
+let _db: DatabaseClient | null = null;
 
-export const db = createDatabaseClient(databaseUrl);
+export function getDb(): DatabaseClient {
+  if (!_db) {
+    const databaseUrl = process.env.DATABASE_URL;
+    if (!databaseUrl) {
+      throw new Error("DATABASE_URL is not defined");
+    }
+    _db = createDatabaseClient(databaseUrl);
+  }
+  return _db;
+}
