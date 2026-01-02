@@ -1,4 +1,4 @@
-import { User } from "../../domain/users/entities";
+import { createUser } from "../../domain/users/entities";
 import { IUserRepository } from "../../domain/users/repositories";
 
 export interface CreateUserInput {
@@ -9,8 +9,7 @@ export interface CreateUserInput {
 }
 
 export interface CreateUserOutput {
-  user: User;
-  isArtist: boolean;
+  userId: string;
 }
 
 /**
@@ -20,7 +19,7 @@ export interface CreateUserOutput {
  *
  * 機能:
  * - subで既存チェック
- * - 既存の場合は既存ユーザーを返す（冪等性）
+ * - 既存の場合は既存ユーザーのIDを返す（冪等性）
  * - 新規の場合はユーザーを作成
  * - 作成時点ではアーティストではない
  */
@@ -29,26 +28,27 @@ export class CreateUserUseCase {
 
   async execute(input: CreateUserInput): Promise<CreateUserOutput> {
     // subで既存チェック
-    const existingUser = await this.userRepository.findBySub(input.sub);
-    if (existingUser) {
-      // 既に存在する場合は既存ユーザーを返す（冪等性）
+    const existingUserId = await this.userRepository.findUserIdBySub(input.sub);
+    if (existingUserId) {
+      // 既に存在する場合は既存ユーザーのIDを返す（冪等性）
       return {
-        user: existingUser,
-        isArtist: false,
+        userId: existingUserId,
       };
     }
 
-    // 新規ユーザーを作成
-    const user = await this.userRepository.create({
+    // UseCase内でEntityを生成（バリデーション実行）
+    const user = createUser({
       accountId: input.accountId,
       sub: input.sub,
       email: input.email,
       name: input.name,
     });
 
+    // Entityを永続化し、DBから生成されたIDを取得
+    const userId = await this.userRepository.save(user);
+
     return {
-      user,
-      isArtist: false,
+      userId,
     };
   }
 }
