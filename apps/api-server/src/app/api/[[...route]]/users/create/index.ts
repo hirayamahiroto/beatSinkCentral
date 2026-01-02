@@ -4,7 +4,7 @@ import { z } from "zod";
 import { auth0 } from "../../../../../infrastructure/auth0";
 import { getDb } from "../../../../../infrastructure/database";
 import { createUserRepository } from "../../../../../infrastructure/repositories/userRepository";
-import { CreateUserUseCase } from "../../../../../usecases/users";
+import { createUserUseCase } from "../../../../../usecases/users";
 
 const requestSchema = z.object({
   name: z.string().min(1),
@@ -31,23 +31,19 @@ const app = new Hono().post(
     }
 
     const userRepository = createUserRepository(getDb());
-    const createUserUseCase = new CreateUserUseCase(userRepository);
-    const result = await createUserUseCase.execute({
-      sub: session.user.sub,
-      email: body.email,
-      name: body.name,
-      accountId: body.accountId,
-    });
+    const result = await createUserUseCase(
+      {
+        sub: session.user.sub,
+        email: body.email,
+        name: body.name,
+        accountId: body.accountId,
+      },
+      userRepository
+    );
 
     return c.json(
       {
-        user: {
-          accountId: result.user.accountId,
-          sub: result.user.sub,
-          email: result.user.email,
-          name: result.user.name,
-        },
-        isArtist: result.isArtist,
+        userId: result.userId,
       },
       201
     );
