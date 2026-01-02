@@ -41,13 +41,7 @@ const app = new Hono().post(
 
     return c.json(
       {
-        user: {
-          accountId: result.user.accountId,
-          sub: result.user.sub,
-          email: result.user.email,
-          name: result.user.name,
-        },
-        isArtist: result.isArtist,
+        userId: result.userId,
       },
       201
     );

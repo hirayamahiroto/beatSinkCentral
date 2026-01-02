@@ -3,39 +3,29 @@ import {
   DatabaseClient,
   usersTable,
 } from "../../../../../../packages/database/src/utils/createClient";
-import { createUser, User } from "../../../domain/users/entities";
-import {
-  CreateUserParams,
-  IUserRepository,
-} from "../../../domain/users/repositories";
-
-const toEntity = (record: typeof usersTable.$inferSelect): User => {
-  return createUser({
-    accountId: record.accountId,
-    sub: record.sub,
-    email: record.email,
-    name: record.name,
-  });
-};
+import { User } from "../../../domain/users/entities";
+import { IUserRepository } from "../../../domain/users/repositories";
 
 export const createUserRepository = (db: DatabaseClient): IUserRepository => ({
-  async create(params: CreateUserParams): Promise<User> {
+  async save(user: User): Promise<string> {
     const [result] = await db
       .insert(usersTable)
       .values({
-        accountId: params.accountId,
-        sub: params.sub,
-        email: params.email,
-        name: params.name,
+        accountId: user.accountId,
+        sub: user.sub,
+        email: user.email,
+        name: user.name,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
       })
-      .returning();
+      .returning({ id: usersTable.id });
 
-    return toEntity(result);
+    return result.id;
   },
 
-  async findBySub(sub: string): Promise<User | null> {
+  async findUserIdBySub(sub: string): Promise<string | null> {
     const results = await db
-      .select()
+      .select({ id: usersTable.id })
       .from(usersTable)
       .where(eq(usersTable.sub, sub))
       .limit(1);
@@ -44,6 +34,6 @@ export const createUserRepository = (db: DatabaseClient): IUserRepository => ({
       return null;
     }
 
-    return toEntity(results[0]);
+    return results[0].id;
   },
 });
