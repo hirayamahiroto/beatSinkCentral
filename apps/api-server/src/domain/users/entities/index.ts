@@ -18,6 +18,9 @@ type CreateUserParams = {
   name: string;
 };
 
+/**
+ * 新規ユーザーEntity生成（バリデーション実行、日時自動生成）
+ */
 export const createUser = (params: CreateUserParams): User => {
   const sub = createSub(params.sub);
   const name = createName(params.name);
