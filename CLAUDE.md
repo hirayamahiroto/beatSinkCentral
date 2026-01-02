@@ -203,6 +203,62 @@ usecases/               # ユースケース（ドメイン外）
     └── index.ts
 ```
 
+## 外部クライアントの実装パターン（Next.js）
+
+### 背景
+
+Next.jsはビルド時にモジュールのトップレベルを評価する。そのため、環境変数に依存するクライアント（Database、Auth0、Redis等）をトップレベルで初期化すると、CI/CD環境でビルドエラーが発生する。
+
+```
+ビルド時: 環境変数が存在しない → エラー
+実行時:   環境変数が存在する   → 正常動作
+```
+
+APIルートのコードはビルド時には実行されないため、クライアントの初期化もビルド時には不要。実際に使用されるタイミング（API実行時）で初期化すべき。
+
+### 遅延初期化パターン（必須）
+
+環境変数に依存するクライアントは、以下の遅延初期化パターンで実装する。
+
+```typescript
+// infrastructure/database/index.ts
+import { createDatabaseClient, DatabaseClient } from "...";
+
+let _db: DatabaseClient | null = null;
+
+export function getDb(): DatabaseClient {
+  if (!_db) {
+    const databaseUrl = process.env.DATABASE_URL;
+    if (!databaseUrl) {
+      throw new Error("DATABASE_URL is not defined");
+    }
+    _db = createDatabaseClient(databaseUrl);
+  }
+  return _db;
+}
+```
+
+### なぜこのパターンか
+
+| 実装方法 | ビルド時 | 実行時 |
+|---------|---------|--------|
+| トップレベル初期化 | 即座に評価される → エラー | 正常 |
+| 遅延初期化（関数内） | 関数定義のみ → エラーなし | 呼び出し時に初期化 → 正常 |
+
+### 適用が必要なクライアント
+
+- Database（PostgreSQL、MySQL等）
+- Auth0 / 認証サービス
+- Redis / キャッシュサービス
+- S3 / ストレージサービス
+- Stripe / 決済サービス
+- その他、環境変数でAPIキー・接続情報を設定するもの
+
+### 参考
+
+- [Next.js GitHub Discussion #38164](https://github.com/vercel/next.js/discussions/38164)
+- [Prisma: Best practice for instantiating PrismaClient with Next.js](https://www.prisma.io/docs/guides/other/troubleshooting-orm/help-articles/nextjs-prisma-client-dev-practices)
+
 ## アーキテクチャ
 
 詳細は `docs/architecture.md` を参照。

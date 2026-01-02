@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { auth0 } from "../../../../../infrastructure/auth0";
-import { db } from "../../../../../infrastructure/database";
+import { getDb } from "../../../../../infrastructure/database";
 import { createUserRepository } from "../../../../../infrastructure/repositories/userRepository";
 import { CreateUserUseCase } from "../../../../../usecases/users";
 
@@ -30,7 +30,7 @@ const app = new Hono().post(
       return c.json({ error: "Unauthorized" }, 401);
     }
 
-    const userRepository = createUserRepository(db);
+    const userRepository = createUserRepository(getDb());
     const createUserUseCase = new CreateUserUseCase(userRepository);
     const result = await createUserUseCase.execute({
       sub: session.user.sub,
