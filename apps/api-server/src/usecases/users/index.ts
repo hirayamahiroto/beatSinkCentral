@@ -1,4 +1,4 @@
-import { createUser } from "../../domain/users/entities";
+import { createUser } from "../../domain/users/factories";
 import { IUserRepository } from "../../domain/users/repositories";
 
 type CreateUserInput = {

@@ -10,14 +10,7 @@ export const createUserRepository = (db: DatabaseClient): IUserRepository => ({
   async save(user: User): Promise<string> {
     const [result] = await db
       .insert(usersTable)
-      .values({
-        accountId: user.accountId,
-        sub: user.sub,
-        email: user.email,
-        name: user.name,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-      })
+      .values(user.toJSON())
       .returning({ id: usersTable.id });
 
     return result.id;
