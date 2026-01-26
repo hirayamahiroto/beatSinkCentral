@@ -4,7 +4,7 @@ import * as SubModule from "../valueObjects/sub";
 import * as EmailModule from "../valueObjects/email";
 import * as NameModule from "../valueObjects/name";
 
-describe("User Entity", () => {
+describe("User Factory", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2024-01-01T00:00:00.000Z"));
@@ -16,7 +16,7 @@ describe("User Entity", () => {
   });
 
   describe("createUser", () => {
-    it("有効なパラメータでUserを作成できる", () => {
+    it("有効なパラメータでUserを作成し、toJSONで正しい値を返す", () => {
       const user = createUser({
         accountId: "acc_123456789",
         sub: "auth0|123456789",
@@ -24,16 +24,14 @@ describe("User Entity", () => {
         name: "testuser",
       });
 
-      expect(user.accountId).toBe("acc_123456789");
-      expect(user.sub).toBe("auth0|123456789");
-      expect(user.email).toBe("test@example.com");
-      expect(user.name).toBe("testuser");
-      expect(user.createdAt).toStrictEqual(
-        new Date("2024-01-01T00:00:00.000Z")
-      );
-      expect(user.updatedAt).toStrictEqual(
-        new Date("2024-01-01T00:00:00.000Z")
-      );
+      expect(user.toJSON()).toStrictEqual({
+        accountId: "acc_123456789",
+        sub: "auth0|123456789",
+        email: "test@example.com",
+        name: "testuser",
+        createdAt: "2024-01-01T00:00:00.000Z",
+        updatedAt: "2024-01-01T00:00:00.000Z",
+      });
     });
 
     it("各値オブジェクトの生成関数が呼び出される", () => {
@@ -51,6 +49,17 @@ describe("User Entity", () => {
       expect(createSubSpy).toHaveBeenCalledWith("auth0|123456789");
       expect(createEmailSpy).toHaveBeenCalledWith("test@example.com");
       expect(createNameSpy).toHaveBeenCalledWith("testuser");
+    });
+
+    it("無効なemailでエラーをスローする", () => {
+      expect(() =>
+        createUser({
+          accountId: "acc_123456789",
+          sub: "auth0|123456789",
+          email: "invalid-email",
+          name: "testuser",
+        })
+      ).toThrow();
     });
   });
 });

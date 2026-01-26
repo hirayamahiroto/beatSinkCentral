@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { createUserUseCase } from "./index";
 import { IUserRepository } from "../../domain/users/repositories";
-import * as EntitiesModule from "../../domain/users/entities";
+import * as FactoriesModule from "../../domain/users/factories";
 
 const createMockRepository = () => ({
   save: vi.fn(),
@@ -17,10 +17,13 @@ const validInput = {
 
 describe("createUserUseCase", () => {
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2024-01-01T00:00:00.000Z"));
     vi.clearAllMocks();
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -53,7 +56,7 @@ describe("createUserUseCase", () => {
 
     it("createUserが正しいパラメータで呼ばれる", async () => {
       const mockRepository = createMockRepository();
-      const createUserSpy = vi.spyOn(EntitiesModule, "createUser");
+      const createUserSpy = vi.spyOn(FactoriesModule, "createUser");
       mockRepository.findUserIdBySub.mockResolvedValue(null);
       mockRepository.save.mockResolvedValue("generated-id");
 
@@ -67,21 +70,23 @@ describe("createUserUseCase", () => {
       });
     });
 
-    it("saveがEntityを受け取って呼ばれる", async () => {
+    it("saveがUserオブジェクトを受け取って呼ばれる", async () => {
       const mockRepository = createMockRepository();
       mockRepository.findUserIdBySub.mockResolvedValue(null);
       mockRepository.save.mockResolvedValue("generated-id");
 
       await createUserUseCase(validInput, mockRepository as IUserRepository);
 
-      expect(mockRepository.save).toHaveBeenCalledWith(
-        expect.objectContaining({
-          accountId: validInput.accountId,
-          sub: validInput.sub,
-          email: validInput.email,
-          name: validInput.name,
-        })
-      );
+      expect(mockRepository.save).toHaveBeenCalledTimes(1);
+      const savedUser = mockRepository.save.mock.calls[0][0];
+      expect(savedUser.toJSON()).toStrictEqual({
+        accountId: validInput.accountId,
+        sub: validInput.sub,
+        email: validInput.email,
+        name: validInput.name,
+        createdAt: "2024-01-01T00:00:00.000Z",
+        updatedAt: "2024-01-01T00:00:00.000Z",
+      });
     });
   });
 
@@ -110,7 +115,7 @@ describe("createUserUseCase", () => {
 
     it("既存ユーザーの場合はcreateUserが呼ばれない", async () => {
       const mockRepository = createMockRepository();
-      const createUserSpy = vi.spyOn(EntitiesModule, "createUser");
+      const createUserSpy = vi.spyOn(FactoriesModule, "createUser");
       mockRepository.findUserIdBySub.mockResolvedValue("existing-user-id");
 
       await createUserUseCase(validInput, mockRepository as IUserRepository);

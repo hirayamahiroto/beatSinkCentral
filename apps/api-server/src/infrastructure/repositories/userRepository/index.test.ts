@@ -14,6 +14,25 @@ const mockDb = {
   limit: vi.fn(),
 };
 
+// Userモックファクトリ
+const createMockUser = (data: {
+  accountId: string;
+  sub: string;
+  email: string;
+  name: string;
+  createdAt: Date;
+  updatedAt: Date;
+}): User => ({
+  toJSON: () => ({
+    accountId: data.accountId,
+    sub: data.sub,
+    email: data.email,
+    name: data.name,
+    createdAt: data.createdAt.toISOString(),
+    updatedAt: data.updatedAt.toISOString(),
+  }),
+});
+
 describe("createUserRepository", () => {
   let repository: IUserRepository;
 
@@ -27,14 +46,14 @@ describe("createUserRepository", () => {
       const generatedId = "550e8400-e29b-41d4-a716-446655440000";
       mockDb.returning.mockResolvedValue([{ id: generatedId }]);
 
-      const user: User = {
+      const user = createMockUser({
         accountId: "acc_123456789",
         sub: "auth0|123456789",
         email: "test@example.com",
         name: "testuser",
         createdAt: new Date("2024-01-01"),
         updatedAt: new Date("2024-01-01"),
-      };
+      });
 
       const result = await repository.save(user);
 
@@ -44,8 +63,8 @@ describe("createUserRepository", () => {
         sub: "auth0|123456789",
         email: "test@example.com",
         name: "testuser",
-        createdAt: new Date("2024-01-01"),
-        updatedAt: new Date("2024-01-01"),
+        createdAt: "2024-01-01T00:00:00.000Z",
+        updatedAt: "2024-01-01T00:00:00.000Z",
       });
       expect(result).toBe(generatedId);
     });
