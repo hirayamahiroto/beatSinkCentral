@@ -2,8 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { auth0 } from "../../../../../infrastructure/auth0";
-import { getDb } from "../../../../../infrastructure/database";
-import { createUserRepository } from "../../../../../infrastructure/repositories/userRepository";
+import { getContainer } from "../../../../../infrastructure/container";
 import { createUserUseCase } from "../../../../../usecases/users";
 
 const requestSchema = z.object({
@@ -30,7 +29,7 @@ const app = new Hono().post(
       return c.json({ error: "Unauthorized" }, 401);
     }
 
-    const userRepository = createUserRepository(getDb());
+    const { userRepository } = getContainer();
     const result = await createUserUseCase(
       {
         sub: session.user.sub,
