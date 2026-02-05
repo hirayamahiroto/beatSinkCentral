@@ -1,35 +1,23 @@
-import { createSub } from "../valueObjects/sub";
-import { createEmail } from "../valueObjects/email";
-import { createName } from "../valueObjects/name";
+import type { Sub } from "../valueObjects/sub";
+import type { Email } from "../valueObjects/email";
+import type { Name } from "../valueObjects/name";
 
-export type User = {
+// 内部状態の型
+export type UserState = {
   readonly accountId: string;
-  readonly sub: string;
-  readonly email: string;
-  readonly name: string;
+  readonly sub: Sub;
+  readonly email: Email;
+  readonly name: Name;
   readonly createdAt: Date;
   readonly updatedAt: Date;
 };
 
-type CreateUserParams = {
-  accountId: string;
-  sub: string;
-  email: string;
-  name: string;
-};
-
-export const createUser = (params: CreateUserParams): User => {
-  const sub = createSub(params.sub);
-  const name = createName(params.name);
-  const email = createEmail(params.email);
-  const now = new Date();
-
-  return {
-    accountId: params.accountId,
-    sub: sub.value,
-    email: email.value,
-    name: name.value,
-    createdAt: now,
-    updatedAt: now,
+// 振る舞いの契約
+export type User = {
+  toJSON: () => {
+    accountId: string;
+    sub: string;
+    email: string;
+    name: string;
   };
 };
