@@ -218,25 +218,29 @@ APIルートのコードはビルド時には実行されないため、クラ�
 
 ### 遅延初期化パターン（必須）
 
-環境変数に依存するクライアントは、以下の遅延初期化パターンで実装する。
+環境変数に依存するクライアントは、以下のクロージャベースの遅延初期化パターンで実装する。
 
 ```typescript
 // infrastructure/database/index.ts
 import { createDatabaseClient, DatabaseClient } from "...";
 
-let _db: DatabaseClient | null = null;
+export const getDb = (() => {
+  let db: DatabaseClient | null = null;
 
-export function getDb(): DatabaseClient {
-  if (!_db) {
-    const databaseUrl = process.env.DATABASE_URL;
-    if (!databaseUrl) {
-      throw new Error("DATABASE_URL is not defined");
+  return (): DatabaseClient => {
+    if (!db) {
+      const databaseUrl = process.env.DATABASE_URL;
+      if (!databaseUrl) {
+        throw new Error("DATABASE_URL is not defined");
+      }
+      db = createDatabaseClient(databaseUrl);
     }
-    _db = createDatabaseClient(databaseUrl);
-  }
-  return _db;
-}
+    return db;
+  };
+})();
 ```
+
+**ポイント**: クロージャを使用することで、状態変数（`db`）がモジュールスコープに露出せず、外部から誤って参照・変更されることを防ぐ。
 
 ### なぜこのパターンか
 

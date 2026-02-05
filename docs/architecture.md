@@ -27,6 +27,8 @@ apps/api-server/src/
 │
 ├── infrastructure/           # インフラストラクチャ層
 │   ├── auth0/                # Auth0 クライアント
+│   ├── container/            # Composition Root（依存関係の組み立て）
+│   ├── database/             # データベースクライアント
 │   └── repositories/         # リポジトリ実装
 │
 ├── middlewares/              # ミドルウェア
