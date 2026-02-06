@@ -48,7 +48,7 @@ jobs:
   deploy-beatbox-forge:
     name: 🔮 Beatbox Forgeプレビューデプロイ
     runs-on: ubuntu-latest
-    needs: test-beatbox-forge  # テスト完了後に実行
+    needs: test-beatbox-forge # テスト完了後に実行
     outputs:
       api-url: ${{ steps.deploy.outputs.url }}
     steps:
@@ -87,7 +87,7 @@ jobs:
         run: |
           OUTPUT=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
           echo "url=$OUTPUT" >> $GITHUB_OUTPUT
-          echo "Beatbox ForgeURL: $OUTPUT"
+          echo "Beatbox Forge URL: $OUTPUT"
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_API_SERVER_PROJECT_ID }}
@@ -96,7 +96,7 @@ jobs:
   deploy-beatfolio:
     name: 🔮 Beatfolioプレビューデプロイ
     runs-on: ubuntu-latest
-    needs: [test-beatfolio, deploy-beatbox-forge]  # テストとBeatbox Forgeのデプロイが完了してから実行
+    needs: [test-beatfolio, deploy-beatbox-forge] # テストとBeatbox Forgeのデプロイが完了してから実行
     steps:
       - name: 📥 コードのチェックアウト
         uses: actions/checkout@v4
