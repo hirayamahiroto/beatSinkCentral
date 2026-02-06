@@ -103,9 +103,9 @@ if (!user) {
 - Auth0セッションの管理
 - ログイン/ログアウト処理
 - 未登録ユーザーのリダイレクト制御
-- api-serverへのリクエスト転送
+- beatbox-forgeへのリクエスト転送
 
-### api-server
+### beatbox-forge
 
 - ユーザー登録状態の確認（DBアクセス）
 - ユーザー作成・更新処理

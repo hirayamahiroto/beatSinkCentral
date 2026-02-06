@@ -3,7 +3,7 @@ description: "Build and test a specific package"
 
 inputs:
   package-filter:
-    description: "Package filter for turbo (e.g., api-server, beatfolio)"
+    description: "Package filter for turbo (e.g., beatbox-forge, beatfolio)"
     required: true
   node-version:
     description: "Node.js version to use"

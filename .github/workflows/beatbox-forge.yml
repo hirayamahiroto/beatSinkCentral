@@ -1,16 +1,16 @@
-name: "🚀 api-server"
+name: "🚀 beatbox-forge"
 
 on:
   push:
     branches: [main, feature/*]
     paths:
-      - "apps/api-server/**"
+      - "apps/beatbox-forge/**"
       - "packages/**"
       - "turbo.json"
       - "package.json"
   pull_request:
     paths:
-      - "apps/api-server/**"
+      - "apps/beatbox-forge/**"
       - "packages/**"
       - "turbo.json"
       - "package.json"
@@ -28,5 +28,5 @@ jobs:
       - name: 🏗️ ビルド＆テスト
         uses: ./.github/actions/build-and-test
         with:
-          package-filter: api-server
+          package-filter: beatbox-forge
           node-version: "20"

@@ -13,10 +13,10 @@ beatSinkCentralは音楽関連サービスのモノレポです。
 npm run dev
 
 # テスト実行
-npm test -- --filter api-server
+npm test -- --filter beatbox-forge
 
 # 特定ディレクトリのテスト
-npm test -- --filter api-server -- --run src/domain/users
+npm test -- --filter beatbox-forge -- --run src/domain/users
 
 # ビルド
 npm run build

@@ -144,4 +144,4 @@ POST /orders/:id/cancel     → キャンセル
 
 ## 参考
 
-- [architecture.md](./architecture.md) - api-server アーキテクチャ
+- [architecture.md](./architecture.md) - beatbox-forge アーキテクチャ

@@ -1,5 +1,5 @@
 import { hc } from "hono/client";
-import type { AppType } from "./../../../../api-server/src/app/api/[[...route]]/route";
+import type { AppType } from "./../../../../beatbox-forge/src/app/api/[[...route]]/route";
 import { bffServerConfig } from "../config";
 
 type ClientOptions = {

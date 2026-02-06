@@ -9,7 +9,7 @@
     "beatfolio#build": {
       "outputs": [".next/**", "!.next/cache/**", "dist/**"]
     },
-    "api-server#build": {
+    "beatbox-forge#build": {
       "outputs": [".next/**", "!.next/cache/**", "dist/**"]
     },
     "lint": {
