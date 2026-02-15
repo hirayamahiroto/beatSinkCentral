@@ -1,113 +1,88 @@
-import React from "react";
-import { twMerge } from "tailwind-merge";
+import * as React from "react";
+import { cn } from "@ui/shared/utils/mergeClassNames";
 
-const Card = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => {
-  return <div data-slot="card" className={className} {...props} />;
-};
+const Card = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    data-slot="card"
+    className={cn(
+      "rounded-lg border bg-card text-card-foreground shadow-sm",
+      className
+    )}
+    {...props}
+  />
+));
+Card.displayName = "Card";
 
-interface HeaderProps extends React.HTMLAttributes<HTMLDivElement> {
-  title?: string;
-  description?: string;
-}
+const CardHeader = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    data-slot="card-header"
+    className={cn("flex flex-col space-y-1.5 p-6", className)}
+    {...props}
+  />
+));
+CardHeader.displayName = "CardHeader";
 
-const CardHeader = ({ className, ...props }: HeaderProps) => (
-  <div data-slot="card-header" className={className} {...props} />
-);
+const CardTitle = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    data-slot="card-title"
+    className={cn(
+      "text-2xl font-semibold leading-none tracking-tight",
+      className
+    )}
+    {...props}
+  />
+));
+CardTitle.displayName = "CardTitle";
 
-const CardTitle = ({ className, ...props }: React.ComponentProps<"div">) => {
-  return (
-    <div
-      data-slot="card-title"
-      className={twMerge(
-        "font-semibold text-lg leading-none tracking-tight",
-        className
-      )}
-      {...props}
-    />
-  );
-};
+const CardDescription = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    data-slot="card-description"
+    className={cn("text-sm text-muted-foreground", className)}
+    {...props}
+  />
+));
+CardDescription.displayName = "CardDescription";
 
-const CardDescription = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => {
-  return (
-    <div
-      {...props}
-      data-slot="card-description"
-      className={twMerge(
-        "row-start-2 text-pretty text-muted-fg text-sm",
-        className
-      )}
-      {...props}
-    />
-  );
-};
+const CardContent = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    data-slot="card-content"
+    className={cn("p-6 pt-0", className)}
+    {...props}
+  />
+));
+CardContent.displayName = "CardContent";
 
-const CardAction = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => {
-  return (
-    <div
-      data-slot="card-action"
-      className={twMerge(
-        "col-start-2 row-span-2 row-start-1 self-start justify-self-end",
-        className
-      )}
-      {...props}
-    />
-  );
-};
+const CardFooter = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    data-slot="card-footer"
+    className={cn("flex items-center p-6 pt-0", className)}
+    {...props}
+  />
+));
+CardFooter.displayName = "CardFooter";
 
-const CardContent = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => {
-  return (
-    <div
-      data-slot="card-content"
-      className={twMerge(
-        "px-(--card-spacing) has-[[data-slot=table-header]]:bg-muted/40 has-[table]:p-0 group-has-[table]/card:border-t **:data-[slot=table-cell]:px-(--card-spacing) **:data-[slot=table-column]:px-(--card-spacing) [&:has(table)+[data-slot=card-footer]]:pt-(--card-spacing)",
-        className
-      )}
-      {...props}
-    />
-  );
-};
-
-const CardFooter = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => {
-  return (
-    <div
-      data-slot="card-footer"
-      className={twMerge(
-        "flex items-center px-(--card-spacing) [.border-t]:pt-6",
-        className
-      )}
-      {...props}
-    />
-  );
-};
-
-Card.Content = CardContent;
-Card.Description = CardDescription;
-Card.Footer = CardFooter;
-Card.Header = CardHeader;
-Card.Title = CardTitle;
-Card.Action = CardAction;
-
-export {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-  CardAction,
-};
+export { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter };
