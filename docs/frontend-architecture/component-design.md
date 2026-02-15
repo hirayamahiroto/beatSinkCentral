@@ -209,7 +209,7 @@ packages/ui/src/design-system/
 
 ### Atoms のディレクトリ設計ルール
 
-- **shadcn/ui のコードを atoms に直接配置する**（primitives 層は廃止）
+- **shadcn/ui のコードを atoms に直接配置する**
 - **shadcn の1ファイルに含まれるサブコンポーネントは個別の atom ディレクトリに分解する**
   - 例: shadcn の `card.tsx` が `Card`, `CardHeader`, `CardContent` 等を含む → `atoms/Card/`, `atoms/Card/Header/`, `atoms/Card/Content/` にそれぞれ配置
 - **関連性のある atoms は親コンポーネント名のディレクトリでグルーピングする**
