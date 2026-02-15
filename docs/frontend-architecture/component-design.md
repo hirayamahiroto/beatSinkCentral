@@ -425,6 +425,44 @@ function Dialog({ isOpen, children }: DialogProps) {
 
 ---
 
+## 1コンポーネント1役割の原則
+
+コンポーネントは単一の責務を持つようにシンプルに保つ。機能を追加し続けて肥大化させない。
+
+**悪い例:**
+
+```tsx
+// 機能を追加し続けて複雑化したコンポーネント
+<FormField
+  columns={2} // 複数カラム対応
+  withError={true} // エラー表示
+  withTooltip={true} // ツールチップ
+  layout="horizontal" // レイアウト変更
+/>
+```
+
+**良い例:**
+
+```tsx
+// 1コンポーネント1役割、必要に応じてAtomsを直接組み合わせる
+<div className="flex flex-col gap-1">
+  <Label required>氏名</Label>
+  <div className="flex gap-2">
+    <Input placeholder="姓" ... />
+    <Input placeholder="名" ... />
+  </div>
+  {error && <p className="text-sm text-red-500">{error}</p>}
+</div>
+```
+
+### 複雑なフィールドへの対応方針
+
+1. **まずAtomsを直接組み合わせる**
+   - Moleculesで対応できない要件（複数Input並列など）はPages/OrganismsでAtomsを直接組み合わせる
+2. **パターンが繰り返されたらMolecules化を検討する**
+
+---
+
 ## Hooksの切り出しルール
 
 - `useXxx`で始まるカスタムフックは、必ずUIコンポーネント本体から分離して配置
@@ -477,3 +515,15 @@ function Dialog({ isOpen, children }: DialogProps) {
 - **Moleculeまでは汎用コンポーネントを目指す**
   - プロダクト特有のデザインは当てない
   - 特有のデザインを当てる場合は、外側で当てるかpropsとして渡せるようにする
+
+---
+
+## 依存関係ルール
+
+```
+Pages → Templates → Organisms → Molecules → Atoms
+```
+
+- 上位は下位のみ参照可能
+- 同階層間の参照は原則禁止（Moleculesは例外的にMoleculeを含むことがある）
+- 逆方向の参照は禁止
