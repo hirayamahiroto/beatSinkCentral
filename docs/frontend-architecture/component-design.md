@@ -110,17 +110,17 @@ packages/ui/src/design-system/
 │   │   │   ├── index.tsx      # shadcn Button（cva + Radix）
 │   │   │   └── index.stories.tsx
 │   │   ├── Card/
-│   │   │   ├── card/
+│   │   │   ├── index.tsx
+│   │   │   ├── index.stories.tsx
+│   │   │   ├── Header/
 │   │   │   │   └── index.tsx
-│   │   │   ├── card-header/
+│   │   │   ├── Title/
 │   │   │   │   └── index.tsx
-│   │   │   ├── card-title/
+│   │   │   ├── Description/
 │   │   │   │   └── index.tsx
-│   │   │   ├── card-description/
+│   │   │   ├── Content/
 │   │   │   │   └── index.tsx
-│   │   │   ├── card-content/
-│   │   │   │   └── index.tsx
-│   │   │   └── card-footer/
+│   │   │   └── Footer/
 │   │   │       └── index.tsx
 │   │   ├── Input/
 │   │   ├── Select/
