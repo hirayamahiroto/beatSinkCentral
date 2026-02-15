@@ -1,10 +1,21 @@
-import React from "react";
-import { CardTitle as PrimitiveCardTitle } from "@ui/design-system/primitives/card";
+import * as React from "react";
+import { cn } from "@ui/shared/utils/mergeClassNames";
 
-type CardTitleProps = React.ComponentProps<typeof PrimitiveCardTitle>;
+type CardTitleProps = React.HTMLAttributes<HTMLDivElement>;
 
-export type { CardTitleProps };
-
-export const CardTitle = (props: CardTitleProps) => (
-  <PrimitiveCardTitle {...props} />
+const CardTitle = React.forwardRef<HTMLDivElement, CardTitleProps>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      data-slot="card-title"
+      className={cn(
+        "text-2xl font-semibold leading-none tracking-tight",
+        className
+      )}
+      {...props}
+    />
+  )
 );
+CardTitle.displayName = "CardTitle";
+
+export { CardTitle, type CardTitleProps };

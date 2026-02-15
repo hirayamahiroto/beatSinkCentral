@@ -1,8 +1,21 @@
-import React from "react";
-import { Card as PrimitiveCard } from "@ui/design-system/primitives/card";
+import * as React from "react";
+import { cn } from "@ui/shared/utils/mergeClassNames";
 
-type CardProps = React.ComponentProps<typeof PrimitiveCard>;
+type CardProps = React.HTMLAttributes<HTMLDivElement>;
 
-export type { CardProps };
+const Card = React.forwardRef<HTMLDivElement, CardProps>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      data-slot="card"
+      className={cn(
+        "rounded-lg border bg-card text-card-foreground shadow-sm",
+        className
+      )}
+      {...props}
+    />
+  )
+);
+Card.displayName = "Card";
 
-export const Card = (props: CardProps) => <PrimitiveCard {...props} />;
+export { Card, type CardProps };

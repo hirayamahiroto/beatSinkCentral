@@ -1,3 +1,7 @@
-import { SelectValue as PrimitiveSelectValue } from "@ui/design-system/primitives/select";
+"use client";
 
-export const SelectValue = PrimitiveSelectValue;
+import * as SelectPrimitive from "@radix-ui/react-select";
+
+const SelectValue = SelectPrimitive.Value;
+
+export { SelectValue };

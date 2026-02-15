@@ -1,3 +1,7 @@
-import { SelectGroup as PrimitiveSelectGroup } from "@ui/design-system/primitives/select";
+"use client";
 
-export const SelectGroup = PrimitiveSelectGroup;
+import * as SelectPrimitive from "@radix-ui/react-select";
+
+const SelectGroup = SelectPrimitive.Group;
+
+export { SelectGroup };
