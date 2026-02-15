@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { Card } from "./index";
+import { Image } from "./index";
 
 const meta = {
-  title: "atoms/Card",
-  component: Card,
-} satisfies Meta<typeof Card>;
+  title: "atoms/Image",
+  component: Image,
+} satisfies Meta<typeof Image>;
 
 export default meta;
 
@@ -12,7 +12,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
-    className: "w-96 h-96",
-    variant: "default",
+    src: "/image1.jpeg",
+    alt: "",
   },
 };

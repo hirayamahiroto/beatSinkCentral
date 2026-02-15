@@ -8,11 +8,23 @@ import {
   Star,
   TrendingUp,
   Shuffle,
+  Pause,
+  Play,
 } from "lucide-react";
 import { Link as AtomLink } from "@ui/design-system/components/atoms/Link";
-import Header from "@ui/design-system/components/molecules/header";
+import { Card } from "@ui/design-system/components/atoms/Card";
 import { Image as AtomImage } from "@ui/design-system/components/atoms/Image";
-import { Pause, Play } from "lucide-react";
+import { Button } from "@ui/design-system/components/atoms/Button";
+import { Select } from "@ui/design-system/components/atoms/Select";
+import { SelectTrigger } from "@ui/design-system/components/atoms/Select/Trigger";
+import { SelectValue } from "@ui/design-system/components/atoms/Select/Value";
+import { SelectContent } from "@ui/design-system/components/atoms/Select/Content";
+import { SelectItem } from "@ui/design-system/components/atoms/Select/Item";
+import Header from "@ui/design-system/components/molecules/header";
+import { TabButton } from "@ui/design-system/components/molecules/TabButton";
+import { SectionHeader } from "@ui/design-system/components/molecules/SectionHeader";
+import { SearchInput } from "@ui/design-system/components/molecules/SearchInput";
+
 type Player = {
   id: number;
   name: string;
@@ -25,18 +37,6 @@ type ActiveSection = "discover" | "search";
 
 type PlayersPageProps = {
   players: Player[];
-};
-
-const Card = ({
-  className = "",
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => {
-  return (
-    <div
-      className={`rounded-lg shadow-lg overflow-hidden ${className}`}
-      {...props}
-    />
-  );
 };
 
 const PlayerCard = ({ player }: { player: Player }) => {
@@ -104,14 +104,16 @@ const PlayerCard = ({ player }: { player: Player }) => {
                 onError={handleAudioError}
                 preload="metadata"
               />
-              <button
+              <Button
+                variant="icon"
+                size="icon"
                 onClick={handlePlayClick}
-                className="absolute bottom-0 right-0 transform -translate-x-1/2 -translate-y-1/2 
-                          w-16 h-16 bg-purple-500/80 hover:bg-purple-500 
-                          rounded-full flex items-center justify-center 
-                          transition-all duration-300 opacity-0 group-hover:opacity-100
-                          backdrop-blur-sm z-10 opacity-50"
                 disabled={isLoading}
+                className="absolute bottom-0 right-0 transform -translate-x-1/2 -translate-y-1/2
+                          w-16 h-16 bg-purple-500/80 hover:bg-purple-500
+                          flex items-center justify-center
+                          transition-all duration-300 opacity-0 group-hover:opacity-100
+                          backdrop-blur-sm z-10"
               >
                 {isLoading ? (
                   <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -120,7 +122,7 @@ const PlayerCard = ({ player }: { player: Player }) => {
                 ) : (
                   <Play className="w-8 h-8 text-white ml-1" />
                 )}
-              </button>
+              </Button>
             </>
           )}
 
@@ -132,48 +134,6 @@ const PlayerCard = ({ player }: { player: Player }) => {
     </AtomLink>
   );
 };
-
-const TabButton = ({
-  isActive,
-  onClick,
-  icon: Icon,
-  children,
-}: {
-  isActive: boolean;
-  onClick: () => void;
-  icon: React.ComponentType<{ className?: string }>;
-  children: React.ReactNode;
-}) => (
-  <button
-    onClick={onClick}
-    className={`px-6 py-3 rounded-lg flex items-center gap-2 transition-all ${
-      isActive
-        ? "bg-purple-600 text-white"
-        : "bg-gray-800/50 text-gray-400 hover:bg-gray-800"
-    }`}
-  >
-    <Icon className="w-4 h-4" />
-    {children}
-  </button>
-);
-
-const SectionHeader = ({
-  icon: Icon,
-  title,
-  actionButton,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  title: string;
-  actionButton?: React.ReactNode;
-}) => (
-  <div className="flex items-center justify-between mb-6">
-    <h2 className="text-2xl text-white font-bold flex items-center gap-2">
-      <Icon className="w-5 h-5 text-purple-400" />
-      {title}
-    </h2>
-    {actionButton}
-  </div>
-);
 
 const SearchFilters = ({
   searchQuery,
@@ -188,44 +148,43 @@ const SearchFilters = ({
 }) => (
   <div className="bg-black/50 backdrop-blur-lg rounded-lg p-6 mb-8">
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      <div className="relative">
-        <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
-        <input
-          className="w-full pl-10 py-2 bg-gray-900/50 border border-gray-800 rounded-lg text-white"
-          placeholder="Search players..."
-          value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
-        />
-      </div>
+      <SearchInput
+        value={searchQuery}
+        onChange={onSearchChange}
+        placeholder="Search players..."
+      />
       <div className="flex gap-4">
-        <button
-          className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg flex items-center justify-center gap-2 text-white"
-          onClick={onFilter}
-        >
+        <Button variant="primary" className="flex-1" onClick={onFilter}>
           <Filter className="w-4 h-4" />
           Style
-        </button>
-        <button
-          className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg flex items-center justify-center gap-2 text-white"
-          onClick={onSort}
-        >
+        </Button>
+        <Button variant="primary" className="flex-1" onClick={onSort}>
           <ArrowUpDown className="w-4 h-4" />
           Sort
-        </button>
+        </Button>
       </div>
+      {/* TODO: value/onValueChange を接続してフィルタリング機能を実装する */}
       <div className="flex gap-4">
-        <select className="flex-1 px-4 py-2 bg-gray-900/50 border border-gray-800 rounded-lg text-white">
-          <option value="">Region</option>
-          <option value="kanto">関東</option>
-          <option value="kansai">関西</option>
-          <option value="other">その他</option>
-        </select>
-        <select className="flex-1 px-4 py-2 bg-gray-900/50 border border-gray-800 rounded-lg text-white">
-          <option value="">Experience</option>
-          <option value="beginner">初心者</option>
-          <option value="intermediate">中級者</option>
-          <option value="advanced">上級者</option>
-        </select>
+        <Select>
+          <SelectTrigger className="flex-1">
+            <SelectValue placeholder="Region" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="kanto">関東</SelectItem>
+            <SelectItem value="kansai">関西</SelectItem>
+            <SelectItem value="other">その他</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select>
+          <SelectTrigger className="flex-1">
+            <SelectValue placeholder="Experience" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="beginner">初心者</SelectItem>
+            <SelectItem value="intermediate">中級者</SelectItem>
+            <SelectItem value="advanced">上級者</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
     </div>
   </div>
@@ -330,13 +289,10 @@ function PlayersPage({ players }: PlayersPageProps) {
                 icon={Shuffle}
                 title="Random Discoveries"
                 actionButton={
-                  <button
-                    onClick={handleShuffle}
-                    className="text-purple-400 hover:text-purple-300 flex items-center gap-2"
-                  >
+                  <Button variant="link" onClick={handleShuffle}>
                     <Shuffle className="w-4 h-4" />
                     Shuffle
-                  </button>
+                  </Button>
                 }
               />
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
