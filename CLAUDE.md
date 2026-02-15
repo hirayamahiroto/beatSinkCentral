@@ -265,4 +265,4 @@ export const getDb = (() => {
 
 ## アーキテクチャ
 
-詳細は `docs/architecture.md` を参照。
+詳細は `docs/server-architecture/architecture.md` を参照。
