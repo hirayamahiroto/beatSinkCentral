@@ -103,32 +103,25 @@ Pages
 
 ```
 packages/ui/src/design-system/
-├── primitives/                # shadcn/ui コンポーネント（スタイル定義はここに閉じる）
-│   ├── button.tsx
-│   ├── card.tsx
-│   ├── input.tsx
-│   ├── select.tsx
-│   ├── theme-provider.tsx
-│   └── index.ts
 ├── components/
-│   ├── atoms/                 # primitives を薄くラップする最小単位
+│   ├── atoms/                 # shadcn/ui を直接配置しカスタムする最小単位
 │   │   ├── structure/         # 構造を定義するatoms
 │   │   ├── Button/
-│   │   │   ├── index.tsx      # PrimitiveButton を薄くラップ
+│   │   │   ├── index.tsx      # shadcn Button（cva + Radix）
 │   │   │   └── index.stories.tsx
 │   │   ├── Card/
-│   │   │   ├── index.tsx      # Card 本体
-│   │   │   ├── index.stories.tsx
-│   │   │   ├── Header/
-│   │   │   │   └── index.tsx  # CardHeader
-│   │   │   ├── Title/
-│   │   │   │   └── index.tsx  # CardTitle
-│   │   │   ├── Description/
-│   │   │   │   └── index.tsx  # CardDescription
-│   │   │   ├── Content/
-│   │   │   │   └── index.tsx  # CardContent
-│   │   │   └── Footer/
-│   │   │       └── index.tsx  # CardFooter
+│   │   │   ├── card/
+│   │   │   │   └── index.tsx
+│   │   │   ├── card-header/
+│   │   │   │   └── index.tsx
+│   │   │   ├── card-title/
+│   │   │   │   └── index.tsx
+│   │   │   ├── card-description/
+│   │   │   │   └── index.tsx
+│   │   │   ├── card-content/
+│   │   │   │   └── index.tsx
+│   │   │   └── card-footer/
+│   │   │       └── index.tsx
 │   │   ├── Input/
 │   │   ├── Select/
 │   │   ├── Image/
@@ -142,78 +135,49 @@ packages/ui/src/design-system/
 
 ### Atoms のディレクトリ設計ルール
 
-- **primitives の各サブコンポーネントは個別の atom ディレクトリに分解する**
-  - 例: `primitives/card.tsx` が `Card`, `CardHeader`, `CardContent` 等を export → `atoms/Card/`, `atoms/Card/Header/`, `atoms/Card/Content/` にそれぞれ配置
-- **atoms は primitives を薄くラップする。スタイルを追加しない**
-- **`forwardRef` の使い分け:**
-  - **`forwardRef` あり** — フォーカス制御等で ref が必要なコンポーネント（Button, Input など）
-  - **シンプル関数** — ref が不要な表示用コンポーネント（Card 系, Label など）
+- **shadcn/ui のコードを atoms に直接配置する**（primitives 層は廃止）
+- **shadcn の1ファイルに含まれるサブコンポーネントは個別の atom ディレクトリに分解する**
+  - 例: shadcn の `card.tsx` が `Card`, `CardHeader`, `CardContent` 等を含む → `atoms/Card/card/`, `atoms/Card/card-header/`, `atoms/Card/card-content/` にそれぞれ配置
+- **関連性のある atoms は親コンポーネント名のディレクトリでグルーピングする**
+- **各パーツは最小単位の atom として個別に export する**（molecules で必要なパーツだけを選んで組み合わせる）
+- **atoms の最小単位の基準は、UIライブラリ（shadcn/ui）で提供されている構成をもとに決定する**
+  - shadcn install で生成されたファイル内の `export` されているコンポーネント、または `const` で定義されているコンポーネント単位を atom として扱う
+  - 例: `card.tsx` が `Card`, `CardHeader`, `CardTitle`, `CardContent`, `CardFooter` を export → それぞれが個別の atom
+- **スタイル定義は atoms 層に閉じ込める。molecules 以上のレイヤーにスタイルを漏らさない**
 
-#### ref が不要な atom（表示用コンポーネント）
+### Atoms 層の責務
 
-  ```tsx
-  // atoms/Card/index.tsx
-  import React from "react";
-  import { Card as PrimitiveCard } from "@ui/design-system/primitives/card";
-
-  type CardProps = React.ComponentProps<typeof PrimitiveCard>;
-
-  export type { CardProps };
-
-  export const Card = (props: CardProps) => <PrimitiveCard {...props} />;
-  ```
-
-#### ref が必要な atom（フォーカス制御等）
-
-  ```tsx
-  // atoms/Button/index.tsx
-  import React from "react";
-  import {
-    Button as PrimitiveButton,
-    type ButtonProps,
-  } from "@ui/design-system/primitives/button";
-
-  export type { ButtonProps };
-
-  export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-    (props, ref) => <PrimitiveButton ref={ref} {...props} />
-  );
-  ```
-
-- **スタイル定義は primitives 層に閉じ込める。atoms 以上のレイヤーにスタイルを漏らさない**
+| 責務 | 内容 |
+|------|------|
+| **スタイルの定義と保護** | cva でバリアントを定義し、見た目をロック |
+| **headless UI のラップ** | Radix UI を内部実装として使用 |
+| **契約の提供** | 外部に公開する props のインターフェース |
 
 ---
 
-## Primitivesディレクトリ
+## shadcn/ui の運用方針
 
 ### 基本原則
 
-1. **primitives配下は改造しない** - shadcn/ui から生成された状態を保持する
-2. **コマンド実行のみでアップデート可能な状態を維持** - shadcnのアップデートコマンドで更新できる状態とする
-3. 依存関係に手を加えずに対応
-4. primitives配下での分解は行わない
+shadcn/ui は npm パッケージではなく**コード生成ツール**である。生成されたコードはカスタマイズ前提で提供されている。
 
-### 改造に該当する操作（禁止）
+- **shadcn/ui のコードは atoms に直接配置し、自由にカスタマイズする**
+- **shadcn/ui 自体のアップデート（CLI 再生成）は行わない** — コードを取り込みカスタムする運用のため
+- **内部で使用している headless UI（Radix UI）のアップデートで運用する** — `npm update @radix-ui/*`
 
-- コンポーネントの内部構造の変更（例: JSX要素の追加・削除・並び替え）
-- className やスタイルの変更
-- props の追加・削除・デフォルト値の変更
-- import の追加・変更
-- 新しいサブコンポーネントの追加
+### アップデートフロー
 
-### 改造に該当しない操作（許可）
+```
+Radix UI のアップデート
+  → npm update で headless UI の挙動を更新
+  → atoms のスタイル定義は変更なし（ロック）
+  → ビジュアルの一貫性を保証
 
-- primitives ファイル自体の新規追加（shadcn/ui からの生成）
-- primitives ファイルの削除（未使用の場合）
-- `index.ts` のエクスポート更新
-
-### shadcnインストール後のコード運用
-
-- React上で非推奨になっているAPIの対応について、基本的に編集しない
-- ただし、以下の場合に限り対応を検討:
-  - 警告は許容しつつ、アップデートで対応されるタイミングを待つ
-  - 将来的にRadix UIの更新で破壊的変更が発生した際にビルドが落ちるリスクがある
-  - shadcn/ui側の更新を定期的に確認し、必要に応じて再生成・差分適用する運用とする
+デザイン変更
+  → atoms の cva / className を変更
+  → headless UI には影響なし
+  → スタイルのみ意図的に更新
+```
 
 ---
 
@@ -256,9 +220,9 @@ colors: {
 
 ## バリアント管理
 
-### Primitives（スタイル定義層）
+### Atoms（スタイル定義層）
 
-primitives 内部で `class-variance-authority`（cva）を使用してバリアントを定義する。
+atoms 内部で `class-variance-authority`（cva）を使用してバリアントを定義する。
 
 ```tsx
 import { cva } from "class-variance-authority";
@@ -284,10 +248,10 @@ const buttonVariants = cva(
 );
 ```
 
-### Atoms / Molecules
+### Molecules
 
-- **スタイルを定義しない** — primitives を直接 re-export またはラップするのみ
-- バリアントは primitives の props として公開される
+- **スタイルを定義しない** — atoms を組み合わせるのみ
+- バリアントは atoms の props として公開される
 
 ### Organisms / Templates / Pages
 
