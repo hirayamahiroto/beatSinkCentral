@@ -1,5 +1,79 @@
 # コンポーネント設計
 
+## 本設計のスコープと位置づけ
+
+本ドキュメントで定義する Atomic Design は、
+**フロントエンドアプリケーション内の「UIコンポーネント設計」に限定した分類規約**である。
+
+本プロジェクトでは UI コンポーネントを `packages/ui` で管理しており、
+Atomic Design の各階層（Atoms / Molecules / Organisms / Templates / Pages）は
+**すべて UI コンポーネントとしての責務のみを持つもの**とする。
+
+### packages/ui における基本原則
+
+`packages/ui` に配置されるコンポーネントは、
+**アプリケーションレイヤーではなく UI レイヤーである**ため、以下の原則を厳守する。
+
+#### packages/ui が担う責務
+
+- UIの描画（見た目・構造）
+- ユーザー操作の受け取り
+- イベントの通知（`onClick` / `onChange` / `onSubmit` など）
+- UI 状態の管理（hover / focus / open / close など、表示に閉じた状態）
+
+#### packages/ui に持ち込まない責務（禁止）
+
+- API 呼び出し・データ取得
+- ルーティング制御
+- グローバル状態管理（Redux / Zustand 等）
+- 認証・権限・業務ルール
+- フォームライブラリ（React Hook Form 等）への直接依存
+- ドメインモデルやアプリケーション固有の型への依存
+
+> **packages/ui は「UIとしてどう見え、どう操作できるか」だけを責務とする。
+> アプリケーションの都合は一切持ち込まない。**
+
+---
+
+## なぜ Atomic Design を採用するのか
+
+コンポーネント設計手法には FSD（Feature-Sliced Design）などの選択肢もあるが、本プロジェクトでは Atomic Design を採用する。
+
+### FSD（Feature-Sliced Design）を採用しない理由
+
+FSD はフロントエンドアプリケーション全体のスキャフォールディング手法であり、コード体系化のルール・規約・ツールチェーン（リンター、フォルダジェネレーター等）を包括的に提供する。
+
+しかし、本プロジェクトにおいては以下の理由から採用しない。
+
+1. **スコープが広すぎる**
+   FSD は「フロントエンドアプリケーション全体のアーキテクチャ」を対象としており、UIコンポーネントの設計手法としては概念が大きすぎる。
+   本プロジェクトで必要なのは **UIの構造化** であり、アプリケーション全体の設計規約ではない。
+
+2. **UIに他の責務が混在する**
+   FSD の層構造には model や data といったUI以外の関心事が含まれる。
+   UIコンポーネントの本質的な責務は **「データを受け取り、表示する」** ことであり、
+   データ取得・加工・状態管理が同じ設計レイヤーに入り込むと、UI実装の判断基準が曖昧になる。
+
+### Atomic Design の利点
+
+Atomic Design は **純粋にUIの構造と粒度だけ** を基準にコンポーネントを分類する。
+スコープがUIに限定されているからこそ、判断基準がシンプルで迷いが生まれにくい。
+
+- **UIの責務に集中できる**
+  各階層の判断基準が「見た目の粒度と再利用性」に限定されるため、
+  データの扱いやビジネスロジックがUIコンポーネントの設計に影響しない
+
+- **責務の境界が明確**
+  データ取得・フォーム管理・状態管理・ビジネスロジックは
+  `packages/ui` の外（アプリケーションレイヤー）で扱い、
+  Atoms / Molecules は純粋なUIパーツとして保たれる
+
+- **共通言語としての明快さ**
+  「Atom か Molecule か Organism か」という **UI粒度の議論だけ** で
+  コンポーネントの配置が決まる
+
+---
+
 ## Atomic Designの定義
 
 > 参考: [Atomic Design - Brad Frost](https://atomicdesign.bradfrost.com/table-of-contents/)
@@ -102,35 +176,82 @@ Pages
 ## ディレクトリ構造
 
 ```
-packages/ui/src/
+packages/ui/src/design-system/
 ├── components/
-│   ├── atoms/
-│   │   └── structure/    # 構造を定義するatoms
+│   ├── atoms/                 # shadcn/ui を直接配置しカスタムする最小単位
+│   │   ├── structure/         # 構造を定義するatoms
+│   │   ├── Button/
+│   │   │   ├── index.tsx      # shadcn Button（cva + Radix）
+│   │   │   └── index.stories.tsx
+│   │   ├── Card/
+│   │   │   ├── index.tsx
+│   │   │   ├── index.stories.tsx
+│   │   │   ├── Header/
+│   │   │   │   └── index.tsx
+│   │   │   ├── Title/
+│   │   │   │   └── index.tsx
+│   │   │   ├── Description/
+│   │   │   │   └── index.tsx
+│   │   │   ├── Content/
+│   │   │   │   └── index.tsx
+│   │   │   └── Footer/
+│   │   │       └── index.tsx
+│   │   ├── Input/
+│   │   ├── Select/
+│   │   ├── Image/
+│   │   └── Link/
 │   ├── molecules/
 │   ├── organisms/
 │   ├── templates/
 │   └── pages/
-└── primitives/           # shadcn/ui コンポーネント
+└── index.ts
 ```
+
+### Atoms のディレクトリ設計ルール
+
+- **shadcn/ui のコードを atoms に直接配置する**
+- **shadcn の1ファイルに含まれるサブコンポーネントは個別の atom ディレクトリに分解する**
+  - 例: shadcn の `card.tsx` が `Card`, `CardHeader`, `CardContent` 等を含む → `atoms/Card/`, `atoms/Card/Header/`, `atoms/Card/Content/` にそれぞれ配置
+- **関連性のある atoms は親コンポーネント名のディレクトリでグルーピングする**
+- **各パーツは最小単位の atom として個別に export する**（molecules で必要なパーツだけを選んで組み合わせる）
+- **atoms の最小単位の基準は、UIライブラリ（shadcn/ui）で提供されている構成をもとに決定する**
+  - shadcn install で生成されたファイル内の `export` されているコンポーネント、または `const` で定義されているコンポーネント単位を atom として扱う
+  - 例: `card.tsx` が `Card`, `CardHeader`, `CardTitle`, `CardContent`, `CardFooter` を export → それぞれが個別の atom
+- **スタイル定義は atoms 層に閉じ込める。molecules 以上のレイヤーにスタイルを漏らさない**
+
+### Atoms 層の責務
+
+| 責務 | 内容 |
+|------|------|
+| **スタイルの定義と保護** | cva でバリアントを定義し、見た目をロック |
+| **headless UI のラップ** | Radix UI を内部実装として使用 |
+| **契約の提供** | 外部に公開する props のインターフェース |
 
 ---
 
-## Primitivesディレクトリ
+## shadcn/ui の運用方針
 
 ### 基本原則
 
-1. **primitives配下は改造しない** - 提供されている状態を保持
-2. **コマンド実行のみでアップデート可能な状態を維持** - shadcnのアップデートコマンドで更新できる状態とする
-3. 依存関係に手を加えずに対応
-4. primitives配下での分解は行わない
+shadcn/ui は npm パッケージではなく**コード生成ツール**である。生成されたコードはカスタマイズ前提で提供されている。
 
-### shadcnインストール後のコード運用
+- **shadcn/ui のコードは atoms に直接配置し、自由にカスタマイズする**
+- **shadcn/ui 自体のアップデート（CLI 再生成）は行わない** — コードを取り込みカスタムする運用のため
+- **内部で使用している headless UI（Radix UI）のアップデートで運用する** — `npm update @radix-ui/*`
 
-- React上で非推奨になっているAPIの対応について、基本的に編集しない
-- ただし、以下の場合に限り対応を検討:
-  - 警告は許容しつつ、アップデートで対応されるタイミングを待つ
-  - 将来的にRadix UIの更新で破壊的変更が発生した際にビルドが落ちるリスクがある
-  - shadcn/ui側の更新を定期的に確認し、必要に応じて再生成・差分適用する運用とする
+### アップデートフロー
+
+```
+Radix UI のアップデート
+  → npm update で headless UI の挙動を更新
+  → atoms のスタイル定義は変更なし（ロック）
+  → ビジュアルの一貫性を保証
+
+デザイン変更
+  → atoms の cva / className を変更
+  → headless UI には影響なし
+  → スタイルのみ意図的に更新
+```
 
 ---
 
@@ -168,30 +289,43 @@ colors: {
 - **ファイル構成**: 関連するものは同一ディレクトリ内に配置
   - `index.tsx`
   - `index.stories.ts(tsx)`
-  - `index.variants.ts`
 
 ---
 
 ## バリアント管理
 
-### Atoms / Molecules
+### Atoms（スタイル定義層）
+
+atoms 内部で `class-variance-authority`（cva）を使用してバリアントを定義する。
 
 ```tsx
-import { tv } from "tailwind-variants";
+import { cva } from "class-variance-authority";
 
-export const cardVariants = tv({
-  base: "rounded-lg border bg-card text-card-foreground shadow-sm",
-  variants: {
-    variant: {
-      default: "bg-white/5 border-white/10",
-      elevated: "bg-white/10 border-white/20 shadow-lg",
+const buttonVariants = cva(
+  "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors",
+  {
+    variants: {
+      variant: {
+        primary: "bg-purple-600 text-white hover:bg-purple-700",
+        ghost: "hover:bg-gray-800 text-gray-400",
+      },
+      size: {
+        sm: "h-9 px-3",
+        md: "h-10 px-4 py-2",
+      },
     },
-  },
-  defaultVariants: {
-    variant: "default",
-  },
-});
+    defaultVariants: {
+      variant: "primary",
+      size: "md",
+    },
+  }
+);
 ```
+
+### Molecules
+
+- **スタイルを定義しない** — atoms を組み合わせるのみ
+- バリアントは atoms の props として公開される
 
 ### Organisms / Templates / Pages
 
@@ -291,6 +425,44 @@ function Dialog({ isOpen, children }: DialogProps) {
 
 ---
 
+## 1コンポーネント1役割の原則
+
+コンポーネントは単一の責務を持つようにシンプルに保つ。機能を追加し続けて肥大化させない。
+
+**悪い例:**
+
+```tsx
+// 機能を追加し続けて複雑化したコンポーネント
+<FormField
+  columns={2} // 複数カラム対応
+  withError={true} // エラー表示
+  withTooltip={true} // ツールチップ
+  layout="horizontal" // レイアウト変更
+/>
+```
+
+**良い例:**
+
+```tsx
+// 1コンポーネント1役割、必要に応じてAtomsを直接組み合わせる
+<div className="flex flex-col gap-1">
+  <Label required>氏名</Label>
+  <div className="flex gap-2">
+    <Input placeholder="姓" ... />
+    <Input placeholder="名" ... />
+  </div>
+  {error && <p className="text-sm text-red-500">{error}</p>}
+</div>
+```
+
+### 複雑なフィールドへの対応方針
+
+1. **まずAtomsを直接組み合わせる**
+   - Moleculesで対応できない要件（複数Input並列など）はPages/OrganismsでAtomsを直接組み合わせる
+2. **パターンが繰り返されたらMolecules化を検討する**
+
+---
+
 ## Hooksの切り出しルール
 
 - `useXxx`で始まるカスタムフックは、必ずUIコンポーネント本体から分離して配置
@@ -343,3 +515,15 @@ function Dialog({ isOpen, children }: DialogProps) {
 - **Moleculeまでは汎用コンポーネントを目指す**
   - プロダクト特有のデザインは当てない
   - 特有のデザインを当てる場合は、外側で当てるかpropsとして渡せるようにする
+
+---
+
+## 依存関係ルール
+
+```
+Pages → Templates → Organisms → Molecules → Atoms
+```
+
+- 上位は下位のみ参照可能
+- 同階層間の参照は原則禁止（Moleculesは例外的にMoleculeを含むことがある）
+- 逆方向の参照は禁止

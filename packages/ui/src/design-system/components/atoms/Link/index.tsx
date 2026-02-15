@@ -1,42 +1,31 @@
 import React from "react";
-import { VariantProps } from "tailwind-variants";
-import { linkVariants } from "@ui/design-system/components/atoms/Link/index.variants";
-import { cn } from "@ui/shared/utils/mergeClassNames";
 
-type LinkProps = VariantProps<typeof linkVariants> & {
-  className?: string;
+type LinkProps = {
   href: string;
   children: React.ReactNode;
+  className?: string;
   disabled?: boolean;
   target?: string;
   rel?: string;
   onClick?: React.MouseEventHandler<HTMLAnchorElement>;
 };
 
-const Link = ({
-  className,
-  variant,
+export type { LinkProps };
+
+export const Link = ({
   href,
   children,
   disabled = false,
+  onClick,
   ...props
-}: LinkProps) => {
-  const linkClasses = cn(
-    linkVariants({ variant }),
-    disabled && "pointer-events-none opacity-50",
-    className
-  );
-
-  return (
-    <a
-      className={linkClasses}
-      href={disabled ? "#" : href}
-      aria-disabled={disabled}
-      {...props}
-    >
-      {children}
-    </a>
-  );
-};
-
-export { Link, type LinkProps };
+}: LinkProps) => (
+  <a
+    href={disabled ? undefined : href}
+    aria-disabled={disabled}
+    onClick={disabled ? (e) => e.preventDefault() : onClick}
+    tabIndex={disabled ? -1 : undefined}
+    {...props}
+  >
+    {children}
+  </a>
+);
