@@ -115,10 +115,10 @@ packages/ui/src/design-system/
 │   │   ├── structure/         # 構造を定義するatoms
 │   │   ├── Button/
 │   │   │   ├── index.tsx      # PrimitiveButton を薄くラップ
-│   │   │   └── indes.stories.tsx
+│   │   │   └── index.stories.tsx
 │   │   ├── Card/
 │   │   │   ├── index.tsx      # Card 本体
-│   │   │   ├── indes.stories.tsx
+│   │   │   ├── index.stories.tsx
 │   │   │   ├── Header/
 │   │   │   │   └── index.tsx  # CardHeader
 │   │   │   ├── Title/
@@ -188,10 +188,24 @@ packages/ui/src/design-system/
 
 ### 基本原則
 
-1. **primitives配下は改造しない** - 提供されている状態を保持
+1. **primitives配下は改造しない** - shadcn/ui から生成された状態を保持する
 2. **コマンド実行のみでアップデート可能な状態を維持** - shadcnのアップデートコマンドで更新できる状態とする
 3. 依存関係に手を加えずに対応
 4. primitives配下での分解は行わない
+
+### 改造に該当する操作（禁止）
+
+- コンポーネントの内部構造の変更（例: JSX要素の追加・削除・並び替え）
+- className やスタイルの変更
+- props の追加・削除・デフォルト値の変更
+- import の追加・変更
+- 新しいサブコンポーネントの追加
+
+### 改造に該当しない操作（許可）
+
+- primitives ファイル自体の新規追加（shadcn/ui からの生成）
+- primitives ファイルの削除（未使用の場合）
+- `index.ts` のエクスポート更新
 
 ### shadcnインストール後のコード運用
 
@@ -236,7 +250,7 @@ colors: {
 - **コンポーネント**: PascalCase（例: `PlayerCard`）
 - **ファイル構成**: 関連するものは同一ディレクトリ内に配置
   - `index.tsx`
-  - `indes.stories.ts(tsx)`
+  - `index.stories.ts(tsx)`
 
 ---
 

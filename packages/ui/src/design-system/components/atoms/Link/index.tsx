@@ -16,9 +16,16 @@ export const Link = ({
   href,
   children,
   disabled = false,
+  onClick,
   ...props
 }: LinkProps) => (
-  <a href={disabled ? "#" : href} aria-disabled={disabled} {...props}>
+  <a
+    href={disabled ? undefined : href}
+    aria-disabled={disabled}
+    onClick={disabled ? (e) => e.preventDefault() : onClick}
+    tabIndex={disabled ? -1 : undefined}
+    {...props}
+  >
     {children}
   </a>
 );

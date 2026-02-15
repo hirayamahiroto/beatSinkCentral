@@ -163,6 +163,7 @@ const SearchFilters = ({
           Sort
         </Button>
       </div>
+      {/* TODO: value/onValueChange を接続してフィルタリング機能を実装する */}
       <div className="flex gap-4">
         <Select>
           <SelectTrigger className="flex-1">
