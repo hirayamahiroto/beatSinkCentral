@@ -14,6 +14,5 @@ export const Default: Story = {
   args: {
     src: "/image1.jpeg",
     alt: "",
-    variant: "default",
   },
 };

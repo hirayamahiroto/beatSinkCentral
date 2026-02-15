@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { CardContent } from "./index";
+import { Input } from "./index";
 
 const meta = {
-  title: "atoms/CardContent",
-  component: CardContent,
-} satisfies Meta<typeof CardContent>;
+  title: "atoms/Input",
+  component: Input,
+} satisfies Meta<typeof Input>;
 
 export default meta;
 
@@ -12,6 +12,6 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
-    variant: "default",
+    placeholder: "Enter text...",
   },
 };
