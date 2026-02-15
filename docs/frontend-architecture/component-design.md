@@ -102,16 +102,85 @@ Pages
 ## ディレクトリ構造
 
 ```
-packages/ui/src/
+packages/ui/src/design-system/
+├── primitives/                # shadcn/ui コンポーネント（スタイル定義はここに閉じる）
+│   ├── button.tsx
+│   ├── card.tsx
+│   ├── input.tsx
+│   ├── select.tsx
+│   ├── theme-provider.tsx
+│   └── index.ts
 ├── components/
-│   ├── atoms/
-│   │   └── structure/    # 構造を定義するatoms
+│   ├── atoms/                 # primitives を薄くラップする最小単位
+│   │   ├── structure/         # 構造を定義するatoms
+│   │   ├── Button/
+│   │   │   ├── index.tsx      # PrimitiveButton を薄くラップ
+│   │   │   └── indes.stories.tsx
+│   │   ├── Card/
+│   │   │   ├── index.tsx      # Card 本体
+│   │   │   ├── indes.stories.tsx
+│   │   │   ├── Header/
+│   │   │   │   └── index.tsx  # CardHeader
+│   │   │   ├── Title/
+│   │   │   │   └── index.tsx  # CardTitle
+│   │   │   ├── Description/
+│   │   │   │   └── index.tsx  # CardDescription
+│   │   │   ├── Content/
+│   │   │   │   └── index.tsx  # CardContent
+│   │   │   └── Footer/
+│   │   │       └── index.tsx  # CardFooter
+│   │   ├── Input/
+│   │   ├── Select/
+│   │   ├── Image/
+│   │   └── Link/
 │   ├── molecules/
 │   ├── organisms/
 │   ├── templates/
 │   └── pages/
-└── primitives/           # shadcn/ui コンポーネント
+└── index.ts
 ```
+
+### Atoms のディレクトリ設計ルール
+
+- **primitives の各サブコンポーネントは個別の atom ディレクトリに分解する**
+  - 例: `primitives/card.tsx` が `Card`, `CardHeader`, `CardContent` 等を export → `atoms/Card/`, `atoms/Card/Header/`, `atoms/Card/Content/` にそれぞれ配置
+- **atoms は primitives を薄くラップする。スタイルを追加しない**
+- **`forwardRef` の使い分け:**
+  - **`forwardRef` あり** — フォーカス制御等で ref が必要なコンポーネント（Button, Input など）
+  - **シンプル関数** — ref が不要な表示用コンポーネント（Card 系, Label など）
+
+#### ref が不要な atom（表示用コンポーネント）
+
+  ```tsx
+  // atoms/Card/index.tsx
+  import React from "react";
+  import { Card as PrimitiveCard } from "@ui/design-system/primitives/card";
+
+  type CardProps = React.ComponentProps<typeof PrimitiveCard>;
+
+  export type { CardProps };
+
+  export const Card = (props: CardProps) => <PrimitiveCard {...props} />;
+  ```
+
+#### ref が必要な atom（フォーカス制御等）
+
+  ```tsx
+  // atoms/Button/index.tsx
+  import React from "react";
+  import {
+    Button as PrimitiveButton,
+    type ButtonProps,
+  } from "@ui/design-system/primitives/button";
+
+  export type { ButtonProps };
+
+  export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+    (props, ref) => <PrimitiveButton ref={ref} {...props} />
+  );
+  ```
+
+- **スタイル定義は primitives 層に閉じ込める。atoms 以上のレイヤーにスタイルを漏らさない**
 
 ---
 
@@ -167,31 +236,44 @@ colors: {
 - **コンポーネント**: PascalCase（例: `PlayerCard`）
 - **ファイル構成**: 関連するものは同一ディレクトリ内に配置
   - `index.tsx`
-  - `index.stories.ts(tsx)`
-  - `index.variants.ts`
+  - `indes.stories.ts(tsx)`
 
 ---
 
 ## バリアント管理
 
-### Atoms / Molecules
+### Primitives（スタイル定義層）
+
+primitives 内部で `class-variance-authority`（cva）を使用してバリアントを定義する。
 
 ```tsx
-import { tv } from "tailwind-variants";
+import { cva } from "class-variance-authority";
 
-export const cardVariants = tv({
-  base: "rounded-lg border bg-card text-card-foreground shadow-sm",
-  variants: {
-    variant: {
-      default: "bg-white/5 border-white/10",
-      elevated: "bg-white/10 border-white/20 shadow-lg",
+const buttonVariants = cva(
+  "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors",
+  {
+    variants: {
+      variant: {
+        primary: "bg-purple-600 text-white hover:bg-purple-700",
+        ghost: "hover:bg-gray-800 text-gray-400",
+      },
+      size: {
+        sm: "h-9 px-3",
+        md: "h-10 px-4 py-2",
+      },
     },
-  },
-  defaultVariants: {
-    variant: "default",
-  },
-});
+    defaultVariants: {
+      variant: "primary",
+      size: "md",
+    },
+  }
+);
 ```
+
+### Atoms / Molecules
+
+- **スタイルを定義しない** — primitives を直接 re-export またはラップするのみ
+- バリアントは primitives の props として公開される
 
 ### Organisms / Templates / Pages
 
