@@ -5,6 +5,7 @@ type SelectTriggerProps = React.ComponentProps<typeof PrimitiveSelectTrigger>;
 
 export type { SelectTriggerProps };
 
-export const SelectTrigger = React.forwardRef<HTMLButtonElement, SelectTriggerProps>(
-  (props, ref) => <PrimitiveSelectTrigger ref={ref} {...props} />
-);
+export const SelectTrigger = React.forwardRef<
+  HTMLButtonElement,
+  SelectTriggerProps
+>((props, ref) => <PrimitiveSelectTrigger ref={ref} {...props} />);

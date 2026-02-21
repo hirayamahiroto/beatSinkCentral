@@ -1,5 +1,79 @@
 # コンポーネント設計
 
+## 本設計のスコープと位置づけ
+
+本ドキュメントで定義する Atomic Design は、
+**フロントエンドアプリケーション内の「UIコンポーネント設計」に限定した分類規約**である。
+
+本プロジェクトでは UI コンポーネントを `packages/ui` で管理しており、
+Atomic Design の各階層（Atoms / Molecules / Organisms / Templates / Pages）は
+**すべて UI コンポーネントとしての責務のみを持つもの**とする。
+
+### packages/ui における基本原則
+
+`packages/ui` に配置されるコンポーネントは、
+**アプリケーションレイヤーではなく UI レイヤーである**ため、以下の原則を厳守する。
+
+#### packages/ui が担う責務
+
+- UIの描画（見た目・構造）
+- ユーザー操作の受け取り
+- イベントの通知（`onClick` / `onChange` / `onSubmit` など）
+- UI 状態の管理（hover / focus / open / close など、表示に閉じた状態）
+
+#### packages/ui に持ち込まない責務（禁止）
+
+- API 呼び出し・データ取得
+- ルーティング制御
+- グローバル状態管理（Redux / Zustand 等）
+- 認証・権限・業務ルール
+- フォームライブラリ（React Hook Form 等）への直接依存
+- ドメインモデルやアプリケーション固有の型への依存
+
+> **packages/ui は「UIとしてどう見え、どう操作できるか」だけを責務とする。
+> アプリケーションの都合は一切持ち込まない。**
+
+---
+
+## なぜ Atomic Design を採用するのか
+
+コンポーネント設計手法には FSD（Feature-Sliced Design）などの選択肢もあるが、本プロジェクトでは Atomic Design を採用する。
+
+### FSD（Feature-Sliced Design）を採用しない理由
+
+FSD はフロントエンドアプリケーション全体のスキャフォールディング手法であり、コード体系化のルール・規約・ツールチェーン（リンター、フォルダジェネレーター等）を包括的に提供する。
+
+しかし、本プロジェクトにおいては以下の理由から採用しない。
+
+1. **スコープが広すぎる**
+   FSD は「フロントエンドアプリケーション全体のアーキテクチャ」を対象としており、UIコンポーネントの設計手法としては概念が大きすぎる。
+   本プロジェクトで必要なのは **UIの構造化** であり、アプリケーション全体の設計規約ではない。
+
+2. **UIに他の責務が混在する**
+   FSD の層構造には model や data といったUI以外の関心事が含まれる。
+   UIコンポーネントの本質的な責務は **「データを受け取り、表示する」** ことであり、
+   データ取得・加工・状態管理が同じ設計レイヤーに入り込むと、UI実装の判断基準が曖昧になる。
+
+### Atomic Design の利点
+
+Atomic Design は **純粋にUIの構造と粒度だけ** を基準にコンポーネントを分類する。
+スコープがUIに限定されているからこそ、判断基準がシンプルで迷いが生まれにくい。
+
+- **UIの責務に集中できる**
+  各階層の判断基準が「見た目の粒度と再利用性」に限定されるため、
+  データの扱いやビジネスロジックがUIコンポーネントの設計に影響しない
+
+- **責務の境界が明確**
+  データ取得・フォーム管理・状態管理・ビジネスロジックは
+  `packages/ui` の外（アプリケーションレイヤー）で扱い、
+  Atoms / Molecules は純粋なUIパーツとして保たれる
+
+- **共通言語としての明快さ**
+  「Atom か Molecule か Organism か」という **UI粒度の議論だけ** で
+  コンポーネントの配置が決まる
+
+---
+
 ## Atomic Designの定義
 
 > 参考: [Atomic Design - Brad Frost](https://atomicdesign.bradfrost.com/table-of-contents/)
@@ -87,12 +161,13 @@ Pages
 
 ### Storybookでデザインを作るもの/作らないもの
 
-| 分類 | Storybookでデザインあり | Storybookでデザインなし |
-|------|------------------------|------------------------|
+| 分類 | Storybookでデザインあり                           | Storybookでデザインなし                                            |
+| ---- | ------------------------------------------------- | ------------------------------------------------------------------ |
 | 説明 | 見た目のコンポーネント、structureのコンポーネント | プロバイダーなどのコンポーネント、スタイリング優先のコンポーネント |
-| 例 | Button, Card, Grid | ThemeProvider, DialogFooter, BreadcrumbList |
+| 例   | Button, Card, Grid                                | ThemeProvider, DialogFooter, BreadcrumbList                        |
 
 **デザインがない対象:**
+
 - プロバイダーなどのコンポーネント
 - スタイリング（見た目）を優先したコンポーネント
 - 構造を持っているが特定のコンポーネント下でしか使われないもの
@@ -151,42 +226,44 @@ packages/ui/src/design-system/
 
 #### ref が不要な atom（表示用コンポーネント）
 
-  ```tsx
-  // atoms/Card/index.tsx
-  import React from "react";
-  import { Card as PrimitiveCard } from "@ui/design-system/primitives/card";
+```tsx
+// atoms/Card/index.tsx
+import React from "react";
+import { Card as PrimitiveCard } from "@ui/design-system/primitives/card";
 
-  type CardProps = React.ComponentProps<typeof PrimitiveCard>;
+type CardProps = React.ComponentProps<typeof PrimitiveCard>;
 
-  export type { CardProps };
+export type { CardProps };
 
-  export const Card = (props: CardProps) => <PrimitiveCard {...props} />;
-  ```
+export const Card = (props: CardProps) => <PrimitiveCard {...props} />;
+```
 
 #### ref が必要な atom（フォーカス制御等）
 
-  ```tsx
-  // atoms/Button/index.tsx
-  import React from "react";
-  import {
-    Button as PrimitiveButton,
-    type ButtonProps,
-  } from "@ui/design-system/primitives/button";
+```tsx
+// atoms/Button/index.tsx
+import React from "react";
+import {
+  Button as PrimitiveButton,
+  type ButtonProps,
+} from "@ui/design-system/primitives/button";
 
-  export type { ButtonProps };
+export type { ButtonProps };
 
-  export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-    (props, ref) => <PrimitiveButton ref={ref} {...props} />
-  );
-  ```
+export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  (props, ref) => <PrimitiveButton ref={ref} {...props} />
+);
+```
 
 - **スタイル定義は primitives 層に閉じ込める。atoms 以上のレイヤーにスタイルを漏らさない**
 
 ---
 
-## Primitivesディレクトリ
+## shadcn/ui の運用方針
 
 ### 基本原則
+
+<<<<<<< HEAD
 
 1. **primitives配下は改造しない** - shadcn/ui から生成された状態を保持する
 2. **コマンド実行のみでアップデート可能な状態を維持** - shadcnのアップデートコマンドで更新できる状態とする
@@ -207,41 +284,13 @@ packages/ui/src/design-system/
 - primitives ファイルの削除（未使用の場合）
 - `index.ts` のエクスポート更新
 
-### shadcnインストール後のコード運用
-
-- React上で非推奨になっているAPIの対応について、基本的に編集しない
-- ただし、以下の場合に限り対応を検討:
-  - 警告は許容しつつ、アップデートで対応されるタイミングを待つ
-  - 将来的にRadix UIの更新で破壊的変更が発生した際にビルドが落ちるリスクがある
-  - shadcn/ui側の更新を定期的に確認し、必要に応じて再生成・差分適用する運用とする
-
 ---
 
 ## デザイントークン
 
 ### カラー定義
 
-**基本方針:**
-- 色はCSS変数で定義
-- OKLCH形式を採用
-
-**globals.css:**
-```css
-:root {
-  --primary: oklch(0.21 0.006 285.885);
-}
-
-@theme inline {
-  --color-primary: var(--primary);
-}
-```
-
-**tailwind.config.js:**
-```js
-colors: {
-  primary: "var(--color-primary)",
-}
-```
+- 未定義
 
 ---
 
@@ -254,40 +303,15 @@ colors: {
 
 ---
 
-## バリアント管理
-
-### Primitives（スタイル定義層）
-
-primitives 内部で `class-variance-authority`（cva）を使用してバリアントを定義する。
-
-```tsx
-import { cva } from "class-variance-authority";
-
-const buttonVariants = cva(
-  "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors",
-  {
-    variants: {
-      variant: {
-        primary: "bg-purple-600 text-white hover:bg-purple-700",
-        ghost: "hover:bg-gray-800 text-gray-400",
-      },
-      size: {
-        sm: "h-9 px-3",
-        md: "h-10 px-4 py-2",
-      },
-    },
-    defaultVariants: {
-      variant: "primary",
-      size: "md",
-    },
-  }
-);
-```
-
 ### Atoms / Molecules
 
 - **スタイルを定義しない** — primitives を直接 re-export またはラップするのみ
 - バリアントは primitives の props として公開される
+
+### Molecules
+
+- **スタイルを定義しない** — atoms を組み合わせるのみ
+- バリアントは atoms の props として公開される
 
 ### Organisms / Templates / Pages
 
@@ -319,7 +343,9 @@ function UserCard({ userId }: { userId: string }) {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    fetch(`/api/users/${userId}`).then(res => res.json()).then(setUser);
+    fetch(`/api/users/${userId}`)
+      .then((res) => res.json())
+      .then(setUser);
   }, [userId]);
 
   return <div>{user?.name}</div>;
@@ -328,13 +354,13 @@ function UserCard({ userId }: { userId: string }) {
 
 ### UIコンポーネントで避けるべきこと
 
-| 避けるべき | 理由 |
-|-----------|------|
-| `useEffect`でのデータ取得 | SSRで動作しない、テストが困難 |
-| `useEffect`での副作用実行 | 責務が不明確になる |
-| グローバル状態への直接アクセス | 再利用性が低下 |
-| API呼び出し | UIとデータ層の結合 |
-| 複雑なビジネスロジック | テスト・保守が困難 |
+| 避けるべき                     | 理由                          |
+| ------------------------------ | ----------------------------- |
+| `useEffect`でのデータ取得      | SSRで動作しない、テストが困難 |
+| `useEffect`での副作用実行      | 責務が不明確になる            |
+| グローバル状態への直接アクセス | 再利用性が低下                |
+| API呼び出し                    | UIとデータ層の結合            |
+| 複雑なビジネスロジック         | テスト・保守が困難            |
 
 ### 責務の分離パターン
 
@@ -365,6 +391,7 @@ function UserCard({ userId }: { userId: string }) {
 **原則: UIコンポーネントではuseEffectを使用しない**
 
 許可されるケース:
+
 - フォーカス管理（アクセシビリティ対応）
 - スクロール位置の制御
 - アニメーションのトリガー
@@ -381,9 +408,51 @@ function Dialog({ isOpen, children }: DialogProps) {
     }
   }, [isOpen]);
 
-  return <div ref={dialogRef} tabIndex={-1}>{children}</div>;
+  return (
+    <div ref={dialogRef} tabIndex={-1}>
+      {children}
+    </div>
+  );
 }
 ```
+
+---
+
+## 1コンポーネント1役割の原則
+
+コンポーネントは単一の責務を持つようにシンプルに保つ。機能を追加し続けて肥大化させない。
+
+**悪い例:**
+
+```tsx
+// 機能を追加し続けて複雑化したコンポーネント
+<FormField
+  columns={2} // 複数カラム対応
+  withError={true} // エラー表示
+  withTooltip={true} // ツールチップ
+  layout="horizontal" // レイアウト変更
+/>
+```
+
+**良い例:**
+
+```tsx
+// 1コンポーネント1役割、必要に応じてAtomsを直接組み合わせる
+<div className="flex flex-col gap-1">
+  <Label required>氏名</Label>
+  <div className="flex gap-2">
+    <Input placeholder="姓" ... />
+    <Input placeholder="名" ... />
+  </div>
+  {error && <p className="text-sm text-red-500">{error}</p>}
+</div>
+```
+
+### 複雑なフィールドへの対応方針
+
+1. **まずAtomsを直接組み合わせる**
+   - Moleculesで対応できない要件（複数Input並列など）はPages/OrganismsでAtomsを直接組み合わせる
+2. **パターンが繰り返されたらMolecules化を検討する**
 
 ---
 
@@ -407,6 +476,7 @@ function Dialog({ isOpen, children }: DialogProps) {
 - 単体で意味を持つ
 
 **レビューポイント:**
+
 - デザインシステムやFigma通りか
 - ホバー・フォーカスなど状態は適切か
 - サンプル内容が実際の使用を想定できるか
@@ -418,6 +488,7 @@ function Dialog({ isOpen, children }: DialogProps) {
 - 子要素を置いて初めて意味を持つ
 
 **レビューポイント:**
+
 - 何も表示されないことが正しいか
 - エラーなく動作しているか
 - 依存するコンポーネントとの連携が正しく組まれているか
@@ -439,3 +510,15 @@ function Dialog({ isOpen, children }: DialogProps) {
 - **Moleculeまでは汎用コンポーネントを目指す**
   - プロダクト特有のデザインは当てない
   - 特有のデザインを当てる場合は、外側で当てるかpropsとして渡せるようにする
+
+---
+
+## 依存関係ルール
+
+```
+Pages → Templates → Organisms → Molecules → Atoms
+```
+
+- 上位は下位のみ参照可能
+- 同階層間の参照は原則禁止（Moleculesは例外的にMoleculeを含むことがある）
+- 逆方向の参照は禁止
