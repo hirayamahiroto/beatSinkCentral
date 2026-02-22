@@ -1,3 +1,4 @@
+import React from "react";
 import { SelectItem as PrimitiveSelectItem } from "@ui/design-system/primitives/select";
 
 type SelectItemProps = React.ComponentProps<typeof PrimitiveSelectItem>;
