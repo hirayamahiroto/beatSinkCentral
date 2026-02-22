@@ -12,9 +12,9 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {
+export const Primary: Story = {
   args: {
-    variant: "default",
+    variant: "primary",
     children: "Button",
   },
 };
@@ -37,5 +37,25 @@ export const Link: Story = {
   args: {
     variant: "link",
     children: "Link Button",
+  },
+};
+
+export const Icon: Story = {
+  args: {
+    variant: "icon",
+    size: "icon",
+    children: <Play className="w-4 h-4" />,
+  },
+};
+
+export const WithIcon: Story = {
+  args: {
+    variant: "primary",
+    children: (
+      <>
+        <Filter className="w-4 h-4" />
+        Filter
+      </>
+    ),
   },
 };
