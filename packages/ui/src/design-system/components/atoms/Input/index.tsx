@@ -1,8 +1,7 @@
 import React from "react";
-import {
-  Input as PrimitiveInput,
-  type InputProps,
-} from "@ui/design-system/primitives/input";
+import { Input as PrimitiveInput } from "@ui/design-system/primitives/input";
+
+type InputProps = React.ComponentProps<typeof PrimitiveInput>;
 
 export type { InputProps };
 
