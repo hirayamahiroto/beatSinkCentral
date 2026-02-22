@@ -16,7 +16,7 @@ export const TabButton = ({
   icon: Icon,
   children,
 }: TabButtonProps) => (
-  <Button variant={isActive ? "primary" : "ghost"} size="lg" onClick={onClick}>
+  <Button variant={isActive ? "default" : "ghost"} size="lg" onClick={onClick}>
     <Icon className="w-4 h-4" />
     {children}
   </Button>

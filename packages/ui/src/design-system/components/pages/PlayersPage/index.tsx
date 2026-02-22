@@ -105,7 +105,7 @@ const PlayerCard = ({ player }: { player: Player }) => {
                 preload="metadata"
               />
               <Button
-                variant="icon"
+                variant="default"
                 size="icon"
                 onClick={handlePlayClick}
                 disabled={isLoading}
@@ -154,11 +154,11 @@ const SearchFilters = ({
         placeholder="Search players..."
       />
       <div className="flex gap-4">
-        <Button variant="primary" className="flex-1" onClick={onFilter}>
+        <Button variant="default" className="flex-1" onClick={onFilter}>
           <Filter className="w-4 h-4" />
           Style
         </Button>
-        <Button variant="primary" className="flex-1" onClick={onSort}>
+        <Button variant="default" className="flex-1" onClick={onSort}>
           <ArrowUpDown className="w-4 h-4" />
           Sort
         </Button>
