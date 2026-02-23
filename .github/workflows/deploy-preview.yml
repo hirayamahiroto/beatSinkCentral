@@ -44,11 +44,28 @@ jobs:
           package-filter: beatfolio
           node-version: ${{ env.NODE_VERSION }}
 
-  # APIサーバーのデプロイ（テスト完了後に実行）
+  db-migrate:
+    name: 🗄️ データベースマイグレーション
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 コードのチェックアウト
+        uses: actions/checkout@v4
+
+      - name: 📦 依存関係のインストール
+        uses: ./.github/actions/install-dependencies
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: 🗄️ マイグレーション実行
+        run: npm run db:migrate -w database
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_PREVIEW }}
+
+  # APIサーバーのデプロイ（テスト・マイグレーション完了後に実行）
   deploy-api-server:
     name: 🔮 APIサーバープレビューデプロイ
     runs-on: ubuntu-latest
-    needs: test-api-server  # テスト完了後に実行
+    needs: [test-api-server, db-migrate]  # テストとマイグレーション完了後に実行
     outputs:
       api-url: ${{ steps.deploy.outputs.url }}
     steps:
