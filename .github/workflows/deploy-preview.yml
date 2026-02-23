@@ -61,6 +61,11 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL_PREVIEW }}
 
+      - name: 🌱 シードデータ投入
+        run: npm run db:seed -w database
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_PREVIEW }}
+
   # APIサーバーのデプロイ（テスト・マイグレーション完了後に実行）
   deploy-api-server:
     name: 🔮 APIサーバープレビューデプロイ

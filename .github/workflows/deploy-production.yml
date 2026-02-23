@@ -32,6 +32,11 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
+      - name: 🌱 シードデータ投入
+        run: npm run db:seed -w database
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
   deploy-production:
     name: 🏭 本番デプロイ
     needs: db-migrate
