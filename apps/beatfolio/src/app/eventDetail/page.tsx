@@ -11,7 +11,6 @@ import {
   Check,
   XCircle,
 } from "lucide-react";
-import Header from "@ui/design-system/components/molecules/header";
 import { useState } from "react";
 import { players } from "../../../../../packages/data/players";
 import Link from "next/link";
@@ -338,8 +337,6 @@ export default function EventDetail() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <Header />
-
       <section className="relative h-[60vh]">
         <Image
           src={eventData.image}

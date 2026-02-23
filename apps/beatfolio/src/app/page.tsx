@@ -9,7 +9,6 @@ import {
   Trophy,
 } from "lucide-react";
 import Link from "next/link";
-import Header from "@ui/design-system/components/molecules/header";
 import { auth0 } from "../libs/auth0";
 import { redirect } from "next/navigation";
 
@@ -22,8 +21,6 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* Header */}
-      <Header />
       {/* Hero Section */}
       <section className="relative h-screen">
         <div className="absolute inset-0">
