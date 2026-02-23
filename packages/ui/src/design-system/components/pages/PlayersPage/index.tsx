@@ -10,20 +10,79 @@ import {
   Shuffle,
   Pause,
   Play,
+  X,
+  Menu,
 } from "lucide-react";
 import { Link as AtomLink } from "@ui/design-system/components/atoms/Link";
 import { Card } from "@ui/design-system/components/atoms/Card";
 import { Image as AtomImage } from "@ui/design-system/components/atoms/Image";
 import { Button } from "@ui/design-system/components/atoms/Button";
+import { Input } from "@ui/design-system/components/atoms/Input";
 import { Select } from "@ui/design-system/components/atoms/Select";
 import { SelectTrigger } from "@ui/design-system/components/atoms/Select/Trigger";
 import { SelectValue } from "@ui/design-system/components/atoms/Select/Value";
 import { SelectContent } from "@ui/design-system/components/atoms/Select/Content";
 import { SelectItem } from "@ui/design-system/components/atoms/Select/Item";
-import Header from "@ui/design-system/components/molecules/header";
-import { TabButton } from "@ui/design-system/components/molecules/TabButton";
-import { SectionHeader } from "@ui/design-system/components/molecules/SectionHeader";
-import { SearchInput } from "@ui/design-system/components/molecules/SearchInput";
+
+const Header = () => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  return (
+    <header className="fixed left-0 top-0 w-full z-50 bg-black/50 backdrop-blur-md">
+      <div className="container mx-auto px-4">
+        <div className="flex items-center justify-between h-16">
+          <div className="text-xl font-bold text-white">Beat Sink Central</div>
+          <button
+            className="sm:hidden p-2 text-gray-300 hover:text-white"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+          >
+            {isMenuOpen ? (
+              <X className="w-6 h-6" />
+            ) : (
+              <Menu className="w-6 h-6" />
+            )}
+          </button>
+        </div>
+      </div>
+      {isMenuOpen && (
+        <div className="sm:hidden bg-black/90 backdrop-blur-md">
+          <div className="container mx-auto px-4 py-4">
+            <nav className="flex flex-col gap-4">
+              <AtomLink
+                href="/"
+                className="text-gray-300 hover:text-white transition-colors px-4 py-2"
+              >
+                ホーム
+              </AtomLink>
+              <AtomLink
+                href="/playerList"
+                className="text-gray-300 hover:text-white transition-colors px-4 py-2"
+              >
+                プレイヤー
+              </AtomLink>
+              <AtomLink
+                href="/event"
+                className="text-gray-300 hover:text-white transition-colors px-4 py-2"
+              >
+                イベント
+              </AtomLink>
+              <AtomLink
+                href="/about"
+                className="text-gray-300 hover:text-white transition-colors px-4 py-2"
+              >
+                運営情報
+              </AtomLink>
+              <hr className="border-white/10" />
+              <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-full text-sm font-medium transition-colors w-full">
+                ログイン
+              </button>
+            </nav>
+          </div>
+        </div>
+      )}
+    </header>
+  );
+};
 
 type Player = {
   id: number;
@@ -148,11 +207,15 @@ const SearchFilters = ({
 }) => (
   <div className="bg-black/50 backdrop-blur-lg rounded-lg p-6 mb-8">
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      <SearchInput
-        value={searchQuery}
-        onChange={onSearchChange}
-        placeholder="Search players..."
-      />
+      <div className="relative">
+        <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
+        <Input
+          className="pl-10"
+          placeholder="Search players..."
+          value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
+        />
+      </div>
       <div className="flex gap-4">
         <Button variant="default" className="flex-1" onClick={onFilter}>
           <Filter className="w-4 h-4" />
@@ -248,26 +311,33 @@ function PlayersPage({ players }: PlayersPageProps) {
         </div>
 
         <div className="flex justify-center gap-4 mb-8">
-          <TabButton
-            isActive={activeSection === "discover"}
+          <Button
+            variant={activeSection === "discover" ? "default" : "ghost"}
+            size="lg"
             onClick={() => setActiveSection("discover")}
-            icon={Star}
           >
+            <Star className="w-4 h-4" />
             Discover
-          </TabButton>
-          <TabButton
-            isActive={activeSection === "search"}
+          </Button>
+          <Button
+            variant={activeSection === "search" ? "default" : "ghost"}
+            size="lg"
             onClick={() => setActiveSection("search")}
-            icon={Search}
           >
+            <Search className="w-4 h-4" />
             Search
-          </TabButton>
+          </Button>
         </div>
 
         {activeSection === "discover" && (
           <div className="space-y-12 p-4 md:p-8">
             <section className="mb-12">
-              <SectionHeader icon={Star} title="Featured Players" />
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl text-white font-bold flex items-center gap-2">
+                  <Star className="w-5 h-5 text-purple-400" />
+                  Featured Players
+                </h2>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {featuredPlayers.map((player) => (
                   <PlayerCard key={player.id} player={player} />
@@ -276,7 +346,12 @@ function PlayersPage({ players }: PlayersPageProps) {
             </section>
 
             <section className="mb-12">
-              <SectionHeader icon={TrendingUp} title="New Players" />
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl text-white font-bold flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-purple-400" />
+                  New Players
+                </h2>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {newPlayers.map((player) => (
                   <PlayerCard key={player.id} player={player} />
@@ -285,16 +360,16 @@ function PlayersPage({ players }: PlayersPageProps) {
             </section>
 
             <section>
-              <SectionHeader
-                icon={Shuffle}
-                title="Random Discoveries"
-                actionButton={
-                  <Button variant="link" onClick={handleShuffle}>
-                    <Shuffle className="w-4 h-4" />
-                    Shuffle
-                  </Button>
-                }
-              />
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl text-white font-bold flex items-center gap-2">
+                  <Shuffle className="w-5 h-5 text-purple-400" />
+                  Random Discoveries
+                </h2>
+                <Button variant="link" onClick={handleShuffle}>
+                  <Shuffle className="w-4 h-4" />
+                  Shuffle
+                </Button>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {randomPlayers.map((player) => (
                   <PlayerCard key={player.id} player={player} />
