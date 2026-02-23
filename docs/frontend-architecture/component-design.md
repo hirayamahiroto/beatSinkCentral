@@ -161,12 +161,13 @@ Pages
 
 ### Storybookでデザインを作るもの/作らないもの
 
-| 分類 | Storybookでデザインあり | Storybookでデザインなし |
-|------|------------------------|------------------------|
+| 分類 | Storybookでデザインあり                           | Storybookでデザインなし                                            |
+| ---- | ------------------------------------------------- | ------------------------------------------------------------------ |
 | 説明 | 見た目のコンポーネント、structureのコンポーネント | プロバイダーなどのコンポーネント、スタイリング優先のコンポーネント |
-| 例 | Button, Card, Grid | ThemeProvider, DialogFooter, BreadcrumbList |
+| 例   | Button, Card, Grid                                | ThemeProvider, DialogFooter, BreadcrumbList                        |
 
 **デザインがない対象:**
+
 - プロバイダーなどのコンポーネント
 - スタイリング（見た目）を優先したコンポーネント
 - 構造を持っているが特定のコンポーネント下でしか使われないもの
@@ -177,25 +178,32 @@ Pages
 
 ```
 packages/ui/src/design-system/
+├── primitives/                # shadcn/ui コンポーネント（スタイル定義はここに閉じる）
+│   ├── button.tsx
+│   ├── card.tsx
+│   ├── input.tsx
+│   ├── select.tsx
+│   ├── theme-provider.tsx
+│   └── index.ts
 ├── components/
-│   ├── atoms/                 # shadcn/ui を直接配置しカスタムする最小単位
+│   ├── atoms/                 # primitives を薄くラップする最小単位
 │   │   ├── structure/         # 構造を定義するatoms
 │   │   ├── Button/
-│   │   │   ├── index.tsx      # shadcn Button（cva + Radix）
+│   │   │   ├── index.tsx      # PrimitiveButton を薄くラップ
 │   │   │   └── index.stories.tsx
 │   │   ├── Card/
-│   │   │   ├── index.tsx
+│   │   │   ├── index.tsx      # Card 本体
 │   │   │   ├── index.stories.tsx
 │   │   │   ├── Header/
-│   │   │   │   └── index.tsx
+│   │   │   │   └── index.tsx  # CardHeader
 │   │   │   ├── Title/
-│   │   │   │   └── index.tsx
+│   │   │   │   └── index.tsx  # CardTitle
 │   │   │   ├── Description/
-│   │   │   │   └── index.tsx
+│   │   │   │   └── index.tsx  # CardDescription
 │   │   │   ├── Content/
-│   │   │   │   └── index.tsx
+│   │   │   │   └── index.tsx  # CardContent
 │   │   │   └── Footer/
-│   │   │       └── index.tsx
+│   │   │       └── index.tsx  # CardFooter
 │   │   ├── Input/
 │   │   ├── Select/
 │   │   ├── Image/
@@ -209,23 +217,45 @@ packages/ui/src/design-system/
 
 ### Atoms のディレクトリ設計ルール
 
-- **shadcn/ui のコードを atoms に直接配置する**
-- **shadcn の1ファイルに含まれるサブコンポーネントは個別の atom ディレクトリに分解する**
-  - 例: shadcn の `card.tsx` が `Card`, `CardHeader`, `CardContent` 等を含む → `atoms/Card/`, `atoms/Card/Header/`, `atoms/Card/Content/` にそれぞれ配置
-- **関連性のある atoms は親コンポーネント名のディレクトリでグルーピングする**
-- **各パーツは最小単位の atom として個別に export する**（molecules で必要なパーツだけを選んで組み合わせる）
-- **atoms の最小単位の基準は、UIライブラリ（shadcn/ui）で提供されている構成をもとに決定する**
-  - shadcn install で生成されたファイル内の `export` されているコンポーネント、または `const` で定義されているコンポーネント単位を atom として扱う
-  - 例: `card.tsx` が `Card`, `CardHeader`, `CardTitle`, `CardContent`, `CardFooter` を export → それぞれが個別の atom
-- **スタイル定義は atoms 層に閉じ込める。molecules 以上のレイヤーにスタイルを漏らさない**
+- **primitives の各サブコンポーネントは個別の atom ディレクトリに分解する**
+  - 例: `primitives/card.tsx` が `Card`, `CardHeader`, `CardContent` 等を export → `atoms/Card/`, `atoms/Card/Header/`, `atoms/Card/Content/` にそれぞれ配置
+- **atoms は primitives を薄くラップする。スタイルを追加しない**
+- **`forwardRef` の使い分け:**
+  - **`forwardRef` あり** — フォーカス制御等で ref が必要なコンポーネント（Button, Input など）
+  - **シンプル関数** — ref が不要な表示用コンポーネント（Card 系, Label など）
 
-### Atoms 層の責務
+#### ref が不要な atom（表示用コンポーネント）
 
-| 責務 | 内容 |
-|------|------|
-| **スタイルの定義と保護** | cva でバリアントを定義し、見た目をロック |
-| **headless UI のラップ** | Radix UI を内部実装として使用 |
-| **契約の提供** | 外部に公開する props のインターフェース |
+```tsx
+// atoms/Card/index.tsx
+import React from "react";
+import { Card as PrimitiveCard } from "@ui/design-system/primitives/card";
+
+type CardProps = React.ComponentProps<typeof PrimitiveCard>;
+
+export type { CardProps };
+
+export const Card = (props: CardProps) => <PrimitiveCard {...props} />;
+```
+
+#### ref が必要な atom（フォーカス制御等）
+
+```tsx
+// atoms/Button/index.tsx
+import React from "react";
+import {
+  Button as PrimitiveButton,
+  type ButtonProps,
+} from "@ui/design-system/primitives/button";
+
+export type { ButtonProps };
+
+export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  (props, ref) => <PrimitiveButton ref={ref} {...props} />
+);
+```
+
+- **スタイル定義は primitives 層に閉じ込める。atoms 以上のレイヤーにスタイルを漏らさない**
 
 ---
 
@@ -233,25 +263,26 @@ packages/ui/src/design-system/
 
 ### 基本原則
 
-shadcn/ui は npm パッケージではなく**コード生成ツール**である。生成されたコードはカスタマイズ前提で提供されている。
+<<<<<<< HEAD
 
-- **shadcn/ui のコードは atoms に直接配置し、自由にカスタマイズする**
-- **shadcn/ui 自体のアップデート（CLI 再生成）は行わない** — コードを取り込みカスタムする運用のため
-- **内部で使用している headless UI（Radix UI）のアップデートで運用する** — `npm update @radix-ui/*`
+1. **primitives配下は改造しない** - shadcn/ui から生成された状態を保持する
+2. **コマンド実行のみでアップデート可能な状態を維持** - shadcnのアップデートコマンドで更新できる状態とする
+3. 依存関係に手を加えずに対応
+4. primitives配下での分解は行わない
 
-### アップデートフロー
+### 改造に該当する操作（禁止）
 
-```
-Radix UI のアップデート
-  → npm update で headless UI の挙動を更新
-  → atoms のスタイル定義は変更なし（ロック）
-  → ビジュアルの一貫性を保証
+- コンポーネントの内部構造の変更（例: JSX要素の追加・削除・並び替え）
+- className やスタイルの変更
+- props の追加・削除・デフォルト値の変更
+- import の追加・変更
+- 新しいサブコンポーネントの追加
 
-デザイン変更
-  → atoms の cva / className を変更
-  → headless UI には影響なし
-  → スタイルのみ意図的に更新
-```
+### 改造に該当しない操作（許可）
+
+- primitives ファイル自体の新規追加（shadcn/ui からの生成）
+- primitives ファイルの削除（未使用の場合）
+- `index.ts` のエクスポート更新
 
 ---
 
@@ -259,27 +290,7 @@ Radix UI のアップデート
 
 ### カラー定義
 
-**基本方針:**
-- 色はCSS変数で定義
-- OKLCH形式を採用
-
-**globals.css:**
-```css
-:root {
-  --primary: oklch(0.21 0.006 285.885);
-}
-
-@theme inline {
-  --color-primary: var(--primary);
-}
-```
-
-**tailwind.config.js:**
-```js
-colors: {
-  primary: "var(--color-primary)",
-}
-```
+- 未定義
 
 ---
 
@@ -292,35 +303,10 @@ colors: {
 
 ---
 
-## バリアント管理
+### Atoms / Molecules
 
-### Atoms（スタイル定義層）
-
-atoms 内部で `class-variance-authority`（cva）を使用してバリアントを定義する。
-
-```tsx
-import { cva } from "class-variance-authority";
-
-const buttonVariants = cva(
-  "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors",
-  {
-    variants: {
-      variant: {
-        primary: "bg-purple-600 text-white hover:bg-purple-700",
-        ghost: "hover:bg-gray-800 text-gray-400",
-      },
-      size: {
-        sm: "h-9 px-3",
-        md: "h-10 px-4 py-2",
-      },
-    },
-    defaultVariants: {
-      variant: "primary",
-      size: "md",
-    },
-  }
-);
-```
+- **スタイルを定義しない** — primitives を直接 re-export またはラップするのみ
+- バリアントは primitives の props として公開される
 
 ### Molecules
 
@@ -357,7 +343,9 @@ function UserCard({ userId }: { userId: string }) {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    fetch(`/api/users/${userId}`).then(res => res.json()).then(setUser);
+    fetch(`/api/users/${userId}`)
+      .then((res) => res.json())
+      .then(setUser);
   }, [userId]);
 
   return <div>{user?.name}</div>;
@@ -366,13 +354,13 @@ function UserCard({ userId }: { userId: string }) {
 
 ### UIコンポーネントで避けるべきこと
 
-| 避けるべき | 理由 |
-|-----------|------|
-| `useEffect`でのデータ取得 | SSRで動作しない、テストが困難 |
-| `useEffect`での副作用実行 | 責務が不明確になる |
-| グローバル状態への直接アクセス | 再利用性が低下 |
-| API呼び出し | UIとデータ層の結合 |
-| 複雑なビジネスロジック | テスト・保守が困難 |
+| 避けるべき                     | 理由                          |
+| ------------------------------ | ----------------------------- |
+| `useEffect`でのデータ取得      | SSRで動作しない、テストが困難 |
+| `useEffect`での副作用実行      | 責務が不明確になる            |
+| グローバル状態への直接アクセス | 再利用性が低下                |
+| API呼び出し                    | UIとデータ層の結合            |
+| 複雑なビジネスロジック         | テスト・保守が困難            |
 
 ### 責務の分離パターン
 
@@ -403,6 +391,7 @@ function UserCard({ userId }: { userId: string }) {
 **原則: UIコンポーネントではuseEffectを使用しない**
 
 許可されるケース:
+
 - フォーカス管理（アクセシビリティ対応）
 - スクロール位置の制御
 - アニメーションのトリガー
@@ -419,7 +408,11 @@ function Dialog({ isOpen, children }: DialogProps) {
     }
   }, [isOpen]);
 
-  return <div ref={dialogRef} tabIndex={-1}>{children}</div>;
+  return (
+    <div ref={dialogRef} tabIndex={-1}>
+      {children}
+    </div>
+  );
 }
 ```
 
@@ -483,6 +476,7 @@ function Dialog({ isOpen, children }: DialogProps) {
 - 単体で意味を持つ
 
 **レビューポイント:**
+
 - デザインシステムやFigma通りか
 - ホバー・フォーカスなど状態は適切か
 - サンプル内容が実際の使用を想定できるか
@@ -494,6 +488,7 @@ function Dialog({ isOpen, children }: DialogProps) {
 - 子要素を置いて初めて意味を持つ
 
 **レビューポイント:**
+
 - 何も表示されないことが正しいか
 - エラーなく動作しているか
 - 依存するコンポーネントとの連携が正しく組まれているか

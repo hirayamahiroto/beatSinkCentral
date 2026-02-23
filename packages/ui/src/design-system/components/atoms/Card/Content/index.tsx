@@ -1,18 +1,10 @@
-import * as React from "react";
-import { cn } from "@ui/shared/utils/mergeClassNames";
+import React from "react";
+import { CardContent as PrimitiveCardContent } from "@ui/design-system/primitives/card";
 
-type CardContentProps = React.HTMLAttributes<HTMLDivElement>;
+type CardContentProps = React.ComponentProps<typeof PrimitiveCardContent>;
 
-const CardContent = React.forwardRef<HTMLDivElement, CardContentProps>(
-  ({ className, ...props }, ref) => (
-    <div
-      ref={ref}
-      data-slot="card-content"
-      className={cn("p-6 pt-0", className)}
-      {...props}
-    />
-  )
+export type { CardContentProps };
+
+export const CardContent = (props: CardContentProps) => (
+  <PrimitiveCardContent {...props} />
 );
-CardContent.displayName = "CardContent";
-
-export { CardContent, type CardContentProps };

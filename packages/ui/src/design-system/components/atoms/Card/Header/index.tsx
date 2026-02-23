@@ -1,18 +1,10 @@
-import * as React from "react";
-import { cn } from "@ui/shared/utils/mergeClassNames";
+import React from "react";
+import { CardHeader as PrimitiveCardHeader } from "@ui/design-system/primitives/card";
 
-type CardHeaderProps = React.HTMLAttributes<HTMLDivElement>;
+type CardHeaderProps = React.ComponentProps<typeof PrimitiveCardHeader>;
 
-const CardHeader = React.forwardRef<HTMLDivElement, CardHeaderProps>(
-  ({ className, ...props }, ref) => (
-    <div
-      ref={ref}
-      data-slot="card-header"
-      className={cn("flex flex-col space-y-1.5 p-6", className)}
-      {...props}
-    />
-  )
+export type { CardHeaderProps };
+
+export const CardHeader = (props: CardHeaderProps) => (
+  <PrimitiveCardHeader {...props} />
 );
-CardHeader.displayName = "CardHeader";
-
-export { CardHeader, type CardHeaderProps };

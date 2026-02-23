@@ -1,7 +1,4 @@
-"use client";
 
-import * as SelectPrimitive from "@radix-ui/react-select";
+import { Select as PrimitiveSelect } from "@ui/design-system/primitives/select";
 
-const Select = SelectPrimitive.Root;
-
-export { Select };
+export const Select = PrimitiveSelect;
