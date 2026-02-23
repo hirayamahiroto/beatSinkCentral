@@ -16,20 +16,12 @@ const mockDb = {
 
 // Userモックファクトリ
 const createMockUser = (data: {
-  accountId: string;
-  sub: string;
+  subId: string;
   email: string;
-  name: string;
-  createdAt: Date;
-  updatedAt: Date;
 }): User => ({
   toJSON: () => ({
-    accountId: data.accountId,
-    sub: data.sub,
+    subId: data.subId,
     email: data.email,
-    name: data.name,
-    createdAt: data.createdAt.toISOString(),
-    updatedAt: data.updatedAt.toISOString(),
   }),
 });
 
@@ -47,24 +39,16 @@ describe("createUserRepository", () => {
       mockDb.returning.mockResolvedValue([{ id: generatedId }]);
 
       const user = createMockUser({
-        accountId: "acc_123456789",
-        sub: "auth0|123456789",
+        subId: "auth0|123456789",
         email: "test@example.com",
-        name: "testuser",
-        createdAt: new Date("2024-01-01"),
-        updatedAt: new Date("2024-01-01"),
       });
 
       const result = await repository.save(user);
 
       expect(mockDb.insert).toHaveBeenCalled();
       expect(mockDb.values).toHaveBeenCalledWith({
-        accountId: "acc_123456789",
-        sub: "auth0|123456789",
+        subId: "auth0|123456789",
         email: "test@example.com",
-        name: "testuser",
-        createdAt: "2024-01-01T00:00:00.000Z",
-        updatedAt: "2024-01-01T00:00:00.000Z",
       });
       expect(result).toBe(generatedId);
     });
