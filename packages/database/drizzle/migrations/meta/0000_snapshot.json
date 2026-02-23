@@ -15,26 +15,14 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "account_id": {
-          "name": "account_id",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "sub": {
-          "name": "sub",
+        "sub_id": {
+          "name": "sub_id",
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": true
         },
         "email": {
           "name": "email",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": true
@@ -58,18 +46,11 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "users_account_id_unique": {
-          "name": "users_account_id_unique",
+        "users_sub_id_unique": {
+          "name": "users_sub_id_unique",
           "nullsNotDistinct": false,
           "columns": [
-            "account_id"
-          ]
-        },
-        "users_sub_unique": {
-          "name": "users_sub_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "sub"
+            "sub_id"
           ]
         },
         "users_email_unique": {
