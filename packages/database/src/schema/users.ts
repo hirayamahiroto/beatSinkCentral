@@ -7,12 +7,11 @@ import {
 
 export const usersTable = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
-  accountId: varchar("account_id", { length: 255 }).notNull().unique(),
-  sub: varchar("sub", { length: 255 }).notNull().unique(),
+  subId: varchar("sub_id", { length: 255 }).notNull().unique(),
   email: varchar("email", { length: 255 }).notNull().unique(),
-  name: varchar("name", { length: 255 }).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull().defaultNow(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at"),
 });
 
 export const userSelectSchema = createSelectSchema(usersTable);
