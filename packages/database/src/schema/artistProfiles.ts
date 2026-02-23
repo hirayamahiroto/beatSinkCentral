@@ -4,17 +4,18 @@ import {
   createSelectSchema,
   createUpdateSchema,
 } from "drizzle-zod";
-import { usersTable } from "./users";
+import { artistsTable } from "./artists";
 
 export const artistProfilesTable = pgTable("artist_profiles", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id")
+  artistId: uuid("artist_id")
     .notNull()
-    .references(() => usersTable.id),
-  artistId: varchar("artist_id", { length: 255 }).notNull().unique(),
+    .unique()
+    .references(() => artistsTable.id),
   name: varchar("name", { length: 255 }).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull().$onUpdate(() => new Date()),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at"),
 });
 
 export const artistProfileSelectSchema = createSelectSchema(artistProfilesTable);

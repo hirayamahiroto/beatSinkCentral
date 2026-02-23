@@ -1,1 +1,0 @@
-CREATE UNIQUE INDEX "artist_statuses_active_unique" ON "artist_statuses" USING btree ("artist_profile_id") WHERE "artist_statuses"."deleted_at" is null;

@@ -3,20 +3,21 @@ import {
   createInsertSchema,
   createSelectSchema,
 } from "drizzle-zod";
-import { artistProfilesTable } from "./artistProfiles";
+import { artistsTable } from "./artists";
 import { usersTable } from "./users";
 
 export const artistIdHistoriesTable = pgTable("artist_id_histories", {
   id: uuid("id").primaryKey().defaultRandom(),
-  artistProfileId: uuid("artist_profile_id")
+  artistId: uuid("artist_id")
     .notNull()
-    .references(() => artistProfilesTable.id),
+    .references(() => artistsTable.id),
   oldArtistId: varchar("old_artist_id", { length: 255 }).notNull(),
   newArtistId: varchar("new_artist_id", { length: 255 }).notNull(),
   changedByUserId: uuid("changed_by_user_id")
     .notNull()
     .references(() => usersTable.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at"),
 });
 
 export const artistIdHistorySelectSchema = createSelectSchema(artistIdHistoriesTable);

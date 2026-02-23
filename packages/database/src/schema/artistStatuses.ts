@@ -5,12 +5,12 @@ import {
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
-import { isNull, sql } from "drizzle-orm";
+import { isNull } from "drizzle-orm";
 import {
   createInsertSchema,
   createSelectSchema,
 } from "drizzle-zod";
-import { artistProfilesTable } from "./artistProfiles";
+import { artistsTable } from "./artists";
 import { artistStatusMastersTable } from "./artistStatusMasters";
 import { usersTable } from "./users";
 
@@ -18,9 +18,9 @@ export const artistStatusesTable = pgTable(
   "artist_statuses",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    artistProfileId: uuid("artist_profile_id")
+    artistId: uuid("artist_id")
       .notNull()
-      .references(() => artistProfilesTable.id),
+      .references(() => artistsTable.id),
     artistStatusMasterId: integer("artist_status_master_id")
       .notNull()
       .references(() => artistStatusMastersTable.id),
@@ -28,11 +28,12 @@ export const artistStatusesTable = pgTable(
       .notNull()
       .references(() => usersTable.id),
     createdAt: timestamp("created_at").defaultNow().notNull(),
+    revokedAt: timestamp("revoked_at"),
     deletedAt: timestamp("deleted_at"),
   },
   (table) => [
     uniqueIndex("artist_statuses_active_unique")
-      .on(table.artistProfileId)
+      .on(table.artistId)
       .where(isNull(table.deletedAt)),
   ]
 );
