@@ -15,6 +15,13 @@
       "when": 1771846003987,
       "tag": "0001_silent_lilandra",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1771847609239,
+      "tag": "0002_clumsy_stryfe",
+      "breakpoints": true
     }
   ]
 }

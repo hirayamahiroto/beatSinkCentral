@@ -14,7 +14,7 @@ export const artistProfilesTable = pgTable("artist_profiles", {
   artistId: varchar("artist_id", { length: 255 }).notNull().unique(),
   name: varchar("name", { length: 255 }).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull().$onUpdate(() => new Date()),
 });
 
 export const artistProfileSelectSchema = createSelectSchema(artistProfilesTable);
