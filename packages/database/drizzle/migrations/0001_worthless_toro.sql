@@ -1,0 +1,33 @@
+CREATE TABLE "artist_members" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"artist_id" uuid NOT NULL,
+	"user_id" uuid NOT NULL,
+	"invited_by" uuid NOT NULL,
+	"invited_at" timestamp DEFAULT now() NOT NULL,
+	"accepted_at" timestamp
+);
+--> statement-breakpoint
+CREATE TABLE "artist_owners" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"artist_id" uuid NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "artists" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"account_id" varchar(255) NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "artists_account_id_unique" UNIQUE("account_id")
+);
+--> statement-breakpoint
+ALTER TABLE "users" DROP CONSTRAINT "users_account_id_unique";--> statement-breakpoint
+ALTER TABLE "artist_members" ADD CONSTRAINT "artist_members_artist_id_artists_id_fk" FOREIGN KEY ("artist_id") REFERENCES "public"."artists"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "artist_members" ADD CONSTRAINT "artist_members_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "artist_members" ADD CONSTRAINT "artist_members_invited_by_users_id_fk" FOREIGN KEY ("invited_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "artist_owners" ADD CONSTRAINT "artist_owners_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "artist_owners" ADD CONSTRAINT "artist_owners_artist_id_artists_id_fk" FOREIGN KEY ("artist_id") REFERENCES "public"."artists"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+CREATE UNIQUE INDEX "artist_members_artist_user_idx" ON "artist_members" USING btree ("artist_id","user_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "artist_owners_user_artist_idx" ON "artist_owners" USING btree ("user_id","artist_id");--> statement-breakpoint
+ALTER TABLE "users" DROP COLUMN "account_id";
