@@ -6,9 +6,7 @@ import { getContainer } from "../../../../../infrastructure/container";
 import { createUserUseCase } from "../../../../../usecases/users";
 
 const requestSchema = z.object({
-  name: z.string().min(1),
   email: z.string().email(),
-  accountId: z.string().min(1),
 });
 
 const app = new Hono().post(
@@ -32,10 +30,8 @@ const app = new Hono().post(
     const { userRepository } = getContainer();
     const result = await createUserUseCase(
       {
-        sub: session.user.sub,
+        subId: session.user.sub,
         email: body.email,
-        name: body.name,
-        accountId: body.accountId,
       },
       userRepository
     );

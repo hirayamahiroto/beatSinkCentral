@@ -20,7 +20,7 @@ export const createUserRepository = (db: DatabaseClient): IUserRepository => ({
     const results = await db
       .select({ id: usersTable.id })
       .from(usersTable)
-      .where(eq(usersTable.sub, sub))
+      .where(eq(usersTable.subId, sub))
       .limit(1);
 
     if (results.length === 0) {

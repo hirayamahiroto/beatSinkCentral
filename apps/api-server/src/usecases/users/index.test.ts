@@ -9,10 +9,8 @@ const createMockRepository = () => ({
 });
 
 const validInput = {
-  accountId: "acc_123456789",
-  sub: "auth0|123456789",
+  subId: "auth0|123456789",
   email: "test@example.com",
-  name: "testuser",
 };
 
 describe("createUserUseCase", () => {
@@ -50,7 +48,7 @@ describe("createUserUseCase", () => {
       await createUserUseCase(validInput, mockRepository as IUserRepository);
 
       expect(mockRepository.findUserIdBySub).toHaveBeenCalledWith(
-        validInput.sub
+        validInput.subId
       );
     });
 
@@ -63,10 +61,8 @@ describe("createUserUseCase", () => {
       await createUserUseCase(validInput, mockRepository as IUserRepository);
 
       expect(createUserSpy).toHaveBeenCalledWith({
-        accountId: validInput.accountId,
-        sub: validInput.sub,
+        subId: validInput.subId,
         email: validInput.email,
-        name: validInput.name,
       });
     });
 
@@ -80,12 +76,8 @@ describe("createUserUseCase", () => {
       expect(mockRepository.save).toHaveBeenCalledTimes(1);
       const savedUser = mockRepository.save.mock.calls[0][0];
       expect(savedUser.toJSON()).toStrictEqual({
-        accountId: validInput.accountId,
-        sub: validInput.sub,
+        subId: validInput.subId,
         email: validInput.email,
-        name: validInput.name,
-        createdAt: "2024-01-01T00:00:00.000Z",
-        updatedAt: "2024-01-01T00:00:00.000Z",
       });
     });
   });
