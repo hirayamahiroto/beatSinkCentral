@@ -1,4 +1,7 @@
-INSERT INTO "artist_status_masters" ("status_code", "status_name", "description") VALUES
-  ('draft', '下書き', '非公開状態。アーティストプロフィール作成直後のデフォルト状態。'),
-  ('published', '公開中', '公開状態。一般ユーザーから閲覧可能。')
-ON CONFLICT ("status_code") DO NOTHING;
+-- artist_status_masters seed data
+INSERT INTO artist_status_masters (status_code, status_name, description) VALUES
+  ('pending', '申請中', 'アーティスト登録の申請が行われ、承認待ちの状態'),
+  ('active', '有効', 'アーティストとして有効に活動中の状態'),
+  ('suspended', '停止中', '運営により一時的に停止されている状態'),
+  ('inactive', '無効', 'アーティスト活動を停止している状態')
+ON CONFLICT (status_code) DO NOTHING;
