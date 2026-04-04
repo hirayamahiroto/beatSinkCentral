@@ -28,18 +28,16 @@ cd "${ROOT_DIR}/packages/database"
 # 環境変数を設定
 export DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres
 echo "DATABASE_URL: $DATABASE_URL"
-# まずマイグレーションファイルを生成
-echo "✅ マイグレーションファイルを生成中..."
-# ジャーナルファイルのディレクトリを作成
-mkdir -p drizzle/migrations/meta
-echo '{"version":"5","dialect":"pg","entries":[]}' > drizzle/migrations/meta/_journal.json
-npm run db:generate
 # マイグレーションを適用
 echo "✅ マイグレーションを適用中..."
 npm run db:migrate
 
-# 4. アプリケーションを起動
-echo "✅ 4. アプリケーションを起動しています..."
+# 4. シードデータを投入
+echo "✅ 4. シードデータを投入しています..."
+npm run db:seed
+
+# 5. アプリケーションを起動
+echo "✅ 5. アプリケーションを起動しています..."
 cd "${ROOT_DIR}"
 npm run dev
 

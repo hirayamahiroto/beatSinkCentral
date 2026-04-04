@@ -8,6 +8,22 @@ CREATE TABLE "artist_id_histories" (
 	"deleted_at" timestamp
 );
 --> statement-breakpoint
+CREATE TABLE "artist_members" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"artist_id" uuid NOT NULL,
+	"user_id" uuid NOT NULL,
+	"invited_by" uuid NOT NULL,
+	"invited_at" timestamp DEFAULT now() NOT NULL,
+	"accepted_at" timestamp
+);
+--> statement-breakpoint
+CREATE TABLE "artist_owners" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"artist_id" uuid NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "artist_profiles" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"artist_id" uuid NOT NULL,
@@ -20,13 +36,10 @@ CREATE TABLE "artist_profiles" (
 --> statement-breakpoint
 CREATE TABLE "artists" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"user_id" uuid NOT NULL,
-	"artist_id" varchar(255) NOT NULL,
+	"account_id" varchar(255) NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL,
-	"deleted_at" timestamp,
-	CONSTRAINT "artists_user_id_unique" UNIQUE("user_id"),
-	CONSTRAINT "artists_artist_id_unique" UNIQUE("artist_id")
+	CONSTRAINT "artists_account_id_unique" UNIQUE("account_id")
 );
 --> statement-breakpoint
 CREATE TABLE "artist_statuses" (
@@ -60,9 +73,15 @@ CREATE TABLE "users" (
 --> statement-breakpoint
 ALTER TABLE "artist_id_histories" ADD CONSTRAINT "artist_id_histories_artist_id_artists_id_fk" FOREIGN KEY ("artist_id") REFERENCES "public"."artists"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "artist_id_histories" ADD CONSTRAINT "artist_id_histories_changed_by_user_id_users_id_fk" FOREIGN KEY ("changed_by_user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "artist_members" ADD CONSTRAINT "artist_members_artist_id_artists_id_fk" FOREIGN KEY ("artist_id") REFERENCES "public"."artists"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "artist_members" ADD CONSTRAINT "artist_members_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "artist_members" ADD CONSTRAINT "artist_members_invited_by_users_id_fk" FOREIGN KEY ("invited_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "artist_owners" ADD CONSTRAINT "artist_owners_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "artist_owners" ADD CONSTRAINT "artist_owners_artist_id_artists_id_fk" FOREIGN KEY ("artist_id") REFERENCES "public"."artists"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "artist_profiles" ADD CONSTRAINT "artist_profiles_artist_id_artists_id_fk" FOREIGN KEY ("artist_id") REFERENCES "public"."artists"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "artists" ADD CONSTRAINT "artists_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "artist_statuses" ADD CONSTRAINT "artist_statuses_artist_id_artists_id_fk" FOREIGN KEY ("artist_id") REFERENCES "public"."artists"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "artist_statuses" ADD CONSTRAINT "artist_statuses_artist_status_master_id_artist_status_masters_id_fk" FOREIGN KEY ("artist_status_master_id") REFERENCES "public"."artist_status_masters"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "artist_statuses" ADD CONSTRAINT "artist_statuses_changed_by_user_id_users_id_fk" FOREIGN KEY ("changed_by_user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+CREATE UNIQUE INDEX "artist_members_artist_user_idx" ON "artist_members" USING btree ("artist_id","user_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "artist_owners_user_artist_idx" ON "artist_owners" USING btree ("user_id","artist_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "artist_statuses_active_unique" ON "artist_statuses" USING btree ("artist_id") WHERE "artist_statuses"."deleted_at" is null;
