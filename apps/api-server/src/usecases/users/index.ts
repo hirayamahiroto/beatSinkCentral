@@ -14,9 +14,9 @@ export const createUserUseCase = async (
   input: CreateUserInput,
   userRepository: IUserRepository
 ): Promise<CreateUserOutput> => {
-  const existingUserId = await userRepository.findUserIdBySub(input.subId);
-  if (existingUserId) {
-    return { userId: existingUserId };
+  const existingUser = await userRepository.findBySub(input.subId);
+  if (existingUser) {
+    return { userId: existingUser.getId() };
   }
 
   const user = createUser({
@@ -24,7 +24,7 @@ export const createUserUseCase = async (
     email: input.email,
   });
 
-  const userId = await userRepository.save(user);
+  const savedUser = await userRepository.save(user.toPersistence());
 
-  return { userId };
+  return { userId: savedUser.getId() };
 };

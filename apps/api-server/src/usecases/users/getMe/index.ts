@@ -29,12 +29,12 @@ export const getMeUseCase = async (
     return { registered: false };
   }
 
-  const artist = await artistRepository.findByUserId(user.id);
+  const artist = await artistRepository.findByUserId(user.getId());
 
   return {
     registered: true,
-    userId: user.id,
-    email: user.email,
+    userId: user.getId(),
+    email: user.getEmail(),
     artist: artist
       ? {
           artistId: artist.getArtistId(),
