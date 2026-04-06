@@ -29,4 +29,18 @@ export const createUserRepository = (db: DatabaseClient): IUserRepository => ({
 
     return results[0].id;
   },
+
+  async findBySub(sub: string): Promise<{ id: string; email: string } | null> {
+    const results = await db
+      .select({ id: usersTable.id, email: usersTable.email })
+      .from(usersTable)
+      .where(eq(usersTable.subId, sub))
+      .limit(1);
+
+    if (results.length === 0) {
+      return null;
+    }
+
+    return results[0];
+  },
 });
