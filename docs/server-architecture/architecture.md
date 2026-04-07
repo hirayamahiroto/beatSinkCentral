@@ -471,6 +471,26 @@ export const createUser = (params): User => {
 3. **拡張性**: 振る舞いが増えてもファクトリが肥大化しない
 4. **可読性**: 「型」「振る舞い」「生成」がどこにあるか明確
 
+#### 注意: behaviorsのgetterとドメイン貧血症を混同しない
+
+プロジェクト初期ではEntity の振る舞いがgetterと`toPersistence`のみになる。これを「ドメイン貧血症」と判断してbehaviorsを削除し、Stateを直接返す設計にすると**カプセル化が壊れる**。
+
+```typescript
+// ❌ NG: behaviorsを削除してStateを直接返す
+const user = await userRepository.findBySub(sub);  // UserState
+return { email: user.email.value };  // UsecaseがValueObjectの内部構造(.value)を知っている
+
+// ✅ OK: behaviorsを通じてプリミティブを返す
+const user = await userRepository.findBySub(sub);  // User（振る舞い付き）
+return { email: user.getEmail() };  // Usecaseは内部構造を知らない
+```
+
+getterの役割は2つある:
+1. **ドメインロジックの実行**（判定、状態変更）← ドメインが成長すると追加される
+2. **内部構造の隠蔽**（カプセル化）← **プロジェクト初期から必要**
+
+getterにドメインロジックがないことは問題ではない。Entityの前提である「内部の詳細を閉じ込めて、外には振る舞いのみを提供する」を維持するために、behaviorsは必要。
+
 ### エンティティ層 (`domain/{object}/entities/`)
 
 Entityの**型（振る舞いの契約）**を定義。内部状態の型も定義するが、外部からはアクセスできない。
