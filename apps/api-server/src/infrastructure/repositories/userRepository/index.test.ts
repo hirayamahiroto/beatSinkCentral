@@ -1,9 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createUserRepository } from "./index";
-import { IUserRepository } from "../../../domain/users/repositories";
-import { User } from "../../../domain/users/entities";
+import type { IUserRepository } from "../../../domain/users/repositories";
 
-// DBモック
 const mockDb = {
   insert: vi.fn().mockReturnThis(),
   values: vi.fn().mockReturnThis(),
@@ -14,17 +12,6 @@ const mockDb = {
   limit: vi.fn(),
 };
 
-// Userモックファクトリ
-const createMockUser = (data: {
-  subId: string;
-  email: string;
-}): User => ({
-  toJSON: () => ({
-    subId: data.subId,
-    email: data.email,
-  }),
-});
-
 describe("createUserRepository", () => {
   let repository: IUserRepository;
 
@@ -34,40 +21,40 @@ describe("createUserRepository", () => {
   });
 
   describe("save", () => {
-    it("Entityを永続化してDB生成のidを返す", async () => {
-      const generatedId = "550e8400-e29b-41d4-a716-446655440000";
-      mockDb.returning.mockResolvedValue([{ id: generatedId }]);
-
-      const user = createMockUser({
+    it("永続化したUserを返す", async () => {
+      const saveData = {
+        id: "550e8400-e29b-41d4-a716-446655440000",
         subId: "auth0|123456789",
         email: "test@example.com",
-      });
+      };
+      mockDb.returning.mockResolvedValue([saveData]);
 
-      const result = await repository.save(user);
+      const result = await repository.save(saveData);
 
-      expect(mockDb.insert).toHaveBeenCalled();
-      expect(mockDb.values).toHaveBeenCalledWith({
-        subId: "auth0|123456789",
-        email: "test@example.com",
-      });
-      expect(result).toBe(generatedId);
+      expect(mockDb.values).toHaveBeenCalledWith(saveData);
+      expect(result.toPersistence()).toStrictEqual(saveData);
     });
   });
 
-  describe("findUserIdBySub", () => {
-    it("ユーザーが存在する場合はidを返す", async () => {
-      const userId = "550e8400-e29b-41d4-a716-446655440000";
-      mockDb.limit.mockResolvedValue([{ id: userId }]);
+  describe("findBySub", () => {
+    it("ユーザーが存在する場合はUserを返す", async () => {
+      const row = {
+        id: "550e8400-e29b-41d4-a716-446655440000",
+        subId: "auth0|123456789",
+        email: "test@example.com",
+      };
+      mockDb.limit.mockResolvedValue([row]);
 
-      const result = await repository.findUserIdBySub("auth0|123456789");
+      const result = await repository.findBySub("auth0|123456789");
 
-      expect(result).toBe(userId);
+      expect(result).not.toBeNull();
+      expect(result?.toPersistence()).toStrictEqual(row);
     });
 
     it("ユーザーが存在しない場合はnullを返す", async () => {
       mockDb.limit.mockResolvedValue([]);
 
-      const result = await repository.findUserIdBySub("auth0|nonexistent");
+      const result = await repository.findBySub("auth0|nonexistent");
 
       expect(result).toBeNull();
     });

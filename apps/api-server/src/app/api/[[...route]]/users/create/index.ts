@@ -3,7 +3,8 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { auth0 } from "../../../../../infrastructure/auth0";
 import { getContainer } from "../../../../../infrastructure/container";
-import { createUserUseCase } from "../../../../../usecases/users";
+import { createUserUseCase } from "../../../../../usecases/users/createUser";
+import { isUserAlreadyRegisteredError } from "../../../../../usecases/users/createUser/errors";
 
 const requestSchema = z.object({
   email: z.string().email(),
@@ -28,20 +29,27 @@ const app = new Hono().post(
     }
 
     const { userRepository } = getContainer();
-    const result = await createUserUseCase(
-      {
-        subId: session.user.sub,
-        email: body.email,
-      },
-      userRepository
-    );
+    try {
+      const result = await createUserUseCase(
+        {
+          subId: session.user.sub,
+          email: body.email,
+        },
+        userRepository
+      );
 
-    return c.json(
-      {
-        userId: result.userId,
-      },
-      201
-    );
+      return c.json(
+        {
+          userId: result.userId,
+        },
+        201
+      );
+    } catch (error) {
+      if (isUserAlreadyRegisteredError(error)) {
+        return c.json({ error: "User already registered" }, 409);
+      }
+      throw error;
+    }
   }
 );
 

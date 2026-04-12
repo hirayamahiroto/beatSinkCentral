@@ -4,21 +4,34 @@ import {
   usersTable,
 } from "../../../../../../packages/database/src/utils/createClient";
 import { User } from "../../../domain/users/entities";
-import { IUserRepository } from "../../../domain/users/repositories";
+import { IUserRepository, UserSaveData } from "../../../domain/users/repositories";
+import { reconstructUser } from "../../../domain/users/factories";
 
 export const createUserRepository = (db: DatabaseClient): IUserRepository => ({
-  async save(user: User): Promise<string> {
+  async save(data: UserSaveData): Promise<User> {
     const [result] = await db
       .insert(usersTable)
-      .values(user.toJSON())
-      .returning({ id: usersTable.id });
+      .values(data)
+      .returning({
+        id: usersTable.id,
+        subId: usersTable.subId,
+        email: usersTable.email,
+      });
 
-    return result.id;
+    return reconstructUser({
+      id: result.id,
+      subId: result.subId,
+      email: result.email,
+    });
   },
 
-  async findUserIdBySub(sub: string): Promise<string | null> {
+  async findBySub(sub: string): Promise<User | null> {
     const results = await db
-      .select({ id: usersTable.id })
+      .select({
+        id: usersTable.id,
+        subId: usersTable.subId,
+        email: usersTable.email,
+      })
       .from(usersTable)
       .where(eq(usersTable.subId, sub))
       .limit(1);
@@ -27,6 +40,11 @@ export const createUserRepository = (db: DatabaseClient): IUserRepository => ({
       return null;
     }
 
-    return results[0].id;
+    const row = results[0];
+    return reconstructUser({
+      id: row.id,
+      subId: row.subId,
+      email: row.email,
+    });
   },
 });
