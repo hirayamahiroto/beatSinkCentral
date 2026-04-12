@@ -149,6 +149,288 @@ export const createUserUseCase = async (
 };
 ```
 
+## 設計原則: Functional Core, Imperative Shell
+
+本プロジェクトの層構造は、関数型プログラミングで知られる **Functional Core, Imperative Shell** パターンに一致する。
+
+### 基本原則
+
+> **「データ」「変換」「副作用」を分離し、データはすべて値（Entity/VO）として扱う。**
+
+- **データ** = Entity / Value Object
+- **変換** = 純粋関数（Factory, Domain Service）
+- **副作用** = Repository経由の永続化、トランザクション、外部API呼び出し
+
+層に対応させると次のようになる。
+
+| 区分 | 該当層 | 性質 |
+|---|---|---|
+| **Functional Core（純粋な中核）** | Entity / VO / Factory / Domain Service | 副作用なし、値の変換だけ |
+| **Imperative Shell（命令的な外殻）** | Usecase / Repository / エントリポイント層 | 副作用とI/Oを持つ |
+
+純粋な中核は再利用可能で、テスト容易で、どこから呼ばれても同じ結果を返す。外殻は「いつ、どこで、どの順序で、どう永続化するか」という実行時の関心事だけを担う。
+
+### Entityを明示的に取り回す設計
+
+Usecase層ではEntityインスタンスを変数として明示的に保持し、処理の各ステップで「何が生まれ、何が次に渡るか」を可視化する。
+
+```typescript
+const existing = await userRepository.findBySub(input.subId);  // 入力
+const user = createUser(input);                                 // 合成
+const saved = await userRepository.save(user.toPersistence());  // 永続化
+return { userId: saved.getId() };                               // 出力
+```
+
+この取り回しが次の性質を生む。
+
+- **データフローが追跡可能** — 各行で「何が起きているか」が変数として見える
+- **隠れた状態がない** — モジュールスコープのキャッシュ、クラスのプライベートフィールド、サービスの内部連鎖が無い
+- **参照のグラフが型と変数で明示される** — Entity間の参照が代入の順序として現れる
+
+「処理は引数と返り値だけで完結している」状態を保つことで、読む人が別ファイルを何個も開かずに Usecase 1つで全体像を把握できる。
+
+### Domain Service: 集約を跨ぐドメインロジックの置き場所
+
+単一のEntity/VOでは表現できない業務ルール（複数の集約にまたがる操作）は **Domain Service** として純粋関数で表現する。
+
+```
+domain/
+└── services/
+    └── {serviceName}/
+        └── index.ts     # 入力 → 複数の Entity を組み立てて返す純粋関数
+```
+
+#### 配置の条件
+
+Domain Serviceは次の条件を満たす場合に置かれる。
+
+- 複数のEntity/VOを組み合わせる業務ルールである
+- 状態を持たない（呼び出すたびに同じ結果）
+- **副作用を持たない**（DB・外部APIに触れない）
+- 入力として生の値を受け取り、出力としてEntity群を返す
+
+#### 実装例
+
+```typescript
+// domain/services/userRegistration/index.ts
+export const registerNewUser = (input: {
+  subId: string;
+  email: string;
+  accountId: string;
+}): {
+  user: User;
+  artist: Artist;
+  owner: ArtistOwner;
+} => {
+  const user = createUser({ subId: input.subId, email: input.email });
+  const artist = createArtist({ accountId: input.accountId });
+  const owner = createArtistOwner({
+    userId: user.getId(),
+    artistId: artist.getArtistId(),
+  });
+  return { user, artist, owner };
+};
+```
+
+このサービスは Repository を知らず、DB を知らず、トランザクションも知らない。ただ Entity を組み立てて返すだけ。
+
+#### Usecase との組み合わせ
+
+```typescript
+// usecases/users/createUser/index.ts
+export const createUserUseCase = async (input, deps) => {
+  // 業務上の前提チェック（Usecase層の責務）
+  const existing = await deps.userRepository.findBySub(input.subId);
+  if (existing) throw createUserAlreadyRegisteredError(input.subId);
+
+  // ドメインサービスで「作るべきもの」を組み立てる（純粋、副作用なし）
+  const { user, artist, owner } = registerNewUser(input);
+
+  // トランザクション境界を張って永続化（Usecase層の責務）
+  return await deps.txRunner.run(async (tx) => {
+    await deps.userRepository.save(user.toPersistence(), tx);
+    await deps.artistRepository.save(artist.toPersistence(), tx);
+    await deps.artistOwnerRepository.save(owner.toPersistence(), tx);
+    return {
+      userId: user.getId(),
+      artistId: artist.getArtistId(),
+    };
+  });
+};
+```
+
+**役割分担の明確化:**
+
+| 層 | このフローで担当していること |
+|---|---|
+| Domain Service | 「新規登録では User + Artist + Owner を作る」という**業務ルール** |
+| Usecase | 既存チェック、トランザクション境界、永続化、エラーハンドリング |
+| Repository | 各Entityの個別永続化 |
+
+Usecaseは「業務ルール」を書かず、Domain Serviceは「トランザクション・永続化」を書かない。責務が一切重複しない。
+
+### ブラックボックス化と名前付けの違い
+
+Domain Service を入れることは「層を増やしてブラックボックス化する」ことではない。これは「純粋関数に業務ルールの**名前を付けた**」だけである。
+
+| ブラックボックス化（悪） | 名前付け（良） |
+|---|---|
+| 内部で副作用を持つ（DB呼び出し、グローバル状態変更） | 純粋関数で入力→出力だけ |
+| 何が渡されて何が返るかが型から読めない | 型シグネチャで全てが表現される |
+| 呼び出すと「何かが起きる」 | 呼び出すと「値が返る」だけ |
+| デバッグに関係ファイル全部を開く必要がある | 型を見れば中身を読まなくても使える |
+
+Domain Serviceが純粋関数である限り、Usecase層から見たデータフローの明示性は損なわれない。むしろ「新規登録では User + Artist + Owner が作られる」という業務ルールが `registerNewUser` という名前に紐づくことで、Usecaseが何をしているかがより読みやすくなる。
+
+### 集約とトランザクション境界の分離
+
+DDDでは伝統的に「1トランザクション = 1集約」と言われるが、実務では次のように分けて考える。
+
+> **集約境界 ≠ トランザクション境界**
+
+- **集約境界** はドメインモデル上の不変条件の境界（Entity/VOの世界）
+- **トランザクション境界** は永続化の原子性の境界（Usecase/Repositoryの世界）
+
+User と Artist が別集約であっても、「新規登録時には原子的に作られなければならない」という業務要件があれば、Usecase層が両者にまたがるトランザクションを張ることは正当である。この分離により:
+
+- ドメインの表現力（集約を小さく保つ）
+- 技術的な整合性（原子性の保証）
+
+の両方を同時に達成できる。
+
+### Atomic Design との類似
+
+この構造は Atomic Design（フロントエンドの設計原則）と同型の発想に基づく。
+
+| Atomic Design | バックエンドでの対応 | 責務 |
+|---|---|---|
+| Atom | Entity / VO | 最小単位のドメイン概念 |
+| Molecule | Domain Service | 原子を業務ルールで組み立てる |
+| Organism | 複合Domain Service（必要時） | より大きな業務フロー |
+| Template | Usecase | 副作用（永続化・トランザクション）を含む実行フロー |
+| Page | エントリポイント層 | 具体的なプロトコル（HTTP）への結合 |
+
+共通するのは「**純粋な原子 → 文脈をまとう合成 → 副作用を持つ実行**」という一方向の依存。下位層ほど再利用可能で、上位層ほど具体的な文脈を持つ。
+
+### Outside-In 設計の実例: TransactionRunner
+
+ここまでの原則を実際の設計判断にどう適用するか、`infrastructure/transaction/index.ts` の `ITransactionRunner` を例に追ってみる。
+
+#### 思考の順序
+
+```
+1. 「トランザクションが必要」という業務上の要求を認識
+       ↓
+2. 「複数の Usecase で使い回されるはず」と将来を見据える
+       ↓
+3. 「Usecase が呼びたい形」を先に決める → ITransactionRunner という抽象を定義
+       ↓
+4. 「Usecase ではこう使う」を実装してみる → run(async (tx) => { ... })
+       ↓
+5. ここで初めて「drizzle でどう実装するか」を考える → createTransactionRunner
+```
+
+これは **Outside-In（外側から内側へ）** または **インターフェース先行設計** と呼ばれる進め方で、クリーンアーキテクチャの依存関係逆転（DIP）を自然に実現する手順。
+
+#### なぜこの順序が良いか
+
+1. **「使う側のニーズ」が設計の起点になる**
+   - Repository / Infrastructure の都合ではなく、Usecase が何を欲しているかから逆算する
+   - 結果として、抽象は「使う側にとって最小・最適な形」になる
+2. **実装手段を後から決められる**
+   - drizzle じゃなくてもよい（Prisma に変えても、Knex に変えても、生 SQL でも）
+   - 抽象が固まっていれば、後から実装を差し替えられる
+   - テストでも fake な実装を差し込める
+3. **抽象が drizzle に汚染されない**
+   - 先に `db.transaction()` から考え始めると、drizzle 固有の概念（PgTransaction の細かい型、ネスト時の挙動など）が抽象に染み出してしまう
+   - Outside-In だと抽象は「業務として必要な最小限」に保たれる
+
+#### 一般化されたパターン
+
+```
+[業務上の要求]
+   ↓ 「何が必要か」を言語化
+[使う側のインターフェース]   ← Usecase / ドメイン側が依存する
+   ↓ 「具体的にどう実現するか」
+[実装]   ← Infrastructure / ライブラリ依存
+```
+
+このパターンは TransactionRunner だけでなく、Repository、外部APIクライアント、メール送信、ファイルストレージなど、Infrastructure に何かを配置するときに常に使える思考法。
+
+| 要求 | インターフェース | 実装 |
+|---|---|---|
+| ユーザーを保存したい | `IUserRepository.save` | drizzle で INSERT |
+| トランザクションでまとめたい | `ITransactionRunner.run` | drizzle の `db.transaction` |
+| メールを送りたい | `IEmailSender.send` | SendGrid / Resend / SES 等 |
+| 画像を保存したい | `IFileStorage.upload` | S3 / GCS / ローカル等 |
+
+全て同じ手順で次のように進める。
+
+1. 業務上の要求を確認
+2. 使う側が呼びやすいインターフェースを設計
+3. 後から具体実装を決める
+
+#### 実装手順の具体
+
+```typescript
+// Step 1: 使う側（Usecase）が呼びたい形を想像する
+//   await txRunner.run(async (tx) => { ... })
+
+// Step 2: その形を満たすインターフェースを定義
+export interface ITransactionRunner {
+  run<T>(fn: (tx: TransactionContext) => Promise<T>): Promise<T>;
+}
+
+// Step 3: drizzle を使って実装（後から書ける）
+export const createTransactionRunner = (
+  db: DatabaseClient
+): ITransactionRunner => ({
+  async run<T>(fn) {
+    return db.transaction(fn);
+  },
+});
+
+// Step 4: DI Container で組み立てて Usecase に渡す
+const txRunner = createTransactionRunner(db);
+```
+
+実装の具体（Step 3）は最後で構わない。それまでの思考は drizzle を一切知らなくても進められる。
+
+#### Outside-In 設計の副次的な効果
+
+抽象を先に切ったことで、テストで fake を差し込めるようになる。
+
+```typescript
+// Usecase のテストでは fake な txRunner を差し込める
+const fakeTxRunner: ITransactionRunner = {
+  run: async (fn) => fn(null as never), // tx は使わないので null でOK
+};
+
+await createUserUseCase(input, {
+  txRunner: fakeTxRunner,
+  // ... 他の Repository モック
+});
+```
+
+drizzle を一切ロードせずに Usecase の振る舞いを検証できる。これは Outside-In で抽象を切ったから可能になっていること。
+
+### 帰結: 各層のテスト戦略が自然に決まる
+
+この設計原理から、各層のテスト戦略も自然に決まる。
+
+| 層 | テスト対象 | モックの要否 |
+|---|---|---|
+| Entity / VO | ドメイン制約 | 不要（純粋） |
+| Factory | 生成ロジック | 不要（純粋） |
+| Domain Service | 組み立てロジック | 不要（純粋関数） |
+| Usecase | フロー・分岐・エラーハンドリング | Repository をモック |
+| Repository | CRUDの実装 | DBをモック |
+| エントリポイント | プロトコル変換 | Container/Usecase をモック |
+
+純粋な中核は副作用がないのでモック不要、外殻だけモックが必要、という綺麗な構図になる。
+
+---
+
 ## 各層の責務
 
 ### プレゼンテーション層 (`app/api/`)
