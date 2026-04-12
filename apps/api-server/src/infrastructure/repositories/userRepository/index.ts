@@ -4,12 +4,17 @@ import {
   usersTable,
 } from "../../../../../../packages/database/src/utils/createClient";
 import { User } from "../../../domain/users/entities";
-import { IUserRepository, UserSaveData } from "../../../domain/users/repositories";
+import {
+  IUserRepository,
+  UserSaveData,
+} from "../../../domain/users/repositories";
 import { reconstructUser } from "../../../domain/users/factories";
+import type { TransactionContext } from "../../transaction";
 
 export const createUserRepository = (db: DatabaseClient): IUserRepository => ({
-  async save(data: UserSaveData): Promise<User> {
-    const [result] = await db
+  async save(data: UserSaveData, tx?: TransactionContext): Promise<User> {
+    const executor = tx ?? db;
+    const [result] = await executor
       .insert(usersTable)
       .values(data)
       .returning({
