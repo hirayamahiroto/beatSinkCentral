@@ -5,9 +5,11 @@ import { auth0 } from "../../../../../infrastructure/auth0";
 import { getContainer } from "../../../../../infrastructure/container";
 import { createUserUseCase } from "../../../../../usecases/users/createUser";
 import { isUserAlreadyRegisteredError } from "../../../../../usecases/users/createUser/errors";
+import { isAccountIdAlreadyTakenError } from "../../../../../domain/artists/errors";
 
 const requestSchema = z.object({
-  email: z.string().email(),
+  email: z.string().min(1),
+  accountId: z.string().min(1),
 });
 
 const app = new Hono().post(
@@ -28,25 +30,41 @@ const app = new Hono().post(
       return c.json({ error: "Unauthorized" }, 401);
     }
 
-    const { userRepository } = getContainer();
+    const {
+      userRepository,
+      artistRepository,
+      artistOwnerRepository,
+      txRunner,
+    } = getContainer();
+
     try {
       const result = await createUserUseCase(
         {
           subId: session.user.sub,
           email: body.email,
+          accountId: body.accountId,
         },
-        userRepository
+        {
+          userRepository,
+          artistRepository,
+          artistOwnerRepository,
+          txRunner,
+        }
       );
 
       return c.json(
         {
           userId: result.userId,
+          artistId: result.artistId,
         },
         201
       );
     } catch (error) {
       if (isUserAlreadyRegisteredError(error)) {
         return c.json({ error: "User already registered" }, 409);
+      }
+      if (isAccountIdAlreadyTakenError(error)) {
+        return c.json({ error: "Account ID already taken" }, 409);
       }
       throw error;
     }
