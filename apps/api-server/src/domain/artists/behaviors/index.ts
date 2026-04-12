@@ -5,4 +5,8 @@ export const createArtistBehaviors = (state: ArtistState): Artist => ({
   getAccountId: () => state.accountId.value,
   getProfile: () => state.profile,
   hasProfile: () => state.profile !== null,
+  toPersistence: () => ({
+    id: state.artistId.value,
+    accountId: state.accountId.value,
+  }),
 });

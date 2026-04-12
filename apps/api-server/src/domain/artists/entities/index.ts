@@ -11,9 +11,15 @@ export type ArtistState = {
   readonly profile: ArtistProfile | null;
 };
 
+export type ArtistPersistenceData = {
+  id: string;
+  accountId: string;
+};
+
 export type Artist = {
   getArtistId: () => string;
   getAccountId: () => string;
   getProfile: () => ArtistProfile | null;
   hasProfile: () => boolean;
+  toPersistence: () => ArtistPersistenceData;
 };
