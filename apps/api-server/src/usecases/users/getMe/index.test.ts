@@ -1,18 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { getMeUseCase } from "./index";
-import type { IUserRepository } from "../../../domain/users/repositories";
-import type { IArtistRepository } from "../../../domain/artists/repositories";
 import { reconstructUser } from "../../../domain/users/factories";
 import { reconstructArtist } from "../../../domain/artists/factories";
+import type { IUserRepository } from "../../../domain/users/repositories";
+import type { IArtistRepository } from "../../../domain/artists/repositories";
 
-const createUserRepo = () => ({
-  save: vi.fn(),
-  findBySub: vi.fn(),
-});
-
-const createArtistRepo = () => ({
-  findByUserId: vi.fn(),
-});
+const createMockDeps = () => {
+  const userRepository = {
+    save: vi.fn(),
+    findBySub: vi.fn(),
+  } satisfies IUserRepository;
+  const artistRepository = {
+    save: vi.fn(),
+    findByUserId: vi.fn(),
+  } satisfies IArtistRepository;
+  return { userRepository, artistRepository };
+};
 
 describe("getMeUseCase", () => {
   beforeEach(() => {
@@ -20,35 +23,33 @@ describe("getMeUseCase", () => {
   });
 
   it("ユーザーが未登録の場合はregistered:falseを返す", async () => {
-    const userRepo = createUserRepo();
-    const artistRepo = createArtistRepo();
-    userRepo.findBySub.mockResolvedValue(null);
+    const deps = createMockDeps();
+    deps.userRepository.findBySub.mockResolvedValue(null);
 
     const result = await getMeUseCase(
       "auth0|unknown",
-      userRepo as unknown as IUserRepository,
-      artistRepo as unknown as IArtistRepository
+      deps.userRepository,
+      deps.artistRepository
     );
 
     expect(result).toStrictEqual({ registered: false });
-    expect(artistRepo.findByUserId).not.toHaveBeenCalled();
+    expect(deps.artistRepository.findByUserId).not.toHaveBeenCalled();
   });
 
   it("ユーザーが登録済みでartist未紐付けの場合はartist:nullを返す", async () => {
-    const userRepo = createUserRepo();
-    const artistRepo = createArtistRepo();
+    const deps = createMockDeps();
     const user = reconstructUser({
       id: "user-1",
       subId: "auth0|123",
       email: "test@example.com",
     });
-    userRepo.findBySub.mockResolvedValue(user);
-    artistRepo.findByUserId.mockResolvedValue(null);
+    deps.userRepository.findBySub.mockResolvedValue(user);
+    deps.artistRepository.findByUserId.mockResolvedValue(null);
 
     const result = await getMeUseCase(
       "auth0|123",
-      userRepo as unknown as IUserRepository,
-      artistRepo as unknown as IArtistRepository
+      deps.userRepository,
+      deps.artistRepository
     );
 
     expect(result).toStrictEqual({
@@ -60,8 +61,7 @@ describe("getMeUseCase", () => {
   });
 
   it("ユーザーとartistが揃っている場合はartist情報を返す", async () => {
-    const userRepo = createUserRepo();
-    const artistRepo = createArtistRepo();
+    const deps = createMockDeps();
     const user = reconstructUser({
       id: "user-1",
       subId: "auth0|123",
@@ -72,13 +72,13 @@ describe("getMeUseCase", () => {
       accountId: "user_123",
       profile: { name: "Test" },
     });
-    userRepo.findBySub.mockResolvedValue(user);
-    artistRepo.findByUserId.mockResolvedValue(artist);
+    deps.userRepository.findBySub.mockResolvedValue(user);
+    deps.artistRepository.findByUserId.mockResolvedValue(artist);
 
     const result = await getMeUseCase(
       "auth0|123",
-      userRepo as unknown as IUserRepository,
-      artistRepo as unknown as IArtistRepository
+      deps.userRepository,
+      deps.artistRepository
     );
 
     expect(result).toStrictEqual({

@@ -1,17 +1,34 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createUserUseCase } from "./index";
 import { isUserAlreadyRegisteredError } from "./errors";
-import type { IUserRepository } from "../../../domain/users/repositories";
 import { reconstructUser } from "../../../domain/users/factories";
+import type { IUserRepository } from "../../../domain/users/repositories";
+import type { IArtistRepository } from "../../../domain/artists/repositories";
+import type { IArtistOwnerRepository } from "../../../domain/artistOwners/repositories";
+import type { ITransactionRunner } from "../../../infrastructure/transaction";
 
-const createMockRepository = () => ({
-  save: vi.fn(),
-  findBySub: vi.fn(),
-});
+const createMockDeps = () => {
+  const userRepository = {
+    save: vi.fn(),
+    findBySub: vi.fn(),
+  } satisfies IUserRepository;
+  const artistRepository = {
+    save: vi.fn(),
+    findByUserId: vi.fn(),
+  } satisfies IArtistRepository;
+  const artistOwnerRepository = {
+    save: vi.fn(),
+  } satisfies IArtistOwnerRepository;
+  const txRunner = {
+    run: vi.fn(async (fn) => fn({} as Parameters<typeof fn>[0])),
+  } satisfies ITransactionRunner;
+  return { userRepository, artistRepository, artistOwnerRepository, txRunner };
+};
 
 const validInput = {
   subId: "auth0|123456789",
   email: "test@example.com",
+  accountId: "test_account",
 };
 
 describe("createUserUseCase", () => {
@@ -19,39 +36,36 @@ describe("createUserUseCase", () => {
     vi.clearAllMocks();
   });
 
-  it("新規ユーザーを作成してuserIdを返す", async () => {
-    const mockRepository = createMockRepository();
-    const generatedId = "550e8400-e29b-41d4-a716-446655440000";
-    const savedUser = reconstructUser({
-      id: generatedId,
-      subId: validInput.subId,
-      email: validInput.email,
-    });
-    mockRepository.findBySub.mockResolvedValue(null);
-    mockRepository.save.mockResolvedValue(savedUser);
+  it("新規ユーザーを作成してuserIdとartistIdを返す", async () => {
+    const deps = createMockDeps();
+    deps.userRepository.findBySub.mockResolvedValue(null);
+    deps.userRepository.save.mockResolvedValue(undefined);
+    deps.artistRepository.save.mockResolvedValue(undefined);
+    deps.artistOwnerRepository.save.mockResolvedValue(undefined);
 
-    const result = await createUserUseCase(
-      validInput,
-      mockRepository as unknown as IUserRepository
-    );
+    const result = await createUserUseCase(validInput, deps);
 
-    expect(result).toStrictEqual({ userId: generatedId });
+    expect(typeof result.userId).toBe("string");
+    expect(typeof result.artistId).toBe("string");
+    expect(deps.userRepository.save).toHaveBeenCalledTimes(1);
+    expect(deps.artistRepository.save).toHaveBeenCalledTimes(1);
+    expect(deps.artistOwnerRepository.save).toHaveBeenCalledTimes(1);
+    expect(deps.txRunner.run).toHaveBeenCalledTimes(1);
   });
 
   it("既存ユーザーの場合はUserAlreadyRegisteredErrorをスローする", async () => {
-    const mockRepository = createMockRepository();
+    const deps = createMockDeps();
     const existingUser = reconstructUser({
       id: "existing-user-id",
       subId: validInput.subId,
       email: validInput.email,
     });
-    mockRepository.findBySub.mockResolvedValue(existingUser);
+    deps.userRepository.findBySub.mockResolvedValue(existingUser);
 
-    const promise = createUserUseCase(
-      validInput,
-      mockRepository as unknown as IUserRepository
-    );
+    const promise = createUserUseCase(validInput, deps);
 
     await expect(promise).rejects.toSatisfy(isUserAlreadyRegisteredError);
+    expect(deps.txRunner.run).not.toHaveBeenCalled();
+    expect(deps.userRepository.save).not.toHaveBeenCalled();
   });
 });
