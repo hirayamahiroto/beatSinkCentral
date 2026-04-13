@@ -34,7 +34,7 @@ export const createArtistRepository = (
   ): Promise<Artist> {
     const executor = tx ?? db;
     try {
-      const [result] = await executor
+      const [artistRow] = await executor
         .insert(artistsTable)
         .values({ id: data.id, accountId: data.accountId })
         .returning({
@@ -42,9 +42,15 @@ export const createArtistRepository = (
           accountId: artistsTable.accountId,
         });
 
+      await executor.insert(artistOwnersTable).values({
+        userId: data.ownerUserId,
+        artistId: artistRow.id,
+      });
+
       return reconstructArtist({
-        artistId: result.id,
-        accountId: result.accountId,
+        artistId: artistRow.id,
+        accountId: artistRow.accountId,
+        ownerUserId: data.ownerUserId,
         profile: null,
       });
     } catch (error) {
@@ -60,6 +66,7 @@ export const createArtistRepository = (
       .select({
         artistId: artistsTable.id,
         accountId: artistsTable.accountId,
+        ownerUserId: artistOwnersTable.userId,
         profileName: artistProfilesTable.name,
       })
       .from(artistOwnersTable)
@@ -79,6 +86,7 @@ export const createArtistRepository = (
     return reconstructArtist({
       artistId: row.artistId,
       accountId: row.accountId,
+      ownerUserId: row.ownerUserId,
       profile: row.profileName ? { name: row.profileName } : null,
     });
   },

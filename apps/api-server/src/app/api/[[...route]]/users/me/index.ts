@@ -31,9 +31,8 @@ const app = new Hono().get("/", async (c) => {
   try {
     const { userRepository, artistRepository } = getContainer();
     const result = await getMeUseCase(
-      auth0User.sub,
-      userRepository,
-      artistRepository
+      { subId: auth0User.sub },
+      { userRepository, artistRepository }
     );
 
     const parsed = responseSchema.safeParse(result);

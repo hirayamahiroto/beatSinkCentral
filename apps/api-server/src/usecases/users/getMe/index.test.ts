@@ -1,20 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { getMeUseCase } from "./index";
+import { getMeUseCase, type GetMeDeps, type GetMeInput } from "./index";
 import { reconstructUser } from "../../../domain/users/factories";
 import { reconstructArtist } from "../../../domain/artists/factories";
-import type { IUserRepository } from "../../../domain/users/repositories";
-import type { IArtistRepository } from "../../../domain/artists/repositories";
 
 const createMockDeps = () => {
-  const userRepository = {
-    save: vi.fn(),
-    findBySub: vi.fn(),
-  } satisfies IUserRepository;
-  const artistRepository = {
-    save: vi.fn(),
-    findByUserId: vi.fn(),
-  } satisfies IArtistRepository;
-  return { userRepository, artistRepository };
+  const deps = {
+    userRepository: {
+      save: vi.fn(),
+      findBySub: vi.fn(),
+    },
+    artistRepository: {
+      save: vi.fn(),
+      findByUserId: vi.fn(),
+    },
+  } satisfies GetMeDeps;
+  return deps;
 };
 
 describe("getMeUseCase", () => {
@@ -26,11 +26,8 @@ describe("getMeUseCase", () => {
     const deps = createMockDeps();
     deps.userRepository.findBySub.mockResolvedValue(null);
 
-    const result = await getMeUseCase(
-      "auth0|unknown",
-      deps.userRepository,
-      deps.artistRepository
-    );
+    const input = { subId: "auth0|unknown" } satisfies GetMeInput;
+    const result = await getMeUseCase(input, deps);
 
     expect(result).toStrictEqual({ registered: false });
     expect(deps.artistRepository.findByUserId).not.toHaveBeenCalled();
@@ -46,11 +43,8 @@ describe("getMeUseCase", () => {
     deps.userRepository.findBySub.mockResolvedValue(user);
     deps.artistRepository.findByUserId.mockResolvedValue(null);
 
-    const result = await getMeUseCase(
-      "auth0|123",
-      deps.userRepository,
-      deps.artistRepository
-    );
+    const input = { subId: "auth0|123" } satisfies GetMeInput;
+    const result = await getMeUseCase(input, deps);
 
     expect(result).toStrictEqual({
       registered: true,
@@ -70,16 +64,14 @@ describe("getMeUseCase", () => {
     const artist = reconstructArtist({
       artistId: "artist-1",
       accountId: "user_123",
+      ownerUserId: "user-1",
       profile: { name: "Test" },
     });
     deps.userRepository.findBySub.mockResolvedValue(user);
     deps.artistRepository.findByUserId.mockResolvedValue(artist);
 
-    const result = await getMeUseCase(
-      "auth0|123",
-      deps.userRepository,
-      deps.artistRepository
-    );
+    const input = { subId: "auth0|123" } satisfies GetMeInput;
+    const result = await getMeUseCase(input, deps);
 
     expect(result).toStrictEqual({
       registered: true,

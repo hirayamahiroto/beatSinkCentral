@@ -6,6 +6,7 @@ import { createAccountId } from "../valueObjects/accountId";
 const baseState = {
   artistId: createArtistId("artist-1"),
   accountId: createAccountId("user_123"),
+  ownerUserId: "user-1",
   profile: null,
 };
 

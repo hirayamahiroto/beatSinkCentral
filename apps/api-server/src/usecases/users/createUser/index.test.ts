@@ -1,35 +1,34 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createUserUseCase } from "./index";
+import {
+  createUserUseCase,
+  type CreateUserDeps,
+  type CreateUserInput,
+} from "./index";
 import { isUserAlreadyRegisteredError } from "./errors";
 import { reconstructUser } from "../../../domain/users/factories";
-import type { IUserRepository } from "../../../domain/users/repositories";
-import type { IArtistRepository } from "../../../domain/artists/repositories";
-import type { IArtistOwnerRepository } from "../../../domain/artistOwners/repositories";
-import type { ITransactionRunner } from "../../../infrastructure/transaction";
 
 const createMockDeps = () => {
-  const userRepository = {
-    save: vi.fn(),
-    findBySub: vi.fn(),
-  } satisfies IUserRepository;
-  const artistRepository = {
-    save: vi.fn(),
-    findByUserId: vi.fn(),
-  } satisfies IArtistRepository;
-  const artistOwnerRepository = {
-    save: vi.fn(),
-  } satisfies IArtistOwnerRepository;
-  const txRunner = {
-    run: vi.fn(async (fn) => fn({} as Parameters<typeof fn>[0])),
-  } satisfies ITransactionRunner;
-  return { userRepository, artistRepository, artistOwnerRepository, txRunner };
+  const deps = {
+    userRepository: {
+      save: vi.fn(),
+      findBySub: vi.fn(),
+    },
+    artistRepository: {
+      save: vi.fn(),
+      findByUserId: vi.fn(),
+    },
+    txRunner: {
+      run: vi.fn(async (fn) => fn({} as Parameters<typeof fn>[0])),
+    },
+  } satisfies CreateUserDeps;
+  return deps;
 };
 
 const validInput = {
   subId: "auth0|123456789",
   email: "test@example.com",
   accountId: "test_account",
-};
+} satisfies CreateUserInput;
 
 describe("createUserUseCase", () => {
   beforeEach(() => {
@@ -41,7 +40,6 @@ describe("createUserUseCase", () => {
     deps.userRepository.findBySub.mockResolvedValue(null);
     deps.userRepository.save.mockResolvedValue(undefined);
     deps.artistRepository.save.mockResolvedValue(undefined);
-    deps.artistOwnerRepository.save.mockResolvedValue(undefined);
 
     const result = await createUserUseCase(validInput, deps);
 
@@ -49,7 +47,6 @@ describe("createUserUseCase", () => {
     expect(typeof result.artistId).toBe("string");
     expect(deps.userRepository.save).toHaveBeenCalledTimes(1);
     expect(deps.artistRepository.save).toHaveBeenCalledTimes(1);
-    expect(deps.artistOwnerRepository.save).toHaveBeenCalledTimes(1);
     expect(deps.txRunner.run).toHaveBeenCalledTimes(1);
   });
 

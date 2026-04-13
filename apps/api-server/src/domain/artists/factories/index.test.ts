@@ -5,6 +5,7 @@ describe("reconstructArtist", () => {
   const baseParams = {
     artistId: "artist-1",
     accountId: "user_123",
+    ownerUserId: "user-1",
     profile: null,
   };
 

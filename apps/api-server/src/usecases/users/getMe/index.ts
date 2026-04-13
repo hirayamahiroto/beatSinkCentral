@@ -1,6 +1,10 @@
 import type { IUserRepository } from "../../../domain/users/repositories";
 import type { IArtistRepository } from "../../../domain/artists/repositories";
 
+export type GetMeInput = {
+  subId: string;
+};
+
 type GetMeResultNotRegistered = {
   registered: false;
 };
@@ -18,18 +22,22 @@ type GetMeResultRegistered = {
 
 export type GetMeResult = GetMeResultNotRegistered | GetMeResultRegistered;
 
+export type GetMeDeps = {
+  userRepository: IUserRepository;
+  artistRepository: IArtistRepository;
+};
+
 export const getMeUseCase = async (
-  sub: string,
-  userRepository: IUserRepository,
-  artistRepository: IArtistRepository
+  input: GetMeInput,
+  deps: GetMeDeps
 ): Promise<GetMeResult> => {
-  const user = await userRepository.findBySub(sub);
+  const user = await deps.userRepository.findBySub(input.subId);
 
   if (!user) {
     return { registered: false };
   }
 
-  const artist = await artistRepository.findByUserId(user.getId());
+  const artist = await deps.artistRepository.findByUserId(user.getId());
 
   return {
     registered: true,

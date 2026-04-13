@@ -30,12 +30,7 @@ const app = new Hono().post(
       return c.json({ error: "Unauthorized" }, 401);
     }
 
-    const {
-      userRepository,
-      artistRepository,
-      artistOwnerRepository,
-      txRunner,
-    } = getContainer();
+    const { userRepository, artistRepository, txRunner } = getContainer();
 
     try {
       const result = await createUserUseCase(
@@ -47,7 +42,6 @@ const app = new Hono().post(
         {
           userRepository,
           artistRepository,
-          artistOwnerRepository,
           txRunner,
         }
       );

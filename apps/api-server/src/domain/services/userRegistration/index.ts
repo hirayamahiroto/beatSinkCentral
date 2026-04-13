@@ -1,9 +1,7 @@
 import { createUser } from "../../users/factories";
 import { createArtist } from "../../artists/factories";
-import { createArtistOwner } from "../../artistOwners/factories";
 import type { User } from "../../users/entities";
 import type { Artist } from "../../artists/entities";
-import type { ArtistOwner } from "../../artistOwners/entities";
 
 export type RegisterNewUserInput = {
   subId: string;
@@ -14,7 +12,6 @@ export type RegisterNewUserInput = {
 export type RegisterNewUserResult = {
   user: User;
   artist: Artist;
-  owner: ArtistOwner;
 };
 
 export const registerNewUser = (
@@ -27,12 +24,8 @@ export const registerNewUser = (
 
   const artist = createArtist({
     accountId: input.accountId,
+    ownerUserId: user.getId(),
   });
 
-  const owner = createArtistOwner({
-    userId: user.getId(),
-    artistId: artist.getArtistId(),
-  });
-
-  return { user, artist, owner };
+  return { user, artist };
 };
