@@ -7,10 +7,12 @@ import { createUserUseCase } from "../../../../../usecases/users/createUser";
 import { isUserAlreadyRegisteredError } from "../../../../../usecases/users/createUser/errors";
 import { isAccountIdAlreadyTakenError } from "../../../../../domain/artists/errors";
 
-const requestSchema = z.object({
+export const requestSchema = z.object({
   email: z.string().min(1),
   accountId: z.string().min(1),
 });
+
+export type CreateUserRequestBody = z.infer<typeof requestSchema>;
 
 const app = new Hono().post(
   "/",
