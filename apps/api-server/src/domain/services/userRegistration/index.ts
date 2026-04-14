@@ -2,6 +2,7 @@ import { createUser } from "../../users/factories";
 import { createArtist } from "../../artists/factories";
 import type { User } from "../../users/entities";
 import type { Artist } from "../../artists/entities";
+import { assertNotRegistered } from "../../users/policies/assertNotRegistered";
 
 export type RegisterNewUserInput = {
   subId: string;
@@ -15,8 +16,11 @@ export type RegisterNewUserResult = {
 };
 
 export const registerNewUser = (
-  input: RegisterNewUserInput
+  input: RegisterNewUserInput,
+  userIfRegistered: User | null
 ): RegisterNewUserResult => {
+  assertNotRegistered(userIfRegistered);
+
   const user = createUser({
     subId: input.subId,
     email: input.email,

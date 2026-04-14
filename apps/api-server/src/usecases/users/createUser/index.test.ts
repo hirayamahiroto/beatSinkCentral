@@ -4,7 +4,7 @@ import {
   type CreateUserDeps,
   type CreateUserInput,
 } from "./index";
-import { isUserAlreadyRegisteredError } from "./errors";
+import { isUserAlreadyRegisteredError } from "../../../domain/users/policies/assertNotRegistered";
 import { reconstructUser } from "../../../domain/users/factories";
 
 const createMockDeps = () => {

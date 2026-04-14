@@ -4,7 +4,7 @@ import { z } from "zod";
 import { auth0 } from "../../../../../infrastructure/auth0";
 import { getContainer } from "../../../../../infrastructure/container";
 import { createUserUseCase } from "../../../../../usecases/users/createUser";
-import { isUserAlreadyRegisteredError } from "../../../../../usecases/users/createUser/errors";
+import { isUserAlreadyRegisteredError } from "../../../../../domain/users/policies/assertNotRegistered";
 import { isAccountIdAlreadyTakenError } from "../../../../../domain/artists/errors";
 
 export const requestSchema = z.object({
