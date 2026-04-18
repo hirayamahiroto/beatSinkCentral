@@ -1,31 +1,53 @@
-import { createUser } from "../../../domain/users/factories";
+import {
+  registerNewUser,
+  type RegisterNewUserResult,
+} from "../../../domain/services/userRegistration";
 import { IUserRepository } from "../../../domain/users/repositories";
-import { createUserAlreadyRegisteredError } from "./errors";
+import { IArtistRepository } from "../../../domain/artists/repositories";
+import type { ITransactionRunner } from "../../../infrastructure/transaction";
 
-type CreateUserInput = {
+export type CreateUserInput = {
   subId: string;
   email: string;
+  accountId: string;
 };
 
-type CreateUserOutput = {
+export type CreateUserOutput = {
   userId: string;
+  artistId: string;
 };
+
+export type CreateUserDeps = {
+  userRepository: IUserRepository;
+  artistRepository: IArtistRepository;
+  txRunner: ITransactionRunner;
+};
+
+const registerUser = async (
+  input: CreateUserInput,
+  userRepository: IUserRepository
+): Promise<RegisterNewUserResult> => {
+  const userIfRegistered = await userRepository.findBySub(input.subId);
+  return registerNewUser(input, userIfRegistered);
+};
+
+const persistUserAggregate = async (
+  { user, artist }: RegisterNewUserResult,
+  deps: CreateUserDeps
+): Promise<CreateUserOutput> =>
+  deps.txRunner.run(async (tx) => {
+    await deps.userRepository.save(user.toPersistence(), tx);
+    await deps.artistRepository.save(artist.toPersistence(), tx);
+    return {
+      userId: user.getId(),
+      artistId: artist.getArtistId(),
+    };
+  });
 
 export const createUserUseCase = async (
   input: CreateUserInput,
-  userRepository: IUserRepository
+  deps: CreateUserDeps
 ): Promise<CreateUserOutput> => {
-  const existingUser = await userRepository.findBySub(input.subId);
-  if (existingUser) {
-    throw createUserAlreadyRegisteredError(input.subId);
-  }
-
-  const user = createUser({
-    subId: input.subId,
-    email: input.email,
-  });
-
-  const savedUser = await userRepository.save(user.toPersistence());
-
-  return { userId: savedUser.getId() };
+  const aggregate = await registerUser(input, deps.userRepository);
+  return persistUserAggregate(aggregate, deps);
 };

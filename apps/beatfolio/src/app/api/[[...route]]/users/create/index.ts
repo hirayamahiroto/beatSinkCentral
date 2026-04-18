@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { RequestContextEnv } from "../../../../../middlewares/requestContext";
 
 const requestSchema = z.object({
+  accountId: z.string().nonempty(),
   email: z.string().email(),
 });
 
@@ -23,6 +24,7 @@ const app = new Hono<RequestContextEnv>().post(
 
     const res = await apiClient.api.users.$post({
       json: {
+        accountId: body.accountId,
         email: body.email,
       },
     });

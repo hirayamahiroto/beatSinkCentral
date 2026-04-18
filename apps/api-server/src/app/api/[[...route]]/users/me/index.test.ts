@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { reconstructUser } from "../../../../../domain/users/factories";
 import { reconstructArtist } from "../../../../../domain/artists/factories";
+import usersMe from "./index";
 
 const mockUserRepository = {
   save: vi.fn(),
@@ -18,8 +19,6 @@ vi.mock("../../../../../infrastructure/container", () => ({
     artistRepository: mockArtistRepository,
   }),
 }));
-
-import usersMe from "./index";
 
 const createAppWithAuth = (auth0User: { sub?: string } | null) => {
   const app = new Hono();
@@ -87,6 +86,7 @@ describe("User Me API", () => {
       reconstructArtist({
         artistId: "artist-1",
         accountId: "user_123",
+        ownerUserId: "user-1",
         profile: { name: "Test" },
       })
     );

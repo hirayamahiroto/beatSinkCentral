@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import usersCreate from "./index";
+import usersCreate, { type CreateUserRequestBody } from "./index";
 
 vi.mock("../../../../../infrastructure/database", () => ({
   db: {
@@ -8,62 +8,70 @@ vi.mock("../../../../../infrastructure/database", () => ({
 }));
 
 describe("User Create API", () => {
-  describe("POST /create - Auth0統合", () => {
-    it("認証なしのリクエストは拒否される", async () => {
+  describe("POST / - バリデーション", () => {
+    it("正しい形式でも認証なしなら201を返さない", async () => {
       const payload = {
-        username: "testuser",
-      };
+        email: "test@example.com",
+        accountId: "test_account",
+      } satisfies CreateUserRequestBody;
 
-      const res = await usersCreate.request("/create", {
+      const res = await usersCreate.request("/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
-      // Auth0認証ミドルウェアによってリダイレクトまたはエラーが返される
       expect(res.status).not.toBe(201);
     });
 
-    it("usernameが空文字列の場合は拒否される", async () => {
-      const invalidPayload = {
-        username: "",
+    it("emailが空文字列の場合は400を返す", async () => {
+      const invalidPayload: CreateUserRequestBody = {
+        email: "",
+        accountId: "test_account",
       };
 
-      const res = await usersCreate.request("/create", {
+      const res = await usersCreate.request("/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(invalidPayload),
       });
 
-      // 認証チェック前にバリデーションエラーになるかどうかは実装依存
-      // Auth0ミドルウェアが先に実行されるため401になる可能性が高い
-      expect(res.status).not.toBe(201);
+      expect(res.status).toBe(400);
     });
 
-    it("usernameが数値の場合は拒否される", async () => {
-      const invalidPayload = {
-        username: 12345678,
+    it("accountIdが空文字列の場合は400を返す", async () => {
+      const invalidPayload: CreateUserRequestBody = {
+        email: "test@example.com",
+        accountId: "",
       };
 
-      const res = await usersCreate.request("/create", {
+      const res = await usersCreate.request("/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(invalidPayload),
       });
 
-      expect(res.status).not.toBe(201);
+      expect(res.status).toBe(400);
     });
 
-    it("必須フィールド(username)が欠けている場合は拒否される", async () => {
-      const invalidPayload = {};
-
-      const res = await usersCreate.request("/create", {
+    it("必須フィールドが欠けている場合は400を返す", async () => {
+      const res = await usersCreate.request("/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(invalidPayload),
+        body: JSON.stringify({}),
       });
 
-      expect(res.status).not.toBe(201);
+      expect(res.status).toBe(400);
+    });
+
+    it("型が不正な値の場合は400を返す", async () => {
+      const res = await usersCreate.request("/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: 123, accountId: 456 }),
+      });
+
+      expect(res.status).toBe(400);
     });
   });
 });

@@ -1,4 +1,5 @@
 import { User } from "../entities";
+import type { TransactionContext } from "../../../infrastructure/transaction";
 
 export type UserSaveData = {
   id: string;
@@ -7,6 +8,6 @@ export type UserSaveData = {
 };
 
 export interface IUserRepository {
-  save(data: UserSaveData): Promise<User>;
+  save(data: UserSaveData, tx?: TransactionContext): Promise<User>;
   findBySub(sub: string): Promise<User | null>;
 }
