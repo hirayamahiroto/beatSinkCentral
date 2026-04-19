@@ -1,19 +1,21 @@
 import type { ContentfulStatusCode } from "hono/utils/http-status";
-import type { UserAlreadyRegisteredError } from "./domain/users/policies/assertNotRegistered";
-import type { AccountIdAlreadyTakenError } from "./domain/artists/errors";
+import type { UserAlreadyRegisteredError } from "../domain/users/policies/assertNotRegistered";
+import type { AccountIdAlreadyTakenError } from "../domain/artists/errors";
 
-type AppError = UserAlreadyRegisteredError | AccountIdAlreadyTakenError;
+export type AppError = UserAlreadyRegisteredError | AccountIdAlreadyTakenError;
 
 type ErrorMapping<SpecificError extends AppError> = {
   status: ContentfulStatusCode;
   message: (error: SpecificError) => string;
 };
 
-const errorMap: {
+type ErrorMap = {
   [ErrorType in AppError["type"]]: ErrorMapping<
     Extract<AppError, { type: ErrorType }>
   >;
-} = {
+};
+
+const errorMap: ErrorMap = {
   UserAlreadyRegisteredError: {
     status: 409,
     message: () => "User already registered",
@@ -30,6 +32,16 @@ const isAppError = (error: unknown): error is AppError => {
   return typeof type === "string" && type in errorMap;
 };
 
+const buildMappedResponse = <Error extends AppError>(
+  error: Error
+): ErrorResponse => {
+  const mapping = errorMap[error.type as Error["type"]] as ErrorMapping<Error>;
+  return {
+    body: { error: mapping.message(error) },
+    status: mapping.status,
+  };
+};
+
 export type ErrorResponse = {
   body: { error: string };
   status: ContentfulStatusCode;
@@ -37,11 +49,13 @@ export type ErrorResponse = {
 
 export const resolveErrorResponse = (error: unknown): ErrorResponse => {
   if (isAppError(error)) {
-    const mapping = errorMap[error.type];
-    return {
-      body: { error: mapping.message(error as never) },
-      status: mapping.status,
-    };
+    const response = buildMappedResponse(error);
+    console.warn("[AppError]", {
+      type: error.type,
+      status: response.status,
+      message: error.message,
+    });
+    return response;
   }
   console.error("[Unhandled error]", error);
   return {

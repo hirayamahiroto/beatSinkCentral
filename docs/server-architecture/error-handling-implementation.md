@@ -16,16 +16,16 @@
 
 4つの部品で構成する。
 
-| 部品           | 位置                      | 責務                                                       |
-| -------------- | ------------------------- | ---------------------------------------------------------- |
-| ① エラー定義   | 各レイヤーに co-located   | `type + factory + (必要なら) assert関数` を定義            |
-| ② errorMap     | `apps/api-server/src/`    | エラー種別 → HTTPステータス / メッセージ のマッピング表    |
-| ③ onError      | Hono のルートエントリ     | 投げられたエラーを errorMap に引き当ててレスポンス化する   |
-| ④ ルート       | 各 API ルート             | try/catch せずに throw させる（onError が受け取る）        |
+| 部品         | 位置                    | 責務                                                     |
+| ------------ | ----------------------- | -------------------------------------------------------- |
+| ① エラー定義 | 各レイヤーに co-located | `type + factory + (必要なら) assert関数` を定義          |
+| ② errorMap   | `apps/api-server/src/`  | エラー種別 → HTTPステータス / メッセージ のマッピング表  |
+| ③ onError    | Hono のルートエントリ   | 投げられたエラーを errorMap に引き当ててレスポンス化する |
+| ④ ルート     | 各 API ルート           | try/catch せずに throw させる（onError が受け取る）      |
 
 ### 処理フロー
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │ クライアント                                                │
 └────────┬────────────────────────────────────────────────────┘
@@ -62,20 +62,25 @@
 
 ルール判定そのもの（`assertXxx` / `ensureXxx`）とエラー型をセットで `policies/` 配下にまとめる。再利用しない純粋に1ユースケース固有のエラーは `usecases/.../errors.ts` に置く。
 
-```
+```text
 domain/users/policies/assertNotRegistered/
 ├── index.ts          # type / factory / assert関数
 └── index.test.ts
 
-domain/artists/policies/assertAccountIdAvailable/
-├── index.ts
-└── index.test.ts
+domain/artists/
+└── errors.ts         # インフラ層などから直接 throw されるドメインエラー（assert関数を持たない）
 
 usecases/users/createUser/
 ├── index.ts
 ├── index.test.ts
 └── errors.ts         # このusecase専用のエラーのみここに
 ```
+
+配置の分岐:
+
+- **`policies/{assertXxx}/`** — ルール判定関数（`assertXxx` / `ensureXxx`）とそのエラーをセットで置く。ドメイン層の業務ルール違反を表すのが主用途
+- **`{domain}/errors.ts`** — assert関数を挟まず、リポジトリやインフラ層から直接 throw するドメインエラー。DBの一意制約違反をドメインエラーに変換する等
+- **`usecases/{usecase}/errors.ts`** — そのユースケース専用で他から再利用しないエラー
 
 ### 実装テンプレート
 
@@ -85,26 +90,42 @@ import type { User } from "../../entities";
 
 export type UserAlreadyRegisteredError = Error & {
   readonly type: "UserAlreadyRegisteredError";
-  readonly subId: string;
 };
 
-export const createUserAlreadyRegisteredError = (
-  subId: string
-): UserAlreadyRegisteredError => {
+export const createUserAlreadyRegisteredError =
+  (): UserAlreadyRegisteredError => {
+    const error = new Error(
+      "User already registered"
+    ) as UserAlreadyRegisteredError;
+    return Object.assign(error, {
+      type: "UserAlreadyRegisteredError" as const,
+    });
+  };
+
+export const assertNotRegistered = (userIfRegistered: User | null): void => {
+  if (userIfRegistered) throw createUserAlreadyRegisteredError();
+};
+```
+
+コンテキスト情報を型に載せたい場合（例: `accountId` を message に含めたい）は、該当フィールドを type に追加して factory が受け取る形にする。
+
+```typescript
+// domain/artists/errors.ts（コンテキスト付きの例）
+export type AccountIdAlreadyTakenError = Error & {
+  readonly type: "AccountIdAlreadyTakenError";
+  readonly accountId: string;
+};
+
+export const createAccountIdAlreadyTakenError = (
+  accountId: string
+): AccountIdAlreadyTakenError => {
   const error = new Error(
-    `User already registered: ${subId}`
-  ) as UserAlreadyRegisteredError;
+    `Account ID already taken: ${accountId}`
+  ) as AccountIdAlreadyTakenError;
   return Object.assign(error, {
-    type: "UserAlreadyRegisteredError" as const,
-    subId,
+    type: "AccountIdAlreadyTakenError" as const,
+    accountId,
   });
-};
-
-export const assertNotRegistered = (
-  userIfFound: User | null,
-  subId: string
-): void => {
-  if (userIfFound) throw createUserAlreadyRegisteredError(subId);
 };
 ```
 
@@ -122,41 +143,80 @@ export const assertNotRegistered = (
 
 ### 配置
 
-```
-apps/api-server/src/errorMap.ts
+```text
+apps/api-server/src/errorMap/
+├── index.ts
+└── index.test.ts
 ```
 
 ### 実装テンプレート
 
 ```typescript
-// apps/api-server/src/errorMap.ts
-import type { UserAlreadyRegisteredError } from "./domain/users/policies/assertNotRegistered";
-import type { AccountIdAlreadyTakenError } from "./domain/artists/policies/assertAccountIdAvailable";
+// apps/api-server/src/errorMap/index.ts
+import type { ContentfulStatusCode } from "hono/utils/http-status";
+import type { UserAlreadyRegisteredError } from "../domain/users/policies/assertNotRegistered";
+import type { AccountIdAlreadyTakenError } from "../domain/artists/errors";
 
-type AppError = UserAlreadyRegisteredError | AccountIdAlreadyTakenError;
+export type AppError = UserAlreadyRegisteredError | AccountIdAlreadyTakenError;
 
-type ErrorMapping<E extends AppError> = {
-  status: ContentfulStatusCode; // Honoの型に合わせる
-  message: (error: E) => string;
+type ErrorMapping<SpecificError extends AppError> = {
+  status: ContentfulStatusCode;
+  message: (error: SpecificError) => string;
 };
 
-export const errorMap: {
-  [K in AppError["type"]]: ErrorMapping<Extract<AppError, { type: K }>>;
-} = {
+type ErrorMap = {
+  [ErrorType in AppError["type"]]: ErrorMapping<
+    Extract<AppError, { type: ErrorType }>
+  >;
+};
+
+const errorMap: ErrorMap = {
   UserAlreadyRegisteredError: {
     status: 409,
     message: () => "User already registered",
   },
   AccountIdAlreadyTakenError: {
     status: 409,
-    message: (e) => `Account ID already taken: ${e.accountId}`,
+    message: (error) => `Account ID already taken: ${error.accountId}`,
   },
 };
 
-export const isAppError = (error: unknown): error is AppError => {
+const isAppError = (error: unknown): error is AppError => {
   if (!(error instanceof Error)) return false;
   const type = (error as { type?: unknown }).type;
   return typeof type === "string" && type in errorMap;
+};
+
+const buildMappedResponse = <Error extends AppError>(
+  error: Error
+): ErrorResponse => {
+  const mapping = errorMap[error.type as Error["type"]] as ErrorMapping<Error>;
+  return {
+    body: { error: mapping.message(error) },
+    status: mapping.status,
+  };
+};
+
+export type ErrorResponse = {
+  body: { error: string };
+  status: ContentfulStatusCode;
+};
+
+export const resolveErrorResponse = (error: unknown): ErrorResponse => {
+  if (isAppError(error)) {
+    const response = buildMappedResponse(error);
+    console.warn("[AppError]", {
+      type: error.type,
+      status: response.status,
+      message: error.message,
+    });
+    return response;
+  }
+  console.error("[Unhandled error]", error);
+  return {
+    body: { error: "Internal Server Error" },
+    status: 500,
+  };
 };
 ```
 
@@ -170,30 +230,21 @@ export const isAppError = (error: unknown): error is AppError => {
 
 ## ③ onError ハンドラ
 
-Hono の `onError` で一元的に捕捉し、errorMap を引く。ルートハンドラでは `try/catch` を書かない。
+Hono の `onError` で一元的に捕捉し、`resolveErrorResponse` へ委譲する。ルートハンドラでは `try/catch` を書かず、onError 側も HTTP 変換の詳細を持たない（詳細は `errorMap` 側に閉じる）。
 
 ```typescript
 // app/api/[[...route]]/route.ts
 import { Hono } from "hono";
 import { handle } from "hono/vercel";
-import { errorMap, isAppError } from "../../../errorMap";
+import { resolveErrorResponse } from "../../../errorMap";
 
 const app = new Hono()
   .basePath("/api")
   .route("/users", usersRoute)
   // ... 他ルート
   .onError((error, c) => {
-    if (isAppError(error)) {
-      const mapping = errorMap[error.type];
-      return c.json(
-        { error: mapping.message(error as never) },
-        mapping.status
-      );
-    }
-
-    // 未知のエラーは 500
-    console.error("[Unhandled error]", error);
-    return c.json({ error: "Internal Server Error" }, 500);
+    const { body, status } = resolveErrorResponse(error);
+    return c.json(body, status);
   });
 
 export const GET = handle(app);
@@ -256,10 +307,10 @@ export default app;
 
 ## 新しいエラーを追加する手順
 
-```
+```text
 1. エラーを投げるレイヤーを決める（domain / usecase）
 2. 該当ディレクトリに co-located で type + factory (+ assert関数) を定義
-3. errorMap.ts の AppError union に型を追加
+3. errorMap/index.ts の AppError union に型を追加
    → TypeScriptが errorMap の未実装キーを指摘する
 4. errorMap に status と message を実装
 5. usecase / policy から throw する
@@ -271,14 +322,14 @@ export default app;
 
 ## レイヤー別に扱うエラーの分類
 
-| レイヤー             | 扱うエラー例                                       | errorMap 登録 | HTTP status |
-| -------------------- | -------------------------------------------------- | ------------- | ----------- |
-| Value Object         | `InvalidEmailFormatError` 等の値不正                | ○             | 400 / 422   |
-| Entity               | 不変条件違反                                       | ○             | 422         |
-| Usecase              | 前提条件違反（未登録 / 既に存在 / 対象なし）       | ○             | 404 / 409   |
-| Infrastructure       | DB接続失敗・外部APIタイムアウト                    | ×（500化）    | 500         |
-| Zod (エントリ層)     | リクエスト形式不正                                 | ×（handler内）| 400         |
-| 認証ミドルウェア     | 未認証                                             | ×（middleware内）| 401      |
+| レイヤー         | 扱うエラー例                                 | errorMap 登録     | HTTP status |
+| ---------------- | -------------------------------------------- | ----------------- | ----------- |
+| Value Object     | `InvalidEmailFormatError` 等の値不正         | ○                 | 400 / 422   |
+| Entity           | 不変条件違反                                 | ○                 | 422         |
+| Usecase          | 前提条件違反（未登録 / 既に存在 / 対象なし） | ○                 | 404 / 409   |
+| Infrastructure   | DB接続失敗・外部APIタイムアウト              | ×（500化）        | 500         |
+| Zod (エントリ層) | リクエスト形式不正                           | ×（handler内）    | 400         |
+| 認証ミドルウェア | 未認証                                       | ×（middleware内） | 401         |
 
 - errorMap に登録するのは **クライアントに意味のあるフィードバックを返すべきエラー** のみ
 - Infrastructure 層のエラーを errorMap に足すと、内部事情（「DBが応答しません」）が漏れる。500 + ログが正解
@@ -287,10 +338,10 @@ export default app;
 
 ## 既存の error-handling.md との関係
 
-| ドキュメント                          | 扱う内容                                             |
-| ------------------------------------- | ---------------------------------------------------- |
-| `error-handling.md`                   | メンタルモデル・レイヤー責務・なぜこう分けるか（Why）|
-| `error-handling-implementation.md`（本書） | 実装パターン・ファイル配置・追加手順（How）          |
+| ドキュメント                               | 扱う内容                                              |
+| ------------------------------------------ | ----------------------------------------------------- |
+| `error-handling.md`                        | メンタルモデル・レイヤー責務・なぜこう分けるか（Why） |
+| `error-handling-implementation.md`（本書） | 実装パターン・ファイル配置・追加手順（How）           |
 
 両者は補完関係。思想で迷ったら前者、コードで迷ったら本書を参照。
 
