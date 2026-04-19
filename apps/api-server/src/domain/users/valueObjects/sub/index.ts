@@ -1,6 +1,15 @@
+import { createTypedError } from "../../../../utils/errors/createTypedError";
+
 export type Sub = {
   readonly value: string;
 };
+
+export type InvalidSubFormatError = Error & {
+  readonly type: "InvalidSubFormatError";
+};
+
+export const createInvalidSubFormatError = (): InvalidSubFormatError =>
+  createTypedError("InvalidSubFormatError");
 
 const isValidSub = (sub: string): boolean => {
   return sub.trim().length > 0;
@@ -8,7 +17,7 @@ const isValidSub = (sub: string): boolean => {
 
 export const createSub = (value: string): Sub => {
   if (!value || !isValidSub(value)) {
-    throw new Error("sub is required");
+    throw createInvalidSubFormatError();
   }
   return { value };
 };

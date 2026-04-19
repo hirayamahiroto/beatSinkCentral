@@ -1,8 +1,20 @@
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { UserAlreadyRegisteredError } from "../domain/users/policies/assertNotRegistered";
 import type { AccountIdAlreadyTakenError } from "../domain/artists/errors";
+import type { InvalidEmailFormatError } from "../domain/users/valueObjects/email";
+import type { InvalidSubFormatError } from "../domain/users/valueObjects/sub";
+import type { InvalidNameFormatError } from "../domain/users/valueObjects/name";
+import type { InvalidAccountIdFormatError } from "../domain/artists/valueObjects/accountId";
+import type { InvalidArtistIdFormatError } from "../domain/artists/valueObjects/artistId";
 
-export type AppError = UserAlreadyRegisteredError | AccountIdAlreadyTakenError;
+export type AppError =
+  | UserAlreadyRegisteredError
+  | AccountIdAlreadyTakenError
+  | InvalidEmailFormatError
+  | InvalidSubFormatError
+  | InvalidNameFormatError
+  | InvalidAccountIdFormatError
+  | InvalidArtistIdFormatError;
 
 type ErrorMapping<SpecificError extends AppError> = {
   status: ContentfulStatusCode;
@@ -23,6 +35,26 @@ const errorMap: ErrorMap = {
   AccountIdAlreadyTakenError: {
     status: 409,
     message: (error) => `Account ID already taken: ${error.accountId}`,
+  },
+  InvalidEmailFormatError: {
+    status: 422,
+    message: () => "Invalid email format",
+  },
+  InvalidSubFormatError: {
+    status: 422,
+    message: () => "Invalid sub format",
+  },
+  InvalidNameFormatError: {
+    status: 422,
+    message: () => "Invalid name format",
+  },
+  InvalidAccountIdFormatError: {
+    status: 422,
+    message: () => "Invalid accountId format",
+  },
+  InvalidArtistIdFormatError: {
+    status: 422,
+    message: () => "Invalid artistId format",
   },
 };
 

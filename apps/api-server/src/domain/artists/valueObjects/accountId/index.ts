@@ -1,8 +1,17 @@
 import { z } from "zod";
+import { createTypedError } from "../../../../utils/errors/createTypedError";
 
 export type AccountId = {
   readonly value: string;
 };
+
+export type InvalidAccountIdFormatError = Error & {
+  readonly type: "InvalidAccountIdFormatError";
+};
+
+export const createInvalidAccountIdFormatError =
+  (): InvalidAccountIdFormatError =>
+    createTypedError("InvalidAccountIdFormatError");
 
 const accountIdSchema = z
   .string()
@@ -15,6 +24,9 @@ const accountIdSchema = z
   );
 
 export const createAccountId = (value: string): AccountId => {
-  const parsed = accountIdSchema.parse(value);
-  return { value: parsed };
+  const result = accountIdSchema.safeParse(value);
+  if (!result.success) {
+    throw createInvalidAccountIdFormatError();
+  }
+  return { value: result.data };
 };
