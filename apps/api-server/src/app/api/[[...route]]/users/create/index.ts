@@ -4,8 +4,6 @@ import { z } from "zod";
 import { auth0 } from "../../../../../infrastructure/auth0";
 import { getContainer } from "../../../../../infrastructure/container";
 import { createUserUseCase } from "../../../../../usecases/users/createUser";
-import { isUserAlreadyRegisteredError } from "../../../../../domain/users/policies/assertNotRegistered";
-import { isAccountIdAlreadyTakenError } from "../../../../../domain/artists/errors";
 
 export const requestSchema = z.object({
   email: z.string().min(1),
@@ -34,36 +32,26 @@ const app = new Hono().post(
 
     const { userRepository, artistRepository, txRunner } = getContainer();
 
-    try {
-      const result = await createUserUseCase(
-        {
-          subId: session.user.sub,
-          email: body.email,
-          accountId: body.accountId,
-        },
-        {
-          userRepository,
-          artistRepository,
-          txRunner,
-        }
-      );
+    const result = await createUserUseCase(
+      {
+        subId: session.user.sub,
+        email: body.email,
+        accountId: body.accountId,
+      },
+      {
+        userRepository,
+        artistRepository,
+        txRunner,
+      }
+    );
 
-      return c.json(
-        {
-          userId: result.userId,
-          artistId: result.artistId,
-        },
-        201
-      );
-    } catch (error) {
-      if (isUserAlreadyRegisteredError(error)) {
-        return c.json({ error: "User already registered" }, 409);
-      }
-      if (isAccountIdAlreadyTakenError(error)) {
-        return c.json({ error: "Account ID already taken" }, 409);
-      }
-      throw error;
-    }
+    return c.json(
+      {
+        userId: result.userId,
+        artistId: result.artistId,
+      },
+      201
+    );
   }
 );
 
