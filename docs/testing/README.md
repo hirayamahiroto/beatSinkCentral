@@ -25,6 +25,40 @@
 
 ---
 
+## 整備フェーズ
+
+本整備は一度に全てをやらず、**優先度に沿って段階的に積み上げる**。下記フェーズ順に進め、前フェーズが固まる前に次に進まない。
+
+### Phase 1（現在）: Unit Test の整備
+
+- 対象: Value Object / Entity / Policy / Usecase / Repository / Entrypoint の単体テスト（Sociable Unit Test 含む）
+- 成果物: `strategy.md` / `guidelines.md` / `test-cases.md` / code-review-checklist 拡張 / 導線整備
+- 理由: **最小単位から組み上げる実装方針の土台**。Unit が甘い状態で上位を積んでも意味を成さない
+- 本プロジェクトのテスト戦略の **主軸** がここ
+
+### Phase 2（後続）: Integration Test の整備
+
+- 対象: Repository を実 PostgreSQL に対して検証する統合テスト
+- 必要になるもの: Docker Compose の DB / Transaction rollback / fixture 機構 / CI 統合
+- 理由: Drizzle クエリと実スキーマの整合、マイグレーション適用後の動作など、単体では検証不能な領域をカバー
+- **Phase 1 が固まり、実装が増えて実 DB 乖離のリスクが具体化してから着手**
+
+### Phase 3（必要なら）: E2E Test の整備
+
+- 対象: クリティカルパス（例: 認証→登録→取得）の HTTP → 実 DB 一気通貫
+- 理由: 原則として **Phase 1（Entrypoint 単体テスト）+ Phase 2（Repository 統合）で代替可能** なため必須ではない
+- ただし本番デプロイ後のスモークテストは別途検討
+- 設計候補は `e2e-strategy.md` に記録済み（今は読まなくていい）
+
+### フェーズ跨ぎの判断基準
+
+| 次フェーズへ進む条件                       | 指標                                        |
+| ------------------------------------------ | ------------------------------------------- |
+| Phase 1 → Phase 2                          | Unit Test のレビュー観点がチームで定着し、新規 PR で自然に守られている |
+| Phase 2 → Phase 3                          | 実 DB 統合の恩恵が出てもなお拾えない不具合が発生・予見される |
+
+---
+
 ## 想定アーティファクト全体像
 
 | #   | アーティファクト                 | 配置                                     | 内容                                                                             |

@@ -2,6 +2,56 @@
 
 本ドキュメントは、このプロジェクトにおけるテスト設計・実装・レビューの共通指針を定める。数値目標や網羅ルールではなく、**「何のためにテストを書くのか」「どの単位で何を検証するのか」** を言語化することを目的とする。
 
+整備の段階的な進め方は `docs/testing/README.md` の「整備フェーズ」を参照。本ドキュメントは **Phase 1（Unit Test の整備）** 期の主指針にあたる。
+
+---
+
+## 0. 本プロジェクトにおけるテスト分類と優先度
+
+一般的な分類とこのプロジェクトの立ち位置を先に明示する。整備の優先度はここから派生する。
+
+### 一般的な分類
+
+| 分類                   | 特徴                                                                         |
+| ---------------------- | ---------------------------------------------------------------------------- |
+| Solitary Unit Test     | 対象関数だけ検証。collaborator は全てモック                                  |
+| Sociable Unit Test     | 対象＋同一モジュールの純粋な collaborator を実物で使う。実インフラは含まない |
+| Integration Test       | **実インフラ（DB / HTTP / FS 等）を含む** 複数モジュール統合テスト           |
+| E2E / System Test      | 境界から境界まで全部実物                                                     |
+
+**Integration の必要条件は「実インフラを含む」こと**。モックで埋まっていればどれだけ多くのモジュールを跨いでも分類上は Unit Test。
+
+### 本プロジェクトの現状と立ち位置
+
+| レイヤー               | 現状のテスト                | 分類                | 備考                                       |
+| ---------------------- | --------------------------- | ------------------- | ------------------------------------------ |
+| Value Object           | 純粋関数の単体              | Solitary Unit       |                                            |
+| Entity                 | Factory の IO + spy         | Sociable Unit       |                                            |
+| Policy                 | 判定ロジックの単体          | Solitary Unit       |                                            |
+| Usecase                | Repository をモック         | Sociable Unit       | 実 DB は含まない                           |
+| Repository             | DB をモック                 | Sociable Unit       | 実 DB は含まない                           |
+| Entrypoint (API)       | Hono `app.request()` で実行 | Sociable Unit       | DB / Auth0 はモック                         |
+| Repository（統合）     | —                           | Integration（未整備） | Phase 2 で追加予定                          |
+| E2E                    | —                           | —（予定なし）       | Phase 3 の候補。原則不要と判断              |
+
+つまり **現状は全て Unit Test**（Solitary / Sociable）で構成されており、Integration と E2E は未整備。
+
+### 優先度の方針
+
+本プロジェクトの整備方針は以下の優先順:
+
+1. **Unit Test を徹底する（主軸）**
+   - 積み上げ型実装の土台。ここが甘いと上位層の検証が意味を成さない
+   - Entrypoint の Sociable Unit Test は「HTTP 層の正常動作」を単体テストの形で担保する
+2. **Integration Test は Phase 2 で最小限導入**
+   - Repository の実 DB 統合テストのみ導入
+   - Drizzle ↔ 実 PostgreSQL の整合・マイグレーション適用後の動作を担保
+3. **E2E Test は原則整備しない**
+   - Entrypoint Sociable Unit + Repository Integration で代替可能
+   - 必要になったらクリティカルパス1〜3本のみ追加
+
+この優先順は「**テストは Unit から積み上がる**」という積み上げ型の設計方針と整合する。Integration / E2E を先行整備しても、Unit が甘ければ信頼性を生まない。
+
 ---
 
 ## 1. テストの目的
