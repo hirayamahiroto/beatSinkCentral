@@ -18,23 +18,23 @@ describe("Sub", () => {
     });
 
     it("空文字列ではエラーをスローする", () => {
-      expect(() => createSub("")).toThrow("sub is required");
+      expect(() => createSub("")).toThrow("InvalidSubFormatError");
     });
 
     it("空白のみの文字列ではエラーをスローする", () => {
       const whitespaceStrings = ["   ", "\t", "\n", "  \t\n  "];
 
       whitespaceStrings.forEach((str) => {
-        expect(() => createSub(str)).toThrow("sub is required");
+        expect(() => createSub(str)).toThrow("InvalidSubFormatError");
       });
     });
 
     it("nullish値ではエラーをスローする", () => {
       expect(() => createSub(null as unknown as string)).toThrow(
-        "sub is required"
+        "InvalidSubFormatError"
       );
       expect(() => createSub(undefined as unknown as string)).toThrow(
-        "sub is required"
+        "InvalidSubFormatError"
       );
     });
   });

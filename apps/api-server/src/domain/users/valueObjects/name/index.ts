@@ -1,6 +1,15 @@
+import { createTypedError } from "../../../../utils/errors/createTypedError";
+
 export interface Name {
   readonly value: string;
 }
+
+export type InvalidNameFormatError = Error & {
+  readonly type: "InvalidNameFormatError";
+};
+
+export const createInvalidNameFormatError = (): InvalidNameFormatError =>
+  createTypedError("InvalidNameFormatError");
 
 const maxLength = 255;
 
@@ -11,7 +20,7 @@ const isValidName = (name: string): boolean => {
 
 export const createName = (value: string): Name => {
   if (!isValidName(value)) {
-    throw new Error("Invalid name format");
+    throw createInvalidNameFormatError();
   }
   return { value };
 };

@@ -1,6 +1,15 @@
+import { createTypedError } from "../../../../utils/errors/createTypedError";
+
 export type Email = {
   readonly value: string;
 };
+
+export type InvalidEmailFormatError = Error & {
+  readonly type: "InvalidEmailFormatError";
+};
+
+export const createInvalidEmailFormatError = (): InvalidEmailFormatError =>
+  createTypedError("InvalidEmailFormatError");
 
 const isValidEmail = (email: string): boolean => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -9,7 +18,7 @@ const isValidEmail = (email: string): boolean => {
 
 export const createEmail = (value: string): Email => {
   if (!isValidEmail(value)) {
-    throw new Error("Invalid email format");
+    throw createInvalidEmailFormatError();
   }
   return { value };
 };

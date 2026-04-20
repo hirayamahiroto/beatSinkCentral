@@ -7,7 +7,7 @@ describe("createName", () => {
   });
 
   it("無効な名前を返す", () => {
-    expect(() => createName("")).toThrow("Invalid name format");
-    expect(() => createName("a".repeat(256))).toThrow("Invalid name format");
+    expect(() => createName("")).toThrow("InvalidNameFormatError");
+    expect(() => createName("a".repeat(256))).toThrow("InvalidNameFormatError");
   });
 });

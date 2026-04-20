@@ -31,13 +31,13 @@ describe("Email", () => {
       ];
 
       invalidEmails.forEach((email) => {
-        expect(() => createEmail(email)).toThrow("Invalid email format");
+        expect(() => createEmail(email)).toThrow("InvalidEmailFormatError");
       });
     });
 
     it("254文字を超えるメールアドレスは拒否される", () => {
       const longEmail = "a".repeat(243) + "@example.com";
-      expect(() => createEmail(longEmail)).toThrow("Invalid email format");
+      expect(() => createEmail(longEmail)).toThrow("InvalidEmailFormatError");
     });
 
     it("254文字のメールアドレスは許可される", () => {

@@ -1,3 +1,5 @@
+import { createTypedError } from "../../utils/errors/createTypedError";
+
 export type AccountIdAlreadyTakenError = Error & {
   readonly type: "AccountIdAlreadyTakenError";
   readonly accountId: string;
@@ -5,15 +7,8 @@ export type AccountIdAlreadyTakenError = Error & {
 
 export const createAccountIdAlreadyTakenError = (
   accountId: string
-): AccountIdAlreadyTakenError => {
-  const error = new Error(
-    `Account ID already taken: ${accountId}`
-  ) as AccountIdAlreadyTakenError;
-  return Object.assign(error, {
-    type: "AccountIdAlreadyTakenError" as const,
-    accountId,
-  });
-};
+): AccountIdAlreadyTakenError =>
+  createTypedError("AccountIdAlreadyTakenError", { accountId });
 
 export const isAccountIdAlreadyTakenError = (
   error: unknown

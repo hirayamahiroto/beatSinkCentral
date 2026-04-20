@@ -1,18 +1,13 @@
 import type { User } from "../../entities";
+import { createTypedError } from "../../../../utils/errors/createTypedError";
 
 export type UserAlreadyRegisteredError = Error & {
   readonly type: "UserAlreadyRegisteredError";
 };
 
 export const createUserAlreadyRegisteredError =
-  (): UserAlreadyRegisteredError => {
-    const error = new Error(
-      "User already registered"
-    ) as UserAlreadyRegisteredError;
-    return Object.assign(error, {
-      type: "UserAlreadyRegisteredError" as const,
-    });
-  };
+  (): UserAlreadyRegisteredError =>
+    createTypedError("UserAlreadyRegisteredError");
 
 export const isUserAlreadyRegisteredError = (
   error: unknown
