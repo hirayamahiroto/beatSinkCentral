@@ -1,15 +1,32 @@
-import { auth0 } from "../../libs/auth0";
 import { redirect } from "next/navigation";
-import ProfileForm from "./ProfileForm";
+import { headers } from "next/headers";
+import { auth0 } from "../../libs/auth0";
+import { createBffServerClient } from "../../utils/client";
+import { OnboardingClient } from "./OnboardingClient";
 
 export default async function OnboardingPage() {
   const session = await auth0.getSession();
 
   if (!session) {
-    return redirect("/auth/login");
+    redirect("/auth/login");
   }
 
   const { user } = session;
+
+  if (!user.email) {
+    redirect("/auth/login");
+  }
+
+  const cookieHeader = (await headers()).get("cookie") ?? undefined;
+  const client = createBffServerClient({ cookie: cookieHeader });
+  const meRes = await client.api.users.me.$get();
+
+  if (meRes.ok) {
+    const me = await meRes.json();
+    if (me.registered) {
+      redirect("/dashboard");
+    }
+  }
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -21,18 +38,11 @@ export default async function OnboardingPage() {
             <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 mb-4">
               Welcome!
             </h1>
-            <p className="text-gray-300">
-              プロフィールを作成して始めましょう
-            </p>
+            <p className="text-gray-300">プロフィールを作成して始めましょう</p>
           </div>
 
           <div className="backdrop-blur-md bg-white/5 p-8 rounded-2xl border border-white/10">
-            <div className="mb-6 p-4 bg-white/5 rounded-xl">
-              <p className="text-sm text-gray-400 mb-1">ログイン中のアカウント</p>
-              <p className="text-white font-medium">{user.email}</p>
-            </div>
-
-            <ProfileForm />
+            <OnboardingClient email={user.email} />
           </div>
         </div>
       </div>

@@ -8,10 +8,10 @@ import { requireSessionMiddleware } from "./middlewares/requireSession";
 const app = new Hono();
 
 app.use("*", except("/auth/*", basicAuthMiddleware));
+app.use("*", requireAuthMiddleware);
 app.use("/onboarding/*", requireSessionMiddleware);
 app.use("/dashboard/*", requireSessionMiddleware);
 app.use("/admin/*", requireSessionMiddleware);
-app.use("*", requireAuthMiddleware);
 
 export const middleware = handle(app);
 
