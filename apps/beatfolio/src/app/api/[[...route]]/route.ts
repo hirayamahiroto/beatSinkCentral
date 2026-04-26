@@ -6,6 +6,7 @@ import {
 } from "../../../middlewares/requestContext";
 import test from "./test";
 import usersCreate from "./users/create";
+import usersMe from "./users/me";
 
 export type Env = RequestContextEnv;
 
@@ -13,6 +14,7 @@ const app = new Hono<Env>()
   .basePath("/api")
   .use("*", requestContextMiddleware)
   .route("/test", test)
+  .route("/users/me", usersMe)
   .route("/users", usersCreate);
 
 export type AppType = typeof app;
