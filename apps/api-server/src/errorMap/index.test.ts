@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { resolveErrorResponse } from "./index";
 import { createUserAlreadyRegisteredError } from "../domain/users/policies/assertNotRegistered";
-import { createAccountIdAlreadyTakenError } from "../domain/artists/errors";
+import { createAccountIdAlreadyTakenError } from "../domain/artists/policies/assertAccountIdAvailable";
 import { createInvalidEmailFormatError } from "../domain/users/valueObjects/email";
 import { createInvalidSubFormatError } from "../domain/users/valueObjects/sub";
 import { createInvalidNameFormatError } from "../domain/users/valueObjects/name";

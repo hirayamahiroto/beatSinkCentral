@@ -11,7 +11,7 @@ import type {
   ArtistPersistenceData,
 } from "../../../domain/artists/entities";
 import { reconstructArtist } from "../../../domain/artists/factories";
-import { createAccountIdAlreadyTakenError } from "../../../domain/artists/errors";
+import { createAccountIdAlreadyTakenError } from "../../../domain/artists/policies/assertAccountIdAvailable";
 import type { TransactionContext } from "../../transaction";
 import { isUniqueViolation } from "../../database/isUniqueViolation";
 
