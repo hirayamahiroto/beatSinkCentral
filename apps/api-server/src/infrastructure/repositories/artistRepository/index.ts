@@ -13,17 +13,7 @@ import type {
 import { reconstructArtist } from "../../../domain/artists/factories";
 import { createAccountIdAlreadyTakenError } from "../../../domain/artists/errors";
 import type { TransactionContext } from "../../transaction";
-
-const POSTGRES_UNIQUE_VIOLATION = "23505";
-
-const isUniqueViolation = (error: unknown): boolean => {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    (error as { code: unknown }).code === POSTGRES_UNIQUE_VIOLATION
-  );
-};
+import { isUniqueViolation } from "../../database/isUniqueViolation";
 
 export const createArtistRepository = (
   db: DatabaseClient
