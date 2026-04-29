@@ -74,4 +74,46 @@ describe("createArtistRepository", () => {
       expect(mockDb.limit).toHaveBeenCalledWith(1);
     });
   });
+
+  describe("findByAccountId", () => {
+    it("該当するartistを返す", async () => {
+      mockDb.limit.mockResolvedValue([
+        {
+          artistId: "artist-1",
+          accountId: "user_123",
+          ownerUserId: "user-1",
+          profileName: "Test Artist",
+        },
+      ]);
+
+      const result = await repository.findByAccountId("user_123");
+
+      expect(result).not.toBeNull();
+      expect(result?.getArtistId()).toBe("artist-1");
+      expect(result?.getAccountId()).toBe("user_123");
+      expect(result?.getOwnerUserId()).toBe("user-1");
+      expect(result?.getProfile()).toStrictEqual({ name: "Test Artist" });
+    });
+
+    it("見つからない場合はnullを返す", async () => {
+      mockDb.limit.mockResolvedValue([]);
+
+      const result = await repository.findByAccountId("unknown_account");
+
+      expect(result).toBeNull();
+    });
+
+    it("artistsを起点にartistOwners/artistProfilesを結合してaccountIdで1件取得する", async () => {
+      mockDb.limit.mockResolvedValue([]);
+
+      await repository.findByAccountId("user_123");
+
+      expect(mockDb.select).toHaveBeenCalledTimes(1);
+      expect(mockDb.from).toHaveBeenCalledTimes(1);
+      expect(mockDb.innerJoin).toHaveBeenCalledTimes(1);
+      expect(mockDb.leftJoin).toHaveBeenCalledTimes(1);
+      expect(mockDb.where).toHaveBeenCalledTimes(1);
+      expect(mockDb.limit).toHaveBeenCalledWith(1);
+    });
+  });
 });

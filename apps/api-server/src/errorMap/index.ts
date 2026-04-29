@@ -1,6 +1,6 @@
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { UserAlreadyRegisteredError } from "../domain/users/policies/assertNotRegistered";
-import type { AccountIdAlreadyTakenError } from "../domain/artists/errors";
+import type { AccountIdAlreadyTakenError } from "../domain/artists/policies/assertAccountIdAvailable";
 import type { InvalidEmailFormatError } from "../domain/users/valueObjects/email";
 import type { InvalidSubFormatError } from "../domain/users/valueObjects/sub";
 import type { InvalidNameFormatError } from "../domain/users/valueObjects/name";

@@ -7,4 +7,5 @@ export interface IArtistRepository {
     tx?: TransactionContext
   ): Promise<Artist>;
   findByUserId(userId: string): Promise<Artist | null>;
+  findByAccountId(accountId: string): Promise<Artist | null>;
 }

@@ -1,4 +1,5 @@
-import { createTypedError } from "../../utils/errors/createTypedError";
+import type { Artist } from "../../entities";
+import { createTypedError } from "../../../../utils/errors/createTypedError";
 
 export type AccountIdAlreadyTakenError = Error & {
   readonly type: "AccountIdAlreadyTakenError";
@@ -18,4 +19,14 @@ export const isAccountIdAlreadyTakenError = (
     (error as Partial<AccountIdAlreadyTakenError>).type ===
       "AccountIdAlreadyTakenError"
   );
+};
+
+export const assertAccountIdAvailable = (
+  artistIfAccountIdTaken: Artist | null
+): void => {
+  if (artistIfAccountIdTaken) {
+    throw createAccountIdAlreadyTakenError(
+      artistIfAccountIdTaken.getAccountId()
+    );
+  }
 };

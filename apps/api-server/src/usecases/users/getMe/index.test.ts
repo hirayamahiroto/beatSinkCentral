@@ -12,6 +12,7 @@ const createMockDeps = () => {
     artistRepository: {
       save: vi.fn(),
       findByUserId: vi.fn(),
+      findByAccountId: vi.fn(),
     },
   } satisfies GetMeDeps;
   return deps;

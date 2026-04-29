@@ -5,7 +5,9 @@ import {
   type CreateUserInput,
 } from "./index";
 import { isUserAlreadyRegisteredError } from "../../../domain/users/policies/assertNotRegistered";
+import { isAccountIdAlreadyTakenError } from "../../../domain/artists/policies/assertAccountIdAvailable";
 import { reconstructUser } from "../../../domain/users/factories";
+import { reconstructArtist } from "../../../domain/artists/factories";
 
 const createMockDeps = () => {
   const deps = {
@@ -16,6 +18,7 @@ const createMockDeps = () => {
     artistRepository: {
       save: vi.fn(),
       findByUserId: vi.fn(),
+      findByAccountId: vi.fn(),
     },
     txRunner: {
       run: vi.fn(async (fn) => fn({} as Parameters<typeof fn>[0])),
@@ -38,6 +41,7 @@ describe("createUserUseCase", () => {
   it("新規ユーザーを作成してuserIdとartistIdを返す", async () => {
     const deps = createMockDeps();
     deps.userRepository.findBySub.mockResolvedValue(null);
+    deps.artistRepository.findByAccountId.mockResolvedValue(null);
     deps.userRepository.save.mockResolvedValue(undefined);
     deps.artistRepository.save.mockResolvedValue(undefined);
 
@@ -58,11 +62,31 @@ describe("createUserUseCase", () => {
       email: validInput.email,
     });
     deps.userRepository.findBySub.mockResolvedValue(existingUser);
+    deps.artistRepository.findByAccountId.mockResolvedValue(null);
 
     const promise = createUserUseCase(validInput, deps);
 
     await expect(promise).rejects.toSatisfy(isUserAlreadyRegisteredError);
     expect(deps.txRunner.run).not.toHaveBeenCalled();
     expect(deps.userRepository.save).not.toHaveBeenCalled();
+  });
+
+  it("AccountIdが既に取られている場合はAccountIdAlreadyTakenErrorをスローする", async () => {
+    const deps = createMockDeps();
+    const existingArtist = reconstructArtist({
+      artistId: "existing-artist-id",
+      accountId: validInput.accountId,
+      ownerUserId: "other-user-id",
+      profile: null,
+    });
+    deps.userRepository.findBySub.mockResolvedValue(null);
+    deps.artistRepository.findByAccountId.mockResolvedValue(existingArtist);
+
+    const promise = createUserUseCase(validInput, deps);
+
+    await expect(promise).rejects.toSatisfy(isAccountIdAlreadyTakenError);
+    expect(deps.txRunner.run).not.toHaveBeenCalled();
+    expect(deps.userRepository.save).not.toHaveBeenCalled();
+    expect(deps.artistRepository.save).not.toHaveBeenCalled();
   });
 });

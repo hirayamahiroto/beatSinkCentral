@@ -25,10 +25,14 @@ export type CreateUserDeps = {
 
 const registerUser = async (
   input: CreateUserInput,
-  userRepository: IUserRepository
+  userRepository: IUserRepository,
+  artistRepository: IArtistRepository
 ): Promise<RegisterNewUserResult> => {
-  const userIfRegistered = await userRepository.findBySub(input.subId);
-  return registerNewUser(input, userIfRegistered);
+  const [userIfRegistered, artistIfAccountIdTaken] = await Promise.all([
+    userRepository.findBySub(input.subId),
+    artistRepository.findByAccountId(input.accountId),
+  ]);
+  return registerNewUser(input, userIfRegistered, artistIfAccountIdTaken);
 };
 
 const persistUserAggregate = async (
@@ -48,6 +52,10 @@ export const createUserUseCase = async (
   input: CreateUserInput,
   deps: CreateUserDeps
 ): Promise<CreateUserOutput> => {
-  const aggregate = await registerUser(input, deps.userRepository);
+  const aggregate = await registerUser(
+    input,
+    deps.userRepository,
+    deps.artistRepository
+  );
   return persistUserAggregate(aggregate, deps);
 };
