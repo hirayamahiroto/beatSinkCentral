@@ -11,9 +11,7 @@ import type {
   ArtistPersistenceData,
 } from "../../../domain/artists/entities";
 import { reconstructArtist } from "../../../domain/artists/factories";
-import { createAccountIdAlreadyTakenError } from "../../../domain/artists/policies/assertAccountIdAvailable";
 import type { TransactionContext } from "../../transaction";
-import { isUniqueViolation } from "../../database/isUniqueViolation";
 
 export const createArtistRepository = (
   db: DatabaseClient
@@ -23,32 +21,25 @@ export const createArtistRepository = (
     tx?: TransactionContext
   ): Promise<Artist> {
     const executor = tx ?? db;
-    try {
-      const [artistRow] = await executor
-        .insert(artistsTable)
-        .values({ id: data.id, accountId: data.accountId })
-        .returning({
-          id: artistsTable.id,
-          accountId: artistsTable.accountId,
-        });
-
-      await executor.insert(artistOwnersTable).values({
-        userId: data.ownerUserId,
-        artistId: artistRow.id,
+    const [artistRow] = await executor
+      .insert(artistsTable)
+      .values({ id: data.id, accountId: data.accountId })
+      .returning({
+        id: artistsTable.id,
+        accountId: artistsTable.accountId,
       });
 
-      return reconstructArtist({
-        artistId: artistRow.id,
-        accountId: artistRow.accountId,
-        ownerUserId: data.ownerUserId,
-        profile: null,
-      });
-    } catch (error) {
-      if (isUniqueViolation(error)) {
-        throw createAccountIdAlreadyTakenError(data.accountId);
-      }
-      throw error;
-    }
+    await executor.insert(artistOwnersTable).values({
+      userId: data.ownerUserId,
+      artistId: artistRow.id,
+    });
+
+    return reconstructArtist({
+      artistId: artistRow.id,
+      accountId: artistRow.accountId,
+      ownerUserId: data.ownerUserId,
+      profile: null,
+    });
   },
 
   async findByUserId(userId: string) {
