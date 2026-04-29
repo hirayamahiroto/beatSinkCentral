@@ -80,4 +80,37 @@ export const createArtistRepository = (
       profile: row.profileName ? { name: row.profileName } : null,
     });
   },
+
+  async findByAccountId(accountId: string) {
+    const results = await db
+      .select({
+        artistId: artistsTable.id,
+        accountId: artistsTable.accountId,
+        ownerUserId: artistOwnersTable.userId,
+        profileName: artistProfilesTable.name,
+      })
+      .from(artistsTable)
+      .innerJoin(
+        artistOwnersTable,
+        eq(artistsTable.id, artistOwnersTable.artistId)
+      )
+      .leftJoin(
+        artistProfilesTable,
+        eq(artistsTable.id, artistProfilesTable.artistId)
+      )
+      .where(eq(artistsTable.accountId, accountId))
+      .limit(1);
+
+    if (results.length === 0) {
+      return null;
+    }
+
+    const row = results[0];
+    return reconstructArtist({
+      artistId: row.artistId,
+      accountId: row.accountId,
+      ownerUserId: row.ownerUserId,
+      profile: row.profileName ? { name: row.profileName } : null,
+    });
+  },
 });
