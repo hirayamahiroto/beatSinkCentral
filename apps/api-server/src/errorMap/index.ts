@@ -1,3 +1,4 @@
+import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { UserAlreadyRegisteredError } from "../domain/users/policies/assertNotRegistered";
 import type { AccountIdAlreadyTakenError } from "../domain/artists/policies/assertAccountIdAvailable";
@@ -6,8 +7,10 @@ import type { InvalidSubFormatError } from "../domain/users/valueObjects/sub";
 import type { InvalidNameFormatError } from "../domain/users/valueObjects/name";
 import type { InvalidAccountIdFormatError } from "../domain/artists/valueObjects/accountId";
 import type { InvalidArtistIdFormatError } from "../domain/artists/valueObjects/artistId";
+import type { InvalidRequestFormatError } from "../app/api/[[...route]]/errors/invalidRequestFormat";
 
 export type AppError =
+  | InvalidRequestFormatError
   | UserAlreadyRegisteredError
   | AccountIdAlreadyTakenError
   | InvalidEmailFormatError
@@ -19,6 +22,7 @@ export type AppError =
 type ErrorMapping<SpecificError extends AppError> = {
   status: ContentfulStatusCode;
   message: (error: SpecificError) => string;
+  details?: (error: SpecificError) => unknown;
 };
 
 type ErrorMap = {
@@ -28,6 +32,11 @@ type ErrorMap = {
 };
 
 const errorMap: ErrorMap = {
+  InvalidRequestFormatError: {
+    status: 400,
+    message: () => "Invalid request",
+    details: (error) => error.issues,
+  },
   UserAlreadyRegisteredError: {
     status: 409,
     message: () => "User already registered",
@@ -68,18 +77,22 @@ const buildMappedResponse = <Error extends AppError>(
   error: Error
 ): ErrorResponse => {
   const mapping = errorMap[error.type as Error["type"]] as ErrorMapping<Error>;
+  const body: ErrorResponse["body"] = { error: mapping.message(error) };
+  if (mapping.details) {
+    body.details = mapping.details(error);
+  }
   return {
-    body: { error: mapping.message(error) },
+    body,
     status: mapping.status,
   };
 };
 
-export type ErrorResponse = {
-  body: { error: string };
+type ErrorResponse = {
+  body: { error: string; details?: unknown };
   status: ContentfulStatusCode;
 };
 
-export const resolveErrorResponse = (error: unknown): ErrorResponse => {
+const resolveErrorResponse = (error: unknown): ErrorResponse => {
   if (isAppError(error)) {
     const response = buildMappedResponse(error);
     console.warn("[AppError]", {
@@ -94,4 +107,9 @@ export const resolveErrorResponse = (error: unknown): ErrorResponse => {
     body: { error: "Internal Server Error" },
     status: 500,
   };
+};
+
+export const handleAppError = (error: Error, c: Context) => {
+  const { body, status } = resolveErrorResponse(error);
+  return c.json(body, status);
 };

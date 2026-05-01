@@ -1,27 +1,26 @@
 import { Hono } from "hono";
-import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { auth0 } from "../../../../../infrastructure/auth0";
 import { getContainer } from "../../../../../infrastructure/container";
 import { createUserUseCase } from "../../../../../usecases/users/createUser";
+import { validateRequest } from "../../validators/validateRequest";
 
 export const requestSchema = z.object({
-  email: z.string().min(1),
-  accountId: z.string().min(1),
+  email: z
+    .string({ required_error: "email is required" })
+    .min(1, "email is required")
+    .email("Invalid email format"),
+  accountId: z
+    .string({ required_error: "accountId is required" })
+    .min(1, "accountId is required")
+    .max(255, "accountId must be 255 characters or less"),
 });
 
 export type CreateUserRequestBody = z.infer<typeof requestSchema>;
 
 const app = new Hono().post(
   "/",
-  zValidator("json", requestSchema, (result, c) => {
-    if (!result.success) {
-      return c.json(
-        { error: "Invalid request", issues: result.error.issues },
-        400
-      );
-    }
-  }),
+  validateRequest("json", requestSchema),
   async (c) => {
     const body = c.req.valid("json");
     const session = await auth0.getSession();
