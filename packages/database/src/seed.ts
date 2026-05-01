@@ -9,10 +9,7 @@ if (!DATABASE_URL) {
 
 const sql = postgres(DATABASE_URL);
 
-const seedFile = path.resolve(
-  import.meta.dirname,
-  "../supabase/seed.sql"
-);
+const seedFile = path.resolve(import.meta.dirname, "../supabase/seed.sql");
 const seedSql = fs.readFileSync(seedFile, "utf-8");
 
 await sql.unsafe(seedSql);

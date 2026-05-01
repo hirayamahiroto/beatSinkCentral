@@ -6,10 +6,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { isNull } from "drizzle-orm";
-import {
-  createInsertSchema,
-  createSelectSchema,
-} from "drizzle-zod";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { artistsTable } from "./artists";
 import { artistStatusMastersTable } from "./artistStatusMasters";
 import { usersTable } from "./users";
@@ -35,7 +32,7 @@ export const artistStatusesTable = pgTable(
     uniqueIndex("artist_statuses_active_unique")
       .on(table.artistId)
       .where(isNull(table.deletedAt)),
-  ]
+  ],
 );
 
 export const artistStatusSelectSchema = createSelectSchema(artistStatusesTable);

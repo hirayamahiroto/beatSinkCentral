@@ -29,7 +29,7 @@ export type GetMeDeps = {
 
 export const getMeUseCase = async (
   input: GetMeInput,
-  deps: GetMeDeps
+  deps: GetMeDeps,
 ): Promise<GetMeResult> => {
   const user = await deps.userRepository.findBySub(input.subId);
 

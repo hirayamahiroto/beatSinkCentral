@@ -32,9 +32,9 @@ export const artistMembersTable = pgTable(
   (table) => [
     uniqueIndex("artist_members_artist_user_idx").on(
       table.artistId,
-      table.userId
+      table.userId,
     ),
-  ]
+  ],
 );
 
 export const artistMemberSelectSchema = createSelectSchema(artistMembersTable);

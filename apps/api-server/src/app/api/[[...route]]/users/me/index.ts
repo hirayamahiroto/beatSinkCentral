@@ -12,7 +12,7 @@ const app = new Hono().get("/", async (c) => {
   const { userRepository, artistRepository } = getContainer();
   const result = await getMeUseCase(
     { subId: auth0User.sub },
-    { userRepository, artistRepository }
+    { userRepository, artistRepository },
   );
 
   return c.json(result);

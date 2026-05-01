@@ -31,10 +31,10 @@ describe("Sub", () => {
 
     it("nullish値ではエラーをスローする", () => {
       expect(() => createSub(null as unknown as string)).toThrow(
-        "InvalidSubFormatError"
+        "InvalidSubFormatError",
       );
       expect(() => createSub(undefined as unknown as string)).toThrow(
-        "InvalidSubFormatError"
+        "InvalidSubFormatError",
       );
     });
   });

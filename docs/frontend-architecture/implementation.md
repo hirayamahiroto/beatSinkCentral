@@ -26,23 +26,18 @@ export default function Page() {
 import { ClientAdapter } from "./ClientAdapter";
 
 export default async function Page() {
-  const data = await fetch('/api/data');
+  const data = await fetch("/api/data");
   const initialData = await data.json();
   return <ClientAdapter initialData={initialData} />;
 }
 
 // ClientAdapter/index.tsx
-"use client";
+("use client");
 import { useState } from "react";
 import ComponentPage from "@ui/design-system/components/pages/ComponentPage";
 
 export function ClientAdapter({ initialData }: ClientAdapterProps) {
   const [data, setData] = useState(initialData);
-  return (
-    <ComponentPage
-      data={data}
-      onDataUpdate={setData}
-    />
-  );
+  return <ComponentPage data={data} onDataUpdate={setData} />;
 }
 ```

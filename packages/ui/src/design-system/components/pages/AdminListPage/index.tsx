@@ -2,7 +2,14 @@
 
 import React from "react";
 import { usePathname } from "next/navigation";
-import { Calendar, Users, ArrowRight, LayoutDashboard, CalendarPlus, List } from "lucide-react";
+import {
+  Calendar,
+  Users,
+  ArrowRight,
+  LayoutDashboard,
+  CalendarPlus,
+  List,
+} from "lucide-react";
 import { Link as AtomLink } from "../../atoms/Link";
 import { cn } from "../../../../shared/utils/mergeClassNames";
 
@@ -19,7 +26,12 @@ const AdminHeader = () => {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-8">
-            <AtomLink href="/admin/list" className="text-xl font-bold text-white">Event Admin</AtomLink>
+            <AtomLink
+              href="/admin/list"
+              className="text-xl font-bold text-white"
+            >
+              Event Admin
+            </AtomLink>
             <nav className="flex items-center space-x-4">
               {navigation.map((item) => {
                 const isActive = pathname === item.href;
@@ -29,7 +41,9 @@ const AdminHeader = () => {
                     href={item.href}
                     className={cn(
                       "flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors",
-                      isActive ? "text-white bg-white/10" : "text-gray-400 hover:text-white hover:bg-white/5"
+                      isActive
+                        ? "text-white bg-white/10"
+                        : "text-gray-400 hover:text-white hover:bg-white/5",
                     )}
                   >
                     <item.icon className="h-4 w-4" />
@@ -54,7 +68,7 @@ const Card = React.forwardRef<
     ref={ref}
     className={cn(
       "rounded-lg border bg-card text-card-foreground shadow-sm",
-      className
+      className,
     )}
     {...props}
   />
@@ -177,7 +191,7 @@ const AdminListPage = () => {
                       <span
                         className={cn(
                           "px-3 py-1 rounded-full text-sm font-medium",
-                          getStatusColor(event.status)
+                          getStatusColor(event.status),
                         )}
                       >
                         {getStatusText(event.status)}

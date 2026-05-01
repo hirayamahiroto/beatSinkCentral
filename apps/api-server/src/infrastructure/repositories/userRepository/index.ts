@@ -14,14 +14,11 @@ import type { TransactionContext } from "../../transaction";
 export const createUserRepository = (db: DatabaseClient): IUserRepository => ({
   async save(data: UserSaveData, tx?: TransactionContext): Promise<User> {
     const executor = tx ?? db;
-    const [result] = await executor
-      .insert(usersTable)
-      .values(data)
-      .returning({
-        id: usersTable.id,
-        subId: usersTable.subId,
-        email: usersTable.email,
-      });
+    const [result] = await executor.insert(usersTable).values(data).returning({
+      id: usersTable.id,
+      subId: usersTable.subId,
+      email: usersTable.email,
+    });
 
     return reconstructUser({
       id: result.id,

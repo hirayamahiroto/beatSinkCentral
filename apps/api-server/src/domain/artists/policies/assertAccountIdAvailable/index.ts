@@ -7,12 +7,12 @@ export type AccountIdAlreadyTakenError = Error & {
 };
 
 export const createAccountIdAlreadyTakenError = (
-  accountId: string
+  accountId: string,
 ): AccountIdAlreadyTakenError =>
   createTypedError("AccountIdAlreadyTakenError", { accountId });
 
 export const isAccountIdAlreadyTakenError = (
-  error: unknown
+  error: unknown,
 ): error is AccountIdAlreadyTakenError => {
   return (
     error instanceof Error &&
@@ -22,11 +22,11 @@ export const isAccountIdAlreadyTakenError = (
 };
 
 export const assertAccountIdAvailable = (
-  artistIfAccountIdTaken: Artist | null
+  artistIfAccountIdTaken: Artist | null,
 ): void => {
   if (artistIfAccountIdTaken) {
     throw createAccountIdAlreadyTakenError(
-      artistIfAccountIdTaken.getAccountId()
+      artistIfAccountIdTaken.getAccountId(),
     );
   }
 };

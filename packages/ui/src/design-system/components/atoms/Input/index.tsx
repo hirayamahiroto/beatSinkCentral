@@ -6,5 +6,5 @@ type InputProps = React.ComponentProps<typeof PrimitiveInput>;
 export type { InputProps };
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  (props, ref) => <PrimitiveInput ref={ref} {...props} />
+  (props, ref) => <PrimitiveInput ref={ref} {...props} />,
 );

@@ -6,7 +6,7 @@ type ValidationTarget = "json";
 
 export const validateRequest = <Schema extends ZodSchema>(
   target: ValidationTarget,
-  schema: Schema
+  schema: Schema,
 ) =>
   zValidator(target, schema, (result) => {
     if (!result.success) {

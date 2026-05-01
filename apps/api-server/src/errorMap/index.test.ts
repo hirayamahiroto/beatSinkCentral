@@ -27,8 +27,7 @@ const buildApp = (error: unknown) =>
     })
     .onError(handleAppError);
 
-const requestWithError = async (error: unknown) =>
-  buildApp(error).request("/");
+const requestWithError = async (error: unknown) => buildApp(error).request("/");
 
 describe("handleAppError", () => {
   beforeEach(() => {
@@ -52,7 +51,7 @@ describe("handleAppError", () => {
 
     it("AccountIdAlreadyTakenErrorを409とaccountId埋め込みメッセージに変換する", async () => {
       const res = await requestWithError(
-        createAccountIdAlreadyTakenError("taken_id")
+        createAccountIdAlreadyTakenError("taken_id"),
       );
 
       expect(res.status).toBe(409);
@@ -79,7 +78,7 @@ describe("handleAppError", () => {
       const issues = buildIssues();
 
       const res = await requestWithError(
-        createInvalidRequestFormatError(issues)
+        createInvalidRequestFormatError(issues),
       );
 
       expect(res.status).toBe(400);
@@ -136,7 +135,9 @@ describe("handleAppError", () => {
       const res = await requestWithError(new Error("database down"));
 
       expect(res.status).toBe(500);
-      expect(await res.json()).toStrictEqual({ error: "Internal Server Error" });
+      expect(await res.json()).toStrictEqual({
+        error: "Internal Server Error",
+      });
     });
 
     it("typeフィールドを持つが errorMap 未登録のエラーは 500 に落とす", async () => {
@@ -147,7 +148,9 @@ describe("handleAppError", () => {
       const res = await requestWithError(unknownError);
 
       expect(res.status).toBe(500);
-      expect(await res.json()).toStrictEqual({ error: "Internal Server Error" });
+      expect(await res.json()).toStrictEqual({
+        error: "Internal Server Error",
+      });
     });
 
     it("未知エラーは console.error で記録する", async () => {

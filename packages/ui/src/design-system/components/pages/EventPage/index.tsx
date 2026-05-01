@@ -38,12 +38,34 @@ const Header = () => {
         <div className="sm:hidden bg-black/90 backdrop-blur-md">
           <div className="container mx-auto px-4 py-4">
             <nav className="flex flex-col gap-4">
-              <AtomLink href="/" className="text-gray-300 hover:text-white transition-colors px-4 py-2">ホーム</AtomLink>
-              <AtomLink href="/playerList" className="text-gray-300 hover:text-white transition-colors px-4 py-2">プレイヤー</AtomLink>
-              <AtomLink href="/event" className="text-gray-300 hover:text-white transition-colors px-4 py-2">イベント</AtomLink>
-              <AtomLink href="/about" className="text-gray-300 hover:text-white transition-colors px-4 py-2">運営情報</AtomLink>
+              <AtomLink
+                href="/"
+                className="text-gray-300 hover:text-white transition-colors px-4 py-2"
+              >
+                ホーム
+              </AtomLink>
+              <AtomLink
+                href="/playerList"
+                className="text-gray-300 hover:text-white transition-colors px-4 py-2"
+              >
+                プレイヤー
+              </AtomLink>
+              <AtomLink
+                href="/event"
+                className="text-gray-300 hover:text-white transition-colors px-4 py-2"
+              >
+                イベント
+              </AtomLink>
+              <AtomLink
+                href="/about"
+                className="text-gray-300 hover:text-white transition-colors px-4 py-2"
+              >
+                運営情報
+              </AtomLink>
               <hr className="border-white/10" />
-              <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-full text-sm font-medium transition-colors w-full">ログイン</button>
+              <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-full text-sm font-medium transition-colors w-full">
+                ログイン
+              </button>
             </nav>
           </div>
         </div>
@@ -97,7 +119,7 @@ const EventPage = () => {
     const types = ["大会", "ワークショップ", "セミナー", "ショーケース"];
     const currentIndex = types.indexOf(filterType || "");
     setFilterType(
-      currentIndex === types.length - 1 ? null : types[currentIndex + 1]
+      currentIndex === types.length - 1 ? null : types[currentIndex + 1],
     );
   };
 

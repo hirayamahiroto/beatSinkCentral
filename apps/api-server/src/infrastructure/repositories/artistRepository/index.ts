@@ -14,11 +14,11 @@ import { reconstructArtist } from "../../../domain/artists/factories";
 import type { TransactionContext } from "../../transaction";
 
 export const createArtistRepository = (
-  db: DatabaseClient
+  db: DatabaseClient,
 ): IArtistRepository => ({
   async save(
     data: ArtistPersistenceData,
-    tx?: TransactionContext
+    tx?: TransactionContext,
   ): Promise<Artist> {
     const executor = tx ?? db;
     const [artistRow] = await executor
@@ -54,7 +54,7 @@ export const createArtistRepository = (
       .innerJoin(artistsTable, eq(artistOwnersTable.artistId, artistsTable.id))
       .leftJoin(
         artistProfilesTable,
-        eq(artistsTable.id, artistProfilesTable.artistId)
+        eq(artistsTable.id, artistProfilesTable.artistId),
       )
       .where(eq(artistOwnersTable.userId, userId))
       .limit(1);
@@ -83,11 +83,11 @@ export const createArtistRepository = (
       .from(artistsTable)
       .innerJoin(
         artistOwnersTable,
-        eq(artistsTable.id, artistOwnersTable.artistId)
+        eq(artistsTable.id, artistOwnersTable.artistId),
       )
       .leftJoin(
         artistProfilesTable,
-        eq(artistsTable.id, artistProfilesTable.artistId)
+        eq(artistsTable.id, artistProfilesTable.artistId),
       )
       .where(eq(artistsTable.accountId, accountId))
       .limit(1);

@@ -48,7 +48,7 @@ export const createBasicAuthMiddleware = (config?: BasicAuthConfig) => {
         headers: {
           "WWW-Authenticate": 'Basic realm="Secure Area"',
         },
-      }
+      },
     );
   };
 };

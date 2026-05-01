@@ -259,7 +259,7 @@ function PlayersPage({ players }: PlayersPageProps) {
   const [filterSpeciality, setFilterSpeciality] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<ActiveSection>("discover");
   const [randomPlayers, setRandomPlayers] = useState<Player[]>(
-    players.slice(0, 4)
+    players.slice(0, 4),
   );
 
   const processedPlayers = players
@@ -284,7 +284,7 @@ function PlayersPage({ players }: PlayersPageProps) {
     setFilterSpeciality(
       currentIndex === specialities.length - 1
         ? null
-        : specialities[currentIndex + 1]
+        : specialities[currentIndex + 1],
     );
   };
 

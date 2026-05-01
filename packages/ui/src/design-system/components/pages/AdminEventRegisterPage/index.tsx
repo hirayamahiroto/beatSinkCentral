@@ -19,7 +19,12 @@ const AdminHeader = () => {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-8">
-            <AtomLink href="/admin/list" className="text-xl font-bold text-white">Event Admin</AtomLink>
+            <AtomLink
+              href="/admin/list"
+              className="text-xl font-bold text-white"
+            >
+              Event Admin
+            </AtomLink>
             <nav className="flex items-center space-x-4">
               {navigation.map((item) => {
                 const isActive = pathname === item.href;
@@ -29,7 +34,9 @@ const AdminHeader = () => {
                     href={item.href}
                     className={cn(
                       "flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors",
-                      isActive ? "text-white bg-white/10" : "text-gray-400 hover:text-white hover:bg-white/5"
+                      isActive
+                        ? "text-white bg-white/10"
+                        : "text-gray-400 hover:text-white hover:bg-white/5",
                     )}
                   >
                     <item.icon className="h-4 w-4" />
@@ -64,7 +71,7 @@ const Button = React.forwardRef<
           "bg-white/5 hover:bg-white/10 text-white border border-white/10",
         size === "default" && "h-10 px-4 py-2",
         size === "sm" && "h-8 px-3 text-sm",
-        className
+        className,
       )}
       ref={ref}
       {...props}
@@ -86,7 +93,7 @@ const Input = React.forwardRef<
         "text-white placeholder:text-gray-400",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50",
         "disabled:cursor-not-allowed disabled:opacity-50",
-        className
+        className,
       )}
       ref={ref}
       {...props}
@@ -107,7 +114,7 @@ const Textarea = React.forwardRef<
         "text-white placeholder:text-gray-400",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50",
         "disabled:cursor-not-allowed disabled:opacity-50",
-        className
+        className,
       )}
       ref={ref}
       {...props}
@@ -138,7 +145,7 @@ const Card = React.forwardRef<
     ref={ref}
     className={cn(
       "rounded-xl border border-white/10 bg-white/5 text-card-foreground shadow-sm backdrop-blur-sm",
-      className
+      className,
     )}
     {...props}
   />
@@ -165,7 +172,7 @@ const CardTitle = React.forwardRef<
     ref={ref}
     className={cn(
       "text-2xl font-semibold leading-none tracking-tight text-white",
-      className
+      className,
     )}
     {...props}
   />

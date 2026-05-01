@@ -100,8 +100,8 @@ describe("User Create API", () => {
         body.details.some(
           (issue) =>
             issue.path[0] === "email" &&
-            issue.message === "Invalid email format"
-        )
+            issue.message === "Invalid email format",
+        ),
       ).toBe(true);
     });
 
@@ -125,8 +125,8 @@ describe("User Create API", () => {
         body.details.some(
           (issue) =>
             issue.path[0] === "accountId" &&
-            issue.message === "accountId must be 255 characters or less"
-        )
+            issue.message === "accountId must be 255 characters or less",
+        ),
       ).toBe(true);
     });
 
@@ -149,8 +149,8 @@ describe("User Create API", () => {
       expect(
         body.details.some(
           (issue) =>
-            issue.path[0] === "email" && issue.message === "email is required"
-        )
+            issue.path[0] === "email" && issue.message === "email is required",
+        ),
       ).toBe(true);
     });
   });

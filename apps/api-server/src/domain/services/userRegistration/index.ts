@@ -19,7 +19,7 @@ export type RegisterNewUserResult = {
 export const registerNewUser = (
   input: RegisterNewUserInput,
   userIfRegistered: User | null,
-  artistIfAccountIdTaken: Artist | null
+  artistIfAccountIdTaken: Artist | null,
 ): RegisterNewUserResult => {
   assertNotRegistered(userIfRegistered);
   assertAccountIdAvailable(artistIfAccountIdTaken);

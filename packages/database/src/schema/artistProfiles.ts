@@ -18,6 +18,9 @@ export const artistProfilesTable = pgTable("artist_profiles", {
   deletedAt: timestamp("deleted_at"),
 });
 
-export const artistProfileSelectSchema = createSelectSchema(artistProfilesTable);
-export const artistProfileInsertSchema = createInsertSchema(artistProfilesTable);
-export const artistProfileUpdateSchema = createUpdateSchema(artistProfilesTable);
+export const artistProfileSelectSchema =
+  createSelectSchema(artistProfilesTable);
+export const artistProfileInsertSchema =
+  createInsertSchema(artistProfilesTable);
+export const artistProfileUpdateSchema =
+  createUpdateSchema(artistProfilesTable);
