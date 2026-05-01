@@ -1,6 +1,6 @@
 # エラーハンドリング設計の目的と効くタイミング
 
-このドキュメントは「型付きのエラー定義」「レイヤー別の責務分離」「クライアント向けと内部ログの分離」といったエラーハンドリング設計が、**実際にどこで・誰にとって価値を生むか** を整理したもの。設計原則そのものは [error-handling.md](./error-handling.md) を、実装パターンは [error-handling-implementation.md](./error-handling-implementation.md) を参照。
+このドキュメントは「型付きのエラー定義」「レイヤー別の責務分離」「クライアント向けと内部ログの分離」といったエラーハンドリング設計が、**実際にどこで・誰にとって価値を生むか** を整理したもの。設計思想そのものは [concepts.md](./concepts.md) を、層ごとの責務は [layer-responsibilities.md](./layer-responsibilities.md) を、実装パターンは [implementation.md](./implementation.md) を参照。
 
 「なぜこのコストを払って設計するのか」を、実装者・運用者・新規参画者が共有するための材料として残す。
 
@@ -67,8 +67,8 @@
 
 | エラー性質                                   | リトライ可否                             |
 | -------------------------------------------- | ---------------------------------------- |
-| 一過性（接続失敗、タイムアウト、503）        | exponential backoff でリトライ妥当       |
-| 恒久的失敗（バリデーション、業務ルール違反） | 何度試しても結果は同じ。**リトライ禁止** |
+| 一過性(接続失敗、タイムアウト、503)        | exponential backoff でリトライ妥当       |
+| 恒久的失敗(バリデーション、業務ルール違反) | 何度試しても結果は同じ。**リトライ禁止** |
 
 HTTP status と `code` で機械可読に区別できれば、SDK / クライアントが自動判定できる。区別できないと、ユーザーが無意味なリトライを繰り返したり、復旧可能なエラーを諦めたりする。
 
@@ -157,8 +157,9 @@ HTTP status と `code` で機械可読に区別できれば、SDK / クライア
 
 ## 関連ドキュメント
 
-- [error-handling.md](./error-handling.md) — レイヤー別の責務、エラーの定義、設計原則
-- [error-handling-implementation.md](./error-handling-implementation.md) — 実装パターン（type + factory + guard）
-- [error-response-design.md](./error-response-design.md) — クライアント向けレスポンス形式の設計記録
+- [concepts.md](./concepts.md) — エラーとは何か / 層の独立性とは何か（思想・原則）
+- [layer-responsibilities.md](./layer-responsibilities.md) — 各層の責務 / 配置ルール / バリデーションの責務分離
+- [implementation.md](./implementation.md) — 実装パターン（type + factory + errorMap + onError）
+- [operations.md](./operations.md) — ログ基盤・監視連携・SLO/SRE 運用への接続
 - Issue #135 — エラーレスポンス設計の刷新
 - Issue #137 — インフラ層エラーの分類拡張余地
