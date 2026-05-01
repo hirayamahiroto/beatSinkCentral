@@ -140,6 +140,7 @@ apps/api-server/src/errorMap/
 
 ```typescript
 // apps/api-server/src/errorMap/index.ts
+import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { UserAlreadyRegisteredError } from "../domain/users/policies/assertNotRegistered";
 import type { AccountIdAlreadyTakenError } from "../domain/artists/errors";
@@ -149,6 +150,8 @@ export type AppError = UserAlreadyRegisteredError | AccountIdAlreadyTakenError;
 type ErrorMapping<SpecificError extends AppError> = {
   status: ContentfulStatusCode;
   message: (error: SpecificError) => string;
+  // 任意: zod issues 等の構造化コンテキストを返したい場合に実装する
+  details?: (error: SpecificError) => unknown;
 };
 
 type ErrorMap = {
@@ -178,18 +181,20 @@ const buildMappedResponse = <Error extends AppError>(
   error: Error
 ): ErrorResponse => {
   const mapping = errorMap[error.type as Error["type"]] as ErrorMapping<Error>;
-  return {
-    body: { error: mapping.message(error) },
-    status: mapping.status,
-  };
+  const body: ErrorResponse["body"] = { error: mapping.message(error) };
+  if (mapping.details) {
+    body.details = mapping.details(error);
+  }
+  return { body, status: mapping.status };
 };
 
-export type ErrorResponse = {
-  body: { error: string };
+type ErrorResponse = {
+  body: { error: string; details?: unknown };
   status: ContentfulStatusCode;
 };
 
-export const resolveErrorResponse = (error: unknown): ErrorResponse => {
+// 内部ヘルパ: 外部からは handleAppError 経由でのみ使う
+const resolveErrorResponse = (error: unknown): ErrorResponse => {
   if (isAppError(error)) {
     const response = buildMappedResponse(error);
     console.warn("[AppError]", {
@@ -205,34 +210,39 @@ export const resolveErrorResponse = (error: unknown): ErrorResponse => {
     status: 500,
   };
 };
+
+// 公開面: Hono の onError にそのまま渡す
+export const handleAppError = (error: Error, c: Context) => {
+  const { body, status } = resolveErrorResponse(error);
+  return c.json(body, status);
+};
 ```
 
 ### 設計ポイント
 
 - `AppError` は union 型。**新しいエラーを追加したら union に足す → errorMap のキー補完が効く** ので、マッピングの漏れを型で防げる
 - `message` を関数にしておくと、エラーのコンテキスト情報（`accountId` 等）をメッセージに差し込める
+- `details?` を任意で実装すると、レスポンス body に構造化コンテキスト（zod issues 等）を含められる
 - クライアントに返すメッセージと、内部ログに残す `error.message` は別物でよい（errorMap 側は UI 用に整形）
+- 公開 API は `handleAppError` のみ。`resolveErrorResponse` は実装詳細として閉じる
 
 ---
 
 ## ③ onError ハンドラ
 
-Hono の `onError` で一元的に捕捉し、`resolveErrorResponse` へ委譲する。ルートハンドラでは `try/catch` を書かず、onError 側も HTTP 変換の詳細を持たない（詳細は `errorMap` 側に閉じる）。
+Hono の `onError` で一元的に捕捉し、errorMap が公開する `handleAppError` をそのまま渡す。ルートハンドラでは `try/catch` を書かず、onError 側も HTTP 変換の詳細を持たない（詳細は `errorMap` 側に閉じる）。
 
 ```typescript
 // app/api/[[...route]]/route.ts
 import { Hono } from "hono";
 import { handle } from "hono/vercel";
-import { resolveErrorResponse } from "../../../errorMap";
+import { handleAppError } from "../../../errorMap";
 
 const app = new Hono()
   .basePath("/api")
   .route("/users", usersRoute)
   // ... 他ルート
-  .onError((error, c) => {
-    const { body, status } = resolveErrorResponse(error);
-    return c.json(body, status);
-  });
+  .onError(handleAppError);
 
 export const GET = handle(app);
 export const POST = handle(app);
@@ -240,7 +250,7 @@ export const POST = handle(app);
 
 ### 注意点
 
-- **zod バリデーションエラー** は `zValidator` の第3引数で 400 を返すので、onError まで届かない
+- **zod バリデーションエラー** も同じ経路に流す。`zValidator` の第3引数フックで `InvalidRequestFormatError` を `throw` する設計に揃え、`onError → handleAppError → errorMap` で 400 + `details` に変換する（フック内で `c.json(..., 400)` を直書きしない）。実装は後述の `validateRequest` ファクトリを参照
 - **認証ミドルウェアのエラー** は onError で扱うか、ミドルウェア内で直接 401 を返すかはプロジェクトで決める（本設計では「ミドルウェアは直接返す、usecase以降は throw で onError」を推奨）
 - **Infrastructure 層の技術的例外**（DB接続失敗等）は `isAppError` にマッチせず 500 に落ちる。これで正しい（500 はまさに "依存先の契約違反" の表現）
 
@@ -248,36 +258,79 @@ export const POST = handle(app);
 
 ## ④ ルートハンドラ
 
-エラーを try/catch しない。usecase を呼んで結果を返すだけ。
+エラーを try/catch しない。usecase を呼んで結果を返すだけ。zod バリデーションエラーも `validateRequest` ファクトリ経由で `onError` に流すので、ハンドラ内に 400 のレスポンス組み立ては書かない。
+
+### InvalidRequestFormatError と validateRequest ファクトリ
+
+エントリポイント層に「リクエスト形式違反」のエラーを co-located で置き、その throw 処理を共通ファクトリに包む。
+
+```typescript
+// app/api/[[...route]]/errors/invalidRequestFormat/index.ts
+import type { ZodIssue } from "zod";
+
+export type InvalidRequestFormatError = Error & {
+  readonly type: "InvalidRequestFormatError";
+  readonly issues: ReadonlyArray<ZodIssue>;
+};
+
+export const createInvalidRequestFormatError = (
+  issues: ReadonlyArray<ZodIssue>
+): InvalidRequestFormatError => {
+  const error = new Error("InvalidRequestFormatError") as InvalidRequestFormatError;
+  return Object.assign(error, {
+    type: "InvalidRequestFormatError" as const,
+    issues,
+  });
+};
+```
+
+```typescript
+// app/api/[[...route]]/validators/validateRequest/index.ts
+import { zValidator } from "@hono/zod-validator";
+import type { ZodSchema } from "zod";
+import { createInvalidRequestFormatError } from "../../errors/invalidRequestFormat";
+
+type ValidationTarget = "json" | "form" | "query" | "header" | "cookie" | "param";
+
+export const validateRequest = <Schema extends ZodSchema>(
+  target: ValidationTarget,
+  schema: Schema
+) =>
+  zValidator(target, schema, (result) => {
+    if (!result.success) {
+      throw createInvalidRequestFormatError(result.error.issues);
+    }
+  });
+```
+
+`InvalidRequestFormatError` は `AppError` union に追加し、`errorMap` で 400 + `details: error.issues` にマッピングする（②の `details?` を実装する）。これで「フォーム未入力 → クライアントへフィールド単位のメッセージ」までが onError 経路 1 本で完結する。
+
+### ルート実装例
 
 ```typescript
 // app/api/[[...route]]/users/create/index.ts
 import { Hono } from "hono";
-import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { createUserUseCase } from "...";
+import { validateRequest } from "../../validators/validateRequest";
 
 const requestSchema = z.object({
-  email: z.string().min(1),
-  accountId: z.string().min(1),
+  email: z.string().min(1, "email is required").email("Invalid email format"),
+  accountId: z
+    .string()
+    .min(1, "accountId is required")
+    .max(255, "accountId must be 255 characters or less"),
 });
 
 const app = new Hono().post(
   "/",
-  zValidator("json", requestSchema, (result, c) => {
-    if (!result.success) {
-      return c.json(
-        { error: "Invalid request", issues: result.error.issues },
-        400
-      );
-    }
-  }),
+  validateRequest("json", requestSchema),
   async (c) => {
     const body = c.req.valid("json");
     const session = await auth0.getSession();
     if (!session?.user) return c.json({ error: "Unauthorized" }, 401);
 
-    // try/catch 不要。AppError は onError が、未知のエラーも onError が拾う
+    // try/catch 不要。AppError も未知のエラーも onError が拾う
     const result = await createUserUseCase(
       { subId: session.user.sub, email: body.email, accountId: body.accountId },
       getContainer()
@@ -289,6 +342,8 @@ const app = new Hono().post(
 
 export default app;
 ```
+
+各 zod ルールに渡したメッセージは、レスポンス `details[].message` にそのまま乗るのでクライアントのフォーム inline 表示に使える。
 
 ---
 
