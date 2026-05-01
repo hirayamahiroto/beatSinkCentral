@@ -356,7 +356,7 @@ Integration / E2E を書くかどうかは、以下の観点で判断する:
 
 ## 8. エラーハンドリングのテストパターン
 
-本プロジェクトでは typed AppError と errorMap による HTTP 変換の分離設計を採用している(詳細: `docs/server-architecture/error-handling-implementation.md`)。テストもこの分離に沿って書く。
+本プロジェクトでは typed AppError と errorMap による HTTP 変換の分離設計を採用している(詳細: `docs/server-architecture/error-handling/implementation.md`)。テストもこの分離に沿って書く。
 
 ### 層ごとの検証
 

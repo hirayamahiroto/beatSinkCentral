@@ -1,6 +1,10 @@
-# エラーハンドリング設計方針
+# エラーハンドリング: メンタルモデルと設計原則
 
-各レイヤーのエラーハンドリング責務を明確に分離し、「どのレイヤーで何を検証/判定するか」を一貫させるための方針。
+このドキュメントは、エラーハンドリング設計の **思想と原則** を扱う。「エラーとは何か」「なぜ層を分けるのか」「層の独立性とは何か」という問いに答える。
+
+実際にどの層に何を置くかは [layer-responsibilities.md](./layer-responsibilities.md)、コードレベルの書き方は [implementation.md](./implementation.md) を参照。
+
+---
 
 ## エラーとは何か（メンタルモデル）
 
@@ -40,6 +44,8 @@
 - エラー名は「違反されたルールの名前」になる（例: `UserAlreadyRegisteredError` = 「新規登録の前提である未登録状態」への違反）
 - エラーには「何の違反か」という情報が型として載るべき
 - 握りつぶし = 違反の報告書を破り捨てる行為。「誰が悪かったか」「どう直すか」「再発するか」が全て失われる
+
+---
 
 ## なぜこの設計が必要か
 
@@ -96,142 +102,15 @@
 
 これが「エラーを情報として扱う」ことの意味。
 
+---
+
 ## 基本原則
 
 - エラーは **発生したレイヤーで定義** し、そのレイヤーの責務範囲内の事象を表現する
 - 下位層は上位層を知らない。エラーは型として上位層へ伝播する
 - エントリポイント層で各レイヤーのエラーを捕捉し、HTTPレスポンスへマッピングする
 
-## レイヤー別の責務
-
-| レイヤー                      | 責務                                               | エラーの性質             | 例                                        |
-| ----------------------------- | -------------------------------------------------- | ------------------------ | ----------------------------------------- |
-| **Value Object（ドメイン）**  | 値の形式・制約の正当性検証                         | 値が不正                 | email形式不正、subId空文字                |
-| **Entity（ドメイン）**        | エンティティ内の不変条件の検証                     | 状態が不正               | 必須関連の欠落                            |
-| **Usecase**                   | ユースケース固有の前提条件・業務ルール             | 前提違反・業務ルール違反 | 既に登録済み、対象が存在しない            |
-| **Entrypoint（APIハンドラ）** | 認証・認可・バリデーション・エラーのHTTPマッピング | プロトコル変換           | ドメインエラー→400、Usecaseエラー→409/404 |
-| **Infrastructure**            | 外部システム起因の障害                             | 技術的障害               | DB接続失敗、外部APIタイムアウト           |
-
-### ドメイン層（Value Object / Entity）
-
-- **責務**: 値やエンティティそのものの正当性を保証する
-- Value Object のファクトリ関数内で不正値を検知したら即時 throw する
-- ドメイン層のエラーは「値・状態が不正」という性質のみを扱い、ユースケース固有の事情（既に登録済み等）には関与しない
-
-### Usecase層
-
-- **責務**: ユースケース固有の前提条件・業務ルール違反を表現する
-- ドメイン層のエラーとは別に、各ユースケース配下にそのユースケース固有のエラークラスを定義する
-- 「値の不正」ではなく「業務上その操作ができない状態」を表す
-- 例: `UserAlreadyRegisteredError`（既に登録済みのため新規作成不可）
-
-### Entrypoint層（APIハンドラ）
-
-- **責務**: 認証・認可・入力バリデーション・エラーのHTTPマッピング
-- Usecaseを呼び出し、`try/catch` で各レイヤーのエラーを捕捉する
-- エラー種別に応じてHTTPステータスコードへマッピングする
-- ビジネスロジックやDB操作は書かない
-
-## 配置ルール
-
-```
-usecases/users/
-├── createUser/
-│   ├── index.ts           # ユースケース本体
-│   ├── index.test.ts
-│   └── errors.ts          # このユースケース固有のエラー
-└── getMe/
-    ├── index.ts
-    └── index.test.ts
-```
-
-- エラークラスは **各ユースケース配下に co-located** で配置する
-- ファイル名は `errors.ts`（複数エラーを1ファイルにまとめてよい）
-- 共通基底クラス（`UseCaseError` 等）は **現時点では作らない**。複数ユースケースで同種の扱いが必要になった段階で導入を検討する
-
-## 実装パターン（class不使用）
-
-プロジェクト全体の方針（Entity/VOはtype + ファクトリ関数）に揃え、**エラーもclassを使わず `type + ファクトリ関数 + 型ガード関数` の3点セットで定義する**。
-
-- **type**: `Error` を基底に、判別用の `type` フィールドと固有のコンテキスト情報を持つ型
-- **ファクトリ関数**: `create{ErrorName}` 命名で `Error` インスタンスを生成し `Object.assign` でフィールドを付与
-- **型ガード関数**: `is{ErrorName}` 命名で `error is {ErrorName}` を返す
-
-`Error` を基底に使うのはスタックトレース・`throw` 互換性のため（JSの制約上、ここだけは `new Error()` が必要）。判別は `instanceof` ではなく **`type` フィールド + 型ガード関数** で行う。
-
-## 実装例
-
-### ユースケース固有エラーの定義
-
-```typescript
-// usecases/users/createUser/errors.ts
-export type UserAlreadyRegisteredError = Error & {
-  readonly type: "UserAlreadyRegisteredError";
-  readonly subId: string;
-};
-
-export const createUserAlreadyRegisteredError = (
-  subId: string
-): UserAlreadyRegisteredError => {
-  const error = new Error(
-    `User already registered: ${subId}`
-  ) as UserAlreadyRegisteredError;
-  return Object.assign(error, {
-    type: "UserAlreadyRegisteredError" as const,
-    subId,
-  });
-};
-
-export const isUserAlreadyRegisteredError = (
-  error: unknown
-): error is UserAlreadyRegisteredError => {
-  return (
-    error instanceof Error &&
-    (error as Partial<UserAlreadyRegisteredError>).type ===
-      "UserAlreadyRegisteredError"
-  );
-};
-```
-
-### ユースケース本体での throw
-
-```typescript
-// usecases/users/createUser/index.ts
-import { createUserAlreadyRegisteredError } from "./errors";
-
-export const createUserUseCase = async (input, userRepository) => {
-  const existingUser = await userRepository.findBySub(input.subId);
-  if (existingUser) {
-    throw createUserAlreadyRegisteredError(input.subId);
-  }
-  // ...
-};
-```
-
-### APIハンドラでの捕捉とマッピング
-
-```typescript
-// app/api/[[...route]]/users/create/index.ts
-import { isUserAlreadyRegisteredError } from "../../../../../usecases/users/createUser/errors";
-
-try {
-  const result = await createUserUseCase(input, userRepository);
-  return c.json({ userId: result.userId }, 201);
-} catch (error) {
-  if (isUserAlreadyRegisteredError(error)) {
-    return c.json({ error: "User already registered" }, 409);
-  }
-  throw error;
-}
-```
-
-## 今後の拡張余地（必要になったら検討）
-
-- 共通基底クラス（`UseCaseError` / `DomainError` / `InfrastructureError`）の導入
-- 判別用タグフィールド（`layer`, `code`）の導入
-- エントリポイント層での共通エラーマッピング機構（ミドルウェア集約）
-
-これらは **2〜3本目のユースケースで重複・痛みが出てから** 設計する。現時点ではミニマムで進める。
+各層に何を置くかの具体は [layer-responsibilities.md](./layer-responsibilities.md) を参照。
 
 ---
 
@@ -398,67 +277,3 @@ CLI / バッチ / Worker から同じ domain を使うとき、HTTP status や J
 - それは **プロトコル・表示・運用の都合か？** → Yes なら ドメイン外に置く
 
 この線引きが守られていれば、「ドメインが知る必要がないものまで抱え込んでいる」状態を避けられる。
-
----
-
-## 関連: バリデーションの責務分離
-
-エラーハンドリングの設計と表裏一体の論点として、「バリデーションをどのレイヤーで実装するか」がある。結論から言うと、**HTTPリクエストのバリデーションとValue Objectのバリデーションは根本的に役割が異なるため、それぞれのレイヤーで独立して実装する**。
-
-### 役割の違い
-
-| バリデーション                              | 守っている契約                       | 責務の所在                         |
-| ------------------------------------------- | ------------------------------------ | ---------------------------------- |
-| **HTTPリクエストのバリデーション（Zod等）** | リクエストが期待する形式で来ているか | エントリポイント層（プロトコル層） |
-| **Value Objectのバリデーション**            | 値自身がドメインの不変条件を満たすか | ドメイン層                         |
-
-- HTTPバリデーションの検証対象は「リクエストボディ」というプロトコル上の構造物
-- VOバリデーションの検証対象は「ドメインの値」というビジネス上の概念
-
-両者は「たまたま似た検証（例: 非空チェック）をしている」ことはあっても、**守っている契約が別物**。同じルールが両方に書かれていても重複ではない。
-
-### 具体例
-
-「email は非空」というルールがZodとVO両方にあるケース。
-
-- **Zodの非空** = 「HTTPリクエストに `email` フィールドが入ってきていること」
-- **VOの非空** = 「`Email` 型として空文字は許されないこと（ドメインの不変条件）」
-
-根拠が違うので、片方を消してはいけない。消すと「HTTP形式としては来ていないが、ドメイン値としては通ってしまう」あるいはその逆の穴ができる。
-
-### クリーンアーキテクチャ的観点
-
-エントリポイント層がドメイン層（VO）を直接importして使うこと自体は、依存方向が外→内なのでクリーンアーキテクチャ的には許容される。ただし**単一責任原則の観点**で見ると、次の問題が生じる。
-
-- HTTP形式の検証とドメイン値の検証が1つのコードに混ざる
-- CLI・バッチ・別プロトコルから同じUsecaseを呼ぶとき、HTTP層にベタ書きしたロジックは再利用できない（Usecase内のVO検証は再利用できる）
-- テストの責務も混ざる（HTTP層のテストでドメインルールの網羅が必要になる）
-
-したがって「可能かどうか」ではなく「責務として分けるべきか」で判断する。**分ける**が答え。
-
-### 採用する設計
-
-| 層                     | 責務                                               | 使うもの                          |
-| ---------------------- | -------------------------------------------------- | --------------------------------- |
-| **エントリポイント層** | HTTPリクエストの形式検証（必須・型・最低限の構造） | Zod                               |
-| **Usecase層**          | 受け取った生の値をVOに変換しドメイン検証を実行     | ドメインのVOファクトリ            |
-| **Value Object**       | 値自身のドメイン不変条件                           | 自前の検証ロジック（内部でzod可） |
-
-### 実装ポリシー
-
-1. **Zodスキーマは「HTTPリクエストとしての形式」だけを書く**
-   - 必須・型・最低限の長さ等、HTTPプロトコル上の制約に限定する
-   - ドメインのルール（emailの形式、accountIdの命名規則等）までは踏み込まない
-2. **Usecaseは生の値（string等）を受け取り、内部でVOに変換する**
-   - VO変換時のバリデーションエラー = ドメインエラーとして上位に伝播
-   - これによりUsecaseが「ドメイン契約を守る最後の砦」になる
-3. **VOをHTTP層から直接呼ばない**
-   - エントリポイント層がドメイン層を直接参照する形は避ける
-   - 依存は `エントリポイント → Usecase → ドメイン` の一方向に保つ
-
-### なぜこの分離が有効か
-
-- **再利用性**: Usecase内のVO検証は、HTTP経由/CLI経由/バッチ経由のどの入口からでも同じ保証を与える
-- **テスト容易性**: Usecaseの単体テストで不正値を渡したときの挙動を直接検証できる
-- **変更の局所性**: HTTPスキーマが変わってもVOは影響を受けず、ドメインルールが変わってもHTTPスキーマは影響を受けない
-- **責務の明確化**: 「この検証は何を守っているか」がコードの配置から自明になる

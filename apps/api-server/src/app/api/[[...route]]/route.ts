@@ -4,7 +4,7 @@ import test from "./test";
 import usersCreate from "./users/create";
 import usersMe from "./users/me";
 import { requireAuthMiddleware } from "../../../middlewares/auth0";
-import { resolveErrorResponse } from "../../../errorMap";
+import { handleAppError } from "../../../errorMap";
 
 const app = new Hono()
   .basePath("/api")
@@ -12,10 +12,7 @@ const app = new Hono()
   .route("/test", test)
   .route("/users/me", usersMe)
   .route("/users", usersCreate)
-  .onError((error, c) => {
-    const { body, status } = resolveErrorResponse(error);
-    return c.json(body, status);
-  });
+  .onError(handleAppError);
 
 export type AppType = typeof app;
 
