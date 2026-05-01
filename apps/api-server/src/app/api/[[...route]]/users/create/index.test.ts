@@ -145,6 +145,7 @@ describe("User Create API", () => {
       const body = (await res.json()) as {
         details: Array<{ path: Array<string>; message: string }>;
       };
+      expect(res.status).toBe(400);
       expect(
         body.details.some(
           (issue) =>
