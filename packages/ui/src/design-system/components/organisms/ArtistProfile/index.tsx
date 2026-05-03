@@ -6,11 +6,11 @@ import { Icon } from "@ui/design-system/components/atoms/Icon";
 import { Input } from "@ui/design-system/components/atoms/Input";
 import { Button } from "@ui/design-system/components/atoms/Button";
 import { Card } from "@ui/design-system/components/atoms/Card";
-import { Label } from "@ui/design-system/components/atoms/Label";
 import { Stack } from "@ui/design-system/components/atoms/Stack";
 import { Typography } from "@ui/design-system/components/atoms/Typography";
+import { FormField } from "@ui/design-system/components/molecules/FormField";
 
-const profileFormSchema = z.object({
+const artistProfileSchema = z.object({
   accountId: z
     .string()
     .trim()
@@ -19,27 +19,27 @@ const profileFormSchema = z.object({
     .regex(/^[a-zA-Z0-9_]+$/, "英数字とアンダースコア(_)のみ使用できます"),
 });
 
-type FormValues = z.infer<typeof profileFormSchema>;
+type FormValues = z.infer<typeof artistProfileSchema>;
 
-type ProfileFormProps = {
+type ArtistProfileProps = {
   email: string;
   onSubmit: (data: FormValues) => Promise<void> | void;
   isLoading: boolean;
   error: string | null;
 };
 
-export const ProfileForm = ({
+export const ArtistProfile = ({
   email,
   onSubmit,
   isLoading,
   error,
-}: ProfileFormProps) => {
+}: ArtistProfileProps) => {
   const {
     register,
     handleSubmit,
     formState: { errors },
   } = useForm<FormValues>({
-    resolver: zodResolver(profileFormSchema),
+    resolver: zodResolver(artistProfileSchema),
     mode: "onTouched",
     defaultValues: { accountId: "" },
   });
@@ -56,29 +56,18 @@ export const ProfileForm = ({
         </Card>
 
         <Card>
-          <Label htmlFor="accountId">アカウントID</Label>
-          {/* TODO: Icon を Input 内に表示する adornment 対応は別タスク */}
-          <div>
+          <FormField
+            label="アカウントID"
+            htmlFor="accountId"
+            hint="英数字とアンダースコア(_)、1〜255文字。後から変更できません"
+            error={accountIdError}
+          >
             <Input
-              id="accountId"
               type="text"
               placeholder="例: dj_taro_123"
-              aria-invalid={hasValidationError}
-              aria-describedby={
-                hasValidationError ? "accountId-error" : "accountId-hint"
-              }
               {...register("accountId")}
             />
-          </div>
-          {hasValidationError ? (
-            <Typography variant="small" tone="danger" id="accountId-error">
-              {accountIdError}
-            </Typography>
-          ) : (
-            <Typography variant="small" id="accountId-hint">
-              英数字とアンダースコア(_)、1〜255文字。後から変更できません
-            </Typography>
-          )}
+          </FormField>
         </Card>
 
         {error && (
