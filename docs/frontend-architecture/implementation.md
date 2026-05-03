@@ -21,8 +21,9 @@ export default function Page() {
 
 ### SSR + CSR（動的な動きが必要な場合）
 
+`page.tsx`:
+
 ```tsx
-// page.tsx
 import { ClientAdapter } from "./ClientAdapter";
 
 export default async function Page() {
@@ -30,9 +31,13 @@ export default async function Page() {
   const initialData = await data.json();
   return <ClientAdapter initialData={initialData} />;
 }
+```
 
-// ClientAdapter/index.tsx
-("use client");
+`ClientAdapter/index.tsx`:
+
+```tsx
+"use client";
+
 import { useState } from "react";
 import ComponentPage from "@ui/design-system/components/pages/ComponentPage";
 
