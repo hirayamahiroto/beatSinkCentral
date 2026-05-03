@@ -29,7 +29,7 @@ export const Default: Story = {
     children: (
       <>
         <Typography variant="small">ログイン中のアカウント</Typography>
-        <Typography variant="p">hirayama.web1998@gmail.com</Typography>
+        <Typography variant="p">example@gmail.com</Typography>
       </>
     ),
   },
