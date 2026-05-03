@@ -1,6 +1,6 @@
 "use client";
 
-import { ProfileForm } from "@ui/design-system/components/organisms/ProfileForm";
+import { ArtistProfile } from "@ui/design-system/components/organisms/ArtistProfile";
 import { useCreateUser } from "./hooks/useCreateUser";
 
 type OnboardingClientProps = {
@@ -11,7 +11,7 @@ export const OnboardingClient = ({ email }: OnboardingClientProps) => {
   const { handleSubmit, isLoading, error } = useCreateUser({ email });
 
   return (
-    <ProfileForm
+    <ArtistProfile
       email={email}
       onSubmit={handleSubmit}
       isLoading={isLoading}

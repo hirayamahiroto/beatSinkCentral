@@ -22,6 +22,16 @@ const SelectItemDemo = () => (
 const meta = {
   title: "atoms/Select/Item",
   component: SelectItemDemo,
+  parameters: {
+    docs: {
+      description: {
+        component:
+          "Select の選択肢ひとつひとつを表す要素。" +
+          "`value` 属性で選択時にフォームに渡される値を、children で表示テキストを定義する責務を持つ。" +
+          "ホバー・キーボードフォーカスのハイライトや、選択中アイテムのチェック表示は SelectItem 自身が引き受ける。",
+      },
+    },
+  },
 } satisfies Meta<typeof SelectItemDemo>;
 
 export default meta;

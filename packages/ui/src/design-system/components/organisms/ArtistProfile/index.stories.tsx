@@ -1,25 +1,26 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { ProfileForm } from "./index";
+import { ArtistProfile } from "./index";
 
 const meta = {
-  title: "organisms/ProfileForm",
-  component: ProfileForm,
-  decorators: [
-    (Story) => (
-      <div className="min-h-screen bg-black p-8">
-        <div className="max-w-md mx-auto backdrop-blur-md bg-white/5 p-8 rounded-2xl border border-white/10">
-          <Story />
-        </div>
-      </div>
-    ),
-  ],
+  title: "organisms/ArtistProfile",
+  component: ArtistProfile,
+  parameters: {
+    docs: {
+      description: {
+        component:
+          "アーティストプロフィールを作成するためのフォーム organism。" +
+          "ログイン中のメールアドレスを表示しつつ、アカウント ID の入力を受け付け、バリデーション結果に応じてエラー表示と送信制御を行う責務を持つ。" +
+          "入力欄は `FormField` molecule を使い、a11y 紐付けとエラー表示が組み込まれた状態で組み立てる。",
+      },
+    },
+  },
   args: {
     onSubmit: (data) => {
       console.log("submitted", data);
     },
   },
-} satisfies Meta<typeof ProfileForm>;
+} satisfies Meta<typeof ArtistProfile>;
 
 export default meta;
 

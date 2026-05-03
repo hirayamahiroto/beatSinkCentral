@@ -167,6 +167,95 @@ Pages
 
 ---
 
+## 文脈を持つコンポーネントと持たないコンポーネント
+
+Atomic Design の階層分類とは別の軸として、**そのコンポーネントが「用途の文脈」を自分で持つか持たないか** で実装方針を分ける。
+階層（atom / molecule / organism）が同じでも、文脈の有無によって「内部構造を自分で所有するか」「呼び出し側に構造を委ねるか」が変わるため、両者を混同しないこと。
+
+### 分類の判断基準
+
+| 観点                                    | 文脈を持たない（generic）                                                                    | 文脈を持つ                                                                      |
+| --------------------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| 単体で用途を表明するか                  | しない（組み合わせて初めて意味が決まる部品）                                                 | する（自分自身の責務・役割が明確）                                              |
+| 内部の縦リズム・配置                    | 持たない。呼び出し側で与える                                                                 | 自分で持つ（`gap` prop / 内部の縦並び等）                                       |
+| 構造スタイル（padding / flex / gap 等） | atom 側で持たない。primitive を薄く継承し、ブランドカラーのみ上書きする                      | 責務の実現に必要な構造は内部に持つ                                              |
+| 表現の追加方法                          | `variant` / `tone` 等の軸を追加（`className` での個別上書きはしない）                        | 必要な振る舞い（a11y 連携・固有のアニメーション等）はカプセル化して内部に閉じる |
+| 該当例                                  | `Typography` / `Button` / `Input` / `Label` / `Link` / `Image` / `Icon` / `Select` / `Stack` | `Card` / `FormField` / `ArtistProfile` 等の organism                            |
+
+### 文脈を持たないコンポーネントの実装方針
+
+> 単体では用途を表明しない。組み合わせて初めて意味が決まる「部品」。
+
+- **shadcn primitive を薄く継承し、ブランドカラー（色味）のみ上書きする**。padding / rounded / flex / gap などの構造スタイルを atom 側で勝手に持たない
+- 用途の文脈（縦リズムや配置）は呼び出し側で `Stack` などを使って与える
+- 表現を増やしたい時は `className` で個別上書きせず、`variant` / `tone` などの軸を追加して対応する（`Typography` が代表例）
+- `Stack` 自身もここに属する。**generic atom を組み合わせて文脈を作る場面（= organism / page）でレイアウト構造を定義するために使う**
+
+```tsx
+// NG: generic atom が構造スタイル（padding / flex）を内蔵している
+export const Button = (props) => (
+  <PrimitiveButton className="px-6 py-3 flex gap-2" {...props} />
+);
+
+// NG: className で個別上書きして表現を増やす
+<Typography className="text-red-500 text-2xl">エラー</Typography>;
+
+// OK: ブランドカラーのみ上書きし、構造は呼び出し側で与える
+export const Button = (props) => (
+  <PrimitiveButton className="bg-brand-primary" {...props} />
+);
+
+// OK: 表現は variant / tone の軸で追加する
+<Typography variant="h2" tone="danger">
+  エラー
+</Typography>;
+```
+
+### 文脈を持つコンポーネントの実装方針
+
+> 自分自身の用途・責務が明確で、その実現に必要な内部構造（縦リズム、a11y 連携、サブパーツ）を自分で所有する「容器」。
+
+- **内部の縦リズムは自分で持つ** — 外から `Stack` で囲って構造を上書きしない。`Card` は `gap` prop を持ち、`FormField` は label / hint / error の縦並びを内部で完結させる
+- **責務に必要な振る舞いをカプセル化する** — `FormField` は `htmlFor` / `aria-invalid` / `aria-describedby` の紐付けを内部で自動化、`Icon` の `Loader2` は呼び出し側を意識せず自動回転する
+- サブパーツ（`CardHeader` / `CardTitle` / `CardContent` ...）は、その容器の構造を構築するためのものとして同じツリーに置く
+
+```tsx
+// NG: 文脈を持つ容器の中身を Stack で囲って構造を外注している
+<Card>
+  <Stack gap="md">
+    <Typography variant="h3">アカウント設定</Typography>
+    <Typography variant="p">user@example.com</Typography>
+  </Stack>
+</Card>;
+
+// OK: Card 自身が gap prop で縦リズムを所有する
+<Card gap="md">
+  <Typography variant="h3">アカウント設定</Typography>
+  <Typography variant="p">user@example.com</Typography>
+</Card>;
+
+// NG: a11y 連携を呼び出し側に委ねている
+<div>
+  <Label htmlFor="accountId">アカウントID</Label>
+  <Input id="accountId" aria-describedby="accountId-error" aria-invalid />
+  <p id="accountId-error">エラー文</p>
+</div>;
+
+// OK: FormField が htmlFor / aria-* を内部で自動連携する
+<FormField label="アカウントID" htmlFor="accountId" error="エラー文">
+  <Input />
+</FormField>;
+```
+
+### この分類を意識する理由
+
+「Card の中身を `Stack` で囲って縦リズムを与える」「`Typography` に `className` で色を渡す」のような誤用は、**コンポーネントを単体で見ているだけでは違和感がない**。
+階層（atom / molecule）の分類だけでは、「構造を自分で所有するべきか / 外から与えられるべきか」が判断できないため、この軸を別途明示する。
+
+各コンポーネントの Storybook description はこの分類に沿って書く。AI / 人間どちらが触っても、コンポーネント単体の情報から「これは文脈を持つ容器なので構造を外注しない」「これは generic なので組み合わせ側で文脈を与える」が判断できる状態を保つ。
+
+---
+
 ## 構造（Structure）とは
 
 空間の並び・配置・流れ・骨格を定義し、DOM構造に影響を与えるもの
