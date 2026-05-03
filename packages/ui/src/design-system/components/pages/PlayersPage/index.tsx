@@ -137,7 +137,7 @@ const PlayerCard = ({ player }: { player: Player }) => {
 
   return (
     <AtomLink href={`/player/${player.id}`}>
-      <Card className="bg-black/40 backdrop-blur-lg border-0 overflow-hidden group cursor-pointer">
+      <Card className="p-0 bg-black/40 backdrop-blur-lg border-0 overflow-hidden group cursor-pointer">
         <div className="relative">
           <div className="absolute inset-0 bg-gradient-to-br from-purple-900/30 to-black opacity-70" />
           {player.image ? (
