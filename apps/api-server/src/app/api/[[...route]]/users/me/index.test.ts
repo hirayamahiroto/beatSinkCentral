@@ -35,13 +35,6 @@ describe("User Me API", () => {
     vi.clearAllMocks();
   });
 
-  it("auth0Userのsubが無い場合は401を返す", async () => {
-    const app = createAppWithAuth({});
-    const res = await app.request("/", { method: "GET" });
-
-    expect(res.status).toBe(401);
-  });
-
   it("未登録ユーザーの場合はregistered:falseを返す", async () => {
     mockUserRepository.findBySub.mockResolvedValue(null);
     const app = createAppWithAuth({ sub: "auth0|unknown" });

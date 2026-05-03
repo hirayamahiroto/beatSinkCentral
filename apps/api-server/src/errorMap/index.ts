@@ -8,9 +8,11 @@ import type { InvalidNameFormatError } from "../domain/users/valueObjects/name";
 import type { InvalidAccountIdFormatError } from "../domain/artists/valueObjects/accountId";
 import type { InvalidArtistIdFormatError } from "../domain/artists/valueObjects/artistId";
 import type { InvalidRequestFormatError } from "../app/api/[[...route]]/errors/invalidRequestFormat";
+import type { UnauthorizedError } from "../middlewares/auth0/errors/unauthorized";
 
 export type AppError =
   | InvalidRequestFormatError
+  | UnauthorizedError
   | UserAlreadyRegisteredError
   | AccountIdAlreadyTakenError
   | InvalidEmailFormatError
@@ -36,6 +38,10 @@ const errorMap: ErrorMap = {
     status: 400,
     message: () => "Invalid request",
     details: (error) => error.issues,
+  },
+  UnauthorizedError: {
+    status: 401,
+    message: () => "Unauthorized",
   },
   UserAlreadyRegisteredError: {
     status: 409,

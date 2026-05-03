@@ -1,6 +1,5 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { auth0 } from "../../../../../infrastructure/auth0";
 import { getContainer } from "../../../../../infrastructure/container";
 import { createUserUseCase } from "../../../../../usecases/users/createUser";
 import { validateRequest } from "../../validators/validateRequest";
@@ -23,17 +22,13 @@ const app = new Hono().post(
   validateRequest("json", requestSchema),
   async (c) => {
     const body = c.req.valid("json");
-    const session = await auth0.getSession();
-
-    if (!session || !session.user) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
+    const auth0User = c.get("auth0User");
 
     const { userRepository, artistRepository, txRunner } = getContainer();
 
     const result = await createUserUseCase(
       {
-        subId: session.user.sub,
+        subId: auth0User.sub,
         email: body.email,
         accountId: body.accountId,
       },

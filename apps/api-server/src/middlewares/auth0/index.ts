@@ -1,5 +1,6 @@
 import { createMiddleware } from "hono/factory";
 import { auth0 } from "../../infrastructure/auth0";
+import { createUnauthorizedError } from "./errors/unauthorized";
 
 // Auth0セッションからユーザー情報の型を抽出
 type Auth0Session = Awaited<ReturnType<typeof auth0.getSession>>;
@@ -13,13 +14,11 @@ declare module "hono" {
 }
 
 export const requireAuthMiddleware = createMiddleware(async (c, next) => {
-  // Auth0のセッションを取得
   const session = await auth0.getSession();
   if (!session?.user) {
-    return c.json({ error: "Unauthorized" }, 401);
+    throw createUnauthorizedError();
   }
 
-  // コンテキストにAuth0ユーザー情報を設定
   c.set("auth0User", session.user);
 
   await next();
