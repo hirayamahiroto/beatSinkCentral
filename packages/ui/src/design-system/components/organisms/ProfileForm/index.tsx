@@ -7,6 +7,8 @@ import { Input } from "@ui/design-system/components/atoms/Input";
 import { Button } from "@ui/design-system/components/atoms/Button";
 import { Card } from "@ui/design-system/components/atoms/Card";
 import { Label } from "@ui/design-system/components/atoms/Label";
+import { Stack } from "@ui/design-system/components/atoms/Stack";
+import { Typography } from "@ui/design-system/components/atoms/Typography";
 
 const profileFormSchema = z.object({
   accountId: z
@@ -46,64 +48,63 @@ export const ProfileForm = ({
   const hasValidationError = accountIdError !== undefined;
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
-      <Card className="p-4 bg-white/5 border-white/10 rounded-xl shadow-none">
-        <p className="text-sm text-gray-400 mb-1">ログイン中のアカウント</p>
-        <p className="text-white font-medium">{email}</p>
-      </Card>
-
-      <Card className="p-4 bg-transparent border-none shadow-none">
-        <Label htmlFor="accountId" className="block text-gray-300 mb-2">
-          アカウントID
-        </Label>
-        <div className="relative">
-          <Icon
-            name="AtSign"
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 z-10"
-          />
-          <Input
-            id="accountId"
-            type="text"
-            placeholder="例: dj_taro_123"
-            aria-invalid={hasValidationError}
-            aria-describedby={
-              hasValidationError ? "accountId-error" : "accountId-hint"
-            }
-            {...register("accountId")}
-            className="pl-10 pr-4 py-3 h-auto bg-white/10 border-white/20 rounded-xl text-white placeholder-gray-500 focus-visible:ring-blue-500 focus-visible:ring-offset-0 aria-[invalid=true]:border-red-400/60"
-          />
-        </div>
-        {hasValidationError ? (
-          <p id="accountId-error" className="mt-2 text-sm text-red-400">
-            {accountIdError}
-          </p>
-        ) : (
-          <p id="accountId-hint" className="mt-2 text-sm text-gray-500">
-            英数字とアンダースコア(_)、1〜255文字。後から変更できません
-          </p>
-        )}
-      </Card>
-
-      {error && (
-        <Card className="p-4 bg-red-500/10 border-red-500/20 rounded-xl shadow-none">
-          <p className="text-red-400 text-sm">{error}</p>
+    <form onSubmit={handleSubmit(onSubmit)} noValidate>
+      <Stack gap="lg">
+        <Card>
+          <Stack gap="sm">
+            <Typography variant="small">ログイン中のアカウント</Typography>
+            <Typography variant="p">{email}</Typography>
+          </Stack>
         </Card>
-      )}
 
-      <Button
-        type="submit"
-        disabled={isLoading || hasValidationError}
-        className="w-full py-3 h-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-600 rounded-xl font-medium"
-      >
-        {isLoading ? (
-          <>
-            <Icon name="Loader2" className="w-5 h-5 animate-spin" />
-            作成中...
-          </>
-        ) : (
-          "プロフィールを作成"
+        <Card>
+          <Stack gap="sm">
+            <Label htmlFor="accountId">アカウントID</Label>
+            {/* TODO: Icon を Input 内に表示する adornment 対応は別タスク */}
+            <div>
+              <Icon name="AtSign" />
+              <Input
+                id="accountId"
+                type="text"
+                placeholder="例: dj_taro_123"
+                aria-invalid={hasValidationError}
+                aria-describedby={
+                  hasValidationError ? "accountId-error" : "accountId-hint"
+                }
+                {...register("accountId")}
+              />
+            </div>
+            {hasValidationError ? (
+              <Typography variant="small" tone="danger" id="accountId-error">
+                {accountIdError}
+              </Typography>
+            ) : (
+              <Typography variant="small" id="accountId-hint">
+                英数字とアンダースコア(_)、1〜255文字。後から変更できません
+              </Typography>
+            )}
+          </Stack>
+        </Card>
+
+        {error && (
+          <Card>
+            <Typography variant="p" tone="danger">
+              {error}
+            </Typography>
+          </Card>
         )}
-      </Button>
+
+        <Button type="submit" disabled={isLoading || hasValidationError}>
+          {isLoading ? (
+            <>
+              <Icon name="Loader2" />
+              作成中...
+            </>
+          ) : (
+            "プロフィールを作成"
+          )}
+        </Button>
+      </Stack>
     </form>
   );
 };
