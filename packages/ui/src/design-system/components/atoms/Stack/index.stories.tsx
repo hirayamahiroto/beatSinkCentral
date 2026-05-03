@@ -9,7 +9,9 @@ const meta = {
     docs: {
       description: {
         component:
-          "子要素を縦方向に並べ、間隔を `gap` で指定するレイアウト atom。`className` は受け付けず、新しい間隔が必要になったら gap を追加して対応する。",
+          "子要素を縦方向に並べ、間隔を `gap` で指定するレイアウト atom。" +
+          "文脈を持たない汎用 atom（Typography / Button / Input など）を organism で組み合わせて用途の文脈を与える時に、構造を定義する目的で使う。" +
+          "Card / Form / FormField のような『文脈を持つ容器』は自身で縦リズムを所有しているため、その内側を Stack で包む必要はない。",
       },
     },
   },

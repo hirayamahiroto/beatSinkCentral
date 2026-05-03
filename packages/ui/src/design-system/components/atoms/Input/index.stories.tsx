@@ -47,7 +47,7 @@ export const WithValue: Story = {
       description: {
         story:
           "値が入った状態の見た目を確認するための Story。" +
-          "`bg-white/5` のため、Card の上に重ねても土台のトーンに自然に馴染む。",
+          "透過背景がベースなので、Card の上に重ねても土台のトーンに自然に馴染む。",
       },
     },
   },

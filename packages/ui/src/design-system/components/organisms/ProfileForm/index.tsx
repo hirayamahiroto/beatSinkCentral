@@ -51,39 +51,34 @@ export const ProfileForm = ({
     <form onSubmit={handleSubmit(onSubmit)} noValidate>
       <Stack gap="lg">
         <Card>
-          <Stack gap="sm">
-            <Typography variant="small">ログイン中のアカウント</Typography>
-            <Typography variant="p">{email}</Typography>
-          </Stack>
+          <Typography variant="small">ログイン中のアカウント</Typography>
+          <Typography variant="p">{email}</Typography>
         </Card>
 
         <Card>
-          <Stack gap="sm">
-            <Label htmlFor="accountId">アカウントID</Label>
-            {/* TODO: Icon を Input 内に表示する adornment 対応は別タスク */}
-            <div>
-              <Icon name="AtSign" />
-              <Input
-                id="accountId"
-                type="text"
-                placeholder="例: dj_taro_123"
-                aria-invalid={hasValidationError}
-                aria-describedby={
-                  hasValidationError ? "accountId-error" : "accountId-hint"
-                }
-                {...register("accountId")}
-              />
-            </div>
-            {hasValidationError ? (
-              <Typography variant="small" tone="danger" id="accountId-error">
-                {accountIdError}
-              </Typography>
-            ) : (
-              <Typography variant="small" id="accountId-hint">
-                英数字とアンダースコア(_)、1〜255文字。後から変更できません
-              </Typography>
-            )}
-          </Stack>
+          <Label htmlFor="accountId">アカウントID</Label>
+          {/* TODO: Icon を Input 内に表示する adornment 対応は別タスク */}
+          <div>
+            <Input
+              id="accountId"
+              type="text"
+              placeholder="例: dj_taro_123"
+              aria-invalid={hasValidationError}
+              aria-describedby={
+                hasValidationError ? "accountId-error" : "accountId-hint"
+              }
+              {...register("accountId")}
+            />
+          </div>
+          {hasValidationError ? (
+            <Typography variant="small" tone="danger" id="accountId-error">
+              {accountIdError}
+            </Typography>
+          ) : (
+            <Typography variant="small" id="accountId-hint">
+              英数字とアンダースコア(_)、1〜255文字。後から変更できません
+            </Typography>
+          )}
         </Card>
 
         {error && (

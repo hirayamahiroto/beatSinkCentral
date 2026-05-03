@@ -177,8 +177,7 @@ export const WithLeadingIcon: Story = {
     docs: {
       description: {
         story:
-          "アイコン + テキストの組み合わせ。Button 内のアイコンは primitive 側で size と shrink が制御されるため、" +
-          "個別にサイズ指定する必要はない。",
+          "アイコン + テキストの組み合わせ。サイズや揃えは Button 側が引き受けるので、Icon に個別の見た目指定をしなくてよい。",
       },
     },
   },
