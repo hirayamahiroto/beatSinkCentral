@@ -10,9 +10,10 @@ const meta = {
     docs: {
       description: {
         component:
-          "操作の起点となるアクションを表す atom。`variant` で操作の重要度・性質を、`size` で密度を切り替える。" +
-          "default はブランドの青→紫グラデーションが当たる主要 CTA で、1 画面につき原則 1 つだけ使う。" +
-          "副次的な操作は outline / secondary / ghost / link を選んで主役を譲る。",
+          "操作の起点となるアクションを描画する atom。" +
+          '文脈を持たない汎用 atom。本文中の遷移は Link を使い、ボタンの形をしたリンクが必要な時だけ `variant="link"` を使う。' +
+          "`variant` で操作の重要度・性質を、`size` で密度を切り替える。default はブランドの青→紫グラデーションが当たる主要 CTA で、1 画面につき原則 1 つだけ使い、副次的な操作は outline / secondary / ghost / link で主役を譲る。" +
+          "NG: テキスト色だけ変えたい等の理由で `className` を渡してその場限りの見た目を作る。表現は variant / size の軸を増やして対応する。",
       },
     },
   },

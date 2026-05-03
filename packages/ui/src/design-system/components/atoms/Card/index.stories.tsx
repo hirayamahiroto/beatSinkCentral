@@ -1,3 +1,4 @@
+import React from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Card } from "./index";
 import { Typography } from "@ui/design-system/components/atoms/Typography";
@@ -10,10 +11,10 @@ const meta = {
     docs: {
       description: {
         component:
-          "情報をひとまとまりに見せる glass morphism コンテナ。" +
-          "ダークな背景に重ねると自然に浮き上がる見た目になり、メインの情報単位（プロフィール表示・設定セクション・通知ブロック等）を区切るのに使う。" +
-          "文脈を持つ容器なので、中身の縦リズムは Card 自身が `gap` prop で所有する（外から Stack を被せて構造を外注しない）。" +
-          "ヘッダー / 本文 / フッターを明示的に区切りたい構造化レイアウトが欲しい場合は、`CardHeader` / `CardTitle` / `CardDescription` / `CardContent` / `CardFooter` を組み合わせて使う。",
+          "関連する情報をひとまとまりに見せる glass morphism コンテナ。ダークな背景に重ねると自然に浮き上がり、メインの情報単位（プロフィール表示・設定セクション・通知ブロック等）を区切るのに使う。" +
+          "文脈を持つ容器。中身の縦リズム・余白を Card 自身が所有する。ヘッダー / 本文 / フッターを明示的に区切りたい場合は `CardHeader` / `CardTitle` / `CardDescription` / `CardContent` / `CardFooter` を組み合わせて構造化する。" +
+          '`gap` で内部の縦リズムを切り替える（既定 `sm`）。画像コンテナのように余白そのものが要らない場合は `gap="none"` で opt-out する。' +
+          '`<Card><Stack gap="md">…</Stack></Card>` のように内側を Stack で包んで構造を外注しない。Card 自身の `gap` で表現する。',
       },
     },
   },

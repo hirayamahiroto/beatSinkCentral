@@ -10,8 +10,9 @@ const meta = {
       description: {
         component:
           "子要素を縦方向に並べ、間隔を `gap` で指定するレイアウト atom。" +
-          "文脈を持たない汎用 atom（Typography / Button / Input など）を organism で組み合わせて用途の文脈を与える時に、構造を定義する目的で使う。" +
-          "Card / Form / FormField のような『文脈を持つ容器』は自身で縦リズムを所有しているため、その内側を Stack で包む必要はない。",
+          "文脈を持たない汎用 atom。generic atom（Typography / Button / Input など）を組み合わせて文脈を作る場面（organism / page）でレイアウト構造を定義する目的で使う。" +
+          "`gap` で `sm` (8px) / `md` (16px) / `lg` (24px) を切り替える。`sm` は密接な要素（ラベル + 入力など）、`md` はカード内のセクション同士、`lg` はフォームのフィールド群やページ内のメジャー区切りが目安。" +
+          "NG: Card / FormField のような『文脈を持つ容器』の内側を Stack で包む。文脈を持つ容器は自身で縦リズムを所有しているため、Stack を被せると構造が二重になる。",
       },
     },
   },

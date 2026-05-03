@@ -9,7 +9,10 @@ const meta = {
     docs: {
       description: {
         component:
-          "テキストの見た目を `variant` (構造) と `tone` (色) の 2 軸で指定する atom。`className` は受け付けず、新しい見た目が必要になったら variant/tone を追加して対応する。",
+          "テキストの見た目を `variant`（構造）と `tone`（色）の 2 軸で指定する atom。" +
+          "文脈を持たない汎用 atom。配置・縦リズムは呼び出し側（Stack / Card 等）が与える前提で使う。" +
+          "`variant` で見出し階層・本文・キャプション等の構造を、`tone` で色（既定 / danger 等）を切り替える。`className` は受け付けない。" +
+          'NG: `className="text-red-500 text-2xl"` のような個別上書きでその場限りの見た目を作る。表現バリエーションは variant / tone の軸を増やして対応する。',
       },
     },
   },

@@ -8,10 +8,10 @@ const meta = {
     docs: {
       description: {
         component:
-          "1 行のテキスト入力を受け取る atom。`type` は HTML 標準（text / email / password / number / search / tel / url など）をそのまま受ける薄いラッパーで、" +
-          "ブランドの透過背景と薄いボーダーがデフォルトで当たる。" +
-          "単独で使わず、`Label` と必ずペアにして利用者に何の入力かを伝える。" +
-          "エラー時は `aria-invalid` と `aria-describedby` を併用し、エラーメッセージを読み上げに含める。",
+          "1 行のテキスト入力を受け取る atom。" +
+          "文脈を持たない汎用 atom。単独で使わず、`Label` とペアで配置する（label / hint / error の組み合わせと a11y 連携を内部で自動化したい場合は FormField molecule を使う）。" +
+          "`type` は HTML 標準（text / email / password / number / search / tel / url など）をそのまま受ける薄いラッパー。エラー時は `aria-invalid` と `aria-describedby` を併用してエラーメッセージを読み上げに含める。" +
+          "NG: ブラウザ標準検証だけに依存する。実バリデーションは zod 等のスキーマ層で行う。",
       },
     },
   },
