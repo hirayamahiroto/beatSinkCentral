@@ -6,8 +6,8 @@ type InputProps = React.ComponentProps<typeof PrimitiveInput>;
 
 export type { InputProps };
 
-// 入力欄の見た目はカードと揃える（少し elevation・大きめ角丸・余白広め）
-const defaultClasses = "h-12 rounded-xl bg-card px-4 py-3";
+// 色のみブランド調（背景の透過とボーダー）。サイズや余白は shadcn の既定を維持
+const defaultClasses = "bg-white/5 border-white/10";
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, ...props }, ref) => (
