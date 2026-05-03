@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react-vite";
 import { samplePlayerData } from "./index.mock";
 import { PlayerPage } from "./index";
 
