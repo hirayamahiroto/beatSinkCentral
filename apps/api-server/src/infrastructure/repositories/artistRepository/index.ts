@@ -72,8 +72,9 @@ export const createArtistRepository = (
     });
   },
 
-  async findByAccountId(accountId: string) {
-    const results = await db
+  async findByAccountId(accountId: string, tx?: TransactionContext) {
+    const executor = tx ?? db;
+    const results = await executor
       .select({
         artistId: artistsTable.id,
         accountId: artistsTable.accountId,

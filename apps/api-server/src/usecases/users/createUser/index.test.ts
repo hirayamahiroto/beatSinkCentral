@@ -67,8 +67,8 @@ describe("createUserUseCase", () => {
     const promise = createUserUseCase(validInput, deps);
 
     await expect(promise).rejects.toSatisfy(isUserAlreadyRegisteredError);
-    expect(deps.txRunner.run).not.toHaveBeenCalled();
     expect(deps.userRepository.save).not.toHaveBeenCalled();
+    expect(deps.artistRepository.save).not.toHaveBeenCalled();
   });
 
   it("AccountIdが既に取られている場合はAccountIdAlreadyTakenErrorをスローする", async () => {
@@ -85,8 +85,36 @@ describe("createUserUseCase", () => {
     const promise = createUserUseCase(validInput, deps);
 
     await expect(promise).rejects.toSatisfy(isAccountIdAlreadyTakenError);
-    expect(deps.txRunner.run).not.toHaveBeenCalled();
     expect(deps.userRepository.save).not.toHaveBeenCalled();
     expect(deps.artistRepository.save).not.toHaveBeenCalled();
+  });
+
+  it("findBySub と findByAccountId は同一トランザクション内で実行される", async () => {
+    const deps = createMockDeps();
+    const txContext = { __tx: "marker" };
+    deps.txRunner.run.mockImplementation(async (fn) => fn(txContext as never));
+    deps.userRepository.findBySub.mockResolvedValue(null);
+    deps.artistRepository.findByAccountId.mockResolvedValue(null);
+    deps.userRepository.save.mockResolvedValue(undefined);
+    deps.artistRepository.save.mockResolvedValue(undefined);
+
+    await createUserUseCase(validInput, deps);
+
+    expect(deps.userRepository.findBySub).toHaveBeenCalledWith(
+      validInput.subId,
+      txContext,
+    );
+    expect(deps.artistRepository.findByAccountId).toHaveBeenCalledWith(
+      validInput.accountId,
+      txContext,
+    );
+    expect(deps.userRepository.save).toHaveBeenCalledWith(
+      expect.anything(),
+      txContext,
+    );
+    expect(deps.artistRepository.save).toHaveBeenCalledWith(
+      expect.anything(),
+      txContext,
+    );
   });
 });

@@ -27,8 +27,9 @@ export const createUserRepository = (db: DatabaseClient): IUserRepository => ({
     });
   },
 
-  async findBySub(sub: string): Promise<User | null> {
-    const results = await db
+  async findBySub(sub: string, tx?: TransactionContext): Promise<User | null> {
+    const executor = tx ?? db;
+    const results = await executor
       .select({
         id: usersTable.id,
         subId: usersTable.subId,
