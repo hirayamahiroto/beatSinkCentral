@@ -3,7 +3,16 @@
 import React from "react";
 import { usePathname } from "next/navigation";
 import { Link as AtomLink } from "@ui/design-system/components/atoms/Link";
-import { Calendar, Users, ArrowRight, Clock, ListTodo, LayoutDashboard, CalendarPlus, List } from "lucide-react";
+import {
+  Calendar,
+  Users,
+  ArrowRight,
+  Clock,
+  ListTodo,
+  LayoutDashboard,
+  CalendarPlus,
+  List,
+} from "lucide-react";
 import { cn } from "@ui/shared/utils/mergeClassNames";
 
 const AdminHeader = () => {
@@ -19,7 +28,12 @@ const AdminHeader = () => {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-8">
-            <AtomLink href="/admin/list" className="text-xl font-bold text-white">Event Admin</AtomLink>
+            <AtomLink
+              href="/admin/list"
+              className="text-xl font-bold text-white"
+            >
+              Event Admin
+            </AtomLink>
             <nav className="flex items-center space-x-4">
               {navigation.map((item) => {
                 const isActive = pathname === item.href;
@@ -29,7 +43,9 @@ const AdminHeader = () => {
                     href={item.href}
                     className={cn(
                       "flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors",
-                      isActive ? "text-white bg-white/10" : "text-gray-400 hover:text-white hover:bg-white/5"
+                      isActive
+                        ? "text-white bg-white/10"
+                        : "text-gray-400 hover:text-white hover:bg-white/5",
                     )}
                   >
                     <item.icon className="h-4 w-4" />
@@ -54,7 +70,7 @@ const Card = React.forwardRef<
     ref={ref}
     className={cn(
       "rounded-xl border border-white/10 bg-white/5 text-card-foreground shadow-sm backdrop-blur-sm",
-      className
+      className,
     )}
     {...props}
   />

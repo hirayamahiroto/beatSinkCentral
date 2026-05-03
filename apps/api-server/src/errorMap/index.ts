@@ -74,7 +74,7 @@ const isAppError = (error: unknown): error is AppError => {
 };
 
 const buildMappedResponse = <Error extends AppError>(
-  error: Error
+  error: Error,
 ): ErrorResponse => {
   const mapping = errorMap[error.type as Error["type"]] as ErrorMapping<Error>;
   const body: ErrorResponse["body"] = { error: mapping.message(error) };

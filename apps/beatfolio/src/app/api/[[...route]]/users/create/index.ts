@@ -14,7 +14,7 @@ const app = new Hono<RequestContextEnv>().post(
     if (!result.success) {
       return c.json(
         { error: "Invalid request", issues: result.error.issues },
-        400
+        400,
       );
     }
   }),
@@ -36,7 +36,7 @@ const app = new Hono<RequestContextEnv>().post(
 
     const data = await res.json();
     return c.json(data, 201);
-  }
+  },
 );
 
 export default app;

@@ -12,5 +12,5 @@ export const requestContextMiddleware = createMiddleware<RequestContextEnv>(
     const cookie = c.req.header("cookie");
     c.set("apiClient", createBffServerClient({ cookie }));
     await next();
-  }
+  },
 );

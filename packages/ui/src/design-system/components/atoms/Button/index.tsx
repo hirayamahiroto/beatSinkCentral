@@ -7,5 +7,5 @@ import {
 export type { ButtonProps };
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  (props, ref) => <PrimitiveButton ref={ref} {...props} />
+  (props, ref) => <PrimitiveButton ref={ref} {...props} />,
 );

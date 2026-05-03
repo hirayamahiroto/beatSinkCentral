@@ -7,12 +7,12 @@ export type InvalidRequestFormatError = Error & {
 };
 
 export const createInvalidRequestFormatError = (
-  issues: ReadonlyArray<ZodIssue>
+  issues: ReadonlyArray<ZodIssue>,
 ): InvalidRequestFormatError =>
   createTypedError("InvalidRequestFormatError", { issues });
 
 export const isInvalidRequestFormatError = (
-  error: unknown
+  error: unknown,
 ): error is InvalidRequestFormatError => {
   return (
     error instanceof Error &&

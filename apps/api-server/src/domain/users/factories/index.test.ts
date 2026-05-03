@@ -19,7 +19,7 @@ describe("User Factory", () => {
         createUser({
           subId: "auth0|123456789",
           email: "invalid-email",
-        })
+        }),
       ).toThrow();
     });
   });

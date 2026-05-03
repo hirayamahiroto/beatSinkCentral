@@ -25,11 +25,7 @@ export const basicAuthMiddleware = createMiddleware(async (c, next) => {
     }
   }
 
-  return c.json(
-    { error: "Basic Auth Required" },
-    401,
-    {
-      "WWW-Authenticate": 'Basic realm="Secure Area"',
-    }
-  );
+  return c.json({ error: "Basic Auth Required" }, 401, {
+    "WWW-Authenticate": 'Basic realm="Secure Area"',
+  });
 });

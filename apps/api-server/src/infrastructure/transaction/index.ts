@@ -9,7 +9,7 @@ export interface ITransactionRunner {
 }
 
 export const createTransactionRunner = (
-  db: DatabaseClient
+  db: DatabaseClient,
 ): ITransactionRunner => ({
   async run<T>(fn: (tx: TransactionContext) => Promise<T>): Promise<T> {
     return db.transaction(fn);

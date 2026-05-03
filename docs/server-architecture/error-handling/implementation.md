@@ -82,7 +82,7 @@ export type UserAlreadyRegisteredError = Error & {
 export const createUserAlreadyRegisteredError =
   (): UserAlreadyRegisteredError => {
     const error = new Error(
-      "User already registered"
+      "User already registered",
     ) as UserAlreadyRegisteredError;
     return Object.assign(error, {
       type: "UserAlreadyRegisteredError" as const,
@@ -104,10 +104,10 @@ export type AccountIdAlreadyTakenError = Error & {
 };
 
 export const createAccountIdAlreadyTakenError = (
-  accountId: string
+  accountId: string,
 ): AccountIdAlreadyTakenError => {
   const error = new Error(
-    `Account ID already taken: ${accountId}`
+    `Account ID already taken: ${accountId}`,
   ) as AccountIdAlreadyTakenError;
   return Object.assign(error, {
     type: "AccountIdAlreadyTakenError" as const,
@@ -178,7 +178,7 @@ const isAppError = (error: unknown): error is AppError => {
 };
 
 const buildMappedResponse = <Error extends AppError>(
-  error: Error
+  error: Error,
 ): ErrorResponse => {
   const mapping = errorMap[error.type as Error["type"]] as ErrorMapping<Error>;
   const body: ErrorResponse["body"] = { error: mapping.message(error) };
@@ -274,9 +274,11 @@ export type InvalidRequestFormatError = Error & {
 };
 
 export const createInvalidRequestFormatError = (
-  issues: ReadonlyArray<ZodIssue>
+  issues: ReadonlyArray<ZodIssue>,
 ): InvalidRequestFormatError => {
-  const error = new Error("InvalidRequestFormatError") as InvalidRequestFormatError;
+  const error = new Error(
+    "InvalidRequestFormatError",
+  ) as InvalidRequestFormatError;
   return Object.assign(error, {
     type: "InvalidRequestFormatError" as const,
     issues,
@@ -290,11 +292,17 @@ import { zValidator } from "@hono/zod-validator";
 import type { ZodSchema } from "zod";
 import { createInvalidRequestFormatError } from "../../errors/invalidRequestFormat";
 
-type ValidationTarget = "json" | "form" | "query" | "header" | "cookie" | "param";
+type ValidationTarget =
+  | "json"
+  | "form"
+  | "query"
+  | "header"
+  | "cookie"
+  | "param";
 
 export const validateRequest = <Schema extends ZodSchema>(
   target: ValidationTarget,
-  schema: Schema
+  schema: Schema,
 ) =>
   zValidator(target, schema, (result) => {
     if (!result.success) {
@@ -333,11 +341,11 @@ const app = new Hono().post(
     // try/catch 不要。AppError も未知のエラーも onError が拾う
     const result = await createUserUseCase(
       { subId: session.user.sub, email: body.email, accountId: body.accountId },
-      getContainer()
+      getContainer(),
     );
 
     return c.json({ userId: result.userId, artistId: result.artistId }, 201);
-  }
+  },
 );
 
 export default app;

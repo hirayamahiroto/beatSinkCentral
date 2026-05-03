@@ -493,7 +493,7 @@ export type UserAlreadyRegisteredError = Error & {
 export const createUserAlreadyRegisteredError =
   (): UserAlreadyRegisteredError => {
     const error = new Error(
-      "User already registered"
+      "User already registered",
     ) as UserAlreadyRegisteredError;
     return Object.assign(error, {
       type: "UserAlreadyRegisteredError" as const,
@@ -501,7 +501,7 @@ export const createUserAlreadyRegisteredError =
   };
 
 export const isUserAlreadyRegisteredError = (
-  error: unknown
+  error: unknown,
 ): error is UserAlreadyRegisteredError =>
   error instanceof Error &&
   (error as Partial<UserAlreadyRegisteredError>).type ===
@@ -555,7 +555,7 @@ import { assertNotRegistered } from "../../users/policies/assertNotRegistered";
 
 export const registerNewUser = (
   input: RegisterNewUserInput,
-  userIfRegistered: User | null
+  userIfRegistered: User | null,
 ): RegisterNewUserResult => {
   // ポリシーで不変条件を判定（違反なら throw）
   assertNotRegistered(userIfRegistered);
@@ -647,7 +647,7 @@ HTTPリクエスト/レスポンスの処理を担当。
 // usecases/users/createUser/index.ts
 export const createUserUseCase = async (
   input: CreateUserInput,
-  deps: CreateUserDeps
+  deps: CreateUserDeps,
 ): Promise<CreateUserOutput> => {
   // 1. 集約を組み立てる（既登録チェックはDomain Service内のpolicyが行う）
   const aggregate = await registerUser(input, deps.userRepository);
@@ -658,7 +658,7 @@ export const createUserUseCase = async (
 
 const registerUser = async (
   input: CreateUserInput,
-  userRepository: IUserRepository
+  userRepository: IUserRepository,
 ): Promise<RegisterNewUserResult> => {
   const userIfRegistered = await userRepository.findBySub(input.subId);
   return registerNewUser(input, userIfRegistered); // Domain Serviceに委譲
@@ -666,7 +666,7 @@ const registerUser = async (
 
 const persistUserAggregate = async (
   { user, artist }: RegisterNewUserResult,
-  deps: CreateUserDeps
+  deps: CreateUserDeps,
 ): Promise<CreateUserOutput> =>
   deps.txRunner.run(async (tx) => {
     await deps.userRepository.save(user.toPersistence(), tx);
@@ -857,7 +857,7 @@ describe("createUser", () => {
 
   it("無効なemailでエラーをスローする", () => {
     expect(() =>
-      createUser({ subId: "auth0|123456789", email: "invalid-email" })
+      createUser({ subId: "auth0|123456789", email: "invalid-email" }),
     ).toThrow();
   });
 });

@@ -487,7 +487,7 @@ it("usecase", () => {
 // ✅ Usecase では VO でエラーになることだけ確認(詳細は VO のテスト)
 it("usecase", () => {
   expect(() => createUserUseCase({ email: "invalid" })).toThrow(
-    InvalidEmailFormatError
+    InvalidEmailFormatError,
   );
 });
 ```

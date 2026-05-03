@@ -20,7 +20,7 @@ const accountIdSchema = z
   .max(255, "accountId must be 255 characters or less")
   .regex(
     /^[a-zA-Z0-9_]+$/,
-    "accountId must be alphanumeric and underscores only"
+    "accountId must be alphanumeric and underscores only",
   );
 
 export const createAccountId = (value: string): AccountId => {

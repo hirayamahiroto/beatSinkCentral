@@ -1,8 +1,5 @@
 import { pgTable, uuid, varchar, timestamp } from "drizzle-orm/pg-core";
-import {
-  createInsertSchema,
-  createSelectSchema,
-} from "drizzle-zod";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { artistsTable } from "./artists";
 import { usersTable } from "./users";
 
@@ -20,5 +17,9 @@ export const artistIdHistoriesTable = pgTable("artist_id_histories", {
   deletedAt: timestamp("deleted_at"),
 });
 
-export const artistIdHistorySelectSchema = createSelectSchema(artistIdHistoriesTable);
-export const artistIdHistoryInsertSchema = createInsertSchema(artistIdHistoriesTable);
+export const artistIdHistorySelectSchema = createSelectSchema(
+  artistIdHistoriesTable,
+);
+export const artistIdHistoryInsertSchema = createInsertSchema(
+  artistIdHistoriesTable,
+);

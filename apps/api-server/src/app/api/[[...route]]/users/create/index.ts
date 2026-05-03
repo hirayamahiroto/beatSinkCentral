@@ -41,7 +41,7 @@ const app = new Hono().post(
         userRepository,
         artistRepository,
         txRunner,
-      }
+      },
     );
 
     return c.json(
@@ -49,9 +49,9 @@ const app = new Hono().post(
         userId: result.userId,
         artistId: result.artistId,
       },
-      201
+      201,
     );
-  }
+  },
 );
 
 export default app;

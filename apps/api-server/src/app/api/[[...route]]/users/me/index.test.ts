@@ -58,7 +58,7 @@ describe("User Me API", () => {
         id: "user-1",
         subId: "auth0|123",
         email: "test@example.com",
-      })
+      }),
     );
     mockArtistRepository.findByUserId.mockResolvedValue(null);
     const app = createAppWithAuth({ sub: "auth0|123" });
@@ -80,7 +80,7 @@ describe("User Me API", () => {
         id: "user-1",
         subId: "auth0|123",
         email: "test@example.com",
-      })
+      }),
     );
     mockArtistRepository.findByUserId.mockResolvedValue(
       reconstructArtist({
@@ -88,7 +88,7 @@ describe("User Me API", () => {
         accountId: "user_123",
         ownerUserId: "user-1",
         profile: { name: "Test" },
-      })
+      }),
     );
     const app = createAppWithAuth({ sub: "auth0|123" });
 

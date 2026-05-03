@@ -3,7 +3,17 @@ import React, { useState } from "react";
 import { usePathname } from "next/navigation";
 import * as TabsPrimitive from "@radix-ui/react-tabs";
 import * as ProgressPrimitive from "@radix-ui/react-progress";
-import { Users, Calendar, Clock, MapPin, Search, Check, LayoutDashboard, CalendarPlus, List } from "lucide-react";
+import {
+  Users,
+  Calendar,
+  Clock,
+  MapPin,
+  Search,
+  Check,
+  LayoutDashboard,
+  CalendarPlus,
+  List,
+} from "lucide-react";
 import { Link as AtomLink } from "@ui/design-system/components/atoms/Link";
 import { cn } from "@ui/shared/utils/mergeClassNames";
 
@@ -20,7 +30,12 @@ const AdminHeader = () => {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-8">
-            <AtomLink href="/admin/list" className="text-xl font-bold text-white">Event Admin</AtomLink>
+            <AtomLink
+              href="/admin/list"
+              className="text-xl font-bold text-white"
+            >
+              Event Admin
+            </AtomLink>
             <nav className="flex items-center space-x-4">
               {navigation.map((item) => {
                 const isActive = pathname === item.href;
@@ -30,7 +45,9 @@ const AdminHeader = () => {
                     href={item.href}
                     className={cn(
                       "flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors",
-                      isActive ? "text-white bg-white/10" : "text-gray-400 hover:text-white hover:bg-white/5"
+                      isActive
+                        ? "text-white bg-white/10"
+                        : "text-gray-400 hover:text-white hover:bg-white/5",
                     )}
                   >
                     <item.icon className="h-4 w-4" />
@@ -65,7 +82,7 @@ const Button = React.forwardRef<
           "bg-red-500/20 hover:bg-red-500/30 text-white",
         size === "default" && "h-10 px-4 py-2",
         size === "sm" && "h-8 px-3 text-sm",
-        className
+        className,
       )}
       ref={ref}
       {...props}
@@ -83,7 +100,7 @@ const Card = React.forwardRef<
     ref={ref}
     className={cn(
       "rounded-lg border border-white/10 text-card-foreground",
-      className
+      className,
     )}
     {...props}
   />
@@ -110,7 +127,7 @@ const CardTitle = React.forwardRef<
     ref={ref}
     className={cn(
       "text-2xl font-semibold leading-none tracking-tight",
-      className
+      className,
     )}
     {...props}
   />
@@ -148,7 +165,7 @@ const TabsList = React.forwardRef<
     ref={ref}
     className={cn(
       "inline-flex h-10 items-center justify-center rounded-md bg-white/5 p-1 text-muted-foreground",
-      className
+      className,
     )}
     {...props}
   />
@@ -163,7 +180,7 @@ const TabsTrigger = React.forwardRef<
     ref={ref}
     className={cn(
       "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-sm",
-      className
+      className,
     )}
     {...props}
   />
@@ -178,7 +195,7 @@ const TabsContent = React.forwardRef<
     ref={ref}
     className={cn(
       "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-      className
+      className,
     )}
     {...props}
   />
@@ -194,7 +211,7 @@ const Progress = React.forwardRef<
     ref={ref}
     className={cn(
       "relative h-4 w-full overflow-hidden rounded-full bg-secondary",
-      className
+      className,
     )}
     {...props}
   >
@@ -246,7 +263,7 @@ const CheckInButton = ({
         "px-4 py-2 rounded-full font-medium transition-all flex items-center gap-2",
         isCheckedIn
           ? "bg-green-500/20 text-green-400"
-          : "bg-blue-500/20 text-blue-400 hover:bg-blue-500/30"
+          : "bg-blue-500/20 text-blue-400 hover:bg-blue-500/30",
       )}
     >
       <Check className="w-4 h-4" />
@@ -271,7 +288,7 @@ const ParticipantList = ({
   const filteredParticipants = participants.filter(
     (p) =>
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.email.toLowerCase().includes(searchQuery.toLowerCase())
+      p.email.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   return (
@@ -355,7 +372,7 @@ const AdminDetailPage = () => {
       phone: `090-1234-${(i + 1).toString().padStart(4, "0")}`,
       status: "confirmed",
       isCheckedIn: i < 8, // 最初の8人はチェックイン済み
-    }))
+    })),
   );
 
   // キャンセル待ちのサンプルデータ
@@ -369,14 +386,14 @@ const AdminDetailPage = () => {
       phone: `090-5678-${(i + 1).toString().padStart(4, "0")}`,
       status: "waiting",
       isCheckedIn: false,
-    }))
+    })),
   );
 
   // チェックイン処理
   const handleCheckIn = (participantId: number) => {
     // 参加確定者のチェックイン処理
     const updatedConfirmedParticipants = confirmedParticipants.map((p) =>
-      p.id === participantId ? { ...p, isCheckedIn: true } : p
+      p.id === participantId ? { ...p, isCheckedIn: true } : p,
     );
 
     if (
@@ -389,7 +406,7 @@ const AdminDetailPage = () => {
 
     // キャンセル待ちのチェックイン処理
     const updatedWaitlistParticipants = waitlistParticipants.map((p) =>
-      p.id === participantId ? { ...p, isCheckedIn: true } : p
+      p.id === participantId ? { ...p, isCheckedIn: true } : p,
     );
 
     setWaitlistParticipants(updatedWaitlistParticipants);
@@ -398,13 +415,13 @@ const AdminDetailPage = () => {
   // 参加者ステータス変更処理
   const handleStatusChange = (
     participantId: number,
-    newStatus: ParticipantStatus
+    newStatus: ParticipantStatus,
   ) => {
     try {
       if (newStatus === "cancelled") {
         // 参加確定者のキャンセル処理
         const updatedConfirmedParticipants = confirmedParticipants.filter(
-          (p) => p.id !== participantId
+          (p) => p.id !== participantId,
         );
         setConfirmedParticipants(updatedConfirmedParticipants);
         setEventData((prev) => ({
@@ -414,7 +431,7 @@ const AdminDetailPage = () => {
 
         // キャンセル待ちのキャンセル処理
         const updatedWaitlistParticipants = waitlistParticipants.filter(
-          (p) => p.id !== participantId
+          (p) => p.id !== participantId,
         );
         if (
           waitlistParticipants.length !== updatedWaitlistParticipants.length
@@ -428,12 +445,12 @@ const AdminDetailPage = () => {
       } else if (newStatus === "confirmed") {
         // キャンセル待ちから確定へ
         const participant = waitlistParticipants.find(
-          (p) => p.id === participantId
+          (p) => p.id === participantId,
         );
         if (participant) {
           // キャンセル待ちリストから削除
           const updatedWaitlistParticipants = waitlistParticipants.filter(
-            (p) => p.id !== participantId
+            (p) => p.id !== participantId,
           );
           setWaitlistParticipants(updatedWaitlistParticipants);
 
@@ -458,7 +475,7 @@ const AdminDetailPage = () => {
 
   // チェックイン済みの人数を計算
   const checkedInCount = confirmedParticipants.filter(
-    (p) => p.isCheckedIn
+    (p) => p.isCheckedIn,
   ).length;
 
   return (

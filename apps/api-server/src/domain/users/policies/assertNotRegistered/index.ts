@@ -10,7 +10,7 @@ export const createUserAlreadyRegisteredError =
     createTypedError("UserAlreadyRegisteredError");
 
 export const isUserAlreadyRegisteredError = (
-  error: unknown
+  error: unknown,
 ): error is UserAlreadyRegisteredError => {
   return (
     error instanceof Error &&

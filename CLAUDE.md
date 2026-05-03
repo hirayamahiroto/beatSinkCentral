@@ -75,7 +75,7 @@ describe("Username", () => {
   it("無効なユーザー名でエラー", () => {
     expect(() => createUsername("")).toThrow("username is required");
     expect(() => createUsername("a".repeat(256))).toThrow(
-      "username must be 255 characters or less"
+      "username must be 255 characters or less",
     );
   });
 });
@@ -244,9 +244,9 @@ export const getDb = (() => {
 
 ### なぜこのパターンか
 
-| 実装方法 | ビルド時 | 実行時 |
-|---------|---------|--------|
-| トップレベル初期化 | 即座に評価される → エラー | 正常 |
+| 実装方法             | ビルド時                  | 実行時                    |
+| -------------------- | ------------------------- | ------------------------- |
+| トップレベル初期化   | 即座に評価される → エラー | 正常                      |
 | 遅延初期化（関数内） | 関数定義のみ → エラーなし | 呼び出し時に初期化 → 正常 |
 
 ### 適用が必要なクライアント

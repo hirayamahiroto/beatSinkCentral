@@ -21,28 +21,28 @@ export default function Page() {
 
 ### SSR + CSR（動的な動きが必要な場合）
 
+`page.tsx`:
+
 ```tsx
-// page.tsx
 import { ClientAdapter } from "./ClientAdapter";
 
 export default async function Page() {
-  const data = await fetch('/api/data');
+  const data = await fetch("/api/data");
   const initialData = await data.json();
   return <ClientAdapter initialData={initialData} />;
 }
+```
 
-// ClientAdapter/index.tsx
+`ClientAdapter/index.tsx`:
+
+```tsx
 "use client";
+
 import { useState } from "react";
 import ComponentPage from "@ui/design-system/components/pages/ComponentPage";
 
 export function ClientAdapter({ initialData }: ClientAdapterProps) {
   const [data, setData] = useState(initialData);
-  return (
-    <ComponentPage
-      data={data}
-      onDataUpdate={setData}
-    />
-  );
+  return <ComponentPage data={data} onDataUpdate={setData} />;
 }
 ```

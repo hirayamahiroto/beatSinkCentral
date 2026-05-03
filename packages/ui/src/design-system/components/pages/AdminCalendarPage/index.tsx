@@ -6,7 +6,12 @@ import { Calendar } from "@fullcalendar/core";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import jaLocale from "@fullcalendar/core/locales/ja";
 import interactionPlugin from "@fullcalendar/interaction";
-import { LayoutDashboard, CalendarPlus, List, Calendar as CalendarIcon } from "lucide-react";
+import {
+  LayoutDashboard,
+  CalendarPlus,
+  List,
+  Calendar as CalendarIcon,
+} from "lucide-react";
 import { Link as AtomLink } from "@ui/design-system/components/atoms/Link";
 import { cn } from "@ui/shared/utils/mergeClassNames";
 
@@ -23,7 +28,12 @@ const AdminHeader = () => {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-8">
-            <AtomLink href="/admin/list" className="text-xl font-bold text-white">Event Admin</AtomLink>
+            <AtomLink
+              href="/admin/list"
+              className="text-xl font-bold text-white"
+            >
+              Event Admin
+            </AtomLink>
             <nav className="flex items-center space-x-4">
               {navigation.map((item) => {
                 const isActive = pathname === item.href;
@@ -33,7 +43,9 @@ const AdminHeader = () => {
                     href={item.href}
                     className={cn(
                       "flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors",
-                      isActive ? "text-white bg-white/10" : "text-gray-400 hover:text-white hover:bg-white/5"
+                      isActive
+                        ? "text-white bg-white/10"
+                        : "text-gray-400 hover:text-white hover:bg-white/5",
                     )}
                   >
                     <item.icon className="h-4 w-4" />
@@ -98,7 +110,8 @@ const EventDetailModal = ({
                   event.status === "upcoming" && "bg-blue-500/20 text-blue-300",
                   event.status === "ongoing" &&
                     "bg-green-500/20 text-green-300",
-                  event.status === "completed" && "bg-gray-500/20 text-gray-300"
+                  event.status === "completed" &&
+                    "bg-gray-500/20 text-gray-300",
                 )}
               >
                 {event.status === "upcoming" && "開催予定"}
@@ -134,7 +147,7 @@ const EventDetailModal = ({
 
 const CalendarView = () => {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(
-    null
+    null,
   );
 
   // サンプルイベントデータをuseMemoでラップ
@@ -161,7 +174,7 @@ const CalendarView = () => {
         status: "upcoming",
       },
     ],
-    []
+    [],
   );
 
   React.useEffect(() => {
@@ -175,7 +188,7 @@ const CalendarView = () => {
           ...event,
           className: cn(
             event.type === "own" ? "bg-blue-500/50" : "bg-purple-500/50",
-            "hover:opacity-80 cursor-pointer"
+            "hover:opacity-80 cursor-pointer",
           ),
         })),
         eventClick: (info) => {

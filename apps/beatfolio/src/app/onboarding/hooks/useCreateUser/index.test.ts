@@ -14,7 +14,7 @@ vi.mock("next/navigation", () => ({
 
 const buildJsonResponse = (
   body: unknown,
-  init: { ok: boolean; status?: number }
+  init: { ok: boolean; status?: number },
 ): Response =>
   ({
     ok: init.ok,
@@ -50,7 +50,7 @@ describe("useCreateUser", () => {
     fetchMock.mockResolvedValueOnce(buildJsonResponse({}, { ok: true }));
 
     const { result } = renderHook(() =>
-      useCreateUser({ email: "user@example.com" })
+      useCreateUser({ email: "user@example.com" }),
     );
 
     await act(async () => {
@@ -72,12 +72,12 @@ describe("useCreateUser", () => {
     fetchMock.mockResolvedValueOnce(
       buildJsonResponse(
         { error: "そのアカウントIDはすでに使用されています" },
-        { ok: false, status: 409 }
-      )
+        { ok: false, status: 409 },
+      ),
     );
 
     const { result } = renderHook(() =>
-      useCreateUser({ email: "user@example.com" })
+      useCreateUser({ email: "user@example.com" }),
     );
 
     await act(async () => {
@@ -85,7 +85,7 @@ describe("useCreateUser", () => {
     });
 
     expect(result.current.error).toBe(
-      "そのアカウントIDはすでに使用されています"
+      "そのアカウントIDはすでに使用されています",
     );
     expect(pushMock).not.toHaveBeenCalled();
     expect(refreshMock).not.toHaveBeenCalled();
@@ -94,11 +94,11 @@ describe("useCreateUser", () => {
 
   it("POST が non-JSON ボディを返したら、フォールバックのエラーメッセージがセットされる", async () => {
     fetchMock.mockResolvedValueOnce(
-      buildNonJsonResponse({ ok: false, status: 502 })
+      buildNonJsonResponse({ ok: false, status: 502 }),
     );
 
     const { result } = renderHook(() =>
-      useCreateUser({ email: "user@example.com" })
+      useCreateUser({ email: "user@example.com" }),
     );
 
     await act(async () => {
@@ -117,11 +117,11 @@ describe("useCreateUser", () => {
       () =>
         new Promise<Response>((resolve) => {
           resolveFetch = resolve;
-        })
+        }),
     );
 
     const { result } = renderHook(() =>
-      useCreateUser({ email: "user@example.com" })
+      useCreateUser({ email: "user@example.com" }),
     );
 
     let submitPromise: Promise<void>;
