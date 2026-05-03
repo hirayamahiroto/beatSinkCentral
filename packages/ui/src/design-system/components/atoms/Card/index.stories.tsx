@@ -25,7 +25,6 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
-    className: "w-96",
     children: (
       <>
         <Typography variant="small">ログイン中のアカウント</Typography>
@@ -45,8 +44,6 @@ export const Default: Story = {
 
 export const WithGapMd: Story = {
   args: {
-    className: "w-96",
-    gap: "md",
     children: (
       <>
         <Typography variant="h3">アカウント設定</Typography>
@@ -70,8 +67,6 @@ export const WithGapMd: Story = {
 
 export const WithGapNone: Story = {
   args: {
-    className: "w-96 p-0 overflow-hidden",
-    gap: "none",
     children: (
       <div className="aspect-video w-full bg-gradient-to-br from-blue-500/40 to-purple-500/40" />
     ),
