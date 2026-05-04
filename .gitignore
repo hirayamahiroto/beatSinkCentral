@@ -47,3 +47,8 @@ yarn-error.log*
 next-env.d.ts
 
 *storybook.log
+
+# claude code (個人設定 / 実行時状態はコミットしない、.mcp.json は共有する)
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+.claude/projects/
