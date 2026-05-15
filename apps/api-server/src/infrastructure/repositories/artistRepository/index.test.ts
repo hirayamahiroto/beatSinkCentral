@@ -9,6 +9,9 @@ const mockDb = {
   leftJoin: vi.fn().mockReturnThis(),
   where: vi.fn().mockReturnThis(),
   limit: vi.fn(),
+  update: vi.fn().mockReturnThis(),
+  set: vi.fn().mockReturnThis(),
+  returning: vi.fn(),
 };
 
 describe("createArtistRepository", () => {
@@ -114,6 +117,45 @@ describe("createArtistRepository", () => {
       expect(mockDb.leftJoin).toHaveBeenCalledTimes(1);
       expect(mockDb.where).toHaveBeenCalledTimes(1);
       expect(mockDb.limit).toHaveBeenCalledWith(1);
+    });
+  });
+
+  describe("updateAccountId", () => {
+    it("accountId 更新後の Artist を返す（profile あり）", async () => {
+      mockDb.returning.mockResolvedValue([
+        { id: "artist-1", accountId: "new_handle" },
+      ]);
+      mockDb.limit
+        .mockResolvedValueOnce([{ userId: "user-1" }])
+        .mockResolvedValueOnce([{ name: "Test Artist" }]);
+
+      const result = await repository.updateAccountId({
+        artistId: "artist-1",
+        accountId: "new_handle",
+      });
+
+      expect(mockDb.set).toHaveBeenCalledWith({ accountId: "new_handle" });
+      expect(result.getArtistId()).toBe("artist-1");
+      expect(result.getAccountId()).toBe("new_handle");
+      expect(result.getOwnerUserId()).toBe("user-1");
+      expect(result.getProfile()).toStrictEqual({ name: "Test Artist" });
+    });
+
+    it("profile が無い場合は profile:null で返す", async () => {
+      mockDb.returning.mockResolvedValue([
+        { id: "artist-1", accountId: "new_handle" },
+      ]);
+      mockDb.limit
+        .mockResolvedValueOnce([{ userId: "user-1" }])
+        .mockResolvedValueOnce([]);
+
+      const result = await repository.updateAccountId({
+        artistId: "artist-1",
+        accountId: "new_handle",
+      });
+
+      expect(result.hasProfile()).toBe(false);
+      expect(result.getProfile()).toBeNull();
     });
   });
 });
