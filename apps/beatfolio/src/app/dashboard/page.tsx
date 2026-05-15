@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { auth0 } from "../../libs/auth0";
 import { createBffServerClient } from "../../utils/client";
+import { EmailEditor } from "./EmailEditor";
 
 export default async function DashboardPage() {
   const session = await auth0.getSession();
@@ -32,10 +33,7 @@ export default async function DashboardPage() {
           Dashboard
         </h1>
 
-        <section className="backdrop-blur-md bg-white/5 p-6 rounded-2xl border border-white/10 mb-6">
-          <p className="text-sm text-gray-400 mb-1">Email</p>
-          <p className="text-white font-medium">{me.email}</p>
-        </section>
+        <EmailEditor email={me.email} />
 
         {me.artist && (
           <section className="backdrop-blur-md bg-white/5 p-6 rounded-2xl border border-white/10 mb-6">
