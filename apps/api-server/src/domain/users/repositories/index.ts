@@ -7,7 +7,16 @@ export type UserSaveData = {
   email: string;
 };
 
+export type UserUpdateEmailData = {
+  id: string;
+  email: string;
+};
+
 export interface IUserRepository {
   save(data: UserSaveData, tx?: TransactionContext): Promise<User>;
   findBySub(sub: string, tx?: TransactionContext): Promise<User | null>;
+  updateEmail(
+    data: UserUpdateEmailData,
+    tx?: TransactionContext,
+  ): Promise<User>;
 }

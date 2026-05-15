@@ -10,6 +10,8 @@ const mockDb = {
   from: vi.fn().mockReturnThis(),
   where: vi.fn().mockReturnThis(),
   limit: vi.fn(),
+  update: vi.fn().mockReturnThis(),
+  set: vi.fn().mockReturnThis(),
 };
 
 describe("createUserRepository", () => {
@@ -57,6 +59,25 @@ describe("createUserRepository", () => {
       const result = await repository.findBySub("auth0|nonexistent");
 
       expect(result).toBeNull();
+    });
+  });
+
+  describe("updateEmail", () => {
+    it("更新後のUserを返す", async () => {
+      const row = {
+        id: "550e8400-e29b-41d4-a716-446655440000",
+        subId: "auth0|123456789",
+        email: "new@example.com",
+      };
+      mockDb.returning.mockResolvedValue([row]);
+
+      const result = await repository.updateEmail({
+        id: row.id,
+        email: "new@example.com",
+      });
+
+      expect(mockDb.set).toHaveBeenCalledWith({ email: "new@example.com" });
+      expect(result.toPersistence()).toStrictEqual(row);
     });
   });
 });
