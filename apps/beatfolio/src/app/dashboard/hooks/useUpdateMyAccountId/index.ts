@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { createBeatfolioBffClient } from "../../../../utils/client";
 
 type UpdateData = {
   accountId: string;
@@ -15,14 +16,11 @@ export const useUpdateMyAccountId = () => {
     setError(null);
 
     try {
-      const res = await fetch("/api/artists/me", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accountId }),
-      });
+      const client = createBeatfolioBffClient();
+      const res = await client.api.artists.me.$post({ json: { accountId } });
 
       if (!res.ok) {
-        const data = await res.json();
+        const data = (await res.json()) as { error?: string };
         throw new Error(data.error || "Account ID の更新に失敗しました");
       }
 
