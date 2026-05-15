@@ -1,0 +1,25 @@
+## CodeRabbit 設定ファイル
+## 公式リファレンス: https://docs.coderabbit.ai/guides/configuration-overview
+##
+## 注意: 本設定は CodeRabbit GitHub App（https://github.com/marketplace/coderabbitai）
+## がリポジトリにインストールされていることを前提とする。
+## 旧 `coderabbitai/ai-pr-reviewer` GitHub Action は廃止済み。
+
+language: ja-JP
+early_access: false
+
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - main
+
+chat:
+  auto_reply: true
