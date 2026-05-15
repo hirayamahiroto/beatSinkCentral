@@ -11,7 +11,7 @@ export type User = {
   getId: () => string;
   getSub: () => string;
   getEmail: () => string;
-  changeEmail: (newEmail: string) => User;
+  changeEmail: (newEmail: Email) => User;
   toPersistence: () => {
     id: string;
     subId: string;

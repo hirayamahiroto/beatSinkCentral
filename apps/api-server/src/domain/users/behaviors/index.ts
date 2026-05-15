@@ -1,14 +1,14 @@
 import type { User, UserState } from "../entities";
-import { createEmail } from "../valueObjects/email";
+import type { Email } from "../valueObjects/email";
 
 export const createUserBehaviors = (state: UserState): User => ({
   getId: () => state.id,
   getSub: () => state.subId.value,
   getEmail: () => state.email.value,
-  changeEmail: (newEmail: string) =>
+  changeEmail: (newEmail: Email) =>
     createUserBehaviors({
       ...state,
-      email: createEmail(newEmail),
+      email: newEmail,
     }),
   toPersistence: () => ({
     id: state.id,

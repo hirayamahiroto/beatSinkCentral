@@ -31,9 +31,9 @@ describe("createUserBehaviors", () => {
   });
 
   describe("changeEmail", () => {
-    it("新しいemailを持つUserを返す", () => {
+    it("新しいemail VOを持つUserを返す", () => {
       const user = createUserBehaviors(state);
-      const updated = user.changeEmail("new@example.com");
+      const updated = user.changeEmail(createEmail("new@example.com"));
 
       expect(updated.getEmail()).toBe("new@example.com");
       expect(updated.getId()).toBe(state.id);
@@ -42,14 +42,9 @@ describe("createUserBehaviors", () => {
 
     it("元のUserは不変", () => {
       const user = createUserBehaviors(state);
-      user.changeEmail("new@example.com");
+      user.changeEmail(createEmail("new@example.com"));
 
       expect(user.getEmail()).toBe("test@example.com");
-    });
-
-    it("無効なemailでエラー", () => {
-      const user = createUserBehaviors(state);
-      expect(() => user.changeEmail("invalid")).toThrow();
     });
   });
 });
