@@ -1,6 +1,7 @@
 import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { UserAlreadyRegisteredError } from "../domain/users/policies/assertNotRegistered";
+import type { UserNotFoundError } from "../domain/users/policies/assertRegistered";
 import type { AccountIdAlreadyTakenError } from "../domain/artists/policies/assertAccountIdAvailable";
 import type { InvalidEmailFormatError } from "../domain/users/valueObjects/email";
 import type { InvalidSubFormatError } from "../domain/users/valueObjects/sub";
@@ -14,6 +15,7 @@ export type AppError =
   | InvalidRequestFormatError
   | UnauthorizedError
   | UserAlreadyRegisteredError
+  | UserNotFoundError
   | AccountIdAlreadyTakenError
   | InvalidEmailFormatError
   | InvalidSubFormatError
@@ -46,6 +48,10 @@ const errorMap: ErrorMap = {
   UserAlreadyRegisteredError: {
     status: 409,
     message: () => "User already registered",
+  },
+  UserNotFoundError: {
+    status: 404,
+    message: () => "User not found",
   },
   AccountIdAlreadyTakenError: {
     status: 409,
