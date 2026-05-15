@@ -7,6 +7,7 @@ import {
 import test from "./test";
 import usersCreate from "./users/create";
 import usersMe from "./users/me";
+import artistsMe from "./artists/me";
 
 export type Env = RequestContextEnv;
 
@@ -15,7 +16,8 @@ const app = new Hono<Env>()
   .use("*", requestContextMiddleware)
   .route("/test", test)
   .route("/users/me", usersMe)
-  .route("/users", usersCreate);
+  .route("/users", usersCreate)
+  .route("/artists/me", artistsMe);
 
 export type AppType = typeof app;
 
