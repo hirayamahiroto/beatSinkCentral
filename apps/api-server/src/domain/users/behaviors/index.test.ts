@@ -29,4 +29,22 @@ describe("createUserBehaviors", () => {
       email: "test@example.com",
     });
   });
+
+  describe("changeEmail", () => {
+    it("新しいemail VOを持つUserを返す", () => {
+      const user = createUserBehaviors(state);
+      const updated = user.changeEmail(createEmail("new@example.com"));
+
+      expect(updated.getEmail()).toBe("new@example.com");
+      expect(updated.getId()).toBe(state.id);
+      expect(updated.getSub()).toBe("auth0|123");
+    });
+
+    it("元のUserは不変", () => {
+      const user = createUserBehaviors(state);
+      user.changeEmail(createEmail("new@example.com"));
+
+      expect(user.getEmail()).toBe("test@example.com");
+    });
+  });
 });

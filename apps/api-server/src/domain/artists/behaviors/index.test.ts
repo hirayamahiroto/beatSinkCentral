@@ -33,4 +33,34 @@ describe("createArtistBehaviors", () => {
     expect(artist.getProfile()).toStrictEqual({ name: "Test Artist" });
     expect(artist.hasProfile()).toBe(true);
   });
+
+  describe("hasAccountId", () => {
+    it("同じ値の AccountId なら true", () => {
+      const artist = createArtistBehaviors(baseState);
+      expect(artist.hasAccountId(createAccountId("user_123"))).toBe(true);
+    });
+
+    it("異なる値の AccountId なら false", () => {
+      const artist = createArtistBehaviors(baseState);
+      expect(artist.hasAccountId(createAccountId("other_handle"))).toBe(false);
+    });
+  });
+
+  describe("changeAccountId", () => {
+    it("新しいaccountId VOを持つArtistを返す", () => {
+      const artist = createArtistBehaviors(baseState);
+      const updated = artist.changeAccountId(createAccountId("new_handle"));
+
+      expect(updated.getAccountId()).toBe("new_handle");
+      expect(updated.getArtistId()).toBe(baseState.artistId.value);
+      expect(updated.getOwnerUserId()).toBe(baseState.ownerUserId);
+    });
+
+    it("元のArtistは不変", () => {
+      const artist = createArtistBehaviors(baseState);
+      artist.changeAccountId(createAccountId("new_handle"));
+
+      expect(artist.getAccountId()).toBe("user_123");
+    });
+  });
 });

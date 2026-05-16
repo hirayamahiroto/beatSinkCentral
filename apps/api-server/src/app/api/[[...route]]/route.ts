@@ -3,6 +3,7 @@ import { handle } from "hono/vercel";
 import test from "./test";
 import usersCreate from "./users/create";
 import usersMe from "./users/me";
+import artistsMe from "./artists/me";
 import { requireAuthMiddleware } from "../../../middlewares/auth0";
 import { handleAppError } from "../../../errorMap";
 
@@ -12,6 +13,7 @@ const app = new Hono()
   .route("/test", test)
   .route("/users/me", usersMe)
   .route("/users", usersCreate)
+  .route("/artists/me", artistsMe)
   .onError(handleAppError);
 
 export type AppType = typeof app;

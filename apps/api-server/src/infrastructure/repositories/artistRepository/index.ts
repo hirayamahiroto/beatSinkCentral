@@ -5,12 +5,16 @@ import {
   artistOwnersTable,
   artistProfilesTable,
 } from "../../../../../../packages/database/src/utils/createClient";
-import type { IArtistRepository } from "../../../domain/artists/repositories";
+import type {
+  IArtistRepository,
+  ArtistUpdateAccountIdData,
+} from "../../../domain/artists/repositories";
 import type {
   Artist,
   ArtistPersistenceData,
 } from "../../../domain/artists/entities";
 import { reconstructArtist } from "../../../domain/artists/factories";
+import { createArtistNotFoundError } from "../../../domain/artists/policies/assertArtistExists";
 import type { TransactionContext } from "../../transaction";
 
 export const createArtistRepository = (
@@ -103,6 +107,42 @@ export const createArtistRepository = (
       accountId: row.accountId,
       ownerUserId: row.ownerUserId,
       profile: row.profileName ? { name: row.profileName } : null,
+    });
+  },
+
+  async updateAccountId(
+    data: ArtistUpdateAccountIdData,
+    tx?: TransactionContext,
+  ): Promise<Artist> {
+    const executor = tx ?? db;
+    const [artistRow] = await executor
+      .update(artistsTable)
+      .set({ accountId: data.accountId })
+      .where(eq(artistsTable.id, data.artistId))
+      .returning({
+        id: artistsTable.id,
+        accountId: artistsTable.accountId,
+      });
+    if (!artistRow) throw createArtistNotFoundError();
+
+    const [ownerRow] = await executor
+      .select({ userId: artistOwnersTable.userId })
+      .from(artistOwnersTable)
+      .where(eq(artistOwnersTable.artistId, artistRow.id))
+      .limit(1);
+    if (!ownerRow) throw createArtistNotFoundError();
+
+    const [profileRow] = await executor
+      .select({ name: artistProfilesTable.name })
+      .from(artistProfilesTable)
+      .where(eq(artistProfilesTable.artistId, artistRow.id))
+      .limit(1);
+
+    return reconstructArtist({
+      artistId: artistRow.id,
+      accountId: artistRow.accountId,
+      ownerUserId: ownerRow.userId,
+      profile: profileRow ? { name: profileRow.name } : null,
     });
   },
 });

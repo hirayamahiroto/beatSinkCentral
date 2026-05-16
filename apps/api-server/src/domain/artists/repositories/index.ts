@@ -1,6 +1,11 @@
 import type { Artist, ArtistPersistenceData } from "../entities";
 import type { TransactionContext } from "../../../infrastructure/transaction";
 
+export type ArtistUpdateAccountIdData = {
+  artistId: string;
+  accountId: string;
+};
+
 export interface IArtistRepository {
   save(data: ArtistPersistenceData, tx?: TransactionContext): Promise<Artist>;
   findByUserId(userId: string): Promise<Artist | null>;
@@ -8,4 +13,8 @@ export interface IArtistRepository {
     accountId: string,
     tx?: TransactionContext,
   ): Promise<Artist | null>;
+  updateAccountId(
+    data: ArtistUpdateAccountIdData,
+    tx?: TransactionContext,
+  ): Promise<Artist>;
 }

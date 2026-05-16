@@ -7,6 +7,7 @@ import { User } from "../../../domain/users/entities";
 import {
   IUserRepository,
   UserSaveData,
+  UserUpdateEmailData,
 } from "../../../domain/users/repositories";
 import { reconstructUser } from "../../../domain/users/factories";
 import type { TransactionContext } from "../../transaction";
@@ -48,6 +49,28 @@ export const createUserRepository = (db: DatabaseClient): IUserRepository => ({
       id: row.id,
       subId: row.subId,
       email: row.email,
+    });
+  },
+
+  async updateEmail(
+    data: UserUpdateEmailData,
+    tx?: TransactionContext,
+  ): Promise<User> {
+    const executor = tx ?? db;
+    const [result] = await executor
+      .update(usersTable)
+      .set({ email: data.email })
+      .where(eq(usersTable.id, data.id))
+      .returning({
+        id: usersTable.id,
+        subId: usersTable.subId,
+        email: usersTable.email,
+      });
+
+    return reconstructUser({
+      id: result.id,
+      subId: result.subId,
+      email: result.email,
     });
   },
 });
