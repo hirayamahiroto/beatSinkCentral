@@ -14,6 +14,7 @@ import type {
   ArtistPersistenceData,
 } from "../../../domain/artists/entities";
 import { reconstructArtist } from "../../../domain/artists/factories";
+import { createArtistNotFoundError } from "../../../domain/artists/policies/assertArtistExists";
 import type { TransactionContext } from "../../transaction";
 
 export const createArtistRepository = (
@@ -122,12 +123,14 @@ export const createArtistRepository = (
         id: artistsTable.id,
         accountId: artistsTable.accountId,
       });
+    if (!artistRow) throw createArtistNotFoundError();
 
     const [ownerRow] = await executor
       .select({ userId: artistOwnersTable.userId })
       .from(artistOwnersTable)
       .where(eq(artistOwnersTable.artistId, artistRow.id))
       .limit(1);
+    if (!ownerRow) throw createArtistNotFoundError();
 
     const [profileRow] = await executor
       .select({ name: artistProfilesTable.name })
