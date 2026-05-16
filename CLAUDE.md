@@ -32,16 +32,17 @@ npm run build
 
 ## 主要な設計ドキュメント
 
-| 領域                                               | ドキュメント                                        | いつ読むか                                      |
-| -------------------------------------------------- | --------------------------------------------------- | ----------------------------------------------- |
-| 全体アーキテクチャ・ディレクトリ構造・実装パターン | `docs/server-architecture/architecture.md`          | 新規実装・レイヤー追加時                        |
-| API 設計（HTTPメソッド・URL）                      | `docs/server-architecture/api-design-guidelines.md` | API ルート追加・変更時                          |
-| エラーハンドリング                                 | `docs/server-architecture/error-handling/README.md` | エラー追加・throw 位置・errorMap 変更時         |
-| DB マイグレーション                                | `docs/server-architecture/database-migration.md`    | スキーマ変更時                                  |
-| 外部クライアント実装（Next.js 遅延初期化）         | `docs/server-architecture/external-clients.md`      | Database / Auth0 / Redis 等の追加・初期化変更時 |
-| 認証                                               | `docs/authentication.md`                            | 認証・認可フローの追加・変更時                  |
-| フロントエンド全般                                 | `docs/frontend-architecture/README.md`              | UI 実装時                                       |
-| テスト戦略                                         | `docs/testing/strategy.md`                          | テスト追加・テスト方針判断時                    |
+| 領域                                               | ドキュメント                                        | いつ読むか                                        |
+| -------------------------------------------------- | --------------------------------------------------- | ------------------------------------------------- |
+| 全体アーキテクチャ・ディレクトリ構造・実装パターン | `docs/server-architecture/architecture.md`          | 新規実装・レイヤー追加時                          |
+| API 設計（HTTPメソッド・URL）                      | `docs/server-architecture/api-design-guidelines.md` | API ルート追加・変更時                            |
+| エラーハンドリング                                 | `docs/server-architecture/error-handling/README.md` | エラー追加・throw 位置・errorMap 変更時           |
+| 並行更新ポリシー                                   | `docs/server-architecture/concurrency.md`           | 新規 usecase の更新フロー設計時・競合挙動の判断時 |
+| DB マイグレーション                                | `docs/server-architecture/database-migration.md`    | スキーマ変更時                                    |
+| 外部クライアント実装（Next.js 遅延初期化）         | `docs/server-architecture/external-clients.md`      | Database / Auth0 / Redis 等の追加・初期化変更時   |
+| 認証                                               | `docs/authentication.md`                            | 認証・認可フローの追加・変更時                    |
+| フロントエンド全般                                 | `docs/frontend-architecture/README.md`              | UI 実装時                                         |
+| テスト戦略                                         | `docs/testing/strategy.md`                          | テスト追加・テスト方針判断時                      |
 
 各ドキュメントの読み順や粒度は、それぞれの README / 目次に従う。
 
