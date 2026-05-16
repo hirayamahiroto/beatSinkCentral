@@ -35,7 +35,7 @@ export const updateMyAccountIdUseCase = async (
     const artist = await deps.artistRepository.findByUserId(user.getId());
     assertArtistExists(artist);
 
-    if (artist.getAccountId() === newAccountId.value) {
+    if (artist.hasAccountId(newAccountId)) {
       return {
         artistId: artist.getArtistId(),
         accountId: artist.getAccountId(),

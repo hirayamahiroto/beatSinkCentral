@@ -34,6 +34,18 @@ describe("createArtistBehaviors", () => {
     expect(artist.hasProfile()).toBe(true);
   });
 
+  describe("hasAccountId", () => {
+    it("同じ値の AccountId なら true", () => {
+      const artist = createArtistBehaviors(baseState);
+      expect(artist.hasAccountId(createAccountId("user_123"))).toBe(true);
+    });
+
+    it("異なる値の AccountId なら false", () => {
+      const artist = createArtistBehaviors(baseState);
+      expect(artist.hasAccountId(createAccountId("other_handle"))).toBe(false);
+    });
+  });
+
   describe("changeAccountId", () => {
     it("新しいaccountId VOを持つArtistを返す", () => {
       const artist = createArtistBehaviors(baseState);

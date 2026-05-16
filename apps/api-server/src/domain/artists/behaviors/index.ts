@@ -7,6 +7,8 @@ export const createArtistBehaviors = (state: ArtistState): Artist => ({
   getOwnerUserId: () => state.ownerUserId,
   getProfile: () => state.profile,
   hasProfile: () => state.profile !== null,
+  hasAccountId: (accountId: AccountId) =>
+    state.accountId.value === accountId.value,
   changeAccountId: (newAccountId: AccountId) =>
     createArtistBehaviors({
       ...state,

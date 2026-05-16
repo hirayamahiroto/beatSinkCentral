@@ -24,6 +24,7 @@ export type Artist = {
   getOwnerUserId: () => string;
   getProfile: () => ArtistProfile | null;
   hasProfile: () => boolean;
+  hasAccountId: (accountId: AccountId) => boolean;
   changeAccountId: (newAccountId: AccountId) => Artist;
   toPersistence: () => ArtistPersistenceData;
 };
