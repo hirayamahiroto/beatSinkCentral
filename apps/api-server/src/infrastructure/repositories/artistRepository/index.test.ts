@@ -12,6 +12,8 @@ const mockDb = {
   limit: vi.fn(),
   update: vi.fn().mockReturnThis(),
   set: vi.fn().mockReturnThis(),
+  insert: vi.fn().mockReturnThis(),
+  values: vi.fn().mockReturnThis(),
   returning: vi.fn(),
 };
 
@@ -21,6 +23,40 @@ describe("createArtistRepository", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     repository = createArtistRepository(mockDb as never);
+  });
+
+  describe("save", () => {
+    it("永続化した Artist を返す", async () => {
+      mockDb.returning.mockResolvedValue([
+        { id: "artist-1", accountId: "user_123" },
+      ]);
+
+      const result = await repository.save({
+        id: "artist-1",
+        accountId: "user_123",
+        ownerUserId: "user-1",
+        profile: null,
+      });
+
+      expect(result.getArtistId()).toBe("artist-1");
+      expect(result.getAccountId()).toBe("user_123");
+      expect(result.getOwnerUserId()).toBe("user-1");
+      expect(result.getProfile()).toBeNull();
+    });
+
+    it("INSERT の returning が空の場合は素 Error を throw する (DB 契約違反 = 500 化対象)", async () => {
+      mockDb.returning.mockResolvedValue([]);
+
+      const promise = repository.save({
+        id: "artist-1",
+        accountId: "user_123",
+        ownerUserId: "user-1",
+        profile: null,
+      });
+
+      await expect(promise).rejects.toThrow(/empty returning from insert/);
+      await expect(promise).rejects.not.toSatisfy(isArtistNotFoundError);
+    });
   });
 
   describe("findByUserId", () => {

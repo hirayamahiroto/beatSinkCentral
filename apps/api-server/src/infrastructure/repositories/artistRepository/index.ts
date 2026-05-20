@@ -32,6 +32,11 @@ export const createArtistRepository = (
         id: artistsTable.id,
         accountId: artistsTable.accountId,
       });
+    if (!artistRow) {
+      throw new Error(
+        `unexpected empty returning from insert into artists: id=${data.id}`,
+      );
+    }
 
     await executor.insert(artistOwnersTable).values({
       userId: data.ownerUserId,
