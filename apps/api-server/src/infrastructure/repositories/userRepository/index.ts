@@ -21,6 +21,11 @@ export const createUserRepository = (db: DatabaseClient): IUserRepository => ({
       subId: usersTable.subId,
       email: usersTable.email,
     });
+    if (!result) {
+      throw new Error(
+        `unexpected empty returning from insert into users: id=${data.id}`,
+      );
+    }
 
     return reconstructUser({
       id: result.id,

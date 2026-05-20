@@ -37,6 +37,19 @@ describe("createUserRepository", () => {
       expect(mockDb.values).toHaveBeenCalledWith(saveData);
       expect(result.toPersistence()).toStrictEqual(saveData);
     });
+
+    it("INSERT の returning が空の場合は素 Error を throw する (DB 契約違反 = 500 化対象)", async () => {
+      mockDb.returning.mockResolvedValue([]);
+
+      const promise = repository.save({
+        id: "550e8400-e29b-41d4-a716-446655440000",
+        subId: "auth0|123456789",
+        email: "test@example.com",
+      });
+
+      await expect(promise).rejects.toThrow(/empty returning from insert/);
+      await expect(promise).rejects.not.toSatisfy(isUserNotFoundError);
+    });
   });
 
   describe("findBySub", () => {
