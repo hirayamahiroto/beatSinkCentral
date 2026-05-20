@@ -130,7 +130,9 @@ export const createArtistRepository = (
       .from(artistOwnersTable)
       .where(eq(artistOwnersTable.artistId, artistRow.id))
       .limit(1);
-    if (!ownerRow) throw createArtistNotFoundError();
+    if (!ownerRow) {
+      throw new Error(`artist owner row missing: artistId=${artistRow.id}`);
+    }
 
     const [profileRow] = await executor
       .select({ name: artistProfilesTable.name })

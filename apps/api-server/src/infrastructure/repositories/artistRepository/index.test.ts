@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createArtistRepository } from "./index";
 import type { IArtistRepository } from "../../../domain/artists/repositories";
+import { isArtistNotFoundError } from "../../../domain/artists/policies/assertArtistExists";
 
 const mockDb = {
   select: vi.fn().mockReturnThis(),
@@ -156,6 +157,33 @@ describe("createArtistRepository", () => {
 
       expect(result.hasProfile()).toBe(false);
       expect(result.getProfile()).toBeNull();
+    });
+
+    it("UPDATE 結果が空の場合は ArtistNotFoundError を throw する", async () => {
+      mockDb.returning.mockResolvedValue([]);
+
+      const promise = repository.updateAccountId({
+        artistId: "artist-unknown",
+        accountId: "new_handle",
+      });
+
+      await expect(promise).rejects.toSatisfy(isArtistNotFoundError);
+    });
+
+    it("owner 行が見つからない場合はデータ整合性違反として Error を throw する", async () => {
+      mockDb.returning.mockResolvedValue([
+        { id: "artist-1", accountId: "new_handle" },
+      ]);
+      mockDb.limit.mockResolvedValueOnce([]);
+
+      const promise = repository.updateAccountId({
+        artistId: "artist-1",
+        accountId: "new_handle",
+      });
+
+      // ArtistNotFoundError ではなく、errorMap に登録しない素の Error (500 化対象)
+      await expect(promise).rejects.toThrow(/owner row missing/);
+      await expect(promise).rejects.not.toSatisfy(isArtistNotFoundError);
     });
   });
 });
