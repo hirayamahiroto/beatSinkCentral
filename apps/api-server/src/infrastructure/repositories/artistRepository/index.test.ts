@@ -35,7 +35,6 @@ describe("createArtistRepository", () => {
         id: "artist-1",
         accountId: "user_123",
         ownerUserId: "user-1",
-        profile: null,
       });
 
       expect(result.getArtistId()).toBe("artist-1");
@@ -51,7 +50,6 @@ describe("createArtistRepository", () => {
         id: "artist-1",
         accountId: "user_123",
         ownerUserId: "user-1",
-        profile: null,
       });
 
       await expect(promise).rejects.toThrow(/empty returning from insert/);
