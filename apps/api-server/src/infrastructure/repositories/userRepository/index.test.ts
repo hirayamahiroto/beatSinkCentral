@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createUserRepository } from "./index";
 import type { IUserRepository } from "../../../domain/users/repositories";
+import { isUserNotFoundError } from "../../../domain/users/policies/assertRegistered";
 
 const mockDb = {
   insert: vi.fn().mockReturnThis(),
@@ -78,6 +79,17 @@ describe("createUserRepository", () => {
 
       expect(mockDb.set).toHaveBeenCalledWith({ email: "new@example.com" });
       expect(result.toPersistence()).toStrictEqual(row);
+    });
+
+    it("UPDATE 結果が空の場合は UserNotFoundError を throw する", async () => {
+      mockDb.returning.mockResolvedValue([]);
+
+      const promise = repository.updateEmail({
+        id: "550e8400-e29b-41d4-a716-446655440000",
+        email: "new@example.com",
+      });
+
+      await expect(promise).rejects.toSatisfy(isUserNotFoundError);
     });
   });
 });
