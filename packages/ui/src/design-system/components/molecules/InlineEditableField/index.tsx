@@ -50,7 +50,12 @@ export const InlineEditableField = ({
       setIsEditing(false);
       return;
     }
-    const ok = await onSave(trimmed);
+    let ok = false;
+    try {
+      ok = await onSave(trimmed);
+    } catch {
+      ok = false;
+    }
     if (ok) {
       setIsEditing(false);
     }
