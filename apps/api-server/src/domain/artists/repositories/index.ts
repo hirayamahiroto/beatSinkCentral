@@ -8,7 +8,7 @@ export type ArtistUpdateAccountIdData = {
 
 export interface IArtistRepository {
   save(data: ArtistPersistenceData, tx?: TransactionContext): Promise<Artist>;
-  findByUserId(userId: string): Promise<Artist | null>;
+  findByUserId(userId: string, tx?: TransactionContext): Promise<Artist | null>;
   findByAccountId(
     accountId: string,
     tx?: TransactionContext,
