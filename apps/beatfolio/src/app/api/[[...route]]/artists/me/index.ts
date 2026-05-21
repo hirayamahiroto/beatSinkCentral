@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { RequestContextEnv } from "../../../../../middlewares/requestContext";
 
 const updateAccountIdRequestSchema = z.object({
-  accountId: z.string().nonempty(),
+  accountId: z.string().trim().min(1),
 });
 
 const app = new Hono<RequestContextEnv>().post(
@@ -31,7 +31,7 @@ const app = new Hono<RequestContextEnv>().post(
     }
 
     const data = await res.json();
-    return c.json(data);
+    return c.json(data, res.status);
   },
 );
 

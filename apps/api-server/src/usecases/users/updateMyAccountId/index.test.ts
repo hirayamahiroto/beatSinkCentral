@@ -76,6 +76,35 @@ describe("updateMyAccountIdUseCase", () => {
     expect(deps.artistRepository.updateAccountId).toHaveBeenCalledTimes(1);
   });
 
+  it("全ての read/write が同一トランザクション内で実行される", async () => {
+    const deps = createMockDeps();
+    deps.userRepository.findBySub.mockResolvedValue(existingUser);
+    deps.artistRepository.findByUserId.mockResolvedValue(existingArtist);
+    deps.artistRepository.findByAccountId.mockResolvedValue(null);
+    deps.artistRepository.updateAccountId.mockResolvedValue(
+      reconstructArtist({
+        artistId: existingArtist.getArtistId(),
+        accountId: validInput.accountId,
+        ownerUserId: existingArtist.getOwnerUserId(),
+        profile: null,
+      }),
+    );
+
+    await updateMyAccountIdUseCase(validInput, deps);
+
+    const [, findBySubTx] = deps.userRepository.findBySub.mock.calls[0] ?? [];
+    const [, findByUserIdTx] =
+      deps.artistRepository.findByUserId.mock.calls[0] ?? [];
+    const [, findByAccountIdTx] =
+      deps.artistRepository.findByAccountId.mock.calls[0] ?? [];
+    const [, updateAccountIdTx] =
+      deps.artistRepository.updateAccountId.mock.calls[0] ?? [];
+    expect(findBySubTx).toBeDefined();
+    expect(findByUserIdTx).toBe(findBySubTx);
+    expect(findByAccountIdTx).toBe(findBySubTx);
+    expect(updateAccountIdTx).toBe(findBySubTx);
+  });
+
   it("現在のaccountIdと同じ値の場合は更新せず early return する", async () => {
     const deps = createMockDeps();
     deps.userRepository.findBySub.mockResolvedValue(existingUser);

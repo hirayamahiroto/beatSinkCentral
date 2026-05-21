@@ -46,7 +46,7 @@
 
 ## 採用判断のフロー
 
-```
+```text
 新しい usecase を作る
    │
    ├─ 「同一レコードに対し複数主体が並行に書きうる」か？
@@ -71,6 +71,49 @@
 3. `updateXxx` の WHERE 句に `AND version = ?` を加え、SET 句で `version = version + 1`
 4. UPDATE の `rowCount` が 0 なら競合検出 → ドメインエラー（例: `ConflictError`）を throw
 5. エントリポイントは errorMap で 409 Conflict にマップし、クライアントは再読み込みを促す
+
+## トランザクション境界の遵守
+
+LWW / 楽観 / 悲観 のいずれを選んだかとは独立に、**`txRunner.run` の中で行う read / write は例外なくその `tx` で実行する**。read だから tx 不要、ではない。
+
+### なぜか
+
+PostgreSQL のデフォルト分離レベル READ COMMITTED 下では、tx 外の read は別接続・別スナップショットになる。同一 usecase 内で:
+
+- tx 外の `findX` → tx 内の `updateY` という流れにすると、`findX` 時点のスナップショットと `updateY` 時点で他リクエストの変更が混入し、整合性検証が弱まる
+- アプリ層では「同じ usecase で取った値」のつもりでも、DB レベルでは別接続・別スナップショット
+- read-only に見えても tx 内で行うことで、read-your-writes と一貫したスナップショットを保てる
+
+### 適用ルール
+
+- Repository インターフェースの **read メソッドにも `tx?: TransactionContext` 引数を用意する**（書き込み専用と読み取り専用で API を分けない）
+- Usecase が `txRunner.run(async (tx) => { ... })` を使うなら、その中の repository 呼び出しは **全て `tx` を渡す**
+- tx を渡さなくてよいのは、`txRunner.run` で囲まない read-only usecase（例: `getMeUseCase`）だけ
+
+### 例
+
+```typescript
+// NG: findByUserId だけ tx 外。同一 usecase 内なのに別スナップショット
+await txRunner.run(async (tx) => {
+  const user = await userRepository.findBySub(subId, tx);
+  const artist = await artistRepository.findByUserId(user.getId()); // ← tx 外
+  // ...
+});
+
+// OK: 全て同じ tx で実行
+await txRunner.run(async (tx) => {
+  const user = await userRepository.findBySub(subId, tx);
+  const artist = await artistRepository.findByUserId(user.getId(), tx);
+  // ...
+});
+```
+
+### チェック観点
+
+- 新規 repository メソッドを追加するとき、read/write 問わず `tx?: TransactionContext` を最後の引数に置く
+- 既存 usecase に repository 呼び出しを足すとき、自分が `txRunner.run` の中にいるか確認し、いるなら必ず `tx` を渡す
+- レビュー時、`txRunner.run` ブロックを目で追って tx を渡し忘れている呼び出しが無いか確認する
+- usecase テストでは「全 repository 呼び出しが同一の tx オブジェクトを受け取っている」ことを 1 ケース検証する
 
 ## 既存 usecase の方針記録
 

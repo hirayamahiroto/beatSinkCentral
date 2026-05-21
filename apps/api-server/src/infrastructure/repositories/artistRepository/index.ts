@@ -32,6 +32,11 @@ export const createArtistRepository = (
         id: artistsTable.id,
         accountId: artistsTable.accountId,
       });
+    if (!artistRow) {
+      throw new Error(
+        `unexpected empty returning from insert into artists: id=${data.id}`,
+      );
+    }
 
     await executor.insert(artistOwnersTable).values({
       userId: data.ownerUserId,
@@ -46,8 +51,9 @@ export const createArtistRepository = (
     });
   },
 
-  async findByUserId(userId: string) {
-    const results = await db
+  async findByUserId(userId: string, tx?: TransactionContext) {
+    const executor = tx ?? db;
+    const results = await executor
       .select({
         artistId: artistsTable.id,
         accountId: artistsTable.accountId,
@@ -130,7 +136,9 @@ export const createArtistRepository = (
       .from(artistOwnersTable)
       .where(eq(artistOwnersTable.artistId, artistRow.id))
       .limit(1);
-    if (!ownerRow) throw createArtistNotFoundError();
+    if (!ownerRow) {
+      throw new Error(`artist owner row missing: artistId=${artistRow.id}`);
+    }
 
     const [profileRow] = await executor
       .select({ name: artistProfilesTable.name })

@@ -20,8 +20,16 @@ export const useUpdateMyAccountId = () => {
       const res = await client.api.artists.me.$post({ json: { accountId } });
 
       if (!res.ok) {
-        const data = (await res.json()) as { error?: string };
-        throw new Error(data.error || "Account ID の更新に失敗しました");
+        let message = "Account ID の更新に失敗しました";
+        try {
+          const data = (await res.json()) as { error?: string };
+          if (typeof data.error === "string" && data.error.length > 0) {
+            message = data.error;
+          }
+        } catch {
+          // 非JSON/空レスポンス時は既定メッセージを使う
+        }
+        throw new Error(message);
       }
 
       router.refresh();
