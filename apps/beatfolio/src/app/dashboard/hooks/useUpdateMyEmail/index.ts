@@ -20,16 +20,8 @@ export const useUpdateMyEmail = () => {
       const res = await client.api.users.me.$post({ json: { email } });
 
       if (!res.ok) {
-        let message = "メールアドレスの更新に失敗しました";
-        try {
-          const data = (await res.json()) as { error?: string };
-          if (typeof data.error === "string" && data.error.length > 0) {
-            message = data.error;
-          }
-        } catch {
-          // 非JSON/空レスポンス時は既定メッセージを使う
-        }
-        throw new Error(message);
+        const data = (await res.json()) as { error?: string };
+        throw new Error(data.error || "メールアドレスの更新に失敗しました");
       }
 
       router.refresh();

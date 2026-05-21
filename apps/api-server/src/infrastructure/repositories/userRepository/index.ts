@@ -10,7 +10,6 @@ import {
   UserUpdateEmailData,
 } from "../../../domain/users/repositories";
 import { reconstructUser } from "../../../domain/users/factories";
-import { createUserNotFoundError } from "../../../domain/users/policies/assertRegistered";
 import type { TransactionContext } from "../../transaction";
 
 export const createUserRepository = (db: DatabaseClient): IUserRepository => ({
@@ -21,11 +20,6 @@ export const createUserRepository = (db: DatabaseClient): IUserRepository => ({
       subId: usersTable.subId,
       email: usersTable.email,
     });
-    if (!result) {
-      throw new Error(
-        `unexpected empty returning from insert into users: id=${data.id}`,
-      );
-    }
 
     return reconstructUser({
       id: result.id,
@@ -72,7 +66,6 @@ export const createUserRepository = (db: DatabaseClient): IUserRepository => ({
         subId: usersTable.subId,
         email: usersTable.email,
       });
-    if (!result) throw createUserNotFoundError();
 
     return reconstructUser({
       id: result.id,

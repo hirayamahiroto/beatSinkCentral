@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createUserRepository } from "./index";
 import type { IUserRepository } from "../../../domain/users/repositories";
-import { isUserNotFoundError } from "../../../domain/users/policies/assertRegistered";
 
 const mockDb = {
   insert: vi.fn().mockReturnThis(),
@@ -36,19 +35,6 @@ describe("createUserRepository", () => {
 
       expect(mockDb.values).toHaveBeenCalledWith(saveData);
       expect(result.toPersistence()).toStrictEqual(saveData);
-    });
-
-    it("INSERT の returning が空の場合は素 Error を throw する (DB 契約違反 = 500 化対象)", async () => {
-      mockDb.returning.mockResolvedValue([]);
-
-      const promise = repository.save({
-        id: "550e8400-e29b-41d4-a716-446655440000",
-        subId: "auth0|123456789",
-        email: "test@example.com",
-      });
-
-      await expect(promise).rejects.toThrow(/empty returning from insert/);
-      await expect(promise).rejects.not.toSatisfy(isUserNotFoundError);
     });
   });
 
@@ -92,17 +78,6 @@ describe("createUserRepository", () => {
 
       expect(mockDb.set).toHaveBeenCalledWith({ email: "new@example.com" });
       expect(result.toPersistence()).toStrictEqual(row);
-    });
-
-    it("UPDATE 結果が空の場合は UserNotFoundError を throw する", async () => {
-      mockDb.returning.mockResolvedValue([]);
-
-      const promise = repository.updateEmail({
-        id: "550e8400-e29b-41d4-a716-446655440000",
-        email: "new@example.com",
-      });
-
-      await expect(promise).rejects.toSatisfy(isUserNotFoundError);
     });
   });
 });

@@ -32,7 +32,7 @@ export const updateMyAccountIdUseCase = async (
     const user = await deps.userRepository.findBySub(input.subId, tx);
     assertRegistered(user);
 
-    const artist = await deps.artistRepository.findByUserId(user.getId(), tx);
+    const artist = await deps.artistRepository.findByUserId(user.getId());
     assertArtistExists(artist);
 
     if (artist.hasAccountId(newAccountId)) {

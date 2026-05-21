@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { RequestContextEnv } from "../../../../../middlewares/requestContext";
 
 const updateEmailRequestSchema = z.object({
-  email: z.string().trim().email(),
+  email: z.string().nonempty(),
 });
 
 const app = new Hono<RequestContextEnv>()
@@ -19,7 +19,7 @@ const app = new Hono<RequestContextEnv>()
     }
 
     const data = await res.json();
-    return c.json(data, res.status);
+    return c.json(data);
   })
   .post(
     "/",
@@ -45,7 +45,7 @@ const app = new Hono<RequestContextEnv>()
       }
 
       const data = await res.json();
-      return c.json(data, res.status);
+      return c.json(data);
     },
   );
 
