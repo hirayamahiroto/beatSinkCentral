@@ -1,0 +1,50 @@
+name: "🧪 Terraform 変更検知"
+
+# apps/*/infrastructure/ 配下の Terraform 設定が変更された PR で、
+# 書式 (fmt) と構文 (validate) のチェックを自動実行する。
+#
+# state は CI に存在しないため、plan / apply は実行しない。
+# それらは Phase 4(Terraform Cloud 移行)以降に追加予定。
+# 詳細: docs/infrastructure/README.md の「CI/CD への組み込み計画」セクション
+
+on:
+  pull_request:
+    paths:
+      - "apps/*/infrastructure/**"
+      - ".github/workflows/terraform-check.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  terraform-check:
+    name: 🔍 ${{ matrix.app }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [api-server, beatfolio]
+    defaults:
+      run:
+        working-directory: apps/${{ matrix.app }}/infrastructure
+    steps:
+      - name: 📥 コードのチェックアウト
+        uses: actions/checkout@v4
+
+      - name: 🔧 Terraform セットアップ
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.0"
+          terraform_wrapper: false
+
+      - name: 📐 書式チェック (terraform fmt)
+        run: terraform fmt -check -diff -recursive
+
+      - name: 🏗️ 初期化 (backend なし)
+        # state にアクセスせず provider のみ取得する。
+        # -backend=false により CI で state が無くても init できる。
+        run: terraform init -backend=false
+
+      - name: ✅ 構文チェック (terraform validate)
+        run: terraform validate
