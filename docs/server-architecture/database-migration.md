@@ -91,4 +91,4 @@ push → db-migrate（マイグレーション実行） → deploy（デプロ�
 - SQLファイルを手動作成・編集しない。必ず `drizzle-kit generate` で生成する
 - スナップショットは `generate` の差分検出に使われるため、手動で変更しない
 - `_journal.json` に登録されていないSQLファイルは `migrate` で無視される
-- CI/CDでの接続にはSupabase Pooler（Session mode）のURLを使用する
+- CI/CD での接続には Supabase Pooler（Session mode、ポート 5432）の URL を使用する。Transaction pooler（6543）は advisory lock 非対応のため `applying migrations...` でハングする。詳細は [データベース接続パターン](./database-connection.md) を参照
