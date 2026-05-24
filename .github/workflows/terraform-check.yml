@@ -31,6 +31,10 @@ jobs:
     steps:
       - name: 📥 コードのチェックアウト
         uses: actions/checkout@v4
+        with:
+          # 本 workflow は読み取り専用(fmt / init / validate)のみで git 操作を行わないため、
+          # GITHUB_TOKEN の後続ステップへの引き継ぎを明示的に無効化する。
+          persist-credentials: false
 
       - name: 🔧 Terraform セットアップ
         uses: hashicorp/setup-terraform@v3
