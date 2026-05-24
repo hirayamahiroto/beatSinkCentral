@@ -1,0 +1,33 @@
+# beatfolio Terraform 入力変数のサンプル。
+# 実値を埋めて terraform.tfvars としてコミット禁止で保存する(.gitignore 済)。
+# AUTH0_SECRET 等、api-server 側と同値が必要な値は両方の tfvars に同値を入れる。
+
+# ===== Project (default あり、必要時のみ上書き) =====
+# project_name   = "beatfolio"
+# root_directory = "apps/beatfolio"
+
+# ===== Platform =====
+vercel_team_id = "team_xxxxxxxxxxxxxxxxxxxxxxxx"
+# github_repo は default = "hirayamahiroto/beatSinkCentral" 済み
+
+# ===== Auth0 =====
+production_auth0_domain        = "your-tenant.us.auth0.com"
+production_auth0_client_id     = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+production_auth0_client_secret = "REPLACE_ME"
+production_auth0_secret        = "REPLACE_ME" # openssl rand -hex 32 (api-server と同値)
+
+preview_auth0_domain        = "your-tenant.us.auth0.com"
+preview_auth0_client_id     = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+preview_auth0_client_secret = "REPLACE_ME"
+preview_auth0_secret        = "REPLACE_ME" # api-server と同値
+
+# ===== Base URLs =====
+production_app_base_url        = "https://beatfolio.example.com"
+production_api_server_base_url = "https://api.beatfolio.example.com"
+preview_app_base_url           = "https://beatfolio-preview.example.com"
+preview_api_server_base_url    = "https://api-beatfolio-preview.example.com"
+
+# ===== Basic Auth (全環境共通) =====
+enable_basic_auth   = "true"
+basic_auth_username = "REPLACE_ME"
+basic_auth_password = "REPLACE_ME"
