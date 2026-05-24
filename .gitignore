@@ -52,3 +52,15 @@ next-env.d.ts
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
 .claude/projects/
+
+# Terraform (各 infrastructure/ ディレクトリにも個別の .gitignore あり)
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.*
+**/*.tfvars
+!**/*.tfvars.example
+**/crash.log
+**/crash.*.log
+
+# Terraform-related sensitive scratch files
+dd.md
