@@ -44,11 +44,11 @@
     "@types/react-lazy-load-image-component": "^1.6.4",
     "eslint": "^8.57.1",
     "eslint-plugin-storybook": "^10.3.6",
-    "postcss": "^8.5.3",
+    "postcss": "^8.5.14",
     "storybook": "^10.3.6",
     "tailwindcss": "^4.0.15",
     "typescript": "^5",
-    "vite": "^6.4.1"
+    "vite": "^6.4.3"
   },
   "keywords": [],
   "author": "",
