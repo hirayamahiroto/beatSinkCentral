@@ -1,14 +1,17 @@
 import { getDb } from "../database";
 import { createUserRepository } from "../repositories/userRepository";
 import { createArtistRepository } from "../repositories/artistRepository";
+import { createArtistProfileRepository } from "../repositories/artistProfileRepository";
 import { createTransactionRunner } from "../transaction";
 import type { IUserRepository } from "../../domain/users/repositories";
 import type { IArtistRepository } from "../../domain/artists/repositories";
+import type { IArtistProfileRepository } from "../../domain/artistProfiles/repositories";
 import type { ITransactionRunner } from "../transaction";
 
 export type Container = {
   userRepository: IUserRepository;
   artistRepository: IArtistRepository;
+  artistProfileRepository: IArtistProfileRepository;
   txRunner: ITransactionRunner;
 };
 
@@ -21,6 +24,7 @@ export const getContainer = (() => {
       container = {
         userRepository: createUserRepository(db),
         artistRepository: createArtistRepository(db),
+        artistProfileRepository: createArtistProfileRepository(db),
         txRunner: createTransactionRunner(db),
       };
     }

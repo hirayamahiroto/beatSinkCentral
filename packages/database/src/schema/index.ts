@@ -3,6 +3,8 @@ export * from "./artists";
 export * from "./artistOwners";
 export * from "./artistMembers";
 export * from "./artistProfiles";
+export * from "./artistProfileGenres";
+export * from "./artistProfileSnsLinks";
 export * from "./artistStatusMasters";
 export * from "./artistStatuses";
 export * from "./artistIdHistories";

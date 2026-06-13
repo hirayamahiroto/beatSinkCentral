@@ -142,7 +142,9 @@ export const createArtistRepository = (
       artistId: artistRow.id,
       accountId: artistRow.accountId,
       ownerUserId: ownerRow.userId,
-      profile: profileRow ? { name: profileRow.name } : null,
+      // name は下書き許容で nullable 化したため、name 有無で profile 有無を判定する
+      // （findByUserId / findByAccountId と同じ扱い。プロフィール本体は artistProfiles 集約が担う）。
+      profile: profileRow?.name ? { name: profileRow.name } : null,
     });
   },
 });

@@ -9,6 +9,15 @@ import type { InvalidSubFormatError } from "../domain/users/valueObjects/sub";
 import type { InvalidNameFormatError } from "../domain/users/valueObjects/name";
 import type { InvalidAccountIdFormatError } from "../domain/artists/valueObjects/accountId";
 import type { InvalidArtistIdFormatError } from "../domain/artists/valueObjects/artistId";
+import type { ArtistProfileNotFoundError } from "../domain/artistProfiles/policies/assertArtistProfileExists";
+import type { ProfileNotPublishableError } from "../domain/artistProfiles/policies/assertProfilePublishable";
+import type { InvalidProfileNameFormatError } from "../domain/artistProfiles/valueObjects/profileName";
+import type { InvalidTaglineFormatError } from "../domain/artistProfiles/valueObjects/tagline";
+import type { InvalidImageUrlFormatError } from "../domain/artistProfiles/valueObjects/imageUrl";
+import type { InvalidStoryFormatError } from "../domain/artistProfiles/valueObjects/story";
+import type { InvalidActivityInfoFormatError } from "../domain/artistProfiles/valueObjects/activityInfo";
+import type { InvalidGenreFormatError } from "../domain/artistProfiles/valueObjects/genre";
+import type { InvalidSnsUrlFormatError } from "../domain/artistProfiles/valueObjects/snsUrl";
 import type { InvalidRequestFormatError } from "../app/api/[[...route]]/errors/invalidRequestFormat";
 import type { UnauthorizedError } from "../middlewares/auth0/errors/unauthorized";
 
@@ -19,11 +28,20 @@ export type AppError =
   | UserNotFoundError
   | AccountIdAlreadyTakenError
   | ArtistNotFoundError
+  | ArtistProfileNotFoundError
+  | ProfileNotPublishableError
   | InvalidEmailFormatError
   | InvalidSubFormatError
   | InvalidNameFormatError
   | InvalidAccountIdFormatError
-  | InvalidArtistIdFormatError;
+  | InvalidArtistIdFormatError
+  | InvalidProfileNameFormatError
+  | InvalidTaglineFormatError
+  | InvalidImageUrlFormatError
+  | InvalidStoryFormatError
+  | InvalidActivityInfoFormatError
+  | InvalidGenreFormatError
+  | InvalidSnsUrlFormatError;
 
 type ErrorMapping<SpecificError extends AppError> = {
   status: ContentfulStatusCode;
@@ -82,6 +100,43 @@ const errorMap: ErrorMap = {
   InvalidArtistIdFormatError: {
     status: 422,
     message: () => "Invalid artistId format",
+  },
+  ArtistProfileNotFoundError: {
+    status: 404,
+    message: () => "Artist profile not found",
+  },
+  ProfileNotPublishableError: {
+    status: 422,
+    message: () => "Profile is not publishable: required fields are missing",
+    details: (error) => ({ missingFields: error.missingFields }),
+  },
+  InvalidProfileNameFormatError: {
+    status: 422,
+    message: () => "Invalid name format",
+  },
+  InvalidTaglineFormatError: {
+    status: 422,
+    message: () => "Invalid tagline format",
+  },
+  InvalidImageUrlFormatError: {
+    status: 422,
+    message: () => "Invalid imageUrl format",
+  },
+  InvalidStoryFormatError: {
+    status: 422,
+    message: () => "Invalid story format",
+  },
+  InvalidActivityInfoFormatError: {
+    status: 422,
+    message: () => "Invalid activityInfo format",
+  },
+  InvalidGenreFormatError: {
+    status: 422,
+    message: () => "Invalid genre format",
+  },
+  InvalidSnsUrlFormatError: {
+    status: 422,
+    message: () => "Invalid snsUrl format",
   },
 };
 
