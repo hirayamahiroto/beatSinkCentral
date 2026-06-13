@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import Link from "next/link";
+import { Typography } from "@ui/design-system/components/atoms/Typography";
+import { Card } from "@ui/design-system/components/atoms/Card";
+import { Button } from "@ui/design-system/components/atoms/Button";
 import { auth0 } from "../../libs/auth0";
 import { createBffServerClient } from "../../utils/client";
 import { EmailEditorClientAdapter } from "./EmailEditorClientAdapter";
@@ -28,37 +31,30 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white pt-24 pb-16 px-4">
-      <div className="container mx-auto max-w-3xl">
-        <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 mb-8">
-          Dashboard
-        </h1>
+    <div className="min-h-screen bg-background text-foreground px-4 pb-16 pt-24">
+      <div className="container mx-auto flex max-w-3xl flex-col gap-6">
+        <Typography variant="h2">Dashboard</Typography>
 
-        <div className="mb-6">
-          <EmailEditorClientAdapter email={me.email} />
-        </div>
+        <EmailEditorClientAdapter email={me.email} />
 
         {me.artist && (
-          <div className="mb-6">
-            <AccountIdEditorClientAdapter accountId={me.artist.accountId} />
-          </div>
+          <AccountIdEditorClientAdapter accountId={me.artist.accountId} />
         )}
 
         {me.artist && !me.artist.hasProfile && (
-          <section className="backdrop-blur-md bg-yellow-500/10 p-6 rounded-2xl border border-yellow-500/20">
-            <p className="text-yellow-300 font-medium mb-2">
-              アーティストプロフィール未作成
-            </p>
-            <p className="text-gray-300 text-sm mb-4">
-              プロフィールを作成すると、プレイヤー一覧に表示されるようになります。
-            </p>
-            <Link
-              href="/dashboard/profile"
-              className="inline-block px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-xl text-sm font-medium transition-all"
-            >
-              プロフィールを作成する
-            </Link>
-          </section>
+          <Card>
+            <div className="flex flex-col gap-3">
+              <Typography variant="h4">アーティストプロフィール未作成</Typography>
+              <Typography variant="small" tone="muted">
+                プロフィールを作成すると、プレイヤー一覧に表示されるようになります。
+              </Typography>
+              <div>
+                <Button asChild>
+                  <Link href="/dashboard/profile">プロフィールを作成する</Link>
+                </Button>
+              </div>
+            </div>
+          </Card>
         )}
       </div>
     </div>
