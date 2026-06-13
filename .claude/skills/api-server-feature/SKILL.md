@@ -11,7 +11,7 @@ description: api-server（クリーンアーキテクチャ + 純粋 Domain + DI
 ## 0. 着手前（必須）
 
 - `docs/server-architecture/architecture.md` と、対象領域の設計ドキュメント（`docs/.../*.md`）を**先に読む**。
-- 横断観点は `~/.claude/rules/code-review-checklist.md` を読む（N+1 / 権限 / 過剰取得 / インターフェース設計）。
+- 横断観点は `~/.claude/rules/code-review-checklist.md` を読む（N+1 / 権限 / 過剰取得 / インターフェース設計 / §14 コメントを残さない / §15 Optional フォールバックで必須値を偽装しない）。
 - **設計ドキュメントが規範、既存コードは実装結果**。両者が食い違ったら、勝手に既存へ合わせず **ユーザーに共有して方針確認**（CLAUDE.md）。
 - ドキュメントに答えがある問いを、ユーザーに質問しない。まず docs を grep する。
 - 作業は `git worktree` で別ブランチを切る。worktree は依存が無いので **`npm install` をその場で実行**（monorepo は worktree に hoist されない）。
@@ -92,4 +92,6 @@ cd apps/api-server && npx next lint       # lint
 - nullable 化の波及を `tsc` で見ずにテストだけ通して見逃す（vitest は型を見ない）。
 - 公開ルートを足したのに `*` の auth に阻まれる。
 - 一部 module だけテストを書いて満足する（全 module 必須）。
+- 必須値を `?? ""` / `?? 0` 等で埋めて型安全を壊す（欠落は VO/policy/usecase で明示的に落とす。§15）。
+- コードの言い換えコメントを書く（命名・構造で表し、理由は `docs/` へ。§14）。
 - 言われていないのにコミットする。

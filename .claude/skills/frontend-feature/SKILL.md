@@ -13,7 +13,7 @@ description: beatfolio / packages/ui のフロントエンド UI（Atomic Design
 - 規範ドキュメントを**先に読む**：
   - `docs/frontend-architecture/{README,component-design,form-design,application-policy,state-management,ui-library,tailwind,responsive}.md`
   - 対象機能の情報設計ドキュメント（`docs/.../*.md`）
-- 横断観点は `~/.claude/rules/code-review-checklist.md`（特に §6 データ取得タイミング / §10 レイヤー責務 / §13 インターフェース自己説明性）。
+- 横断観点は `~/.claude/rules/code-review-checklist.md`（特に §6 データ取得タイミング / §10 レイヤー責務 / §13 インターフェース自己説明性 / §14 コメントを残さない / §15 型安全を壊す Optional フォールバックを使わない）。
 - **設計ドキュメントが規範、既存コードは実装結果**。食い違ったら勝手に既存へ合わせず **ユーザーに共有して方針確認**（CLAUDE.md）。
 - **まず情報設計／動線を固める**（何を・どの順で・どこまで開示するか）。必要なら素の HTML モックで動線を確認してから React 化する。Layer 0（業務/情報設計）が無いまま部品を作り始めない（[[feedback_business_design_before_ai]]）。
 - 作業は `git worktree` で別ブランチ。monorepo は worktree に hoist されないので **`npm install` をその場で実行**。
@@ -85,3 +85,5 @@ cd packages/ui && npm run storybook        # 目視（:6006）
 - Storybook の description に実装詳細を書く。
 - worktree で `npm install` を忘れる / 言われていないのにコミットする。
 - 情報設計が決まる前に部品を作り始める（動線→項目→部品の順）。
+- 必須値を `session.user?.email ?? ""` のように `?? 既定値` で埋めて型安全を壊す（欠落は `redirect`/`throw` で明示的に落とすか、正しく型付けされた契約から取得する。§15）。
+- コードの言い換えコメントを書く（役割は命名・構造で表し、理由は `docs/` へ。§14）。
