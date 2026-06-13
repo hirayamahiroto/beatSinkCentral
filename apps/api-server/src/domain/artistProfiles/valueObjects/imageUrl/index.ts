@@ -13,7 +13,6 @@ export const createInvalidImageUrlFormatError =
   (): InvalidImageUrlFormatError =>
     createTypedError("InvalidImageUrlFormatError");
 
-// 画像は外部 URL 指定（Blob アップロードは後続フェーズ）。
 const imageUrlSchema = z
   .string()
   .trim()

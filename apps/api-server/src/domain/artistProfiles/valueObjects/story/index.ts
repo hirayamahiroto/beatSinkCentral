@@ -12,7 +12,6 @@ export type InvalidStoryFormatError = Error & {
 export const createInvalidStoryFormatError = (): InvalidStoryFormatError =>
   createTypedError("InvalidStoryFormatError");
 
-// Story はバックグラウンド本文（差別化の中核）。長文を許容する。
 const storySchema = z
   .string()
   .trim()

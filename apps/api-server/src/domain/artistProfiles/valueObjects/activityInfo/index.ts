@@ -13,7 +13,6 @@ export const createInvalidActivityInfoFormatError =
   (): InvalidActivityInfoFormatError =>
     createTypedError("InvalidActivityInfoFormatError");
 
-// 活動情報（拠点 / 形態 / 所属 など）。Story の補助的な軽い事実。
 const activityInfoSchema = z
   .string()
   .trim()

@@ -43,7 +43,6 @@ const existingArtist = reconstructArtist({
   profile: null,
 });
 
-// upsert は渡された永続化データをそのまま Entity 化して返すスタブ。
 const echoUpsert = (data: ArtistProfilePersistenceData) =>
   reconstructArtistProfile({ ...data });
 

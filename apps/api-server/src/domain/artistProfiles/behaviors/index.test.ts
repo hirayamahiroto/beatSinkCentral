@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { reconstructArtistProfile } from "../factories";
 
-// behaviors はクロージャで state を隠蔽するため、factory 経由で振る舞いを検証する。
 const profile = reconstructArtistProfile({
   id: "profile-1",
   artistId: "artist-1",

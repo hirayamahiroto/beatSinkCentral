@@ -8,8 +8,6 @@ import { createSnsUrl } from "../valueObjects/snsUrl";
 import { createArtistProfileBehaviors } from "../behaviors";
 import type { ArtistProfile, ArtistProfileState } from "../entities";
 
-// 空文字・空白のみは「未入力（null）」として扱い、VO 検証に渡さない。
-// 下書き保存（書きかけ）を許容するための正規化。
 const optional = <T>(
   value: string | null | undefined,
   create: (raw: string) => T,
@@ -58,7 +56,6 @@ const buildState = (
   published: base.published,
 });
 
-// 新規作成用（UseCase 層で使用）。ID はドメインが生成し、初期状態は非公開。
 export type CreateArtistProfileParams = ArtistProfileContent & {
   artistId: string;
 };
@@ -73,7 +70,6 @@ export const createArtistProfile = (
   return createArtistProfileBehaviors(state);
 };
 
-// DB 復元用（Repository 層で使用）。ID と published は引数から受け取る。
 export type ReconstructArtistProfileParams = ArtistProfileContent & {
   id: string;
   artistId: string;

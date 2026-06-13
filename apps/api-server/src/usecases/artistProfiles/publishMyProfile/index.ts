@@ -23,8 +23,6 @@ export type PublishMyProfileDeps = {
   txRunner: ITransactionRunner;
 };
 
-// プロフィールの公開 / 非公開を切り替える。
-// 公開時のみ最小核（publish ゲート）を検証する。非公開化は常に可能。
 export const publishMyProfileUseCase = async (
   input: PublishMyProfileInput,
   deps: PublishMyProfileDeps,

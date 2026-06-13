@@ -11,7 +11,6 @@ export type GetMyProfileInput = {
 
 export type GetMyProfileOutput = {
   accountId: string;
-  // 未作成（下書きすら無い）なら null。編集フォームの初期表示に使う。
   profile: ArtistProfileView | null;
 };
 
@@ -21,7 +20,6 @@ export type GetMyProfileDeps = {
   artistProfileRepository: IArtistProfileRepository;
 };
 
-// 本人の編集用にプロフィールを取得する（下書きを含む全フィールド）。
 export const getMyProfileUseCase = async (
   input: GetMyProfileInput,
   deps: GetMyProfileDeps,

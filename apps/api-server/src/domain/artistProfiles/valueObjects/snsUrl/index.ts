@@ -12,7 +12,6 @@ export type InvalidSnsUrlFormatError = Error & {
 export const createInvalidSnsUrlFormatError = (): InvalidSnsUrlFormatError =>
   createTypedError("InvalidSnsUrlFormatError");
 
-// SNS リンク（応援導線・ファネル終点）。外部 URL。
 const snsUrlSchema = z
   .string()
   .trim()

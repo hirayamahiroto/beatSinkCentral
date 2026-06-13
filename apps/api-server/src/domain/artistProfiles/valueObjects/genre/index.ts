@@ -12,7 +12,6 @@ export type InvalidGenreFormatError = Error & {
 export const createInvalidGenreFormatError = (): InvalidGenreFormatError =>
   createTypedError("InvalidGenreFormatError");
 
-// ジャンル / スタイルは当面は自由入力（マスタ化は後続）。
 const genreSchema = z
   .string()
   .trim()

@@ -18,11 +18,6 @@ export const isProfileNotPublishableError = (
   (error as Partial<ProfileNotPublishableError>).type ===
     "ProfileNotPublishableError";
 
-// 公開可能条件（MVP 最小核 / profile-information-design.md §4）。
-// 必須カラム（✅）が揃っていることを公開のゲートとする：
-//   名前 / 画像 / Story / ジャンル（最低1）/ SNS リンク（最低1）
-// タグライン・活動情報は「任意」フィールドのためゲート対象外とする。
-// ※「公開可能条件の具体」は同 §6 で未決。確定したらこのポリシーを更新する。
 export const collectMissingPublishFields = (
   profile: ArtistProfile,
 ): string[] => {

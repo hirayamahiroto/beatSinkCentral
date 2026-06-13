@@ -30,8 +30,6 @@ export type SaveMyProfileDeps = {
   txRunner: ITransactionRunner;
 };
 
-// 本人のプロフィールを作成 / 更新する（upsert）。
-// 最小核が欠けていても保存は許可（下書き）。公開可否は publish 側で判定する。
 export const saveMyProfileUseCase = async (
   input: SaveMyProfileInput,
   deps: SaveMyProfileDeps,
@@ -51,7 +49,6 @@ export const saveMyProfileUseCase = async (
       tx,
     );
 
-    // 既存があれば ID と公開状態を保持し、内容のみ差し替える。
     const profile: ArtistProfile = existing
       ? reconstructArtistProfile({
           id: existing.getId(),

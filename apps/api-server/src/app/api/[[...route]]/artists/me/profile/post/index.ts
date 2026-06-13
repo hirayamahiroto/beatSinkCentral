@@ -4,7 +4,6 @@ import { getContainer } from "../../../../../../../infrastructure/container";
 import { saveMyProfileUseCase } from "../../../../../../../usecases/artistProfiles/saveMyProfile";
 import { validateRequest } from "../../../../validators/validateRequest";
 
-// 本文系は下書き保存を許すため任意。形式・長さの検証はドメインの Value Object が担う。
 export const saveProfileRequestSchema = z.object({
   name: z.string().nullable().optional(),
   tagline: z.string().nullable().optional(),
@@ -17,8 +16,6 @@ export const saveProfileRequestSchema = z.object({
 
 export type SaveProfileRequestBody = z.infer<typeof saveProfileRequestSchema>;
 
-// POST /artists/me/profile — 本人のプロフィールを作成 / 更新（upsert）。
-// 同パスの GET（取得）は ../get/index.ts に分離。
 const app = new Hono().post(
   "/",
   validateRequest("json", saveProfileRequestSchema),

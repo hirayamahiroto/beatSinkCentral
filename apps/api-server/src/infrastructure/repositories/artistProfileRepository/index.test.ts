@@ -2,10 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createArtistProfileRepository } from "./index";
 import { isArtistProfileNotFoundError } from "../../../domain/artistProfiles/policies/assertArtistProfileExists";
 
-// Drizzle のクエリビルダは「メソッドチェーン → await で解決」する。
-// ここでは全メソッドが同一の builder を返し、await（=.then）ごとに
-// enqueue した結果を順に resolve する thenable モックで代用する。
-// where が select 中間でも delete 終端でも使われるため、終端名に依存しない設計にしている。
 const createDbMock = () => {
   const queue: unknown[] = [];
   const builder: Record<string, unknown> = {};
@@ -60,7 +56,7 @@ describe("createArtistProfileRepository", () => {
 
   describe("findByArtistId", () => {
     it("行が無ければ null を返す（子テーブルを引かない）", async () => {
-      mock.enqueue([]); // 本体クエリ: 0 件
+      mock.enqueue([]);
       const repo = createArtistProfileRepository(mock.db as never);
 
       const result = await repo.findByArtistId("artist-1");
@@ -70,9 +66,9 @@ describe("createArtistProfileRepository", () => {
 
     it("プロフィールと子（ジャンル / SNS）を組み立てて返す", async () => {
       mock.enqueue(
-        [profileRow], // 本体
-        [{ genre: "bass" }, { genre: "inward" }], // genres
-        [{ url: "https://x.com/taro" }], // sns
+        [profileRow],
+        [{ genre: "bass" }, { genre: "inward" }],
+        [{ url: "https://x.com/taro" }],
       );
       const repo = createArtistProfileRepository(mock.db as never);
 
@@ -98,13 +94,7 @@ describe("createArtistProfileRepository", () => {
 
   describe("upsert", () => {
     it("保存内容を反映した Entity を返し、子テーブルを置換する", async () => {
-      mock.enqueue(
-        [profileRow], // insert ... returning
-        undefined, // delete genres
-        undefined, // delete sns
-        undefined, // insert genres
-        undefined, // insert sns
-      );
+      mock.enqueue([profileRow], undefined, undefined, undefined, undefined);
       const repo = createArtistProfileRepository(mock.db as never);
 
       const result = await repo.upsert({
@@ -129,7 +119,7 @@ describe("createArtistProfileRepository", () => {
 
   describe("setPublished", () => {
     it("対象が無ければ ArtistProfileNotFoundError をスローする", async () => {
-      mock.enqueue([]); // update ... returning: 0 件
+      mock.enqueue([]);
       const repo = createArtistProfileRepository(mock.db as never);
 
       await expect(

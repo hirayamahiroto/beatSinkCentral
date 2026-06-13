@@ -11,7 +11,6 @@ vi.mock("../../../../../../infrastructure/container", () => ({
   }),
 }));
 
-// 公開ルートは認証不要。auth ミドルウェアなしで app を組む。
 const createApp = () => {
   const app = new Hono();
   app.route("/", getPublicProfile);

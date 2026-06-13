@@ -77,8 +77,6 @@ const toEntity = (
     snsLinks,
   });
 
-// 子テーブル（ジャンル / SNS）を全削除して挿入し直す。
-// プロフィールは 1:1 かつ件数が少ないため、差分計算より全置換がシンプルで安全。
 const replaceChildren = async (
   executor: Executor,
   profileId: string,
@@ -164,7 +162,6 @@ export const createArtistProfileRepository = (
     tx?: TransactionContext,
   ): Promise<ArtistProfile> {
     const executor = tx ?? db;
-    // published は本メソッドでは更新しない（公開ライフサイクルは setPublished が一元管理）。
     const [row] = await executor
       .insert(artistProfilesTable)
       .values({

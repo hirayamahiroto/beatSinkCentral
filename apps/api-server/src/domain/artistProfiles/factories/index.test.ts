@@ -99,6 +99,6 @@ describe("reconstructArtistProfile", () => {
     });
 
     expect(profile.publish().isPublished()).toBe(true);
-    expect(profile.isPublished()).toBe(false); // 元は不変
+    expect(profile.isPublished()).toBe(false);
   });
 });
