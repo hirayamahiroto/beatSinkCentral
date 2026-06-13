@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createBeatfolioBffClient } from "../../../../utils/client";
+import { createBeatfolioBffClient } from "../../../../../utils/client";
 
 type UpdateData = {
   email: string;
