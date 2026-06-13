@@ -48,10 +48,11 @@ next-env.d.ts
 
 *storybook.log
 
-# claude code (個人設定 / 実行時状態はコミットしない、.mcp.json は共有する)
+# claude code (個人設定 / 実行時状態はコミットしない。skills/workflows は共有する)
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
 .claude/projects/
+.claude/worktrees/
 
 # Terraform (各 infrastructure/ ディレクトリにも個別の .gitignore あり)
 **/.terraform/
