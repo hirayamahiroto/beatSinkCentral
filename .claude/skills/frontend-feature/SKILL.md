@@ -13,7 +13,7 @@ description: beatfolio / packages/ui のフロントエンド UI（Atomic Design
 - 規範ドキュメントを**先に読む**：
   - `docs/frontend-architecture/{README,component-design,form-design,application-policy,state-management,ui-library,tailwind,responsive}.md`
   - 対象機能の情報設計ドキュメント（`docs/.../*.md`）
-- 横断観点は `docs/code-review-checklist.md`（特に §6 データ取得タイミング / §10 レイヤー責務 / §13 インターフェース自己説明性 / §14 コメントを残さない / §15 型安全を壊す Optional フォールバックを使わない）。
+- 横断観点は `.claude/rules/code-review-checklist.md`（特に §6 データ取得タイミング / §10 レイヤー責務 / §13 インターフェース自己説明性 / §14 コメントを残さない / §15 型安全を壊す Optional フォールバックを使わない）。
 - **設計ドキュメントが規範、既存コードは実装結果**。食い違ったら勝手に既存へ合わせず **ユーザーに共有して方針確認**（CLAUDE.md）。
 - **まず情報設計／動線を固める**（何を・どの順で・どこまで開示するか）。必要なら素の HTML モックで動線を確認してから React 化する。Layer 0（業務/情報設計）が無いまま部品を作り始めない（[[feedback_business_design_before_ai]]）。
 - 作業は `git worktree` で別ブランチ。monorepo は worktree に hoist されないので **`npm install` をその場で実行**。

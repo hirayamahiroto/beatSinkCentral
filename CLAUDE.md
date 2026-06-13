@@ -48,4 +48,4 @@ npm run build
 
 各ドキュメントの読み順や粒度は、それぞれの README / 目次に従う。
 
-汎用的なコードレビュー観点（N+1・権限・データ取得最適化・インターフェース設計・コメント方針・型安全な Optional 扱い等）は `docs/code-review-checklist.md` を参照する。
+汎用的なコードレビュー観点（N+1・権限・データ取得最適化・インターフェース設計・コメント方針・型安全な Optional 扱い等）は `.claude/rules/code-review-checklist.md` を参照する。

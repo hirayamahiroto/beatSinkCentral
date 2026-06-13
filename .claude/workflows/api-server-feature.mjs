@@ -130,7 +130,7 @@ const plan = await agent(
 必ず読む:
 - docs/server-architecture/architecture.md（レイヤー責務・classless OOP・依存方向）
 - 上記機能に対応する docs/ 配下の設計ドキュメント（あれば grep で特定）
-- docs/code-review-checklist.md
+- .claude/rules/code-review-checklist.md
 - 類似する既存ドメイン（apps/api-server/src/domain/users もしくは artists 一式）と既存 usecase/route
 
 方針:
@@ -174,7 +174,7 @@ tsc の既存エラー（自分の diff 外のテストモック等）は git st
     ),
   () =>
     agent(
-      `git diff（作業ブランチの変更）を docs/code-review-checklist.md に照らして敵対的にレビューする。
+      `git diff（作業ブランチの変更）を .claude/rules/code-review-checklist.md に照らして敵対的にレビューする。
 特に: N+1 / マルチテナントのスコープ条件 / 過剰取得 / 権限のない親リソース情報の露出 / インターフェース自己説明性(null初期化) / 公開ルートの認証スコープ。
 確証のある指摘のみ findings に挙げる。`,
       { label: 'verify:review', phase: 'Verify', schema: REVIEW_SCHEMA },
