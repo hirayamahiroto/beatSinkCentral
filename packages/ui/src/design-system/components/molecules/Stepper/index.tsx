@@ -3,15 +3,12 @@ import { Typography } from "@ui/design-system/components/atoms/Typography";
 import { cn } from "@ui/shared/utils/mergeClassNames";
 
 type StepperProps = {
-  // 各ステップの短いラベル
   steps: string[];
-  // 現在のステップ（1始まり）
   current: number;
 };
 
 export type { StepperProps };
 
-// 登録ウィザードの進捗インジケータ。何がどこまで必要かを可視化する。
 export const Stepper = ({ steps, current }: StepperProps) => (
   <ol className="flex items-center gap-1">
     {steps.map((label, index) => {

@@ -5,7 +5,6 @@ type SwitchProps = React.ComponentProps<typeof PrimitiveSwitch>;
 
 export type { SwitchProps };
 
-// primitive を薄くラップするのみ（スタイル追加しない）
 export const Switch = React.forwardRef<
   React.ElementRef<typeof PrimitiveSwitch>,
   SwitchProps

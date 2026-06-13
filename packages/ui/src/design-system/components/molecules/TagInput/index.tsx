@@ -3,9 +3,7 @@ import { Badge } from "@ui/design-system/components/atoms/Badge";
 import { Input } from "@ui/design-system/components/atoms/Input";
 
 type TagInputProps = {
-  // 現在のタグ一覧
   value: string[];
-  // タグ追加・削除時に新しい配列で通知する
   onChange: (next: string[]) => void;
   id?: string;
   placeholder?: string;
@@ -13,7 +11,6 @@ type TagInputProps = {
 
 export type { TagInputProps };
 
-// 自由入力で複数タグ（ジャンル等）を扱う複合 UI。RHF には依存せず value / onChange の Controlled API で提供する。
 export const TagInput = ({
   value,
   onChange,

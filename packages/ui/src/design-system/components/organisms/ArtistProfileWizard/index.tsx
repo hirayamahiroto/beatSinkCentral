@@ -12,7 +12,6 @@ import { FormField } from "@ui/design-system/components/molecules/FormField";
 import { Stepper } from "@ui/design-system/components/molecules/Stepper";
 import { TagInput } from "@ui/design-system/components/molecules/TagInput";
 
-// 画面の入力ルール（UI バリデーション）。サーバー側のドメイン検証とは責務が異なる。
 const wizardSchema = z.object({
   name: z.string().trim().min(1, "活動名を入力してください").max(255),
   imageUrl: z.string().trim().url("画像URLを入力してください"),
@@ -55,7 +54,6 @@ type ArtistProfileWizardProps = {
 const STEP_LABELS = ["基本", "Story", "活動", "リンク", "確認"];
 const TOTAL = STEP_LABELS.length;
 
-// 各ステップで「次へ」進む前に検証するフィールド
 const STEP_FIELDS: Record<number, (keyof WizardValues)[]> = {
   1: ["name", "imageUrl", "tagline", "genres"],
   2: ["storyOrigin"],
@@ -72,7 +70,6 @@ const PLATFORM_OPTIONS = [
   { value: "other", label: "その他" },
 ];
 
-// organisms はプロダクト固有 UI のため className を直接記述してよい。
 const nativeSelectClass =
   "h-10 rounded-md border border-white/10 bg-white/5 px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
@@ -119,14 +116,13 @@ export const ArtistProfileWizard = ({
     const valid = await trigger(STEP_FIELDS[step]);
     if (!valid) return;
     if (step < TOTAL) {
-      onSaveDraft?.(getValues()); // 「次へ」は途中保存も兼ねる想定
+      onSaveDraft?.(getValues());
       setStep(step + 1);
     }
   };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate>
-      {/* 進捗 + 途中保存 */}
       <div className="mb-2 flex items-center justify-between">
         <Typography variant="small" tone="muted">
           ステップ {step} / {TOTAL}
@@ -148,7 +144,6 @@ export const ArtistProfileWizard = ({
       </div>
 
       <div className="mt-6 pb-32">
-        {/* STEP 1: 基本（つかみ） */}
         {step === 1 && (
           <Card>
             <div className="flex flex-col gap-5">
@@ -206,7 +201,6 @@ export const ArtistProfileWizard = ({
           </Card>
         )}
 
-        {/* STEP 2: STORY */}
         {step === 2 && (
           <Card>
             <div className="flex flex-col gap-5">
@@ -248,7 +242,6 @@ export const ArtistProfileWizard = ({
           </Card>
         )}
 
-        {/* STEP 3: 活動情報（任意） */}
         {step === 3 && (
           <Card>
             <div className="flex flex-col gap-5">
@@ -279,7 +272,6 @@ export const ArtistProfileWizard = ({
           </Card>
         )}
 
-        {/* STEP 4: SNSリンク */}
         {step === 4 && (
           <Card>
             <div className="flex flex-col gap-5">
@@ -349,7 +341,6 @@ export const ArtistProfileWizard = ({
           </Card>
         )}
 
-        {/* STEP 5: 確認・公開 */}
         {step === 5 && (
           <Card>
             <div className="flex flex-col gap-5">
@@ -390,7 +381,6 @@ export const ArtistProfileWizard = ({
         )}
       </div>
 
-      {/* 下部固定ナビ（位置を動かさない） */}
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-white/10 bg-background/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-2xl items-center gap-3 px-5 py-4">
           <Button

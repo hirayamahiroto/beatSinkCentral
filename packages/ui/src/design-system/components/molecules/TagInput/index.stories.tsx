@@ -21,7 +21,6 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-// value/onChange を持つ Controlled UI のため、状態を持つラッパーで挙動を確認する
 const Interactive = ({
   value: initial,
   placeholder,
