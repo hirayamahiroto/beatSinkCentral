@@ -4,8 +4,10 @@ import test from "./test";
 import usersCreate from "./users/create";
 import usersMe from "./users/me";
 import artistsMe from "./artists/me";
-import artistsMeProfile from "./artists/me/profile";
-import artistsDetail from "./artists/detail";
+import getMyProfile from "./artists/me/profile/get";
+import saveMyProfile from "./artists/me/profile/post";
+import publishMyProfile from "./artists/me/profile/publish/post";
+import getPublicProfile from "./artists/detail/get";
 import { requireAuthMiddleware } from "../../../middlewares/auth0";
 import { handleAppError } from "../../../errorMap";
 
@@ -22,10 +24,13 @@ const app = new Hono()
   .route("/test", test)
   .route("/users/me", usersMe)
   .route("/users", usersCreate)
+  // 1ファイル1エンドポイント：メソッド別の app を同一パスにそれぞれマウントする。
   // 具体的な静的ルートを先に、パラメータルート（/:accountId）を後に登録する。
-  .route("/artists/me/profile", artistsMeProfile)
+  .route("/artists/me/profile", getMyProfile) // GET /
+  .route("/artists/me/profile", saveMyProfile) // POST /
+  .route("/artists/me/profile/publish", publishMyProfile) // POST /
   .route("/artists/me", artistsMe)
-  .route("/artists", artistsDetail)
+  .route("/artists", getPublicProfile)
   .onError(handleAppError);
 
 export type AppType = typeof app;
