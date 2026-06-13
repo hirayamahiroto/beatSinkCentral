@@ -5,15 +5,18 @@ import type {
   ArtistProfileView,
 } from "../entities";
 
+const valueOrNull = (vo: { readonly value: string } | null): string | null =>
+  vo === null ? null : vo.value;
+
 export const createArtistProfileBehaviors = (
   state: ArtistProfileState,
 ): ArtistProfile => {
-  const toView = (): ArtistProfileView => ({
-    name: state.name?.value ?? null,
-    tagline: state.tagline?.value ?? null,
-    imageUrl: state.imageUrl?.value ?? null,
-    story: state.story?.value ?? null,
-    activityInfo: state.activityInfo?.value ?? null,
+  const toContent = (): ArtistProfileView => ({
+    name: valueOrNull(state.name),
+    tagline: valueOrNull(state.tagline),
+    imageUrl: valueOrNull(state.imageUrl),
+    story: valueOrNull(state.story),
+    activityInfo: valueOrNull(state.activityInfo),
     genres: state.genres.map((genre) => genre.value),
     snsLinks: state.snsLinks.map((sns) => sns.value),
     published: state.published,
@@ -22,11 +25,11 @@ export const createArtistProfileBehaviors = (
   return {
     getId: () => state.id,
     getArtistId: () => state.artistId,
-    getName: () => state.name?.value ?? null,
-    getTagline: () => state.tagline?.value ?? null,
-    getImageUrl: () => state.imageUrl?.value ?? null,
-    getStory: () => state.story?.value ?? null,
-    getActivityInfo: () => state.activityInfo?.value ?? null,
+    getName: () => valueOrNull(state.name),
+    getTagline: () => valueOrNull(state.tagline),
+    getImageUrl: () => valueOrNull(state.imageUrl),
+    getStory: () => valueOrNull(state.story),
+    getActivityInfo: () => valueOrNull(state.activityInfo),
     getGenres: () => state.genres.map((genre) => genre.value),
     getSnsLinks: () => state.snsLinks.map((sns) => sns.value),
     isPublished: () => state.published,
@@ -36,15 +39,8 @@ export const createArtistProfileBehaviors = (
     toPersistence: (): ArtistProfilePersistenceData => ({
       id: state.id,
       artistId: state.artistId,
-      name: state.name?.value ?? null,
-      tagline: state.tagline?.value ?? null,
-      imageUrl: state.imageUrl?.value ?? null,
-      story: state.story?.value ?? null,
-      activityInfo: state.activityInfo?.value ?? null,
-      genres: state.genres.map((genre) => genre.value),
-      snsLinks: state.snsLinks.map((sns) => sns.value),
-      published: state.published,
+      ...toContent(),
     }),
-    toView,
+    toView: toContent,
   };
 };

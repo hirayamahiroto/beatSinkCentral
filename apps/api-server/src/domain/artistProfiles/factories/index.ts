@@ -19,16 +19,20 @@ const optional = <T>(
 };
 
 const toGenres = (values: string[] | undefined) =>
-  (values ?? [])
-    .map((value) => value.trim())
-    .filter((value) => value.length > 0)
-    .map(createGenre);
+  values === undefined
+    ? []
+    : values
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0)
+        .map(createGenre);
 
 const toSnsLinks = (values: string[] | undefined) =>
-  (values ?? [])
-    .map((value) => value.trim())
-    .filter((value) => value.length > 0)
-    .map(createSnsUrl);
+  values === undefined
+    ? []
+    : values
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0)
+        .map(createSnsUrl);
 
 export type ArtistProfileContent = {
   name?: string | null;
