@@ -62,7 +62,11 @@ DBスキーマ + migration → VO → entity(型) → behaviors → factory
 - VO の形式エラーはトランザクション開始**前**に出るよう、入力 VO 化を先頭で行うか factory に委ねる。
 
 ### route（`app/api/[[...route]]`）
-- **GET と POST のみ**（PUT/DELETE 不使用）。削除等は `/x/delete` のようにアクションを明示。複数形リソース名。
+- **ハンドラ構成は `{resource}/{get,post}/index.ts`**：HTTP メソッド名のディレクトリ（`get/` `post/`）配下の `index.ts` に、**1 ユニット = 1 エンドポイント（1 メソッド + 1 パス）**で分離する（[[feedback_api_route_one_file_per_endpoint]]）。`get.ts`/`post.ts` の単一ファイル形ではなく**ディレクトリ + `index.ts`**（プロジェクト共通の構成に揃える）。`save/` 等の独自アクション名ディレクトリは作らない。
+  - 例: `profiles/get/index.ts`(一覧) / `profiles/post/index.ts`(作成) / `profiles/detail/get/index.ts`(詳細 `/:id`) / `profiles/detail/post/index.ts`(更新) / `profiles/detail/publish/post/index.ts`(公開アクション)
+  - 各 `index.ts` は単一メソッドの Hono app を `default export`。`route.ts` が該当 base path にマウント（同一パスの GET/POST は同じ base に複数回 `.route()`）。`:param` 系は記述的なパスディレクトリ名（`detail/` 等）。
+  - 各メソッドディレクトリに `index.test.ts` を置く（[[feedback_test_every_module]]）。
+- **GET と POST のみ**（PUT/DELETE 不使用）。削除等は `/x/delete`（POST + パス接尾辞）でアクションを明示。複数形リソース名。
 - 認証・バリデーション（zod + `validateRequest`）・レスポンス整形だけ。ロジックは usecase へ。
 - **公開エンドポイント**を足すときは要注意：`route.ts` は `*` に `requireAuthMiddleware` を当てている。公開ルートを開けるには auth を**保護プレフィックスにスコープ化**し、公開ルートを外す。
 - 静的ルート（`/me/...`）を**パラメータルート（`/:id`）より先に**登録する。
