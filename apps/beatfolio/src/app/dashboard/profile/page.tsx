@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { auth0 } from "../../../libs/auth0";
 import { createBffServerClient } from "../../../utils/client";
 import { ProfileWizardClientAdapter } from "./ProfileWizardClientAdapter";
+import { toWizardValues } from "./ProfileWizardClientAdapter/toWizardValues";
 
 export default async function ProfileRegisterPage() {
   const session = await auth0.getSession();
@@ -25,10 +26,20 @@ export default async function ProfileRegisterPage() {
     redirect("/onboarding");
   }
 
+  const profileRes = await client.api.artists.me.profile.$get();
+  if (!profileRes.ok) {
+    throw new Error("Failed to fetch profile");
+  }
+  const { profile } = await profileRes.json();
+  const defaultValues = profile ? toWizardValues(profile) : undefined;
+
   return (
     <div className="min-h-screen bg-background text-foreground px-4 pt-12 pb-16">
       <div className="container mx-auto max-w-2xl">
-        <ProfileWizardClientAdapter email={me.email} />
+        <ProfileWizardClientAdapter
+          email={me.email}
+          defaultValues={defaultValues}
+        />
       </div>
     </div>
   );
