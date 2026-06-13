@@ -19,6 +19,7 @@ const typographyVariants = cva("", {
     },
     tone: {
       default: "text-white",
+      muted: "text-muted-foreground",
       danger: "text-destructive",
     },
   },
