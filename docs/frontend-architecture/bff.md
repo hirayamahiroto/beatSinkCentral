@@ -44,6 +44,15 @@ read も write も **BFF route（`/api/*`）を経由する**。経路は対称�
   - **そぎ落とし** — その画面に不要なフィールド・リレーションを削り、UI に使わないデータを渡さない
 - **write route** は素通し。バリデーション（後述）を除き、ビジネスロジックや整形を持たない。
 
+### 表示語彙の解決は BFF が担う（マスタ参照モデル）
+
+画面に出すドメイン語彙（種別ラベル・選択肢・アイコン等）は **DB マスタを出所**とし、その **`code → label / icon` の解決を BFF が行う**。UI には解決済みの表示用データだけを渡し、フロントに語彙を持たせない。
+
+- api-server は「種別一覧」などの **汎用 API** を返す（画面都合を持たない）。BFF がそれを画面用に整形し、利用層が持つ `code` / FK を表示用の `label` / `icon` へ解決する。
+- 選択肢（ウィザードのドロップダウン等）も BFF を経由して供給する。`packages/ui` 側に固定リストを持たない（[`component-design.md`](./component-design.md)「表示語彙は DB 由来・props で受け取る」）。
+- 「UI に `code` だけ渡してフロントでラベル変換」は語彙のハードコードに当たり禁止。これは read route の「整形」の一部として BFF で完結させる。
+- 出所と責務分担の全体像（DB → api-server → BFF → UI）は [`../server-architecture/database-design.md`](../server-architecture/database-design.md) §7 を参照（canonical）。
+
 ### read も write も BFF route を経由する（対称な経路）
 
 > **read も write も同じ `/api/*` の BFF route を通る。route が「api-server 仲介・画面都合の変換」を一手に担い、UI（`page.tsx` を含む）は route が返した形をそのまま使う。**

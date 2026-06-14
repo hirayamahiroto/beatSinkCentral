@@ -29,9 +29,20 @@ Atomic Design の各階層（Atoms / Molecules / Organisms / Templates / Pages�
 - 認証・権限・業務ルール
 - ドメインモデルやアプリケーション固有の型への依存
 - フレームワーク固有 API への依存（`"use client"` / `"use server"` ディレクティブ、`next/link` / `next/image` / `next/navigation` 等）
+- **ドメイン語彙のハードコード**（種別ラベル・選択肢リスト・`code` → アイコン対応表など）。表示語彙は DB 由来で props として受け取る
 
 > **packages/ui は「UIとしてどう見え、どう操作できるか」だけを責務とする。
 > アプリケーションの都合は一切持ち込まない。**
+
+#### 表示語彙は DB 由来・props で受け取る
+
+UI コンポーネントは、表示するドメイン語彙（種別ラベル・選択肢・アイコン等）を **自分の中に固定で持たない**。
+これらは DB マスタを出所とし、`api-server`（汎用 API）→ BFF（`code → label / icon` の解決）→ app 層（`page` / ClientAdapter）→ **props** の経路で渡ってくる。UI は受け取った表示用データを描画するだけにする。
+
+- 選択肢（ドロップダウン等）も props で受け取る。`packages/ui` 内に固定リストを定義しない。
+- `code` だけ受け取って UI 側でラベルへ変換しない（語彙のハードコードに該当）。**解決済みの形**で受け取る。
+- 例外: ドメインに属さない純粋な UI コピー（ボタン文言「次へ」等）は UI に置いてよい。
+- 出所と責務分担の全体像は [`../server-architecture/database-design.md`](../server-architecture/database-design.md) §7 を参照（canonical）。
 
 #### フォームライブラリの扱い（レイヤー別）
 
