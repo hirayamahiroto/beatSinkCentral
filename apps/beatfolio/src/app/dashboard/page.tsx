@@ -41,18 +41,40 @@ export default async function DashboardPage() {
           <AccountIdEditorClientAdapter accountId={me.artist.accountId} />
         )}
 
-        {me.artist && !me.artist.hasProfile && (
+        {me.artist && (
           <Card>
             <div className="flex flex-col gap-3">
-              <Typography variant="h4">アーティストプロフィール未作成</Typography>
-              <Typography variant="small" tone="muted">
-                プロフィールを作成すると、プレイヤー一覧に表示されるようになります。
-              </Typography>
-              <div>
-                <Button asChild>
-                  <Link href="/dashboard/profile">プロフィールを作成する</Link>
-                </Button>
-              </div>
+              {me.artist.hasProfile ? (
+                <>
+                  <Typography variant="h4">アーティストプロフィール</Typography>
+                  <Typography variant="small" tone="muted">
+                    プロフィールはプレイヤー一覧に表示されます。内容を更新できます。
+                  </Typography>
+                  <div>
+                    <Button asChild>
+                      <Link href="/dashboard/profile">
+                        プロフィールを編集する
+                      </Link>
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Typography variant="h4">
+                    アーティストプロフィール未作成
+                  </Typography>
+                  <Typography variant="small" tone="muted">
+                    プロフィールを作成すると、プレイヤー一覧に表示されるようになります。
+                  </Typography>
+                  <div>
+                    <Button asChild>
+                      <Link href="/dashboard/profile">
+                        プロフィールを作成する
+                      </Link>
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           </Card>
         )}

@@ -4,26 +4,28 @@ import {
   ArtistProfileWizard,
   type WizardValues,
 } from "@ui/design-system/components/organisms/ArtistProfileWizard";
+import { useSaveProfile } from "./hooks/useSaveProfile";
 
 type Props = {
   email: string;
+  defaultValues?: Partial<WizardValues>;
 };
 
-export const ProfileWizardClientAdapter = ({ email }: Props) => {
-  const handleSubmit = (data: WizardValues) => {
-    console.log("[mock] submit profile", data);
-    window.alert("（モック）プロフィールを保存しました");
-  };
-
-  const handleSaveDraft = (data: WizardValues) => {
-    console.log("[mock] save draft", data);
-  };
+export const ProfileWizardClientAdapter = ({ email, defaultValues }: Props) => {
+  const { submit, saveDraft, isLoading, error } = useSaveProfile();
 
   return (
     <ArtistProfileWizard
       email={email}
-      onSubmit={handleSubmit}
-      onSaveDraft={handleSaveDraft}
+      defaultValues={defaultValues}
+      isLoading={isLoading}
+      error={error}
+      onSubmit={async (data) => {
+        await submit(data);
+      }}
+      onSaveDraft={(data) => {
+        void saveDraft(data);
+      }}
     />
   );
 };
