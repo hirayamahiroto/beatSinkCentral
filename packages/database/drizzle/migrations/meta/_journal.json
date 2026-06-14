@@ -15,6 +15,20 @@
       "when": 1781320213687,
       "tag": "0001_narrow_may_parker",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1781447590164,
+      "tag": "0002_melodic_viper",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1781447628868,
+      "tag": "0003_omniscient_felicia_hardy",
+      "breakpoints": true
     }
   ]
 }
