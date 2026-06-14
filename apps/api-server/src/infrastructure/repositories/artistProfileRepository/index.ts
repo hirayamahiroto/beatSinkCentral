@@ -1,19 +1,24 @@
-import { and, eq, isNull, asc } from "drizzle-orm";
+import { and, eq, isNull, asc, inArray } from "drizzle-orm";
 import {
   DatabaseClient,
   artistsTable,
   artistProfilesTable,
   artistProfileGenresTable,
-  artistProfileSnsLinksTable,
+  artistProfileLinksTable,
+  linkTypesTable,
 } from "../../../../../../packages/database/src/utils/createClient";
 import type {
   IArtistProfileRepository,
   ArtistProfileSaveData,
   ArtistProfileSetPublishedData,
 } from "../../../domain/artistProfiles/repositories";
-import type { ArtistProfile } from "../../../domain/artistProfiles/entities";
+import type {
+  ArtistProfile,
+  ProfileLinkData,
+} from "../../../domain/artistProfiles/entities";
 import { reconstructArtistProfile } from "../../../domain/artistProfiles/factories";
 import { createArtistProfileNotFoundError } from "../../../domain/artistProfiles/policies/assertArtistProfileExists";
+import { createInvalidProfileLinkFormatError } from "../../../domain/artistProfiles/valueObjects/profileLink";
 import type { TransactionContext } from "../../transaction";
 
 type Executor = DatabaseClient | TransactionContext;
@@ -41,28 +46,36 @@ const profileColumns = {
 };
 
 const loadChildren = async (executor: Executor, profileId: string) => {
-  const [genreRows, snsRows] = await Promise.all([
+  const [genreRows, linkRows] = await Promise.all([
     executor
       .select({ genre: artistProfileGenresTable.genre })
       .from(artistProfileGenresTable)
       .where(eq(artistProfileGenresTable.artistProfileId, profileId))
       .orderBy(asc(artistProfileGenresTable.sortOrder)),
     executor
-      .select({ url: artistProfileSnsLinksTable.url })
-      .from(artistProfileSnsLinksTable)
-      .where(eq(artistProfileSnsLinksTable.artistProfileId, profileId))
-      .orderBy(asc(artistProfileSnsLinksTable.sortOrder)),
+      .select({
+        type: linkTypesTable.code,
+        url: artistProfileLinksTable.url,
+        label: artistProfileLinksTable.label,
+      })
+      .from(artistProfileLinksTable)
+      .innerJoin(
+        linkTypesTable,
+        eq(artistProfileLinksTable.linkTypeId, linkTypesTable.id),
+      )
+      .where(eq(artistProfileLinksTable.artistProfileId, profileId))
+      .orderBy(asc(artistProfileLinksTable.sortOrder)),
   ]);
   return {
     genres: genreRows.map((row) => row.genre),
-    snsLinks: snsRows.map((row) => row.url),
+    links: linkRows,
   };
 };
 
 const toEntity = (
   row: ProfileRow,
   genres: string[],
-  snsLinks: string[],
+  links: ProfileLinkData[],
 ): ArtistProfile =>
   reconstructArtistProfile({
     id: row.id,
@@ -74,22 +87,34 @@ const toEntity = (
     story: row.story,
     activityInfo: row.activityInfo,
     genres,
-    snsLinks,
+    links,
   });
+
+const resolveLinkTypeIds = async (
+  executor: Executor,
+  links: ProfileLinkData[],
+): Promise<Map<string, number>> => {
+  const codes = [...new Set(links.map((link) => link.type))];
+  const rows = await executor
+    .select({ id: linkTypesTable.id, code: linkTypesTable.code })
+    .from(linkTypesTable)
+    .where(inArray(linkTypesTable.code, codes));
+  return new Map(rows.map((row) => [row.code, row.id]));
+};
 
 const replaceChildren = async (
   executor: Executor,
   profileId: string,
   genres: string[],
-  snsLinks: string[],
+  links: ProfileLinkData[],
 ) => {
   await Promise.all([
     executor
       .delete(artistProfileGenresTable)
       .where(eq(artistProfileGenresTable.artistProfileId, profileId)),
     executor
-      .delete(artistProfileSnsLinksTable)
-      .where(eq(artistProfileSnsLinksTable.artistProfileId, profileId)),
+      .delete(artistProfileLinksTable)
+      .where(eq(artistProfileLinksTable.artistProfileId, profileId)),
   ]);
 
   if (genres.length > 0) {
@@ -101,13 +126,23 @@ const replaceChildren = async (
       })),
     );
   }
-  if (snsLinks.length > 0) {
-    await executor.insert(artistProfileSnsLinksTable).values(
-      snsLinks.map((url, index) => ({
-        artistProfileId: profileId,
-        url,
-        sortOrder: index,
-      })),
+
+  if (links.length > 0) {
+    const idByCode = await resolveLinkTypeIds(executor, links);
+    await executor.insert(artistProfileLinksTable).values(
+      links.map((link, index) => {
+        const linkTypeId = idByCode.get(link.type);
+        if (linkTypeId === undefined) {
+          throw createInvalidProfileLinkFormatError();
+        }
+        return {
+          artistProfileId: profileId,
+          linkTypeId,
+          url: link.url,
+          label: link.label,
+          sortOrder: index,
+        };
+      }),
     );
   }
 };
@@ -132,8 +167,8 @@ export const createArtistProfileRepository = (
       .limit(1);
     if (!row) return null;
 
-    const { genres, snsLinks } = await loadChildren(executor, row.id);
-    return toEntity(row, genres, snsLinks);
+    const { genres, links } = await loadChildren(executor, row.id);
+    return toEntity(row, genres, links);
   },
 
   async findPublishedByAccountId(
@@ -142,7 +177,10 @@ export const createArtistProfileRepository = (
     const [row] = await db
       .select(profileColumns)
       .from(artistProfilesTable)
-      .innerJoin(artistsTable, eq(artistProfilesTable.artistId, artistsTable.id))
+      .innerJoin(
+        artistsTable,
+        eq(artistProfilesTable.artistId, artistsTable.id),
+      )
       .where(
         and(
           eq(artistsTable.accountId, accountId),
@@ -153,8 +191,8 @@ export const createArtistProfileRepository = (
       .limit(1);
     if (!row) return null;
 
-    const { genres, snsLinks } = await loadChildren(db, row.id);
-    return toEntity(row, genres, snsLinks);
+    const { genres, links } = await loadChildren(db, row.id);
+    return toEntity(row, genres, links);
   },
 
   async upsert(
@@ -187,8 +225,8 @@ export const createArtistProfileRepository = (
       })
       .returning(profileColumns);
 
-    await replaceChildren(executor, row.id, data.genres, data.snsLinks);
-    return toEntity(row, data.genres, data.snsLinks);
+    await replaceChildren(executor, row.id, data.genres, data.links);
+    return toEntity(row, data.genres, data.links);
   },
 
   async setPublished(
@@ -212,7 +250,7 @@ export const createArtistProfileRepository = (
       .returning(profileColumns);
     if (!row) throw createArtistProfileNotFoundError();
 
-    const { genres, snsLinks } = await loadChildren(executor, row.id);
-    return toEntity(row, genres, snsLinks);
+    const { genres, links } = await loadChildren(executor, row.id);
+    return toEntity(row, genres, links);
   },
 });

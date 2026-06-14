@@ -4,7 +4,13 @@ import type { ImageUrl } from "../valueObjects/imageUrl";
 import type { Story } from "../valueObjects/story";
 import type { ActivityInfo } from "../valueObjects/activityInfo";
 import type { Genre } from "../valueObjects/genre";
-import type { SnsUrl } from "../valueObjects/snsUrl";
+import type { ProfileLink } from "../valueObjects/profileLink";
+
+export type ProfileLinkData = {
+  type: string;
+  url: string;
+  label: string | null;
+};
 
 export type ArtistProfileState = {
   readonly id: string;
@@ -15,7 +21,7 @@ export type ArtistProfileState = {
   readonly story: Story | null;
   readonly activityInfo: ActivityInfo | null;
   readonly genres: readonly Genre[];
-  readonly snsLinks: readonly SnsUrl[];
+  readonly links: readonly ProfileLink[];
   readonly published: boolean;
 };
 
@@ -28,7 +34,7 @@ export type ArtistProfilePersistenceData = {
   story: string | null;
   activityInfo: string | null;
   genres: string[];
-  snsLinks: string[];
+  links: ProfileLinkData[];
   published: boolean;
 };
 
@@ -39,7 +45,7 @@ export type ArtistProfileView = {
   story: string | null;
   activityInfo: string | null;
   genres: string[];
-  snsLinks: string[];
+  links: ProfileLinkData[];
   published: boolean;
 };
 
@@ -52,7 +58,7 @@ export type ArtistProfile = {
   getStory: () => string | null;
   getActivityInfo: () => string | null;
   getGenres: () => string[];
-  getSnsLinks: () => string[];
+  getLinks: () => ProfileLinkData[];
   isPublished: () => boolean;
   publish: () => ArtistProfile;
   unpublish: () => ArtistProfile;

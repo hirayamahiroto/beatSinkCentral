@@ -11,6 +11,13 @@ const valueOrNull = (vo: { readonly value: string } | null): string | null =>
 export const createArtistProfileBehaviors = (
   state: ArtistProfileState,
 ): ArtistProfile => {
+  const toLinks = () =>
+    state.links.map((link) => ({
+      type: link.type,
+      url: link.url,
+      label: link.label,
+    }));
+
   const toContent = (): ArtistProfileView => ({
     name: valueOrNull(state.name),
     tagline: valueOrNull(state.tagline),
@@ -18,7 +25,7 @@ export const createArtistProfileBehaviors = (
     story: valueOrNull(state.story),
     activityInfo: valueOrNull(state.activityInfo),
     genres: state.genres.map((genre) => genre.value),
-    snsLinks: state.snsLinks.map((sns) => sns.value),
+    links: toLinks(),
     published: state.published,
   });
 
@@ -31,7 +38,7 @@ export const createArtistProfileBehaviors = (
     getStory: () => valueOrNull(state.story),
     getActivityInfo: () => valueOrNull(state.activityInfo),
     getGenres: () => state.genres.map((genre) => genre.value),
-    getSnsLinks: () => state.snsLinks.map((sns) => sns.value),
+    getLinks: toLinks,
     isPublished: () => state.published,
     publish: () => createArtistProfileBehaviors({ ...state, published: true }),
     unpublish: () =>

@@ -26,7 +26,7 @@ export const collectMissingPublishFields = (
   if (!profile.getImageUrl()) missing.push("imageUrl");
   if (!profile.getStory()) missing.push("story");
   if (profile.getGenres().length === 0) missing.push("genres");
-  if (profile.getSnsLinks().length === 0) missing.push("snsLinks");
+  if (profile.getLinks().length === 0) missing.push("links");
   return missing;
 };
 

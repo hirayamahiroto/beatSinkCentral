@@ -8,6 +8,7 @@ import getMyProfile from "./artists/me/profile/get";
 import saveMyProfile from "./artists/me/profile/post";
 import publishMyProfile from "./artists/me/profile/publish/post";
 import getPublicProfile from "./artists/detail/get";
+import listLinkTypes from "./link-types/get";
 import { requireAuthMiddleware } from "../../../middlewares/auth0";
 import { handleAppError } from "../../../errorMap";
 
@@ -26,6 +27,7 @@ const app = new Hono()
   .route("/artists/me/profile/publish", publishMyProfile)
   .route("/artists/me", artistsMe)
   .route("/artists", getPublicProfile)
+  .route("/link-types", listLinkTypes)
   .onError(handleAppError);
 
 export type AppType = typeof app;

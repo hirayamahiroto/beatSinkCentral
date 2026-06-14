@@ -18,6 +18,7 @@ import type { InvalidStoryFormatError } from "../domain/artistProfiles/valueObje
 import type { InvalidActivityInfoFormatError } from "../domain/artistProfiles/valueObjects/activityInfo";
 import type { InvalidGenreFormatError } from "../domain/artistProfiles/valueObjects/genre";
 import type { InvalidSnsUrlFormatError } from "../domain/artistProfiles/valueObjects/snsUrl";
+import type { InvalidProfileLinkFormatError } from "../domain/artistProfiles/valueObjects/profileLink";
 import type { InvalidRequestFormatError } from "../app/api/[[...route]]/errors/invalidRequestFormat";
 import type { UnauthorizedError } from "../middlewares/auth0/errors/unauthorized";
 
@@ -41,7 +42,8 @@ export type AppError =
   | InvalidStoryFormatError
   | InvalidActivityInfoFormatError
   | InvalidGenreFormatError
-  | InvalidSnsUrlFormatError;
+  | InvalidSnsUrlFormatError
+  | InvalidProfileLinkFormatError;
 
 type ErrorMapping<SpecificError extends AppError> = {
   status: ContentfulStatusCode;
@@ -137,6 +139,10 @@ const errorMap: ErrorMap = {
   InvalidSnsUrlFormatError: {
     status: 422,
     message: () => "Invalid snsUrl format",
+  },
+  InvalidProfileLinkFormatError: {
+    status: 422,
+    message: () => "Invalid profile link format",
   },
 };
 
