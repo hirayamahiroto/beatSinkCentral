@@ -12,7 +12,6 @@
 | # | カテゴリ | 説明 |
 |---|---------|------|
 | 0 | 環境構築（未作成） | 技術スタック、Storybook、CI/CD、Linter設定 |
-| 1 | [アプリケーション方針](./application-policy.md) | SEO対策、SSR/CSRの選択基準 |
 | 2 | [実装の前提](./implementation.md) | Next.js App Router、実装パターン |
 | 3 | [Tailwind CSS実装規約](./ui/tailwind.md) | スタイリング方針、クラス名の結合ルール |
 | 4 | [コンポーネント設計](./ui/component-design.md) | Atomic Design階層定義、命名規則 |

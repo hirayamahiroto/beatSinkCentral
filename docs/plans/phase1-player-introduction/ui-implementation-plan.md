@@ -166,6 +166,5 @@ UI の golden path とエッジ（未ログイン／未登録／登録済みプ�
 - [`roadmap.md`](./roadmap.md) — Phase 1 全体ロードマップ
 - [`step1-implementation-plan.md`](./step1-implementation-plan.md) — Step 1 の詳細実装計画
 - [`docs/frontend-architecture/component-design.md`](../../architecture/frontend/ui/component-design.md) — Atomic Design 規約
-- [`docs/frontend-architecture/application-policy.md`](../../architecture/frontend/application-policy.md) — SSR/CSR 選択基準
 - [`docs/frontend-architecture/state-management.md`](../../architecture/frontend/state-management.md) — 状態管理方針
 - [`docs/frontend-architecture/form-design.md`](../../architecture/frontend/ui/form-design.md) — フォーム実装規約
