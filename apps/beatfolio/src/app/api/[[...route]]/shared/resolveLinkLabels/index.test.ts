@@ -13,7 +13,7 @@ describe("resolveLinkLabels", () => {
       linkTypes,
     );
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       { url: "https://youtube.com/@saku", label: "YouTube" },
     ]);
   });
@@ -24,7 +24,7 @@ describe("resolveLinkLabels", () => {
       linkTypes,
     );
 
-    expect(result).toEqual([
+    expect(result).toStrictEqual([
       { url: "https://example.com/me", label: "個人HP" },
     ]);
   });

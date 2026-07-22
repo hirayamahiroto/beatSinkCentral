@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { auth0 } from "../../libs/auth0";
 import { createBeatfolioBffServerClient } from "../../utils/client";
-import { OnboardingClient } from "./OnboardingClient";
+import { OnboardingClientAdapter } from "./OnboardingClientAdapter";
 
 export default async function OnboardingPage() {
   const session = await auth0.getSession();
@@ -42,7 +42,7 @@ export default async function OnboardingPage() {
           </div>
 
           <div className="backdrop-blur-md bg-white/5 p-8 rounded-2xl border border-white/10">
-            <OnboardingClient email={user.email} />
+            <OnboardingClientAdapter email={user.email} />
           </div>
         </div>
       </div>
