@@ -71,7 +71,7 @@
 | `occurred_at` / `created_at`   | 発生時刻 / 受信時刻                                              |
 
 - index: `(artist_id, event_type, occurred_at)`, `(session_id)`。
-- migration は [`database-migration.md`](../architecture/server/database-migration.md) の手順（`db:generate`→`db:migrate`）。
+- migration は [`database-migration.md`](../architecture/server/database/migration.md) の手順（`db:generate`→`db:migrate`）。
 
 ### 5-2. イベントと発火点（UI 層のみ）
 
@@ -138,4 +138,4 @@ zod 検証 → `analytics_events` へ insert するだけ。集計/整形は持�
 ## 関連
 
 - [`profile-information-design.md`](../product/profile-information-design.md) §5-2（上流）/ `profile-api-design.md`（未作成） §5（分岐元）
-- [`../architecture/frontend/bff.md`](../architecture/frontend/bff.md) / [`../architecture/server/database-migration.md`](../architecture/server/database-migration.md)
+- [`../architecture/frontend/bff/design.md`](../architecture/frontend/bff/design.md) / [`../architecture/server/database/migration.md`](../architecture/server/database/migration.md)

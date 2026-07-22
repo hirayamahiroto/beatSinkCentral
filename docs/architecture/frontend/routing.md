@@ -2,7 +2,7 @@
 
 > **位置づけ**
 > 本ドキュメントは **beatfolio の画面 URL（ユーザーが辿る遷移）の設計方針**を定める。
-> BFF の `/api/*` ルート設計は [`bff.md`](./bff.md) を参照。両者の対応関係は原則6で規定する。
+> BFF の `/api/*` ルート設計は [`bff.md`](./bff/design.md) を参照。両者の対応関係は原則6で規定する。
 > API（api-server）の URL 設計は [`../server/api-design-guidelines.md`](../server/api-design-guidelines.md) を参照。
 
 ---
@@ -56,7 +56,7 @@ beatfolio における実体は **アーティストの公開プロフィール*
 
 ### 原則6: BFF の read route は画面パスに一致させる
 
-[`bff.md`](./bff.md) は「route はリソース名ではなく画面名で切る」と定める。beatfolio では**画面名 = 画面の URL パス**であるため、両者を機械的に対応させる。
+[`bff.md`](./bff/design.md) は「route はリソース名ではなく画面名で切る」と定める。beatfolio では**画面名 = 画面の URL パス**であるため、両者を機械的に対応させる。
 
 ```
 画面  /dashboard/profile/edit

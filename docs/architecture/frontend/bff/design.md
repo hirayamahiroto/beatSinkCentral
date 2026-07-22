@@ -2,9 +2,9 @@
 
 > **位置づけ**
 > BFF は **フロントエンド（`apps/beatfolio`）が api-server と対話するための仲介層**であり、フロントエンドアーキテクチャの一部である。
-> api-server 側の内部設計（ドメイン / usecase / repository 等）とは責務が分かれる。サーバー内部設計は [`docs/server-architecture/`](../server/architecture.md) を参照。
-> 認証・セッション観点での BFF の役割は [`authentication.md`](../authentication.md) を参照。本ドキュメントは **データフローの設計基盤**を担う。
-> Web / iOS 等のマルチクライアント化で BFF がどう発展するかは [`bff-multi-client.md`](./bff-multi-client.md) を参照。
+> api-server 側の内部設計（ドメイン / usecase / repository 等）とは責務が分かれる。サーバー内部設計は [`docs/server-architecture/`](../../server/architecture.md) を参照。
+> 認証・セッション観点での BFF の役割は [`authentication.md`](../../authentication.md) を参照。本ドキュメントは **データフローの設計基盤**を担う。
+> Web / iOS 等のマルチクライアント化で BFF がどう発展するかは [`bff-multi-client.md`](./multi-client.md) を参照。
 
 ---
 
@@ -49,9 +49,9 @@ read も write も **BFF route（`/api/*`）を経由する**。経路は対称�
 画面に出すドメイン語彙（種別ラベル・選択肢・アイコン等）は **DB マスタを出所**とし、その **`code → label / icon` の解決を BFF が行う**。UI には解決済みの表示用データだけを渡し、フロントに語彙を持たせない。
 
 - api-server は「種別一覧」などの **汎用 API** を返す（画面都合を持たない）。BFF がそれを画面用に整形し、利用層が持つ `code` / FK を表示用の `label` / `icon` へ解決する。
-- 選択肢（ウィザードのドロップダウン等）も BFF を経由して供給する。`packages/ui` 側に固定リストを持たない（[`component-design.md`](./component-design.md)「表示語彙は DB 由来・props で受け取る」）。
+- 選択肢（ウィザードのドロップダウン等）も BFF を経由して供給する。`packages/ui` 側に固定リストを持たない（[`component-design.md`](../ui/component-design.md)「表示語彙は DB 由来・props で受け取る」）。
 - 「UI に `code` だけ渡してフロントでラベル変換」は語彙のハードコードに当たり禁止。これは read route の「整形」の一部として BFF で完結させる。
-- 出所と責務分担の全体像（DB → api-server → BFF → UI）は [`../server/database-design.md`](../server/database-design.md) §7 を参照（canonical）。
+- 出所と責務分担の全体像（DB → api-server → BFF → UI）は [`../../server/database/design.md`](../../server/database/design.md) §7 を参照（canonical）。
 
 ### read も write も BFF route を経由する（対称な経路）
 
@@ -77,7 +77,7 @@ read も write も **BFF route（`/api/*`）を経由する**。経路は対称�
    更新/削除はユーザー操作（CSR）から発火する。ブラウザから api-server へ到達する経路として HTTP エンドポイント（`/api/*`）が必要であり、ここで認証 cookie の付与・入力バリデーションを行う。read も同じ HTTP 境界に揃える。
 
 4. **マルチクライアント化・SSR 喪失に強い**
-   read が最初から HTTP route 経由なので、将来 BFF を standalone サービスへ切り出す際も**経路を変えずに済む**（`page.tsx` 直呼びだと read だけ HTTP 化の書き換えが要る）。詳細は [`bff-multi-client.md`](./bff-multi-client.md)。
+   read が最初から HTTP route 経由なので、将来 BFF を standalone サービスへ切り出す際も**経路を変えずに済む**（`page.tsx` 直呼びだと read だけ HTTP 化の書き換えが要る）。詳細は [`bff-multi-client.md`](./multi-client.md)。
 
 5. **コスト（自己 HTTP hop）は受容する**
    SSR から同一プロセスの `/api/*` を叩くシリアライズ + 往復のコストはあるが、**整形責務の集約・経路の対称・移植性**を優先して受け入れる。
@@ -112,7 +112,7 @@ read も write も **BFF route（`/api/*`）を経由する**。経路は対称�
 
 ### read の実装: BFF read ルート（`/api/*`）＋ `page.tsx` から呼ぶ
 
-read は **画面名で切った BFF read route** が api-server を呼び、画面に必要な形へ整形して返す。`page.tsx` はその route を呼んで **認証 → 業務判断（redirect）→ 初期レンダリング**に専念する（[`component-design.md`](./component-design.md) のエントリポイント層責務に準拠）。
+read は **画面名で切った BFF read route** が api-server を呼び、画面に必要な形へ整形して返す。`page.tsx` はその route を呼んで **認証 → 業務判断（redirect）→ 初期レンダリング**に専念する（[`component-design.md`](../ui/component-design.md) のエントリポイント層責務に準拠）。
 
 route は**リソース名ではなく画面名**で設計する（`me` ではなく `dashboard`）。
 
@@ -248,7 +248,7 @@ const res = await client.api.artists.me.$post({ json: { accountId } });
 | BFF write ルート（zod） | あり           | **UX 契約**: 不正リクエストを境界で弾き、即時フィードバック可能なエラー形を返す |
 | api-server              | あり           | **ドメイン不変条件**: Value Object 等による不変条件の保護                       |
 
-両者で内容が重複することは許容する（責務が違う）。[`component-design.md`](./component-design.md) のフォーム/ドメイン二重バリデーションと同じ整理。
+両者で内容が重複することは許容する（責務が違う）。[`component-design.md`](../ui/component-design.md) のフォーム/ドメイン二重バリデーションと同じ整理。
 
 ### エラー契約
 

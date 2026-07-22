@@ -12,7 +12,7 @@ description: beatfolio / packages/ui のフロントエンド UI（Atomic Design
 
 - 規範ドキュメントを**先に読む**（索引は `docs/README.md`）：
   - 何を作るか: `docs/product/design-core.md`（最上位の判断基準）→ `docs/product/flow-design.md` → `docs/product/profile-information-design.md`
-  - どう作るか: `docs/architecture/frontend/{README,component-design,routing,bff,form-design,application-policy,state-management,ui-library,tailwind,responsive}.md`
+  - どう作るか: `docs/architecture/frontend/{README,routing,application-policy,state-management}.md、`docs/architecture/frontend/ui/{component-design,form-design,ui-library,tailwind,responsive,storybook}.md`、`docs/architecture/frontend/bff/{design,multi-client}.md`
 - 規範は `docs/product/` と `docs/architecture/` のみ。`docs/plans/` と `docs/discussions/` は判断の根拠にしない。
 - 横断観点は `.claude/rules/code-review-checklist.md`（特に §6 データ取得タイミング / §10 レイヤー責務 / §13 インターフェース自己説明性 / §14 コメントを残さない / §15 型安全を壊す Optional フォールバックを使わない）。
 - **設計ドキュメントが規範、既存コードは実装結果**。食い違ったら勝手に既存へ合わせず **ユーザーに共有して方針確認**（CLAUDE.md）。

@@ -41,25 +41,30 @@
 
 | 領域             | ドキュメント                                                       | いつ読むか                       |
 | ---------------- | ------------------------------------------------------------------ | -------------------------------- |
-| コンポーネント   | [component-design.md](./architecture/frontend/component-design.md) | UI 実装時                        |
+| コンポーネント   | [ui/component-design.md](./architecture/frontend/ui/component-design.md) | UI 実装時                        |
 | 画面 URL 設計    | [routing.md](./architecture/frontend/routing.md)                   | 画面追加・URL 変更時             |
-| BFF              | [bff.md](./architecture/frontend/bff.md)                           | データ取得・更新の経路設計時     |
-| フォーム         | [form-design.md](./architecture/frontend/form-design.md)           | フォーム実装時                   |
+| BFF              | [bff/design.md](./architecture/frontend/bff/design.md)                           | データ取得・更新の経路設計時     |
+| フォーム         | [ui/form-design.md](./architecture/frontend/ui/form-design.md)           | フォーム実装時                   |
 
-その他（Tailwind / Storybook / 状態管理 / レスポンシブ等）は [frontend/README.md](./architecture/frontend/README.md) の一覧を参照。
+その他（`ui/` 配下の Tailwind / Storybook / レスポンシブ、状態管理等）は [frontend/README.md](./architecture/frontend/README.md) の一覧を参照。
 
 #### サーバー — [`architecture/server/`](./architecture/server/architecture.md)
 
-| 領域                 | ドキュメント                                                            | いつ読むか                             |
-| -------------------- | ----------------------------------------------------------------------- | -------------------------------------- |
-| 全体構造             | [architecture.md](./architecture/server/architecture.md)                | 新規実装・レイヤー追加時               |
-| API 設計             | [api-design-guidelines.md](./architecture/server/api-design-guidelines.md) | API ルート追加・変更時                 |
-| エラーハンドリング   | [error-handling/](./architecture/server/error-handling/README.md)       | エラー追加・throw 位置・errorMap 変更時 |
-| 並行更新             | [concurrency.md](./architecture/server/concurrency.md)                  | usecase の更新フロー設計時             |
-| DB 設計思想          | [database-design.md](./architecture/server/database-design.md)          | 種別・分類のモデリング時               |
-| DB マイグレーション  | [database-migration.md](./architecture/server/database-migration.md)    | スキーマ変更時                         |
-| DB 接続              | [database-connection.md](./architecture/server/database-connection.md)  | 環境セットアップ・DB エラー調査時      |
-| 外部クライアント     | [external-clients.md](./architecture/server/external-clients.md)        | Database / Auth0 / Redis 等の追加時    |
+| 領域               | ドキュメント                                                               | いつ読むか                              |
+| ------------------ | -------------------------------------------------------------------------- | --------------------------------------- |
+| 全体構造           | [architecture.md](./architecture/server/architecture.md)                   | 新規実装・レイヤー追加時                |
+| API 設計           | [api-design-guidelines.md](./architecture/server/api-design-guidelines.md) | API ルート追加・変更時                  |
+| エラーハンドリング | [error-handling/](./architecture/server/error-handling/README.md)          | エラー追加・throw 位置・errorMap 変更時 |
+| 外部クライアント   | [external-clients.md](./architecture/server/external-clients.md)           | Database / Auth0 / Redis 等の追加時     |
+
+DB まわり — [`architecture/server/database/`](./architecture/server/database/design.md)
+
+| 領域                | ドキュメント                                                             | いつ読むか                        |
+| ------------------- | ------------------------------------------------------------------------ | --------------------------------- |
+| 設計思想            | [design.md](./architecture/server/database/design.md)                    | 種別・分類のモデリング時          |
+| マイグレーション    | [migration.md](./architecture/server/database/migration.md)              | スキーマ変更時                    |
+| 接続                | [connection.md](./architecture/server/database/connection.md)            | 環境セットアップ・DB エラー調査時 |
+| 並行更新            | [concurrency.md](./architecture/server/database/concurrency.md)          | usecase の更新フロー設計時        |
 
 #### テスト・インフラ
 

@@ -67,11 +67,11 @@ Player 一覧と詳細は別スライスに分ける。並行で進めると API
 - ページの初期データ取得は Server Component（`app/**/page.tsx`）で行う
 - インタラクティブな状態が必要な箇所のみ `"use client"` の Adapter を切り出す
 - UI コンポーネント本体（atoms 以上）は props を受け取って描画するだけ
-- 規約は [`component-design.md` の責務分離パターン](../../architecture/frontend/component-design.md) に従う
+- 規約は [`component-design.md` の責務分離パターン](../../architecture/frontend/ui/component-design.md) に従う
 
 ### 4. UI 部品の追加は最小限
 
-- Phase 1 で必要な部品が atoms にあるなら atoms を直接組み合わせる（[`component-design.md` 「複雑なフィールドへの対応方針」](../../architecture/frontend/component-design.md)）
+- Phase 1 で必要な部品が atoms にあるなら atoms を直接組み合わせる（[`component-design.md` 「複雑なフィールドへの対応方針」](../../architecture/frontend/ui/component-design.md)）
 - 同パターンが 2 ページ以上で繰り返されたら初めて Molecule 化を検討する
 - Molecules / Organisms を「整備するため」だけに作らない
 
@@ -165,7 +165,7 @@ UI の golden path とエッジ（未ログイン／未登録／登録済みプ�
 
 - [`roadmap.md`](./roadmap.md) — Phase 1 全体ロードマップ
 - [`step1-implementation-plan.md`](./step1-implementation-plan.md) — Step 1 の詳細実装計画
-- [`docs/frontend-architecture/component-design.md`](../../architecture/frontend/component-design.md) — Atomic Design 規約
+- [`docs/frontend-architecture/component-design.md`](../../architecture/frontend/ui/component-design.md) — Atomic Design 規約
 - [`docs/frontend-architecture/application-policy.md`](../../architecture/frontend/application-policy.md) — SSR/CSR 選択基準
 - [`docs/frontend-architecture/state-management.md`](../../architecture/frontend/state-management.md) — 状態管理方針
-- [`docs/frontend-architecture/form-design.md`](../../architecture/frontend/form-design.md) — フォーム実装規約
+- [`docs/frontend-architecture/form-design.md`](../../architecture/frontend/ui/form-design.md) — フォーム実装規約

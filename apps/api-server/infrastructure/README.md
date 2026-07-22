@@ -14,7 +14,7 @@ api-server の Vercel project と環境変数を Terraform で管理する。
 `production_database_url` / `preview_database_url` に Transaction pooler の URL を設定する。
 マイグレーション用 (5432) は **GitHub Actions Secrets 側で別管理**(本リポジトリの管理対象外、Phase 2 で統合予定)。
 
-詳細は [`docs/architecture/server/database-connection.md`](../../../docs/architecture/server/database-connection.md) を参照。
+詳細は [`docs/architecture/server/database/connection.md`](../../../docs/architecture/server/database/connection.md) を参照。
 
 ### AUTH0_SECRET は beatfolio と同値を入れる
 
