@@ -31,9 +31,6 @@ export default async function Home() {
             <Button asChild>
               <Link href="/players">プレイヤーを探す</Link>
             </Button>
-            <Button asChild variant="ghost">
-              <Link href="/event">イベントを見る</Link>
-            </Button>
             {!session && (
               <Button asChild variant="ghost">
                 <Link href="/auth/login">ログイン / 新規登録</Link>
