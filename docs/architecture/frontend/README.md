@@ -16,7 +16,7 @@
 | 3 | [Tailwind CSS実装規約](./ui/tailwind.md) | スタイリング方針、クラス名の結合ルール |
 | 4 | [コンポーネント設計](./ui/component-design.md) | Atomic Design階層定義、命名規則 |
 | 5 | [フォーム設計](./ui/form-design.md) | react hook formを用いたフォームの実装定義 |
-| 6 | [状態管理](./state-management.md) | グローバル状態、ローカル状態の管理方針 |
+| 6 | [状態管理](./state-management.md) | 状態管理ライブラリを導入しない決定と再検討条件 |
 | 7 | [画面 URL 設計](./routing.md) | 画面遷移の URL 設計方針、実体と操作の表現、BFF ルートとの対応 |
 | 8 | [BFF 設計](./bff/design.md) | api-server 仲介層のストラテジーと実装設計（read / write とも BFF route 経由の対称設計） |
 | 9 | [BFF マルチクライアント展望](./bff/multi-client.md) | Web / iOS 等のマルチクライアント化で BFF が per-client に独立する将来展望 |
