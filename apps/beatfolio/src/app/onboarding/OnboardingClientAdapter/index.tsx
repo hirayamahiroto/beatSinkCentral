@@ -3,11 +3,11 @@
 import { ArtistProfile } from "@ui/design-system/components/organisms/ArtistProfile";
 import { useCreateUser } from "./hooks/useCreateUser";
 
-type OnboardingClientProps = {
+type Props = {
   email: string;
 };
 
-export const OnboardingClient = ({ email }: OnboardingClientProps) => {
+export const OnboardingClientAdapter = ({ email }: Props) => {
   const { handleSubmit, isLoading, error } = useCreateUser({ email });
 
   return (
