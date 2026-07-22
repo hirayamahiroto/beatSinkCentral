@@ -180,6 +180,6 @@ roadmap.md の「先に確定すべき意思決定」3 つに対する Phase 1 �
 
 ## 関連ドキュメント
 
-- [roadmap.md](./roadmap.md) - Phase 1 全体ロードマップ
-- [step1-implementation-plan.md](./step1-implementation-plan.md) - Step 1 実装計画
-- [ui-implementation-plan.md](./ui-implementation-plan.md) - UI 実装計画
+- [roadmap.md](../plans/phase1-player-introduction/roadmap.md) - Phase 1 全体ロードマップ
+- [step1-implementation-plan.md](../plans/phase1-player-introduction/step1-implementation-plan.md) - Step 1 実装計画
+- [ui-implementation-plan.md](../plans/phase1-player-introduction/ui-implementation-plan.md) - UI 実装計画

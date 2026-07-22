@@ -178,12 +178,12 @@ app/api/[[...route]]/
 
 本人のプロフィールは「1 ユーザー = 1 アーティスト」のため `me` スコープ。取得と保存は同一エンドポイントをメソッドで切り替える。
 
-| 操作                     | メソッド | エンドポイント                  |
-| ------------------------ | -------- | ------------------------------- |
-| 取得（本人・下書き含む） | GET      | `/artists/me/profile`           |
-| 保存（作成・更新）       | POST     | `/artists/me/profile`           |
-| 公開 / 非公開            | POST     | `/artists/me/profile/publish`   |
-| 公開詳細（誰でも）       | GET      | `/artists/:accountId`           |
+| 操作                     | メソッド | エンドポイント                |
+| ------------------------ | -------- | ----------------------------- |
+| 取得（本人・下書き含む） | GET      | `/artists/me/profile`         |
+| 保存（作成・更新）       | POST     | `/artists/me/profile`         |
+| 公開 / 非公開            | POST     | `/artists/me/profile/publish` |
+| 公開詳細（誰でも）       | GET      | `/artists/:accountId`         |
 
 - 取得 (GET) と保存 (POST) は **同じ `/artists/me/profile`**。`users` の `GET /users/:id` ⇔ `POST /users/:id` と同じ関係。
 - 公開切り替えは `POST /users/:id/delete` と同じくアクションを接尾辞で表す（`/publish`）。

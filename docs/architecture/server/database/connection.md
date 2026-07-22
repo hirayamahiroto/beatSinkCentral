@@ -156,5 +156,5 @@ postgresql://postgres:<PASSWORD>@db.<project-ref>.supabase.co:5432/postgres
 
 ## 関連ドキュメント
 
-- [データベースマイグレーション](./database-migration.md) — drizzle-kit のコマンド体系と運用
-- [外部クライアントの実装パターン](./external-clients.md) — 環境変数を扱うクライアントの遅延初期化
+- [データベースマイグレーション](./migration.md) — drizzle-kit のコマンド体系と運用
+- [外部クライアントの実装パターン](../external-clients.md) — 環境変数を扱うクライアントの遅延初期化

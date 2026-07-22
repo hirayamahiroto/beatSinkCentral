@@ -5,19 +5,122 @@ description: api-server（クリーンアーキテクチャ + 純粋 Domain + DI
 
 # api-server バックエンド実装ハーネス
 
-`apps/api-server` に機能を足すときの「順序」と「毎回ハマる/見落とす観点」をまとめた手順書。
-規範ドキュメントの置き換えではなく、**着手前のチェックリスト**として使う。
+## このスキルの目的
 
-## 0. 着手前（必須）
+**「設計ドキュメントを読まずに実装を始めてしまう」ことを防ぐ。**
 
-- `docs/server-architecture/architecture.md` と、対象領域の設計ドキュメント（`docs/.../*.md`）を**先に読む**。
-- 横断観点は `.claude/rules/code-review-checklist.md` を読む（N+1 / 権限 / 過剰取得 / インターフェース設計 / §14 コメントを残さない / §15 Optional フォールバックで必須値を偽装しない）。
-- **設計ドキュメントが規範、既存コードは実装結果**。両者が食い違ったら、勝手に既存へ合わせず **ユーザーに共有して方針確認**（CLAUDE.md）。
-- ドキュメントに答えがある問いを、ユーザーに質問しない。まず docs を grep する。
-- 作業は `git worktree` で別ブランチを切る。worktree は依存が無いので **`npm install` をその場で実行**（monorepo は worktree に hoist されない）。
-- **コミットはユーザーに明示的に言われるまでしない。**
+このリポジトリでは設計規範が `docs/` に集約されていて、そこを読めば判断できるようになっている。
+にもかかわらず実装から入ると、規範に反した構造を作り込んでから気づくことになる。
+バックエンドは**内側（ドメイン）から外側（route）へ依存が流れる**設計なので、内側の判断を間違えると
+外側まで作り直しになり、手戻りが大きい。
 
-## 1. 実装順序（依存方向＝内側から外側へ）
+このスキルは、その事故を**手順の形で防ぐ**。
+
+| このスキルがやること                                    | やらないこと                           |
+| ------------------------------------------------------- | -------------------------------------- |
+| どの順で作業するかを決める                              | 設計規範そのものを定める               |
+| 各段階で「どの docs を開くか」を指す                    | docs の内容をここに書き写す            |
+| 止まってユーザーに確認すべき地点を明示する              | 規範の無い判断を勝手に決める           |
+| docs に書けない運用知（ツール都合・ハマりどころ）を持つ | コードから読めることを重複して説明する |
+
+> **このファイルは規範ではない。** 規範は `docs/` にある。ここに規範を書き写すと二重管理になり、必ず片方が腐る。
+
+## 使うタイミング
+
+`apps/api-server` に**新しい集約・usecase・エンドポイント・DB スキーマ変更**を入れるとき。
+既存 usecase の軽微な条件変更だけなら、Step 2 以降だけでよい。
+
+## 入出力契約
+
+### 入力（これが無いと始められない）
+
+| 入力                       | 必須 | 無い場合                                                 |
+| -------------------------- | ---- | -------------------------------------------------------- |
+| 機能の概要                 | ○    | ユーザーに聞く                                           |
+| 扱うリソースと所有関係     | ○    | 誰の何を、誰が読み書きできるかを確定させる               |
+| 保存すべきデータと必須条件 | ○    | 下書き可否（nullable）と公開時の必須条件を分けて確認する |
+| 既存の類似実装             | −    | `apps/api-server/src/domain` 配下を自分で grep           |
+
+### 出力（完了時に必ず返す）
+
+| 出力               | 内容                                                   |
+| ------------------ | ------------------------------------------------------ |
+| 変更ファイル一覧   | 追加 / 変更 / 削除を区別して                           |
+| 適用した規範と根拠 | 「この判断は `docs/…` のこの規範による」の対応         |
+| 自分で決めた判断   | **規範に無くて暫定で決めたこと**。レビューの焦点になる |
+| 検証結果           | test / tsc / lint の**事実**。落ちたなら出力とともに   |
+| 未解決の確認事項   | 判断を保留した点                                       |
+| コミットの有無     | 原則コミットしない。していないことを明示する           |
+
+### 出力（⛔ で中断したとき）
+
+実装を進めず、次を返して判断を仰ぐ。
+
+- **何と何が食い違ったか**（規範のパス / 既存コードの箇所）
+- **選択肢**（規範に合わせる / 規範を変える / 例外にする）とそれぞれの影響範囲
+- **推奨**とその理由
+
+## 実装フロー
+
+```mermaid
+flowchart TD
+    S["依頼を受ける"] --> S1["Step 1<br/>何を作るかを確認<br/>(docs/product/)"]
+    S1 --> Q1{"規範に照らして<br/>判断できるか"}
+    Q1 -->|"規範が無い"| STOP1["⛔ 止まる<br/>docs を整える相談をする"]
+    Q1 -->|"判断できる"| S2["Step 2<br/>どう作るかを確認<br/>(docs/architecture/)"]
+    S2 --> Q2{"既存コードと<br/>規範が食い違うか"}
+    Q2 -->|"食い違う"| STOP2["⛔ 止まる<br/>方針をユーザーに確認する"]
+    Q2 -->|"一致"| S3["Step 3<br/>内側から外側へ実装する"]
+    S3 --> S4["Step 4<br/>検証する"]
+    S4 --> S5["Step 5<br/>報告する（コミットしない）"]
+```
+
+**⛔ の2箇所で必ず止まる。** 勝手に既存へ合わせない・勝手に決めない（CLAUDE.md）。
+
+---
+
+## Step 1. 何を作るかを確認する
+
+`docs/README.md`（索引）で全体像を掴んでから、`docs/product/` を読む。
+
+| 読む                                         | ここで確定させること                     |
+| -------------------------------------------- | ---------------------------------------- |
+| `docs/product/design-core.md`                | この機能がプロダクトのどの課題に効くのか |
+| `docs/product/profile-information-design.md` | どのデータを保持すべきか・その理由       |
+
+バックエンドでも**先にドメインの語彙を確定させる**。種別・分類をあとから足すとマイグレーションが増える。
+
+> **規範は `docs/product/` と `docs/architecture/` のみ。**
+> `docs/plans/`（時限的な計画）と `docs/discussions/`（未合意の検討）は判断の根拠にしない。
+
+**⛔ 止まる条件**: 規範が存在しない設計判断が必要になったとき。
+コードに落とす前に、**docs 側を整える方向で相談する**（CLAUDE.md）。
+
+## Step 2. どう作るかを確認する
+
+まず `docs/architecture/server/architecture.md` でレイヤー責務と依存方向を押さえる。
+そのうえで、着手する部分の規範だけをその都度開く。
+
+| これから作るもの            | 開く規範                                                                                                    |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| DB スキーマ設計             | `docs/architecture/server/database/design.md`（マスタ参照・DB 由来の表示語彙）                              |
+| migration 実行              | `docs/architecture/server/database/migration.md`                                                            |
+| 同時更新の扱い              | `docs/architecture/server/database/concurrency.md`                                                          |
+| VO / entity / policy        | `docs/architecture/server/architecture.md`                                                                  |
+| repository（クエリ設計）    | `.claude/rules/code-review-checklist.md` §1 N+1 / §2 過剰取得 / §3 スコープ条件 / §8 SQL とアプリの責務分離 |
+| usecase（トランザクション） | `.claude/rules/code-review-checklist.md` §10 トランザクション境界                                           |
+| route（URL・メソッド）      | `docs/architecture/server/api-design-guidelines.md`                                                         |
+| errorMap                    | `docs/architecture/server/error-handling/README.md`                                                         |
+| 外部クライアントの初期化    | `docs/architecture/server/external-clients.md`                                                              |
+| 認証・認可                  | `docs/architecture/authentication.md`                                                                       |
+| テストの書き方              | `docs/architecture/testing/strategy.md`                                                                     |
+
+**⛔ 止まる条件**: 既存コードが規範と食い違っているとき。
+**設計ドキュメントが規範、既存コードは実装結果**。既存に合わせず、ズレを共有して方針を確認する（CLAUDE.md）。
+
+## Step 3. 内側から外側へ実装する
+
+依存方向に沿って作る。外側から作ると内側の変更で作り直しになる。
 
 ```
 DBスキーマ + migration → VO → entity(型) → behaviors → factory
@@ -26,72 +129,44 @@ DBスキーマ + migration → VO → entity(型) → behaviors → factory
 ```
 
 各 module を作ったら **同階層に `index.test.ts` を必ず置く**（[[feedback_test_every_module]]）。
+型だけの module（entity の型定義・repository interface）は対象外。
 
-## 2. レイヤー別の勘所
+各段階で Step 2 の対応表から該当ドキュメントを開く。記憶で書かない。
 
-### DB スキーマ / migration（`packages/database`）
-- 多値（ジャンル・SNS・タグ等）は **JSON でなく 1:N テーブル**（[[feedback_db_relational_not_flat]]）。
-- 下書き保存を許す項目は **nullable**。必須性は「保存時」でなく **公開/確定時の policy** で判定する。
-- `npm run db:generate -w database` で差分生成（**オフライン**だが drizzle.config が `DATABASE_URL` を要求するのでダミーを渡す）。SQL は手書きしない。
-- 既存カラムの nullable 化など型変更は **既存 repository を壊す**（`string` → `string | null`）。`tsc` で波及を確認。
-
-### Value Object
-- 1 概念 1 VO。`zod` で形式・長さ・範囲を検証し、`createTypedError` で型付きエラーを投げる。
-- **値だけで完結する検証のみ**。一意性・他リソース参照・権限は VO でなく policy/usecase。
-- 任意項目は「空文字/空白 → null」に正規化してから VO 化（下書き許容）。
-
-### entity / behaviors / factory
-- class を使わない。**クロージャで state を隠蔽**、振る舞いは getter 中心（貧血症と混同しない＝カプセル化目的）。
-- factory は `createX`（新規・ID 生成）と `reconstructX`（DB 復元・ID/フラグを引数受け取り）の 2 種。
-- 永続化は `toPersistence()`、表示は `toView()` のように **プリミティブへ変換する振る舞い**で出す（内部 VO 構造を外に漏らさない）。
-
-### policy / domain service
-- policy は**純粋関数**。Repository を呼ばない。呼び出し元（usecase）が fetch して渡す。
-- 複数 Entity の組み立てが絡むときだけ domain service。単一ルールは policy で完結。
-
-### repository
-- interface は `domain/{obj}/repositories`、実装は `infrastructure/repositories/{obj}`。実装は必ず `reconstructX` で Entity を返す。
-- `tx?: TransactionContext` を受け、`const executor = tx ?? db` パターン。
-- **N+1 / 過剰取得 / スコープ条件**を必ず確認：ループ内クエリ禁止、件数は `count()`、一覧は必要カラムだけ、`teamId`/`userId` 等の引数は必ず where に入れる。
-- 集計・整形・フィルタは **SQL 側**で完結（取得後に `.map`/`.filter` で加工しない）。
-
-### usecase
-- `fetch → (policy/domain service) → save` の配線だけ。ドメイン判定を書かない。
-- Entity の**振る舞い**で組み立てる（repo の生データに直接依存しない）。
-- 原子性が必要なら `txRunner.run` でトランザクション境界を張る（集約境界 ≠ トランザクション境界）。
-- VO の形式エラーはトランザクション開始**前**に出るよう、入力 VO 化を先頭で行うか factory に委ねる。
-
-### route（`app/api/[[...route]]`）
-- **ハンドラ構成は `{resource}/{get,post}/index.ts`**：HTTP メソッド名のディレクトリ（`get/` `post/`）配下の `index.ts` に、**1 ユニット = 1 エンドポイント（1 メソッド + 1 パス）**で分離する（[[feedback_api_route_one_file_per_endpoint]]）。`get.ts`/`post.ts` の単一ファイル形ではなく**ディレクトリ + `index.ts`**（プロジェクト共通の構成に揃える）。`save/` 等の独自アクション名ディレクトリは作らない。
-  - 例: `profiles/get/index.ts`(一覧) / `profiles/post/index.ts`(作成) / `profiles/detail/get/index.ts`(詳細 `/:id`) / `profiles/detail/post/index.ts`(更新) / `profiles/detail/publish/post/index.ts`(公開アクション)
-  - 各 `index.ts` は単一メソッドの Hono app を `default export`。`route.ts` が該当 base path にマウント（同一パスの GET/POST は同じ base に複数回 `.route()`）。`:param` 系は記述的なパスディレクトリ名（`detail/` 等）。
-  - 各メソッドディレクトリに `index.test.ts` を置く（[[feedback_test_every_module]]）。
-- **GET と POST のみ**（PUT/DELETE 不使用）。削除等は `/x/delete`（POST + パス接尾辞）でアクションを明示。複数形リソース名。
-- 認証・バリデーション（zod + `validateRequest`）・レスポンス整形だけ。ロジックは usecase へ。
-- **公開エンドポイント**を足すときは要注意：`route.ts` は `*` に `requireAuthMiddleware` を当てている。公開ルートを開けるには auth を**保護プレフィックスにスコープ化**し、公開ルートを外す。
-- 静的ルート（`/me/...`）を**パラメータルート（`/:id`）より先に**登録する。
-
-### errorMap
-- 新しい policy/VO の型付きエラーは `AppError` union と `errorMap` の両方に追加（status / message / 必要なら details）。
-
-## 3. 検証（完了の定義）
+## Step 4. 検証する
 
 ```bash
-npm test -- --filter api-server          # 全テスト green
-cd apps/api-server && npx tsc --noEmit    # 型（vitest は esbuild なので型は別途）
+npm test -- --filter api-server           # 全テスト green
+cd apps/api-server && npx tsc --noEmit    # 型（vitest は型を見ないので必須）
 cd apps/api-server && npx next lint       # lint
 ```
 
-- 新規 module すべてに test があるか（VO/behaviors/factory/policy/usecase/repository）。型だけの module（entity の型・repo interface）は対象外。
-- `tsc` の既存エラー（無関係なテストモック等）と、自分の変更起因のエラーを切り分ける（`git status` で diff 範囲を確認）。
+- 新規 module すべてに test があるか。
+- `tsc` の**既存エラー**（無関係なテストモック等）と**自分の変更起因**のエラーを切り分ける（`git status` で diff 範囲を確認）。
 
-## 4. やりがちな失敗
+## Step 5. 報告する
 
-- ドキュメントに書いてある仕様をユーザーに聞いてしまう → まず grep。
-- worktree で `npm install` を忘れて `drizzle-kit: command not found`。
-- nullable 化の波及を `tsc` で見ずにテストだけ通して見逃す（vitest は型を見ない）。
-- 公開ルートを足したのに `*` の auth に阻まれる。
+- **コミットはユーザーに明示的に言われるまでしない。**
+- 変更ファイル一覧と、**自分で判断した箇所**（規範に無くて暫定で決めたこと）を明示する。
+- 検証結果は事実のまま報告する。落ちたテストがあれば出力とともに伝える。
+
+---
+
+## docs に書けない運用知
+
+ツール都合・ライブラリ都合で、設計ドキュメントには載らないもの。
+
+- **worktree で作業するなら `npm install` をその場で実行する。** monorepo の依存は worktree に hoist されないため、忘れると `drizzle-kit: command not found` になる。
+- **`npm run db:generate -w database` はオフラインで動くが、`drizzle.config` が `DATABASE_URL` を要求する。** ダミー値を渡せば通る。SQL は手書きしない。
+- **vitest は型を見ない。** nullable 化のような型変更の波及は、テストが緑でも壊れている。必ず `tsc` を別途走らせる。
+- **公開エンドポイントを足すときは `route.ts` の認証適用範囲を確認する。** `*` に `requireAuthMiddleware` が当たっていると、公開したいルートも弾かれる。auth を保護プレフィックスにスコープ化する。
+- **静的ルート（`/me/...`）はパラメータルート（`/:id`）より先に登録する。** 逆だと静的パスがパラメータに食われる。
+- **ローカル DB は Supabase のコンテナ（`127.0.0.1:54322`）。** `ECONNREFUSED` はほぼ起動忘れ。`docker ps` で確認する。
+
+## やりがちな失敗
+
+- ドキュメントに書いてある仕様をユーザーに聞く → まず `docs/` を grep。
+- 規範を読まずに既存コードを真似する（既存が規範とズレている可能性がある）。
 - 一部 module だけテストを書いて満足する（全 module 必須）。
-- 必須値を `?? ""` / `?? 0` 等で埋めて型安全を壊す（欠落は VO/policy/usecase で明示的に落とす。§15）。
-- コードの言い換えコメントを書く（命名・構造で表し、理由は `docs/` へ。§14）。
+- 型変更の波及を `tsc` で見ずにテストだけで判断する。
 - 言われていないのにコミットする。

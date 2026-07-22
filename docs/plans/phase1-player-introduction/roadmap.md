@@ -10,7 +10,7 @@ Phase 1 の MVP は「プレイヤー紹介機能」の実現に焦点を当て�
 ## 🧭 設計の中核
 
 本ロードマップを含むすべての設計判断（動線・項目・機能・KPI）は、
-[`design-core.md`](./design-core.md) の決定を起点とする。
+[`design-core.md`](../../product/design-core.md) の決定を起点とする。
 判断に迷ったときの最終参照先として機能させる。
 
 ### 中核の要約
@@ -23,7 +23,7 @@ Phase 1 の MVP は「プレイヤー紹介機能」の実現に焦点を当て�
 - **三者フライホイール**: プレイヤー × オーガナイザー × ファン の循環構造として捉える
 - **Phase 1 のスコープ**: プレイヤー ↔ ファン の辺を最初に成立させる。オーガナイザー辺は Phase 2
 
-詳細・図解・計測設計は [`design-core.md`](./design-core.md) を参照。
+詳細・図解・計測設計は [`design-core.md`](../../product/design-core.md) を参照。
 
 ---
 
@@ -302,6 +302,6 @@ Step 4（公開ページ）
 
 ## 関連ドキュメント
 
-- [architecture.md](../architecture.md) - api-server アーキテクチャ
-- [authentication.md](../authentication.md) - 認証・ユーザー登録設計
-- [api-design-guidelines.md](../api-design-guidelines.md) - API 設計ガイドライン
+- [architecture.md](../../architecture/server/architecture.md) - api-server アーキテクチャ
+- [authentication.md](../../architecture/authentication.md) - 認証・ユーザー登録設計
+- [api-design-guidelines.md](../../architecture/server/api-design-guidelines.md) - API 設計ガイドライン
