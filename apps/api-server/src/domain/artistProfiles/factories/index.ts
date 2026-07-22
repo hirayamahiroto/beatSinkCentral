@@ -4,7 +4,10 @@ import { createImageUrl } from "../valueObjects/imageUrl";
 import { createStory } from "../valueObjects/story";
 import { createActivityInfo } from "../valueObjects/activityInfo";
 import { createGenre } from "../valueObjects/genre";
-import { createSnsUrl } from "../valueObjects/snsUrl";
+import {
+  createProfileLink,
+  type ProfileLinkInput,
+} from "../valueObjects/profileLink";
 import { createArtistProfileBehaviors } from "../behaviors";
 import type { ArtistProfile, ArtistProfileState } from "../entities";
 
@@ -26,13 +29,12 @@ const toGenres = (values: string[] | undefined) =>
         .filter((value) => value.length > 0)
         .map(createGenre);
 
-const toSnsLinks = (values: string[] | undefined) =>
+const toLinks = (values: ProfileLinkInput[] | undefined) =>
   values === undefined
     ? []
     : values
-        .map((value) => value.trim())
-        .filter((value) => value.length > 0)
-        .map(createSnsUrl);
+        .filter((value) => value.url.trim().length > 0)
+        .map(createProfileLink);
 
 export type ArtistProfileContent = {
   name?: string | null;
@@ -41,7 +43,7 @@ export type ArtistProfileContent = {
   story?: string | null;
   activityInfo?: string | null;
   genres?: string[];
-  snsLinks?: string[];
+  links?: ProfileLinkInput[];
 };
 
 const buildState = (
@@ -56,7 +58,7 @@ const buildState = (
   story: optional(content.story, createStory),
   activityInfo: optional(content.activityInfo, createActivityInfo),
   genres: toGenres(content.genres),
-  snsLinks: toSnsLinks(content.snsLinks),
+  links: toLinks(content.links),
   published: base.published,
 });
 

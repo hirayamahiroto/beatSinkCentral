@@ -5,10 +5,14 @@ import {
   type RequestContextEnv,
 } from "../../../middlewares/requestContext";
 import test from "./test";
+import getPlayerDetail from "./players/detail/get";
+import getOnboarding from "./onboarding/get";
+import getDashboard from "./dashboard/get";
+import getDashboardSettings from "./dashboard/settings/get";
+import getProfileEdit from "./dashboard/profile/edit/get";
 import usersCreate from "./users/create";
-import usersMe from "./users/me";
-import artistsMe from "./artists/me";
-import getMyProfile from "./artists/me/profile/get";
+import updateMyEmail from "./users/me/post";
+import updateMyAccountId from "./artists/me/post";
 import saveMyProfile from "./artists/me/profile/post";
 import publishMyProfile from "./artists/me/profile/publish/post";
 
@@ -18,12 +22,16 @@ const app = new Hono<Env>()
   .basePath("/api")
   .use("*", requestContextMiddleware)
   .route("/test", test)
-  .route("/users/me", usersMe)
+  .route("/players", getPlayerDetail)
+  .route("/onboarding", getOnboarding)
+  .route("/dashboard", getDashboard)
+  .route("/dashboard/settings", getDashboardSettings)
+  .route("/dashboard/profile/edit", getProfileEdit)
   .route("/users", usersCreate)
-  .route("/artists/me/profile", getMyProfile)
+  .route("/users/me", updateMyEmail)
+  .route("/artists/me", updateMyAccountId)
   .route("/artists/me/profile", saveMyProfile)
-  .route("/artists/me/profile/publish", publishMyProfile)
-  .route("/artists/me", artistsMe);
+  .route("/artists/me/profile/publish", publishMyProfile);
 
 export type AppType = typeof app;
 

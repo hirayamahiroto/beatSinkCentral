@@ -66,7 +66,7 @@ describe("saveMyProfileUseCase", () => {
         name: "Taro",
         story: "私の歩み",
         genres: ["bass", "inward"],
-        snsLinks: ["https://x.com/taro"],
+        links: [{ type: "x", url: "https://x.com/taro" }],
       },
       deps,
     );
@@ -91,7 +91,7 @@ describe("saveMyProfileUseCase", () => {
         imageUrl: "https://example.com/a.png",
         story: "旧",
         genres: ["bass"],
-        snsLinks: ["https://x.com/taro"],
+        links: [{ type: "x", url: "https://x.com/taro" }],
       }),
     );
     deps.artistProfileRepository.upsert.mockImplementation(async (data) =>

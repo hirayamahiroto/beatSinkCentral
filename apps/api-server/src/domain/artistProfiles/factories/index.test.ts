@@ -16,13 +16,13 @@ describe("createArtistProfile", () => {
       name: "  ",
       story: "",
       genres: ["", "  "],
-      snsLinks: [],
+      links: [],
     });
 
     expect(profile.getName()).toBeNull();
     expect(profile.getStory()).toBeNull();
     expect(profile.getGenres()).toEqual([]);
-    expect(profile.getSnsLinks()).toEqual([]);
+    expect(profile.getLinks()).toEqual([]);
   });
 
   it("値が入ったフィールドは振る舞いで取得できる", () => {
@@ -34,14 +34,16 @@ describe("createArtistProfile", () => {
       story: "幼少期から…",
       activityInfo: "東京 / ソロ",
       genres: ["bass", "inward"],
-      snsLinks: ["https://x.com/taro"],
+      links: [{ type: "x", url: "https://x.com/taro" }],
     });
 
     expect(profile.getName()).toBe("Beatboxer Taro");
     expect(profile.getTagline()).toBe("音で世界を旅する");
     expect(profile.getImageUrl()).toBe("https://example.com/a.png");
     expect(profile.getGenres()).toEqual(["bass", "inward"]);
-    expect(profile.getSnsLinks()).toEqual(["https://x.com/taro"]);
+    expect(profile.getLinks()).toEqual([
+      { type: "x", url: "https://x.com/taro", label: null },
+    ]);
   });
 
   it("不正な画像 URL はエラーをスローする", () => {
@@ -59,7 +61,7 @@ describe("reconstructArtistProfile", () => {
       published: true,
       name: "Taro",
       genres: ["bass"],
-      snsLinks: ["https://x.com/taro"],
+      links: [{ type: "x", url: "https://x.com/taro" }],
     });
 
     expect(profile.getId()).toBe("profile-1");
@@ -74,7 +76,7 @@ describe("reconstructArtistProfile", () => {
       published: false,
       name: "Taro",
       genres: ["bass", "inward"],
-      snsLinks: ["https://x.com/taro"],
+      links: [{ type: "x", url: "https://x.com/taro" }],
     });
 
     expect(profile.toPersistence()).toEqual({
@@ -86,7 +88,7 @@ describe("reconstructArtistProfile", () => {
       story: null,
       activityInfo: null,
       genres: ["bass", "inward"],
-      snsLinks: ["https://x.com/taro"],
+      links: [{ type: "x", url: "https://x.com/taro", label: null }],
       published: false,
     });
   });

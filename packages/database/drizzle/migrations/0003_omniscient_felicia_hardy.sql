@@ -1,0 +1,1 @@
+DROP TABLE "artist_profile_sns_links" CASCADE;

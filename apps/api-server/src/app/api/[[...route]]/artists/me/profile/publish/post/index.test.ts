@@ -57,7 +57,7 @@ describe("POST /artists/me/profile/publish", () => {
       imageUrl: "https://example.com/a.png",
       story: "私の歩み",
       genres: ["bass"],
-      snsLinks: ["https://x.com/taro"],
+      links: [{ type: "x", url: "https://x.com/taro" }],
     });
     mockArtistProfileRepository.findByArtistId.mockResolvedValue(publishable);
     mockArtistProfileRepository.setPublished.mockResolvedValue(

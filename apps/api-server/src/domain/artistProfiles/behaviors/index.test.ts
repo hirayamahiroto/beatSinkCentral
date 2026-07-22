@@ -11,7 +11,7 @@ const profile = reconstructArtistProfile({
   story: "私の歩み",
   activityInfo: "東京 / ソロ",
   genres: ["bass", "inward"],
-  snsLinks: ["https://x.com/taro"],
+  links: [{ type: "x", url: "https://x.com/taro" }],
 });
 
 describe("createArtistProfileBehaviors", () => {
@@ -22,7 +22,9 @@ describe("createArtistProfileBehaviors", () => {
     expect(profile.getStory()).toBe("私の歩み");
     expect(profile.getActivityInfo()).toBe("東京 / ソロ");
     expect(profile.getGenres()).toEqual(["bass", "inward"]);
-    expect(profile.getSnsLinks()).toEqual(["https://x.com/taro"]);
+    expect(profile.getLinks()).toEqual([
+      { type: "x", url: "https://x.com/taro", label: null },
+    ]);
     expect(profile.isPublished()).toBe(true);
   });
 
@@ -34,7 +36,7 @@ describe("createArtistProfileBehaviors", () => {
       story: "私の歩み",
       activityInfo: "東京 / ソロ",
       genres: ["bass", "inward"],
-      snsLinks: ["https://x.com/taro"],
+      links: [{ type: "x", url: "https://x.com/taro", label: null }],
       published: true,
     });
   });

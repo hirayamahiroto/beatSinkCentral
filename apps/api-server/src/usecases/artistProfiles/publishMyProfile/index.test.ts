@@ -1,8 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import {
-  publishMyProfileUseCase,
-  type PublishMyProfileDeps,
-} from "./index";
+import { publishMyProfileUseCase, type PublishMyProfileDeps } from "./index";
 import { isUserNotFoundError } from "../../../domain/users/policies/assertRegistered";
 import { isArtistProfileNotFoundError } from "../../../domain/artistProfiles/policies/assertArtistProfileExists";
 import { isProfileNotPublishableError } from "../../../domain/artistProfiles/policies/assertProfilePublishable";
@@ -55,7 +52,7 @@ const publishableProfile = reconstructArtistProfile({
   imageUrl: "https://example.com/a.png",
   story: "私の歩み",
   genres: ["bass"],
-  snsLinks: ["https://x.com/taro"],
+  links: [{ type: "x", url: "https://x.com/taro" }],
 });
 
 describe("publishMyProfileUseCase", () => {
@@ -96,7 +93,7 @@ describe("publishMyProfileUseCase", () => {
         artistId: "artist-1",
         published: false,
         name: "Taro",
-        snsLinks: [],
+        links: [],
       }),
     );
 

@@ -14,7 +14,7 @@ const fullContent = {
   imageUrl: "https://example.com/a.png",
   story: "私の歩み",
   genres: ["bass"],
-  snsLinks: ["https://x.com/taro"],
+  links: [{ type: "x", url: "https://x.com/taro" }],
 };
 
 describe("assertProfilePublishable", () => {
@@ -28,7 +28,7 @@ describe("assertProfilePublishable", () => {
     const profile = reconstructArtistProfile({
       ...fullContent,
       story: "",
-      snsLinks: [],
+      links: [],
     });
 
     expect(() => assertProfilePublishable(profile)).toThrow();
@@ -37,7 +37,7 @@ describe("assertProfilePublishable", () => {
     } catch (error) {
       expect(isProfileNotPublishableError(error)).toBe(true);
       if (isProfileNotPublishableError(error)) {
-        expect(error.missingFields).toEqual(["story", "snsLinks"]);
+        expect(error.missingFields).toEqual(["story", "links"]);
       }
     }
   });

@@ -5,3 +5,11 @@ INSERT INTO "artist_status_masters" ("status_code", "status_name", "description"
   ('draft', '下書き', '非公開状態。アーティストプロフィール作成直後のデフォルト状態。'),
   ('published', '公開中', '公開状態。一般ユーザーから閲覧可能。')
 ON CONFLICT ("status_code") DO NOTHING;
+
+INSERT INTO "link_types" ("code", "label") VALUES
+  ('youtube', 'YouTube'),
+  ('x', 'X'),
+  ('instagram', 'Instagram'),
+  ('tiktok', 'TikTok'),
+  ('other', 'その他')
+ON CONFLICT ("code") DO NOTHING;

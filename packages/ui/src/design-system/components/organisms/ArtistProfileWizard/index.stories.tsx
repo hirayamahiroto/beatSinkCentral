@@ -16,6 +16,13 @@ const meta = {
     },
   },
   args: {
+    linkTypeOptions: [
+      { type: "youtube", label: "YouTube" },
+      { type: "x", label: "X" },
+      { type: "instagram", label: "Instagram" },
+      { type: "tiktok", label: "TikTok" },
+      { type: "other", label: "その他" },
+    ],
     onSubmit: (data) => console.log("submit", data),
     onSaveDraft: (data) => console.log("draft", data),
   },

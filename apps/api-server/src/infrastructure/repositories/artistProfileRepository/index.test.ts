@@ -64,11 +64,11 @@ describe("createArtistProfileRepository", () => {
       expect(result).toBeNull();
     });
 
-    it("プロフィールと子（ジャンル / SNS）を組み立てて返す", async () => {
+    it("プロフィールと子（ジャンル / リンク）を組み立てて返す", async () => {
       mock.enqueue(
         [profileRow],
         [{ genre: "bass" }, { genre: "inward" }],
-        [{ url: "https://x.com/taro" }],
+        [{ type: "x", url: "https://x.com/taro", label: null }],
       );
       const repo = createArtistProfileRepository(mock.db as never);
 
@@ -76,7 +76,9 @@ describe("createArtistProfileRepository", () => {
 
       expect(result?.getName()).toBe("Taro");
       expect(result?.getGenres()).toEqual(["bass", "inward"]);
-      expect(result?.getSnsLinks()).toEqual(["https://x.com/taro"]);
+      expect(result?.getLinks()).toEqual([
+        { type: "x", url: "https://x.com/taro", label: null },
+      ]);
       expect(result?.isPublished()).toBe(true);
     });
   });
@@ -94,7 +96,14 @@ describe("createArtistProfileRepository", () => {
 
   describe("upsert", () => {
     it("保存内容を反映した Entity を返し、子テーブルを置換する", async () => {
-      mock.enqueue([profileRow], undefined, undefined, undefined, undefined);
+      mock.enqueue(
+        [profileRow],
+        undefined,
+        undefined,
+        undefined,
+        [{ id: 1, code: "x" }],
+        undefined,
+      );
       const repo = createArtistProfileRepository(mock.db as never);
 
       const result = await repo.upsert({
@@ -106,7 +115,7 @@ describe("createArtistProfileRepository", () => {
         story: "私の歩み",
         activityInfo: null,
         genres: ["bass"],
-        snsLinks: ["https://x.com/taro"],
+        links: [{ type: "x", url: "https://x.com/taro", label: null }],
         published: false,
       });
 

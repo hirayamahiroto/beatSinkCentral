@@ -11,7 +11,15 @@ export const saveProfileRequestSchema = z.object({
   story: z.string().nullable().optional(),
   activityInfo: z.string().nullable().optional(),
   genres: z.array(z.string()).optional(),
-  snsLinks: z.array(z.string()).optional(),
+  links: z
+    .array(
+      z.object({
+        type: z.string(),
+        url: z.string(),
+        label: z.string().nullable().optional(),
+      }),
+    )
+    .optional(),
 });
 
 export type SaveProfileRequestBody = z.infer<typeof saveProfileRequestSchema>;

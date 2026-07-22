@@ -27,10 +27,10 @@ const wizardSchema = z.object({
   location: z.string().trim().optional(),
   activityForm: z.enum(["solo", "unit", "crew"]),
   affiliation: z.string().trim().optional(),
-  snsLinks: z
+  links: z
     .array(
       z.object({
-        platform: z.enum(["youtube", "x", "instagram", "tiktok", "other"]),
+        type: z.string().trim().min(1, "種別を選択してください"),
         url: z.string().trim().url("URLを入力してください"),
       }),
     )
@@ -42,8 +42,16 @@ type WizardValues = z.infer<typeof wizardSchema>;
 
 export type { WizardValues };
 
+type LinkTypeOption = {
+  type: string;
+  label: string;
+};
+
+export type { LinkTypeOption };
+
 type ArtistProfileWizardProps = {
   email: string;
+  linkTypeOptions: LinkTypeOption[];
   defaultValues?: Partial<WizardValues>;
   onSubmit: (data: WizardValues) => Promise<void> | void;
   onSaveDraft?: (data: WizardValues) => void;
@@ -58,23 +66,16 @@ const STEP_FIELDS: Record<number, (keyof WizardValues)[]> = {
   1: ["name", "imageUrl", "tagline", "genres"],
   2: ["storyOrigin"],
   3: [],
-  4: ["snsLinks"],
+  4: ["links"],
   5: [],
 };
-
-const PLATFORM_OPTIONS = [
-  { value: "youtube", label: "YouTube" },
-  { value: "x", label: "X" },
-  { value: "instagram", label: "Instagram" },
-  { value: "tiktok", label: "TikTok" },
-  { value: "other", label: "その他" },
-];
 
 const nativeSelectClass =
   "h-10 rounded-md border border-white/10 bg-white/5 px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 export const ArtistProfileWizard = ({
   email,
+  linkTypeOptions,
   defaultValues,
   onSubmit,
   onSaveDraft,
@@ -82,6 +83,7 @@ export const ArtistProfileWizard = ({
   error = null,
 }: ArtistProfileWizardProps) => {
   const [step, setStep] = React.useState(1);
+  const [defaultLinkType] = linkTypeOptions;
 
   const {
     register,
@@ -104,13 +106,13 @@ export const ArtistProfileWizard = ({
       location: "",
       activityForm: "solo",
       affiliation: "",
-      snsLinks: [{ platform: "youtube", url: "" }],
+      links: defaultLinkType ? [{ type: defaultLinkType.type, url: "" }] : [],
       published: false,
       ...defaultValues,
     },
   });
 
-  const { fields, append, remove } = useFieldArray({ control, name: "snsLinks" });
+  const { fields, append, remove } = useFieldArray({ control, name: "links" });
 
   const goNext = async () => {
     const valid = await trigger(STEP_FIELDS[step]);
@@ -148,13 +150,19 @@ export const ArtistProfileWizard = ({
           <Card>
             <div className="flex flex-col gap-5">
               <div className="flex flex-col gap-1">
-                <Typography variant="h4">まず、あなたの「顔」を作りましょう</Typography>
+                <Typography variant="h4">
+                  まず、あなたの「顔」を作りましょう
+                </Typography>
                 <Typography variant="small" tone="muted">
                   一覧やシェア時に最初に目に入る情報です。
                 </Typography>
               </div>
 
-              <FormField label="活動名" htmlFor="name" error={errors.name?.message}>
+              <FormField
+                label="活動名"
+                htmlFor="name"
+                error={errors.name?.message}
+              >
                 <Input placeholder="例: SAKU" {...register("name")} />
               </FormField>
 
@@ -205,7 +213,9 @@ export const ArtistProfileWizard = ({
           <Card>
             <div className="flex flex-col gap-5">
               <div className="flex flex-col gap-1">
-                <Typography variant="h4">あなたの背景を聞かせてください</Typography>
+                <Typography variant="h4">
+                  あなたの背景を聞かせてください
+                </Typography>
                 <Typography variant="small" tone="muted">
                   ここが一番読まれる部分です。うまく書こうとしなくて大丈夫。問いに答えるだけでOK。
                 </Typography>
@@ -258,7 +268,10 @@ export const ArtistProfileWizard = ({
 
               <div className="flex flex-col gap-2">
                 <Typography variant="small">活動形態</Typography>
-                <select className={nativeSelectClass} {...register("activityForm")}>
+                <select
+                  className={nativeSelectClass}
+                  {...register("activityForm")}
+                >
                   <option value="solo">ソロ</option>
                   <option value="unit">ユニット</option>
                   <option value="crew">バンド / クルー</option>
@@ -266,7 +279,10 @@ export const ArtistProfileWizard = ({
               </div>
 
               <FormField label="所属" htmlFor="affiliation">
-                <Input placeholder="例: 独立 / クルー名" {...register("affiliation")} />
+                <Input
+                  placeholder="例: 独立 / クルー名"
+                  {...register("affiliation")}
+                />
               </FormField>
             </div>
           </Card>
@@ -287,22 +303,23 @@ export const ArtistProfileWizard = ({
                   <div key={row.id} className="flex items-start gap-3">
                     <select
                       className={nativeSelectClass}
-                      {...register(`snsLinks.${index}.platform` as const)}
+                      aria-label="リンクの種別"
+                      {...register(`links.${index}.type` as const)}
                     >
-                      {PLATFORM_OPTIONS.map((o) => (
-                        <option key={o.value} value={o.value}>
-                          {o.label}
+                      {linkTypeOptions.map((option) => (
+                        <option key={option.type} value={option.type}>
+                          {option.label}
                         </option>
                       ))}
                     </select>
                     <div className="flex flex-1 flex-col gap-1">
                       <Input
                         placeholder="https://..."
-                        {...register(`snsLinks.${index}.url` as const)}
+                        {...register(`links.${index}.url` as const)}
                       />
-                      {errors.snsLinks?.[index]?.url && (
+                      {errors.links?.[index]?.url && (
                         <Typography variant="small" tone="danger">
-                          {errors.snsLinks[index]?.url?.message}
+                          {errors.links[index]?.url?.message}
                         </Typography>
                       )}
                     </div>
@@ -321,22 +338,26 @@ export const ArtistProfileWizard = ({
                 ))}
               </div>
 
-              {typeof errors.snsLinks?.message === "string" && (
+              {typeof errors.links?.message === "string" && (
                 <Typography variant="small" tone="danger">
-                  {errors.snsLinks.message}
+                  {errors.links.message}
                 </Typography>
               )}
 
-              <div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => append({ platform: "youtube", url: "" })}
-                >
-                  ＋ リンクを追加
-                </Button>
-              </div>
+              {defaultLinkType && (
+                <div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      append({ type: defaultLinkType.type, url: "" })
+                    }
+                  >
+                    ＋ リンクを追加
+                  </Button>
+                </div>
+              )}
             </div>
           </Card>
         )}

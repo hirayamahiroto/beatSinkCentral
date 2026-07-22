@@ -30,7 +30,7 @@ describe("GET /artists/:accountId", () => {
         imageUrl: "https://example.com/a.png",
         story: "私の歩み",
         genres: ["bass"],
-        snsLinks: ["https://x.com/taro"],
+        links: [{ type: "x", url: "https://x.com/taro" }],
       }),
     );
 
