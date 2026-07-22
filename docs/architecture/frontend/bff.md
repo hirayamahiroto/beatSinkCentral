@@ -2,7 +2,7 @@
 
 > **位置づけ**
 > BFF は **フロントエンド（`apps/beatfolio`）が api-server と対話するための仲介層**であり、フロントエンドアーキテクチャの一部である。
-> api-server 側の内部設計（ドメイン / usecase / repository 等）とは責務が分かれる。サーバー内部設計は [`docs/server-architecture/`](../server-architecture/architecture.md) を参照。
+> api-server 側の内部設計（ドメイン / usecase / repository 等）とは責務が分かれる。サーバー内部設計は [`docs/server-architecture/`](../server/architecture.md) を参照。
 > 認証・セッション観点での BFF の役割は [`authentication.md`](../authentication.md) を参照。本ドキュメントは **データフローの設計基盤**を担う。
 > Web / iOS 等のマルチクライアント化で BFF がどう発展するかは [`bff-multi-client.md`](./bff-multi-client.md) を参照。
 
@@ -51,7 +51,7 @@ read も write も **BFF route（`/api/*`）を経由する**。経路は対称�
 - api-server は「種別一覧」などの **汎用 API** を返す（画面都合を持たない）。BFF がそれを画面用に整形し、利用層が持つ `code` / FK を表示用の `label` / `icon` へ解決する。
 - 選択肢（ウィザードのドロップダウン等）も BFF を経由して供給する。`packages/ui` 側に固定リストを持たない（[`component-design.md`](./component-design.md)「表示語彙は DB 由来・props で受け取る」）。
 - 「UI に `code` だけ渡してフロントでラベル変換」は語彙のハードコードに当たり禁止。これは read route の「整形」の一部として BFF で完結させる。
-- 出所と責務分担の全体像（DB → api-server → BFF → UI）は [`../server-architecture/database-design.md`](../server-architecture/database-design.md) §7 を参照（canonical）。
+- 出所と責務分担の全体像（DB → api-server → BFF → UI）は [`../server/database-design.md`](../server/database-design.md) §7 を参照（canonical）。
 
 ### read も write も BFF route を経由する（対称な経路）
 

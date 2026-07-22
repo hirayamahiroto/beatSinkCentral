@@ -5,7 +5,7 @@
 > 種別・媒体・分類など「**固有の語彙を持つデータ**」をどうモデリングするかの設計思想を定義する。
 > スキーマ変更・新テーブル追加時の判断基準として参照する。
 > マイグレーションの手順は [`database-migration.md`](./database-migration.md)、接続は [`database-connection.md`](./database-connection.md)、全体レイヤー構成は [`architecture.md`](./architecture.md) を参照。
-> 汎用的なクエリ品質（N+1・スコープ条件・過剰取得等）は [`.claude/rules/code-review-checklist.md`](../../.claude/rules/code-review-checklist.md)。
+> 汎用的なクエリ品質（N+1・スコープ条件・過剰取得等）は [`.claude/rules/code-review-checklist.md`](../../../.claude/rules/code-review-checklist.md)。
 
 ---
 
@@ -72,7 +72,7 @@
 
 - まだ語彙が定まらず、**自由入力で観察する段階**のもの。
   - 例: `genres` は現状あえて `varchar` 直持ち（インライン）。
-  - 根拠: [`profile-information-design.md`](../phase1-player-introduction/profile-information-design.md) 「当面は自由入力。語彙が見えてから固定化」と整合。
+  - 根拠: [`profile-information-design.md`](../../product/profile-information-design.md) 「当面は自由入力。語彙が見えてから固定化」と整合。
   - 語彙が安定したらマスタへ昇格する、が既定路線。
 
 > 同じ親（プロフィール）配下でも判断は分かれる。**`links` ＝ マスタ参照／`genres` ＝ 当面インライン**。
@@ -101,7 +101,7 @@
 これにより:
 
 - 「何のリンクか」は **保存された参照から確定**する（URL からの推定が不要になる）。
-- 媒体単位の外部遷移計測が、参照整合性つきで可能になる（[`profile-information-design.md`](../phase1-player-introduction/profile-information-design.md) §5-2 のファネル計測と整合）。
+- 媒体単位の外部遷移計測が、参照整合性つきで可能になる（[`profile-information-design.md`](../../product/profile-information-design.md) §5-2 のファネル計測と整合）。
 
 > 具体的なテーブル定義・ドメイン／API／BFF への影響は、本思想に沿って別途スキーマ設計で確定する。
 
@@ -129,7 +129,7 @@ UI（packages/ui）            受け取った形を描画するだけ。取得�
 | **BFF**        | 汎用 API を画面が必要な形へ **加工**。**表示用の加工制御はここに集約** | ドメイン判断                                     |
 | **UI**         | 受け取った表示用データを **描画**                                      | データ取得・ドメイン語彙のハードコード・値の変換 |
 
-> 詳細な read/write の厚みと経路は [`../frontend-architecture/bff.md`](../frontend-architecture/bff.md)（read 厚い・write 薄い）に従う。本節はそこへ「**表示語彙も DB 由来**」という出所の制約を加える。
+> 詳細な read/write の厚みと経路は [`../frontend/bff.md`](../frontend/bff.md)（read 厚い・write 薄い）に従う。本節はそこへ「**表示語彙も DB 由来**」という出所の制約を加える。
 
 ### 7-2. マスタ語彙の供給経路
 
@@ -140,7 +140,7 @@ link_type マスタ ──▶ api-server 汎用API（種別一覧）──▶ BF
 ```
 
 - 選択肢（ウィザードのドロップダウン等）も DB マスタ由来にする。フロントに固定リストを持たない。
-- `packages/ui` は Next 非依存・データ取得をしないため、マスタ取得は **app 層（page / ClientAdapter）** が行い、組織コンポーネントへ **props で渡す**（[`../frontend-architecture/component-design.md`](../frontend-architecture/component-design.md) のレイヤー責務に準拠）。
+- `packages/ui` は Next 非依存・データ取得をしないため、マスタ取得は **app 層（page / ClientAdapter）** が行い、組織コンポーネントへ **props で渡す**（[`../frontend/component-design.md`](../frontend/component-design.md) のレイヤー責務に準拠）。
 
 ### 7-3. 値の解決は BFF（UI で code をラベルに変換しない）
 
@@ -167,6 +167,6 @@ link_type マスタ ──▶ api-server 汎用API（種別一覧）──▶ BF
 - [`architecture.md`](./architecture.md) — レイヤー構成・DI
 - [`database-migration.md`](./database-migration.md) — マイグレーション手順
 - [`database-connection.md`](./database-connection.md) — 接続パターン
-- [`../frontend-architecture/bff.md`](../frontend-architecture/bff.md) — BFF の read/write 厚み・経路（表示用加工の集約先）
-- [`../frontend-architecture/component-design.md`](../frontend-architecture/component-design.md) — UI レイヤー責務（取得は app 層・描画は組織）
-- [`../phase1-player-introduction/profile-information-design.md`](../phase1-player-introduction/profile-information-design.md) — プロフィール情報設計（リンク・計測の要請元）
+- [`../frontend/bff.md`](../frontend/bff.md) — BFF の read/write 厚み・経路（表示用加工の集約先）
+- [`../frontend/component-design.md`](../frontend/component-design.md) — UI レイヤー責務（取得は app 層・描画は組織）
+- [`../../product/profile-information-design.md`](../../product/profile-information-design.md) — プロフィール情報設計（リンク・計測の要請元）

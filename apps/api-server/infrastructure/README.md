@@ -5,7 +5,7 @@ api-server の Vercel project と環境変数を Terraform で管理する。
 このプロジェクトは **自己完結型** で、他の Terraform プロジェクト(shared 等)に依存しない。
 必要な値はすべて自分の `terraform.tfvars` から読み込む。
 
-全体方針は [`docs/infrastructure/README.md`](../../../docs/infrastructure/README.md) を参照。
+全体方針は [`docs/architecture/infrastructure/README.md`](../../../docs/architecture/infrastructure/README.md) を参照。
 
 ## api-server 固有の注意
 
@@ -14,7 +14,7 @@ api-server の Vercel project と環境変数を Terraform で管理する。
 `production_database_url` / `preview_database_url` に Transaction pooler の URL を設定する。
 マイグレーション用 (5432) は **GitHub Actions Secrets 側で別管理**(本リポジトリの管理対象外、Phase 2 で統合予定)。
 
-詳細は [`docs/server-architecture/database-connection.md`](../../../docs/server-architecture/database-connection.md) を参照。
+詳細は [`docs/architecture/server/database-connection.md`](../../../docs/architecture/server/database-connection.md) を参照。
 
 ### AUTH0_SECRET は beatfolio と同値を入れる
 

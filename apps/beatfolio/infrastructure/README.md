@@ -5,7 +5,7 @@ beatfolio の Vercel project と環境変数を Terraform で管理する。
 このプロジェクトは **自己完結型** で、他の Terraform プロジェクトには依存しない。
 必要な値はすべて自分の `terraform.tfvars` から読み込む。
 
-全体方針は [`docs/infrastructure/README.md`](../../../docs/infrastructure/README.md) を参照。
+全体方針は [`docs/architecture/infrastructure/README.md`](../../../docs/architecture/infrastructure/README.md) を参照。
 
 ## 前提
 
@@ -108,5 +108,5 @@ Vercel Dashboard での手動変更は禁止(差分が出たら Terraform を正
 
 ## 関連
 
-- [`docs/infrastructure/README.md`](../../../docs/infrastructure/README.md) — IaC 全体方針
+- [`docs/architecture/infrastructure/README.md`](../../../docs/architecture/infrastructure/README.md) — IaC 全体方針
 - [`apps/api-server/infrastructure/`](../../api-server/infrastructure/) — 同じパターンで管理される api-server

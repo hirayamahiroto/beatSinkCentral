@@ -11,7 +11,7 @@
 
 | # | カテゴリ | 説明 |
 |---|---------|------|
-| 0 | [環境構築](./environment.md) | 技術スタック、Storybook、CI/CD、Linter設定 |
+| 0 | 環境構築（未作成） | 技術スタック、Storybook、CI/CD、Linter設定 |
 | 1 | [アプリケーション方針](./application-policy.md) | SEO対策、SSR/CSRの選択基準 |
 | 2 | [実装の前提](./implementation.md) | Next.js App Router、実装パターン |
 | 3 | [Tailwind CSS実装規約](./tailwind.md) | スタイリング方針、クラス名の結合ルール |
@@ -22,10 +22,10 @@
 | 8 | [BFF 設計](./bff.md) | api-server 仲介層のストラテジーと実装設計（read / write とも BFF route 経由の対称設計） |
 | 9 | [BFF マルチクライアント展望](./bff-multi-client.md) | Web / iOS 等のマルチクライアント化で BFF が per-client に独立する将来展望 |
 | 10 | [レスポンシブ対応](./responsive.md) | ブレイクポイント、モバイルファースト設計 |
-| 11 | [パフォーマンス](./performance.md) | Core Web Vitals、最適化手法 |
-| 12 | [アクセシビリティ](./accessibility.md) | WCAG準拠、WAI-ARIA対応 |
-| 13 | [開発ルール](./development-rules.md) | コードレビュー、Git運用 |
-| 14 | [禁止事項](./prohibited.md) | 技術的制約、実装制約 |
+| 11 | パフォーマンス（未作成） | Core Web Vitals、最適化手法 |
+| 12 | アクセシビリティ（未作成） | WCAG準拠、WAI-ARIA対応 |
+| 13 | 開発ルール（未作成） | コードレビュー、Git運用 |
+| 14 | 禁止事項（未作成） | 技術的制約、実装制約 |
 | 15 | [UIライブラリ選定](./ui-library.md) | Headless UI、ShadCN/UI、スタイル付きライブラリの比較 |
 
 ---

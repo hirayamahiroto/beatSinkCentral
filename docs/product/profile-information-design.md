@@ -6,7 +6,7 @@
 > 「何を・どう載せ・どこで見せるか」を、**プロダクトビジョンから逆算**して決めることを目的とする。
 >
 > 戦略・競合分析・ポジショニングの検討経緯は本体ではなく **付録**に要約する（情報設計の根拠として参照）。
-> 既存の規範 [`phase0-flow-design.md`](./phase0-flow-design.md) と一部分岐している（StoryLine→Story、名鑑→発掘の方向）。**WIP**。合意項目を追って規範へ反映する。
+> 既存の規範 [`phase0-flow-design.md`](./flow-design.md) と一部分岐している（StoryLine→Story、名鑑→発掘の方向）。**WIP**。合意項目を追って規範へ反映する。
 
 ---
 
@@ -159,7 +159,7 @@
 - Vercel 環境に素直な構成を優先（Web Analytics ＋ 主要アクションのカスタムイベント）。具体ツールは実装時に確定。
 - 数値・率（詳細到達率／深掘り率／応援遷移率 等）の具体設計は **後続ステップ**（意図確定の後）。
 
-> 実装タスク（イベント実装・配線）は本書ではなく #165 ／ [`roadmap.md`](./roadmap.md) 側に展開する。
+> 実装タスク（イベント実装・配線）は本書ではなく #165 ／ [`roadmap.md`](../plans/phase1-player-introduction/roadmap.md) 側に展開する。
 
 ---
 
@@ -204,7 +204,7 @@
 ## 関連ドキュメント
 
 - [`design-core.md`](./design-core.md) — ビジョン・JTBD・フライホイール（北極星の一次情報）
-- [`roadmap.md`](./roadmap.md) — Phase 1 全体ロードマップ（実装ステップ）
-- [`phase0-flow-design.md`](./phase0-flow-design.md) — 動線設計（本書が一部分岐する規範）
-- [`step1-implementation-plan.md`](./step1-implementation-plan.md) — 実装計画（タスク展開先）
-- [`ui-implementation-plan.md`](./ui-implementation-plan.md) — UI 実装計画
+- [`roadmap.md`](../plans/phase1-player-introduction/roadmap.md) — Phase 1 全体ロードマップ（実装ステップ）
+- [`phase0-flow-design.md`](./flow-design.md) — 動線設計（本書が一部分岐する規範）
+- [`step1-implementation-plan.md`](../plans/phase1-player-introduction/step1-implementation-plan.md) — 実装計画（タスク展開先）
+- [`ui-implementation-plan.md`](../plans/phase1-player-introduction/ui-implementation-plan.md) — UI 実装計画

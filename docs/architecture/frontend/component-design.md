@@ -42,7 +42,7 @@ UI コンポーネントは、表示するドメイン語彙（種別ラベル�
 - 選択肢（ドロップダウン等）も props で受け取る。`packages/ui` 内に固定リストを定義しない。
 - `code` だけ受け取って UI 側でラベルへ変換しない（語彙のハードコードに該当）。**解決済みの形**で受け取る。
 - 例外: ドメインに属さない純粋な UI コピー（ボタン文言「次へ」等）は UI に置いてよい。
-- 出所と責務分担の全体像は [`../server-architecture/database-design.md`](../server-architecture/database-design.md) §7 を参照（canonical）。
+- 出所と責務分担の全体像は [`../server/database-design.md`](../server/database-design.md) §7 を参照（canonical）。
 
 #### フォームライブラリの扱い（レイヤー別）
 

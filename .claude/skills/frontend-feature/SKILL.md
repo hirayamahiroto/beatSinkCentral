@@ -10,9 +10,10 @@ description: beatfolio / packages/ui のフロントエンド UI（Atomic Design
 
 ## 0. 着手前（必須）
 
-- 規範ドキュメントを**先に読む**：
-  - `docs/frontend-architecture/{README,component-design,form-design,application-policy,state-management,ui-library,tailwind,responsive}.md`
-  - 対象機能の情報設計ドキュメント（`docs/.../*.md`）
+- 規範ドキュメントを**先に読む**（索引は `docs/README.md`）：
+  - 何を作るか: `docs/product/design-core.md`（最上位の判断基準）→ `docs/product/flow-design.md` → `docs/product/profile-information-design.md`
+  - どう作るか: `docs/architecture/frontend/{README,component-design,routing,bff,form-design,application-policy,state-management,ui-library,tailwind,responsive}.md`
+- 規範は `docs/product/` と `docs/architecture/` のみ。`docs/plans/` と `docs/discussions/` は判断の根拠にしない。
 - 横断観点は `.claude/rules/code-review-checklist.md`（特に §6 データ取得タイミング / §10 レイヤー責務 / §13 インターフェース自己説明性 / §14 コメントを残さない / §15 型安全を壊す Optional フォールバックを使わない）。
 - **設計ドキュメントが規範、既存コードは実装結果**。食い違ったら勝手に既存へ合わせず **ユーザーに共有して方針確認**（CLAUDE.md）。
 - **まず情報設計／動線を固める**（何を・どの順で・どこまで開示するか）。必要なら素の HTML モックで動線を確認してから React 化する。Layer 0（業務/情報設計）が無いまま部品を作り始めない（[[feedback_business_design_before_ai]]）。
@@ -34,33 +35,40 @@ description: beatfolio / packages/ui のフロントエンド UI（Atomic Design
 ## 2. レイヤー別の勘所
 
 ### カラー / デザイントークン
+
 - **neutral dark テーマ**。`bg-background` / `text-foreground` / `bg-primary` / `bg-card` / `text-muted-foreground` / `border-border` / `bg-secondary` / `destructive` を使う。
 - 出所は `packages/ui/global.css` の CSS 変数（oklch・dark-first）。**アドホックな色（`bg-lime-400` 等）を直書きしない**。モックで使った差し色は実装に持ち込まない。
 
 ### primitives（shadcn）
+
 - 不足コンポーネントは `cd packages/ui && npx shadcn@latest add <name> --yes`（`components.json` は `packages/ui`・**network 必要**）。生成物は**改変しない**。`primitives/index.ts` に export を追加。
 - radix 依存は primitives の例外。atoms 以上に持ち込まない。
 
 ### atoms
+
 - primitive を薄くラップ。**色味（`bg-white/5 border-white/10` 等）のみ上書きし、padding / flex / gap / rounded などの構造スタイルは持たない**（[[feedback_atom_thin_wrapper_brand_only]]）。
 - 表現を増やすときは `className` 直書きでなく **`variant` / `tone` の軸を追加**（例: Typography に `tone="muted"`）。
 - ref が要る（フォーカス制御・フォーム接続）→ `forwardRef`、表示専用 → 単純関数。
 - `Stack` は generic atom を組み合わせて文脈を作る organism / page で使う。文脈を持つ atom（Card 等）は自分の構造を所有する（[[feedback_stack_layer_responsibility]]）。
 
 ### molecules
+
 - atoms の組み合わせ + レイアウト `className` のみ。**RHF 非依存**＝`value` / `onChange` / `ref` の Controlled API（`register` でも `Controller` でも繋がる形に保つ）。
 - `FormField` が label / htmlFor / hint / error の a11y 連携を内部完結している。新フィールドはこれに乗せる。
 
 ### organisms
+
 - プロダクト固有。`className` 直書き可。**RHF + zod**（schema は画面と 1:1＝UI 入力ルール。サーバーのドメイン検証とは責務が別で、重複は許容）。
 - `register` を第一選択。`Controller` は非ネイティブ / 複合入力のみ（TagInput・Switch・Select 等）。配列は `useFieldArray`。
 - 状態管理ライブラリ（Jotai 等）は現時点で入れない（[[feedback_state_management]]）。
 
 ### app（`apps/beatfolio`）
+
 - `page.tsx` = server（データ取得・`redirect`・session 判定）。`"use client"` は **ClientAdapter のみ**に集約。hook は純粋（`next/*` 利用可だがディレクティブは付けない）。
 - `next/link` / `next/image` / `next/navigation` は **app 層だけ**。`packages/ui` は Next 非依存に保つ（[[feedback_keep_foundation_react_ts]]）。ClientAdapter が hook の戻り値を関数 / 値として organism に渡す。
 
 ### Storybook
+
 - 各コンポーネントに `index.stories.tsx`。description は**責務と使い時**に絞る。Tailwind クラス列挙などの実装詳細は書かない（[[feedback_storybook_descriptions]]）。
 - 必須 props を持つ Controlled コンポーネントの story は、args を満たしつつ `render` で state を持たせて挙動を見せる。
 

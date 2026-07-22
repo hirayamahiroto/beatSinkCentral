@@ -128,8 +128,8 @@ const plan = await agent(
 機能: ${feature}
 
 必ず読む:
-- docs/server-architecture/architecture.md（レイヤー責務・classless OOP・依存方向）
-- 上記機能に対応する docs/ 配下の設計ドキュメント（あれば grep で特定）
+- docs/architecture/server/architecture.md（レイヤー責務・classless OOP・依存方向）
+- docs/product/design-core.md（何を作るか。索引は docs/README.md）と、対応する docs/architecture/ 配下の規範
 - .claude/rules/code-review-checklist.md
 - 類似する既存ドメイン（apps/api-server/src/domain/users もしくは artists 一式）と既存 usecase/route
 

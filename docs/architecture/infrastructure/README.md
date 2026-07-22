@@ -152,5 +152,5 @@ Phase 5-c: deploy-*.yml から手動 env 操作を撤去
 
 ## 関連ドキュメント
 
-- [データベース接続パターン](../server-architecture/database-connection.md) — Supabase pooler の使い分け
-- [外部クライアントの実装パターン](../server-architecture/external-clients.md) — 環境変数を扱うクライアントの遅延初期化
+- [データベース接続パターン](../server/database-connection.md) — Supabase pooler の使い分け
+- [外部クライアントの実装パターン](../server/external-clients.md) — 環境変数を扱うクライアントの遅延初期化

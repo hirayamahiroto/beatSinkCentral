@@ -703,7 +703,7 @@ const FREE_PLAN_LIMIT = 3;
 
 ## 14. マスタ参照と DB 由来の表示語彙 🟡 推奨
 
-> 設計思想の本体は [`docs/server-architecture/database-design.md`](../../docs/server-architecture/database-design.md)（canonical）。本項はそのレビュー観点版。
+> 設計思想の本体は [`docs/server-architecture/database-design.md`](../../docs/architecture/server/database-design.md)（canonical）。本項はそのレビュー観点版。
 
 ### 14-1. 種別・媒体・分類はマスタで管理し、参照する
 

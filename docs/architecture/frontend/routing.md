@@ -3,7 +3,7 @@
 > **位置づけ**
 > 本ドキュメントは **beatfolio の画面 URL（ユーザーが辿る遷移）の設計方針**を定める。
 > BFF の `/api/*` ルート設計は [`bff.md`](./bff.md) を参照。両者の対応関係は原則6で規定する。
-> API（api-server）の URL 設計は [`../server-architecture/api-design-guidelines.md`](../server-architecture/api-design-guidelines.md) を参照。
+> API（api-server）の URL 設計は [`../server/api-design-guidelines.md`](../server/api-design-guidelines.md) を参照。
 
 ---
 

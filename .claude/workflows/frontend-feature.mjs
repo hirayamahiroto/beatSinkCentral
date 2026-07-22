@@ -127,10 +127,10 @@ const plan = await agent(
 機能: ${feature}
 
 必ず読む:
-- docs/frontend-architecture/component-design.md（Atomic Design・文脈の有無・"use client" 境界）
-- docs/frontend-architecture/form-design.md（RHF は organism 以上・register/Controller）
-- docs/frontend-architecture/{application-policy,state-management,ui-library,tailwind}.md
-- 対象機能の情報設計ドキュメント（docs/ 配下を grep で特定）
+- docs/architecture/frontend/component-design.md（Atomic Design・文脈の有無・"use client" 境界）
+- docs/architecture/frontend/form-design.md（RHF は organism 以上・register/Controller）
+- docs/architecture/frontend/{routing,bff,application-policy,state-management,ui-library,tailwind}.md
+- docs/product/{design-core,flow-design,profile-information-design}.md（何を作るか。索引は docs/README.md）
 - 既存の似た atom/molecule/organism（packages/ui/src/design-system/components 配下）と global.css のカラートークン
 
 方針:
