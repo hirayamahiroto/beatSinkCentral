@@ -5,101 +5,87 @@ description: beatfolio / packages/ui のフロントエンド UI（Atomic Design
 
 # フロントエンド UI 実装ハーネス
 
-`apps/beatfolio` / `packages/ui` に UI を足すときの「順序」と「毎回ハマる/見落とす観点」をまとめた手順書。
-規範ドキュメントの置き換えではなく、**着手前のチェックリスト**として使う。
+`apps/beatfolio` / `packages/ui` に UI を足すときの**手順**と、**docs に書かれていない運用知**をまとめる。
 
-> **ワークフローとの関係**
-> `.claude/workflows/frontend-feature.mjs` は、この手順を複数エージェントで実行するオーケストレーション
-> （規範読解 → 計画 → 実装 → 多面検証）。ユーザーがワークフロー実行を明示的に要求したときだけ起動する。
-> ワークフローの実装フェーズは**この skill を呼び出してから**作業するので、両者の内容は一致させること。
-> 片方だけ更新しない。
+> **このファイルは規範ではない。**
+> 設計規範は `docs/` にある。ここに規範を書き写さない（二重管理になり、必ず片方が腐る）。
+> このファイルが持つのは「どの順で作業するか」「どの規範をいつ読むか」「何で毎回ハマるか」だけ。
 
 ## 0. 着手前（必須）
 
-- 規範ドキュメントを**先に読む**（索引は `docs/README.md`）。順序は「何を作るか → どう作るか」：
-  1. `docs/product/design-core.md`（最上位の判断基準）→ `docs/product/flow-design.md` → `docs/product/profile-information-design.md`
-  2. `docs/architecture/frontend/routing.md`（画面 URL）→ `docs/architecture/frontend/bff/design.md`（read/write の経路・表示語彙の解決）
-  3. `docs/architecture/frontend/ui/{component-design,form-design,ui-library,tailwind,responsive,storybook}.md`、`docs/architecture/frontend/state-management.md`
-- 規範は `docs/product/` と `docs/architecture/` のみ。`docs/plans/` と `docs/discussions/` は判断の根拠にしない。
-- 規範が存在しない設計判断が出てきたら、**コードに落とす前にドキュメント側を整える方向で相談する**（CLAUDE.md）。
-- 横断観点は `.claude/rules/code-review-checklist.md`（特に §6 データ取得タイミング / §10 レイヤー責務 / §13 インターフェース自己説明性 / §14 コメントを残さない / §15 型安全を壊す Optional フォールバックを使わない）。
-- **設計ドキュメントが規範、既存コードは実装結果**。食い違ったら勝手に既存へ合わせず **ユーザーに共有して方針確認**（CLAUDE.md）。
-- **まず情報設計／動線を固める**（何を・どの順で・どこまで開示するか）。必要なら素の HTML モックで動線を確認してから React 化する。Layer 0（業務/情報設計）が無いまま部品を作り始めない（[[feedback_business_design_before_ai]]）。
-- 作業は `git worktree` で別ブランチ。monorepo は worktree に hoist されないので **`npm install` をその場で実行**。
+**まず読む。読まずに実装を始めない。** 順序は「何を作るか → どう作るか」。
+
+1. `docs/README.md` — 索引。規範は `docs/product/` と `docs/architecture/` のみ。
+   `docs/plans/` と `docs/discussions/` は**規範ではない**ので判断の根拠にしない。
+2. `docs/product/design-core.md` — すべての設計判断の最上位。迷ったときの最終参照先。
+3. `docs/product/flow-design.md` → `docs/product/profile-information-design.md` — 動線と情報設計。
+4. 実装する領域の規範（下の対応表から辿る）
+5. `.claude/rules/code-review-checklist.md` — 横断のレビュー観点
+
+守ること:
+
+- **設計ドキュメントが規範、既存コードは実装結果。** 食い違ったら勝手に既存へ合わせず、**ユーザーに共有して方針確認**（CLAUDE.md）。
+- 規範が存在しない設計判断が出てきたら、**コードに落とす前に docs 側を整える方向で相談する**（CLAUDE.md）。
+- **情報設計／動線を先に固める。** 何を・どの順で・どこまで開示するかが決まる前に部品を作り始めない（[[feedback_business_design_before_ai]]）。必要なら素の HTML で動線を確認してから React 化する。
 - **コミットはユーザーに明示的に言われるまでしない。**
 
 ## 1. 実装順序（Atomic Design＝部品から外側へ）
 
 ```
-情報設計/動線確定（必要ならHTMLモックで先に検証）
-  → 不足 primitive を shadcn add（packages/ui で実行・改変しない）
-  → atoms（primitive を薄くラップ・色味のみ）
-  → molecules（atoms 組み合わせ・RHF 非依存の Controlled API）
-  → organism（プロダクト固有・RHF + zod）
-  → app（page.tsx=server + ClientAdapter + hook）
-  → Storybook（各コンポーネントに index.stories.tsx）
+情報設計/動線の確定
+  → 不足 primitive を shadcn add
+  → atoms → molecules → organisms
+  → BFF route（read/write）
+  → app（page.tsx = server / ClientAdapter / hook）
+  → Storybook（描画する atom/molecule/organism 全部）
 ```
 
-## 2. レイヤー別の勘所
+## 2. 各ステップで読む規範
 
-### カラー / デザイントークン
+書いてある内容をここに写さない。**着手直前にそのドキュメントを開く。**
 
-- **neutral dark テーマ**。`bg-background` / `text-foreground` / `bg-primary` / `bg-card` / `text-muted-foreground` / `border-border` / `bg-secondary` / `destructive` を使う。
-- 出所は `packages/ui/global.css` の CSS 変数（oklch・dark-first）。**アドホックな色（`bg-lime-400` 等）を直書きしない**。モックで使った差し色は実装に持ち込まない。
-
-### primitives（shadcn）
-
-- 不足コンポーネントは `cd packages/ui && npx shadcn@latest add <name> --yes`（`components.json` は `packages/ui`・**network 必要**）。生成物は**改変しない**。`primitives/index.ts` に export を追加。
-- radix 依存は primitives の例外。atoms 以上に持ち込まない。
-
-### atoms
-
-- primitive を薄くラップ。**色味（`bg-white/5 border-white/10` 等）のみ上書きし、padding / flex / gap / rounded などの構造スタイルは持たない**（[[feedback_atom_thin_wrapper_brand_only]]）。
-- 表現を増やすときは `className` 直書きでなく **`variant` / `tone` の軸を追加**（例: Typography に `tone="muted"`）。
-- ref が要る（フォーカス制御・フォーム接続）→ `forwardRef`、表示専用 → 単純関数。
-- `Stack` は generic atom を組み合わせて文脈を作る organism / page で使う。文脈を持つ atom（Card 等）は自分の構造を所有する（[[feedback_stack_layer_responsibility]]）。
-
-### molecules
-
-- atoms の組み合わせ + レイアウト `className` のみ。**RHF 非依存**＝`value` / `onChange` / `ref` の Controlled API（`register` でも `Controller` でも繋がる形に保つ）。
-- `FormField` が label / htmlFor / hint / error の a11y 連携を内部完結している。新フィールドはこれに乗せる。
-
-### organisms
-
-- プロダクト固有。`className` 直書き可。**RHF + zod**（schema は画面と 1:1＝UI 入力ルール。サーバーのドメイン検証とは責務が別で、重複は許容）。
-- `register` を第一選択。`Controller` は非ネイティブ / 複合入力のみ（TagInput・Switch・Select 等）。配列は `useFieldArray`。
-- 状態管理ライブラリ（Jotai 等）は現時点で入れない（[[feedback_state_management]]）。
-
-### app（`apps/beatfolio`）
-
-- `page.tsx` = server（データ取得・`redirect`・session 判定）。`"use client"` は **ClientAdapter のみ**に集約。hook は純粋（`next/*` 利用可だがディレクティブは付けない）。
-- `next/link` / `next/image` / `next/navigation` は **app 層だけ**。`packages/ui` は Next 非依存に保つ（[[feedback_keep_foundation_react_ts]]）。ClientAdapter が hook の戻り値を関数 / 値として organism に渡す。
-
-### Storybook
-
-- 各コンポーネントに `index.stories.tsx`。description は**責務と使い時**に絞る。Tailwind クラス列挙などの実装詳細は書かない（[[feedback_storybook_descriptions]]）。
-- 必須 props を持つ Controlled コンポーネントの story は、args を満たしつつ `render` で state を持たせて挙動を見せる。
+| ステップ                        | 読む規範                                                                                                                    |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| 画面を足す / URL を決める       | `docs/architecture/frontend/routing.md`                                                                                     |
+| データ取得・更新の経路          | `docs/architecture/frontend/bff/design.md`                                                                                  |
+| 表示語彙（ラベル・選択肢）      | `docs/architecture/frontend/bff/design.md`（BFF で解決）+ `docs/architecture/server/database/design.md`（出所は DB マスタ） |
+| atom / molecule / organism 分割 | `docs/architecture/frontend/ui/component-design.md`                                                                         |
+| `"use client"` の境界           | `docs/architecture/frontend/ui/component-design.md`                                                                         |
+| フォーム（RHF + zod）           | `docs/architecture/frontend/ui/form-design.md`                                                                              |
+| primitive の追加                | `docs/architecture/frontend/ui/ui-library.md`                                                                               |
+| 色・スタイル                    | `docs/architecture/frontend/ui/tailwind.md`                                                                                 |
+| レスポンシブ                    | `docs/architecture/frontend/ui/responsive.md`                                                                               |
+| Storybook                       | `docs/architecture/frontend/ui/storybook.md`                                                                                |
+| 状態を持たせる判断              | `docs/architecture/frontend/state-management.md`                                                                            |
 
 ## 3. 検証（完了の定義）
 
 ```bash
-cd packages/ui && npx tsc --noEmit        # 型。新規ファイルのエラーを git diff で切り分け
-cd packages/ui && npm run storybook        # 目視（:6006）
-# 実アプリ動線: apps/beatfolio で npm run dev（:3000・要 .env.local）
+cd packages/ui && npx tsc --noEmit          # 型
+cd apps/beatfolio && npx tsc --noEmit       # アプリ側を変更したなら
+cd apps/beatfolio && npx vitest run         # テスト
+cd apps/beatfolio && npx next build         # ルート構成の検証（新しい page を足したとき）
+cd packages/ui && npm run storybook         # 目視（:6006）
 ```
 
-- 既存の無関係エラー（`.jpeg` の型宣言不足など）と、自分の変更起因のエラーを切り分ける（`git status` で diff 範囲を確認）。
-- lint は worktree に `eslint-plugin-storybook` が無いと動かないことがある（環境要因。コード起因ではない）。
+- 描画する atom/molecule/organism すべてに `index.stories.tsx` があるか。
+- **実装後、`Agent` を1本立てて diff を敵対的にレビューさせる。** 自分の実装を自分で見ると、意図が見えているぶん盲点が残る。
 
-## 4. やりがちな失敗
+## 4. docs に書かれていない運用知
 
-- モックのアドホックカラー（lime 等）をそのまま実装に持ち込む → デザイントークンへ。
-- atom に padding / flex などの構造スタイルを足す（色味のみが原則）。
-- RHF を organism でなく molecule / atom に持ち込む。
-- `"use client"` を organism や hook に書く（ClientAdapter に集約する）。
-- `packages/ui` に `next/*` を import する。
-- Storybook の description に実装詳細を書く。
-- worktree で `npm install` を忘れる / 言われていないのにコミットする。
-- 情報設計が決まる前に部品を作り始める（動線→項目→部品の順）。
-- 必須値を `session.user?.email ?? ""` のように `?? 既定値` で埋めて型安全を壊す（欠落は `redirect`/`throw` で明示的に落とすか、正しく型付けされた契約から取得する。§15）。
-- コードの言い換えコメントを書く（役割は命名・構造で表し、理由は `docs/` へ。§14）。
+ここだけが、このファイル固有の価値。
+
+- **worktree で作業するなら `npm install` をその場で実行する。** monorepo の依存は worktree に hoist されない。
+- **`npx shadcn@latest add` は `packages/ui` で実行する**（`components.json` がそこにある）。ネットワークが要る。生成物は改変せず `primitives/index.ts` に export を足す。
+- **`Image` atom は `react-lazy-load-image-component`（クラスコンポーネント）依存で、RSC から直接描画するとビルドが落ちる。** `Super expression must either be null or a function` が出たらこれ。app 側に ClientAdapter を1枚挟む。
+- **`Typography` は `className` を受け付けない。** 構造スタイルを足したくなったら、それは呼び出し側で包むか `variant` / `tone` 軸を増やす合図。
+- **`next build` はルートの衝突や RSC 境界の破綻を検出する。** `tsc` とテストが通っても build で落ちることがあるので、page を足したら必ず走らせる。
+- **削除したルートへのリンクが残ると 404 になる。** ルートを消したら `grep -rn 'href="/削除したパス"'` で参照を掃除する。
+- **root の eslint 設定が `eslint-plugin-storybook` を要求する。** 未インストールの環境では lint が動かない（コード起因ではない）。
+
+## 5. やりがちな失敗
+
+- 情報設計が決まる前に部品を作り始める（動線 → 項目 → 部品の順）。
+- モックのアドホックカラーをそのまま実装に持ち込む。
+- 一部のコンポーネントだけ story を書いて満足する。
+- 言われていないのにコミットする。
