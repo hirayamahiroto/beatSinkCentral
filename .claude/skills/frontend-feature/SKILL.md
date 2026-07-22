@@ -8,12 +8,20 @@ description: beatfolio / packages/ui のフロントエンド UI（Atomic Design
 `apps/beatfolio` / `packages/ui` に UI を足すときの「順序」と「毎回ハマる/見落とす観点」をまとめた手順書。
 規範ドキュメントの置き換えではなく、**着手前のチェックリスト**として使う。
 
+> **ワークフローとの関係**
+> `.claude/workflows/frontend-feature.mjs` は、この手順を複数エージェントで実行するオーケストレーション
+> （規範読解 → 計画 → 実装 → 多面検証）。ユーザーがワークフロー実行を明示的に要求したときだけ起動する。
+> ワークフローの実装フェーズは**この skill を呼び出してから**作業するので、両者の内容は一致させること。
+> 片方だけ更新しない。
+
 ## 0. 着手前（必須）
 
-- 規範ドキュメントを**先に読む**（索引は `docs/README.md`）：
-  - 何を作るか: `docs/product/design-core.md`（最上位の判断基準）→ `docs/product/flow-design.md` → `docs/product/profile-information-design.md`
-  - どう作るか: `docs/architecture/frontend/{README,routing,state-management}.md、`docs/architecture/frontend/ui/{component-design,form-design,ui-library,tailwind,responsive,storybook}.md`、`docs/architecture/frontend/bff/{design,multi-client}.md`
+- 規範ドキュメントを**先に読む**（索引は `docs/README.md`）。順序は「何を作るか → どう作るか」：
+  1. `docs/product/design-core.md`（最上位の判断基準）→ `docs/product/flow-design.md` → `docs/product/profile-information-design.md`
+  2. `docs/architecture/frontend/routing.md`（画面 URL）→ `docs/architecture/frontend/bff/design.md`（read/write の経路・表示語彙の解決）
+  3. `docs/architecture/frontend/ui/{component-design,form-design,ui-library,tailwind,responsive,storybook}.md`、`docs/architecture/frontend/state-management.md`
 - 規範は `docs/product/` と `docs/architecture/` のみ。`docs/plans/` と `docs/discussions/` は判断の根拠にしない。
+- 規範が存在しない設計判断が出てきたら、**コードに落とす前にドキュメント側を整える方向で相談する**（CLAUDE.md）。
 - 横断観点は `.claude/rules/code-review-checklist.md`（特に §6 データ取得タイミング / §10 レイヤー責務 / §13 インターフェース自己説明性 / §14 コメントを残さない / §15 型安全を壊す Optional フォールバックを使わない）。
 - **設計ドキュメントが規範、既存コードは実装結果**。食い違ったら勝手に既存へ合わせず **ユーザーに共有して方針確認**（CLAUDE.md）。
 - **まず情報設計／動線を固める**（何を・どの順で・どこまで開示するか）。必要なら素の HTML モックで動線を確認してから React 化する。Layer 0（業務/情報設計）が無いまま部品を作り始めない（[[feedback_business_design_before_ai]]）。
