@@ -50,7 +50,7 @@ const values: WizardValues = {
   location: "東京",
   activityForm: "solo",
   affiliation: "",
-  snsLinks: [{ platform: "youtube", url: "https://youtube.com/@saku" }],
+  links: [{ type: "youtube", url: "https://youtube.com/@saku" }],
   published: false,
 };
 
@@ -77,7 +77,7 @@ describe("useSaveProfile", () => {
         story: "始めたきっかけ。",
         activityInfo: "拠点: 東京 / 形態: ソロ",
         genres: ["Beatbox"],
-        snsLinks: ["https://youtube.com/@saku"],
+        links: [{ type: "youtube", url: "https://youtube.com/@saku" }],
       },
     });
     expect(publishMock).not.toHaveBeenCalled();

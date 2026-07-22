@@ -8,7 +8,10 @@ const publishedProfile: ProfileView = {
   story: "始めたきっかけ。",
   activityInfo: "拠点: 東京 / 形態: ソロ / 所属: 独立",
   genres: ["Beatbox"],
-  snsLinks: ["https://youtube.com/@saku", "https://x.com/saku"],
+  links: [
+    { type: "youtube", url: "https://youtube.com/@saku", label: null },
+    { type: "x", url: "https://x.com/saku", label: null },
+  ],
   published: true,
 };
 
@@ -37,24 +40,25 @@ describe("toWizardValues", () => {
     expect(values.affiliation).toBe("独立");
   });
 
-  it("SNS の URL から platform を推定する", () => {
+  it("保存されている種別をそのままリンクの種別として渡す", () => {
     const values = toWizardValues(publishedProfile);
 
-    expect(values.snsLinks).toEqual([
-      { platform: "youtube", url: "https://youtube.com/@saku" },
-      { platform: "x", url: "https://x.com/saku" },
+    expect(values.links).toEqual([
+      { type: "youtube", url: "https://youtube.com/@saku" },
+      { type: "x", url: "https://x.com/saku" },
     ]);
   });
 
-  it("判別できない URL は other にフォールバックする", () => {
+  it("ウィザードが扱わない label は落とす", () => {
     const values = toWizardValues({
       ...publishedProfile,
-      snsLinks: ["https://example.com/me", "not-a-url"],
+      links: [
+        { type: "other", url: "https://example.com/me", label: "個人HP" },
+      ],
     });
 
-    expect(values.snsLinks).toEqual([
-      { platform: "other", url: "https://example.com/me" },
-      { platform: "other", url: "not-a-url" },
+    expect(values.links).toEqual([
+      { type: "other", url: "https://example.com/me" },
     ]);
   });
 
@@ -66,14 +70,14 @@ describe("toWizardValues", () => {
       story: null,
       activityInfo: null,
       genres: [],
-      snsLinks: [],
+      links: [],
       published: false,
     });
 
     expect(values.name).toBeUndefined();
     expect(values.storyOrigin).toBeUndefined();
     expect(values.location).toBeUndefined();
-    expect(values.snsLinks).toBeUndefined();
+    expect(values.links).toBeUndefined();
     expect("genres" in values).toBe(false);
     expect(values.published).toBe(false);
   });

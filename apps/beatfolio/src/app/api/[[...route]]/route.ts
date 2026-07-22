@@ -11,6 +11,7 @@ import artistsMe from "./artists/me";
 import getMyProfile from "./artists/me/profile/get";
 import saveMyProfile from "./artists/me/profile/post";
 import publishMyProfile from "./artists/me/profile/publish/post";
+import listLinkTypes from "./link-types/get";
 
 export type Env = RequestContextEnv;
 
@@ -23,7 +24,8 @@ const app = new Hono<Env>()
   .route("/artists/me/profile", getMyProfile)
   .route("/artists/me/profile", saveMyProfile)
   .route("/artists/me/profile/publish", publishMyProfile)
-  .route("/artists/me", artistsMe);
+  .route("/artists/me", artistsMe)
+  .route("/link-types", listLinkTypes);
 
 export type AppType = typeof app;
 

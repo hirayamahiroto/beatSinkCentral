@@ -8,38 +8,13 @@ export type ProfileView = {
   story: string | null;
   activityInfo: string | null;
   genres: string[];
-  snsLinks: string[];
+  links: { type: string; url: string; label: string | null }[];
   published: boolean;
-};
-
-type SnsPlatform = WizardValues["snsLinks"][number]["platform"];
-
-const inferPlatform = (url: string): SnsPlatform => {
-  let host: string;
-  try {
-    host = new URL(url).hostname.toLowerCase();
-  } catch {
-    return "other";
-  }
-
-  if (host.endsWith("youtube.com") || host === "youtu.be") return "youtube";
-  if (
-    host === "x.com" ||
-    host.endsWith(".x.com") ||
-    host.endsWith("twitter.com")
-  )
-    return "x";
-  if (host.endsWith("instagram.com")) return "instagram";
-  if (host.endsWith("tiktok.com")) return "tiktok";
-  return "other";
 };
 
 export const toWizardValues = (profile: ProfileView): Partial<WizardValues> => {
   const activity = parseActivityInfo(profile.activityInfo);
-  const snsLinks = profile.snsLinks.map((url) => ({
-    platform: inferPlatform(url),
-    url,
-  }));
+  const links = profile.links.map(({ type, url }) => ({ type, url }));
 
   return {
     ...(profile.name ? { name: profile.name } : {}),
@@ -48,7 +23,7 @@ export const toWizardValues = (profile: ProfileView): Partial<WizardValues> => {
     ...(profile.genres.length > 0 ? { genres: profile.genres } : {}),
     ...(profile.story ? { storyOrigin: profile.story } : {}),
     ...activity,
-    ...(snsLinks.length > 0 ? { snsLinks } : {}),
+    ...(links.length > 0 ? { links } : {}),
     published: profile.published,
   };
 };

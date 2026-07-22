@@ -13,24 +13,24 @@ const baseValues: WizardValues = {
   location: "東京",
   activityForm: "solo",
   affiliation: "独立",
-  snsLinks: [
-    { platform: "youtube", url: "https://youtube.com/@saku" },
-    { platform: "x", url: "https://x.com/saku" },
+  links: [
+    { type: "youtube", url: "https://youtube.com/@saku" },
+    { type: "x", url: "https://x.com/saku" },
   ],
   published: false,
 };
 
 describe("toSaveProfileRequest", () => {
-  it("属性フィールドをそのまま渡し、snsLinks は url だけに落とす", () => {
+  it("属性フィールドをそのまま渡し、links は種別と url を保持する", () => {
     const result = toSaveProfileRequest(baseValues);
 
     expect(result.name).toBe("SAKU");
     expect(result.imageUrl).toBe("https://example.com/saku.jpg");
     expect(result.tagline).toBe("口ひとつで、フロアを揺らす。");
     expect(result.genres).toEqual(["Beatbox", "Bass"]);
-    expect(result.snsLinks).toEqual([
-      "https://youtube.com/@saku",
-      "https://x.com/saku",
+    expect(result.links).toEqual([
+      { type: "youtube", url: "https://youtube.com/@saku" },
+      { type: "x", url: "https://x.com/saku" },
     ]);
   });
 

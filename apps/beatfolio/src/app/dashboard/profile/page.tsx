@@ -26,11 +26,20 @@ export default async function ProfileRegisterPage() {
     redirect("/onboarding");
   }
 
-  const profileRes = await client.api.artists.me.profile.$get();
+  const [profileRes, linkTypesRes] = await Promise.all([
+    client.api.artists.me.profile.$get(),
+    client.api["link-types"].$get(),
+  ]);
+
   if (!profileRes.ok) {
     throw new Error("Failed to fetch profile");
   }
+  if (!linkTypesRes.ok) {
+    throw new Error("Failed to fetch link types");
+  }
+
   const { profile } = await profileRes.json();
+  const { linkTypes } = await linkTypesRes.json();
   const defaultValues = profile ? toWizardValues(profile) : undefined;
 
   return (
@@ -38,6 +47,7 @@ export default async function ProfileRegisterPage() {
       <div className="container mx-auto max-w-2xl">
         <ProfileWizardClientAdapter
           email={me.email}
+          linkTypeOptions={linkTypes}
           defaultValues={defaultValues}
         />
       </div>

@@ -8,7 +8,7 @@ export type SaveProfileRequest = {
   story: string;
   activityInfo: string;
   genres: string[];
-  snsLinks: string[];
+  links: { type: string; url: string }[];
 };
 
 const joinStory = (values: WizardValues): string =>
@@ -26,5 +26,5 @@ export const toSaveProfileRequest = (
   story: joinStory(values),
   activityInfo: composeActivityInfo(values),
   genres: values.genres,
-  snsLinks: values.snsLinks.map((link) => link.url),
+  links: values.links.map(({ type, url }) => ({ type, url })),
 });
