@@ -45,6 +45,7 @@ npm run build
 | 外部クライアント実装（Next.js 遅延初期化）           | `docs/server-architecture/external-clients.md`      | Database / Auth0 / Redis 等の追加・初期化変更時        |
 | 認証                                                 | `docs/authentication.md`                            | 認証・認可フローの追加・変更時                         |
 | フロントエンド全般                                   | `docs/frontend-architecture/README.md`              | UI 実装時                                              |
+| 画面 URL 設計（遷移・階層・BFF ルート対応）          | `docs/frontend-architecture/routing.md`             | 画面追加・URL 変更時                                   |
 | テスト戦略                                           | `docs/testing/strategy.md`                          | テスト追加・テスト方針判断時                           |
 
 各ドキュメントの読み順や粒度は、それぞれの README / 目次に従う。

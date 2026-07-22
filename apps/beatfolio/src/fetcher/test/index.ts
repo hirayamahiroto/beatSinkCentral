@@ -1,6 +1,6 @@
-import { createBffServerClient } from "../../utils/client/index";
+import { createApiServerClient } from "../../utils/client/index";
 
-const client = createBffServerClient();
+const client = createApiServerClient();
 
 const res = await client.api.test.$get();
 
