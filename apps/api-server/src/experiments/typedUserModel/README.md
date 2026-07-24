@@ -3,6 +3,8 @@
 > **⚠️ これは提案・未採用のサンプルです。** production の `src/domain/users` を置き換えるものではありません。
 > 既存の設計規範は `docs/server-architecture/architecture.md`。本サンプルはそれと**異なるスタイル**を検討するための隔離コードで、
 > route / container / DB には一切接続していません（純粋な型とドメインロジックのみ）。
+>
+> 提案の全文・論点・意思決定事項は `docs/discussions/typed-functional-ddd-user-model.md` を参照。
 
 ## なぜこれを作ったか
 
