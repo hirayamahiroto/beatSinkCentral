@@ -1,4 +1,4 @@
-import { type Result, err, flatMap, map } from "../../result";
+import { type Result, err, flatMap, map } from "../../../shared/result";
 import { createSub, type InvalidSubFormatError } from "../../valueObjects/sub";
 import {
   createEmail,

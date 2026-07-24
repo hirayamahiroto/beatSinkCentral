@@ -1,12 +1,12 @@
 # 提案: 型で表現する関数型DDD（ユーザードメインでの試作）
 
-| 項目       | 内容                                                                      |
-| ---------- | ------------------------------------------------------------------------- |
-| ステータス | **検討中 / 未合意**（たたき台）                                           |
-| 起票日     | 2026-07-25                                                                |
-| 対象       | `apps/api-server` ドメイン層のモデリングスタイル                          |
-| 関連       | draft PR #184、サンプル `apps/api-server/src/experiments/typedUserModel/` |
-| 現行規範   | `docs/server-architecture/architecture.md`（本提案はこれと異なる案）      |
+| 項目       | 内容                                                                         |
+| ---------- | ---------------------------------------------------------------------------- |
+| ステータス | **検討中 / 未合意**（たたき台）                                              |
+| 起票日     | 2026-07-25                                                                   |
+| 対象       | `apps/api-server` ドメイン層のモデリングスタイル                             |
+| 関連       | draft PR #184、サンプル `apps/api-server/src/experiments/typedDomain/users/` |
+| 現行規範   | `docs/server-architecture/architecture.md`（本提案はこれと異なる案）         |
 
 > `docs/discussions/` は「未合意の検討」を置く場所であり、規範ではない。合意できたら規範（`architecture`）へ昇格し、本ファイルは役目を終える。
 
@@ -91,7 +91,7 @@ export type User =
 
 副作用（DB fetch / save）は持たず、`existingUser` と `newId` を**引数で受け取る純粋関数**にする（現行 `registerNewUser` と同じ思想）。失敗は `RegisterUserError`（3種のユニオン）に型付けされる。
 
-> 実物は `apps/api-server/src/experiments/typedUserModel/` にある（route / container / DB には未接続の隔離サンプル）。`@ts-expect-error` により、上記のコンパイルエラーが実際に成立することをテストで固定している。
+> 実物は `apps/api-server/src/experiments/typedDomain/users/` にある（route / container / DB には未接続の隔離サンプル）。`@ts-expect-error` により、上記のコンパイルエラーが実際に成立することをテストで固定している。
 
 ---
 

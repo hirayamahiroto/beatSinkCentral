@@ -1,4 +1,4 @@
-import { type Result, ok, err } from "../../result";
+import { type Result, ok, err } from "../../../shared/result";
 
 export type Sub = {
   readonly _tag: "Sub";
