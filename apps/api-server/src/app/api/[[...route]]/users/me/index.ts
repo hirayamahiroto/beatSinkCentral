@@ -4,6 +4,7 @@ import { getContainer } from "../../../../../infrastructure/container";
 import { getMeUseCase } from "../../../../../usecases/users/getMe";
 import { updateMyEmailUseCase } from "../../../../../usecases/users/updateMyEmail";
 import { validateRequest } from "../../validators/validateRequest";
+import { handleAppError } from "../../../../../errorMap";
 
 export const updateMyEmailRequestSchema = z.object({
   email: z
@@ -38,7 +39,11 @@ const app = new Hono()
       { userRepository, txRunner },
     );
 
-    return c.json(result);
+    if (!result.ok) {
+      return handleAppError(result.error, c);
+    }
+
+    return c.json(result.value);
   });
 
 export default app;

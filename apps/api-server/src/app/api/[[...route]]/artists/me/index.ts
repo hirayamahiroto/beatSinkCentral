@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getContainer } from "../../../../../infrastructure/container";
 import { updateMyAccountIdUseCase } from "../../../../../usecases/users/updateMyAccountId";
 import { validateRequest } from "../../validators/validateRequest";
+import { handleAppError } from "../../../../../errorMap";
 
 export const updateMyAccountIdRequestSchema = z.object({
   accountId: z
@@ -28,7 +29,11 @@ const app = new Hono().post(
       { userRepository, artistRepository, txRunner },
     );
 
-    return c.json(result);
+    if (!result.ok) {
+      return handleAppError(result.error, c);
+    }
+
+    return c.json(result.value);
   },
 );
 

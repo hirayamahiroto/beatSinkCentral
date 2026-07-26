@@ -15,3 +15,13 @@ export const flatMap = <T, U, E1, E2>(
   result: Result<T, E1>,
   f: (value: T) => Result<U, E2>,
 ): Result<U, E1 | E2> => (result.ok ? f(result.value) : result);
+
+export const unwrapOrThrow = <T, E>(
+  result: Result<T, E>,
+  message: string,
+): T => {
+  if (!result.ok) {
+    throw new Error(message);
+  }
+  return result.value;
+};

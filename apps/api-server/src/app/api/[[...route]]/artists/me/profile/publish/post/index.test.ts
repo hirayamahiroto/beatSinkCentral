@@ -73,4 +73,68 @@ describe("POST /artists/me/profile/publish", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toStrictEqual({ published: true });
   });
+
+  const seedUserAndArtist = () => {
+    mockUserRepository.findBySub.mockResolvedValue(
+      reconstructUser({ id: "user-1", subId: "auth0|123", email: "t@e.com" }),
+    );
+    mockArtistRepository.findByUserId.mockResolvedValue(
+      reconstructArtist({
+        artistId: "artist-1",
+        accountId: "beatboxer_taro",
+        ownerUserId: "user-1",
+        profile: null,
+      }),
+    );
+  };
+
+  const post = (published: boolean) =>
+    createApp("auth0|123").request("/", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ published }),
+    });
+
+  it("公開必須が欠けていると errorMap 経由で 422 + missingFields を返す", async () => {
+    seedUserAndArtist();
+    mockArtistProfileRepository.findByArtistId.mockResolvedValue(
+      reconstructArtistProfile({
+        id: "p1",
+        artistId: "artist-1",
+        published: false,
+        name: "Taro",
+      }),
+    );
+
+    const res = await post(true);
+
+    expect(res.status).toBe(422);
+    const body = await res.json();
+    expect(body.error).toBe(
+      "Profile is not publishable: required fields are missing",
+    );
+    expect([...body.details.missingFields].sort()).toEqual(
+      ["genres", "imageUrl", "links", "story"].sort(),
+    );
+    expect(mockArtistProfileRepository.setPublished).not.toHaveBeenCalled();
+  });
+
+  it("プロフィール未作成なら errorMap 経由で 404 を返す", async () => {
+    seedUserAndArtist();
+    mockArtistProfileRepository.findByArtistId.mockResolvedValue(null);
+
+    const res = await post(true);
+
+    expect(res.status).toBe(404);
+    expect((await res.json()).error).toBe("Artist profile not found");
+  });
+
+  it("ユーザー未登録なら errorMap 経由で 404 を返す", async () => {
+    mockUserRepository.findBySub.mockResolvedValue(null);
+
+    const res = await post(true);
+
+    expect(res.status).toBe(404);
+    expect((await res.json()).error).toBe("User not found");
+  });
 });
