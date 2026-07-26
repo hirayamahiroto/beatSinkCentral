@@ -45,7 +45,7 @@ describe("getMyProfileUseCase", () => {
     vi.clearAllMocks();
   });
 
-  it("プロフィール未作成なら profile: null を返す", async () => {
+  it("プロフィール未作成なら ok(profile: null) を返す", async () => {
     const deps = createMockDeps();
     deps.userRepository.findBySub.mockResolvedValue(existingUser);
     deps.artistRepository.findByUserId.mockResolvedValue(existingArtist);
@@ -56,7 +56,13 @@ describe("getMyProfileUseCase", () => {
       deps,
     );
 
-    expect(result).toEqual({ accountId: "beatboxer_taro", profile: null });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toEqual({
+        accountId: "beatboxer_taro",
+        profile: null,
+      });
+    }
   });
 
   it("下書きを含む profile を view で返す", async () => {
@@ -78,27 +84,39 @@ describe("getMyProfileUseCase", () => {
       deps,
     );
 
-    expect(result.accountId).toBe("beatboxer_taro");
-    expect(result.profile?.name).toBe("Taro");
-    expect(result.profile?.published).toBe(false);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.accountId).toBe("beatboxer_taro");
+      expect(result.value.profile?.name).toBe("Taro");
+      expect(result.value.profile?.published).toBe(false);
+    }
   });
 
-  it("ユーザー未登録なら UserNotFoundError", async () => {
+  it("ユーザー未登録なら err(UserNotFoundError)", async () => {
     const deps = createMockDeps();
     deps.userRepository.findBySub.mockResolvedValue(null);
 
-    await expect(
-      getMyProfileUseCase({ subId: "auth0|unknown" }, deps),
-    ).rejects.toSatisfy(isUserNotFoundError);
+    const result = await getMyProfileUseCase({ subId: "auth0|unknown" }, deps);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(isUserNotFoundError(result.error)).toBe(true);
+    }
   });
 
-  it("artist が無ければ ArtistNotFoundError", async () => {
+  it("artist が無ければ err(ArtistNotFoundError)", async () => {
     const deps = createMockDeps();
     deps.userRepository.findBySub.mockResolvedValue(existingUser);
     deps.artistRepository.findByUserId.mockResolvedValue(null);
 
-    await expect(
-      getMyProfileUseCase({ subId: existingUser.getSub() }, deps),
-    ).rejects.toSatisfy(isArtistNotFoundError);
+    const result = await getMyProfileUseCase(
+      { subId: existingUser.getSub() },
+      deps,
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(isArtistNotFoundError(result.error)).toBe(true);
+    }
   });
 });

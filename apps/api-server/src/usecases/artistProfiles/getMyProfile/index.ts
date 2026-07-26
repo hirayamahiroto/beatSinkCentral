@@ -2,8 +2,15 @@ import type { IUserRepository } from "../../../domain/users/repositories";
 import type { IArtistRepository } from "../../../domain/artists/repositories";
 import type { IArtistProfileRepository } from "../../../domain/artistProfiles/repositories";
 import type { ArtistProfileView } from "../../../domain/artistProfiles/entities";
-import { assertRegistered } from "../../../domain/users/policies/assertRegistered";
-import { assertArtistExists } from "../../../domain/artists/policies/assertArtistExists";
+import {
+  createUserNotFoundError,
+  type UserNotFoundError,
+} from "../../../domain/users/policies/assertRegistered";
+import {
+  createArtistNotFoundError,
+  type ArtistNotFoundError,
+} from "../../../domain/artists/policies/assertArtistExists";
+import { type Result, ok, err } from "../../../utils/result";
 
 export type GetMyProfileInput = {
   subId: string;
@@ -14,6 +21,8 @@ export type GetMyProfileOutput = {
   profile: ArtistProfileView | null;
 };
 
+export type GetMyProfileError = UserNotFoundError | ArtistNotFoundError;
+
 export type GetMyProfileDeps = {
   userRepository: IUserRepository;
   artistRepository: IArtistRepository;
@@ -23,19 +32,23 @@ export type GetMyProfileDeps = {
 export const getMyProfileUseCase = async (
   input: GetMyProfileInput,
   deps: GetMyProfileDeps,
-): Promise<GetMyProfileOutput> => {
+): Promise<Result<GetMyProfileOutput, GetMyProfileError>> => {
   const user = await deps.userRepository.findBySub(input.subId);
-  assertRegistered(user);
+  if (!user) {
+    return err(createUserNotFoundError());
+  }
 
   const artist = await deps.artistRepository.findByUserId(user.getId());
-  assertArtistExists(artist);
+  if (!artist) {
+    return err(createArtistNotFoundError());
+  }
 
   const profile = await deps.artistProfileRepository.findByArtistId(
     artist.getArtistId(),
   );
 
-  return {
+  return ok({
     accountId: artist.getAccountId(),
     profile: profile ? profile.toView() : null,
-  };
+  });
 };
