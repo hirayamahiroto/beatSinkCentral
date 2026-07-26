@@ -10,6 +10,11 @@ import {
   reconstructArtistProfile,
   type ArtistProfileContent,
 } from "../../../domain/artistProfiles/factories";
+import {
+  isPublished,
+  toPersistence,
+  toView,
+} from "../../../domain/artistProfiles/operations";
 import { assertRegistered } from "../../../domain/users/policies/assertRegistered";
 import { assertArtistExists } from "../../../domain/artists/policies/assertArtistExists";
 import type { ITransactionRunner } from "../../../infrastructure/transaction";
@@ -51,21 +56,21 @@ export const saveMyProfileUseCase = async (
 
     const profile: ArtistProfile = existing
       ? reconstructArtistProfile({
-          id: existing.getId(),
+          id: existing.id,
           artistId,
-          published: existing.isPublished(),
+          published: isPublished(existing),
           ...content,
         })
       : createArtistProfile({ artistId, ...content });
 
     const saved = await deps.artistProfileRepository.upsert(
-      profile.toPersistence(),
+      toPersistence(profile),
       tx,
     );
 
     return {
       accountId: artist.getAccountId(),
-      profile: saved.toView(),
+      profile: toView(saved),
     };
   });
 };

@@ -2,6 +2,7 @@ import type { IUserRepository } from "../../../domain/users/repositories";
 import type { IArtistRepository } from "../../../domain/artists/repositories";
 import type { IArtistProfileRepository } from "../../../domain/artistProfiles/repositories";
 import type { ArtistProfileView } from "../../../domain/artistProfiles/entities";
+import { toView } from "../../../domain/artistProfiles/operations";
 import {
   createUserNotFoundError,
   type UserNotFoundError,
@@ -49,6 +50,6 @@ export const getMyProfileUseCase = async (
 
   return ok({
     accountId: artist.getAccountId(),
-    profile: profile ? profile.toView() : null,
+    profile: profile ? toView(profile) : null,
   });
 };

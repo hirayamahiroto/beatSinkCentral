@@ -6,6 +6,7 @@ import { isProfileNotPublishableError } from "../../../domain/artistProfiles/pol
 import { reconstructUser } from "../../../domain/users/factories";
 import { reconstructArtist } from "../../../domain/artists/factories";
 import { reconstructArtistProfile } from "../../../domain/artistProfiles/factories";
+import { publish } from "../../../domain/artistProfiles/operations";
 
 const createMockDeps = () =>
   ({
@@ -68,7 +69,7 @@ describe("publishMyProfileUseCase", () => {
       publishableProfile,
     );
     deps.artistProfileRepository.setPublished.mockResolvedValue(
-      publishableProfile.publish(),
+      publish(publishableProfile),
     );
 
     const result = await publishMyProfileUseCase(

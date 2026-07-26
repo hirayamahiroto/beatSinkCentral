@@ -22,11 +22,11 @@ export const collectMissingPublishFields = (
   profile: ArtistProfile,
 ): string[] => {
   const missing: string[] = [];
-  if (!profile.getName()) missing.push("name");
-  if (!profile.getImageUrl()) missing.push("imageUrl");
-  if (!profile.getStory()) missing.push("story");
-  if (profile.getGenres().length === 0) missing.push("genres");
-  if (profile.getLinks().length === 0) missing.push("links");
+  if (!profile.name) missing.push("name");
+  if (!profile.imageUrl) missing.push("imageUrl");
+  if (!profile.story) missing.push("story");
+  if (profile.genres.length === 0) missing.push("genres");
+  if (profile.links.length === 0) missing.push("links");
   return missing;
 };
 

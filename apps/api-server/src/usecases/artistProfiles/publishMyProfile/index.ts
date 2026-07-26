@@ -18,6 +18,7 @@ import {
   createProfileNotPublishableError,
   type ProfileNotPublishableError,
 } from "../../../domain/artistProfiles/policies/assertProfilePublishable";
+import { isPublished } from "../../../domain/artistProfiles/operations";
 import type { ITransactionRunner } from "../../../infrastructure/transaction";
 import { ok, err, type Result } from "../../../utils/result";
 
@@ -72,5 +73,5 @@ export const publishMyProfileUseCase = async (
       tx,
     );
 
-    return ok({ published: saved.isPublished() });
+    return ok({ published: isPublished(saved) });
   });

@@ -12,19 +12,6 @@ export type ProfileLinkData = {
   label: string | null;
 };
 
-export type ArtistProfileState = {
-  readonly id: string;
-  readonly artistId: string;
-  readonly name: ProfileName | null;
-  readonly tagline: Tagline | null;
-  readonly imageUrl: ImageUrl | null;
-  readonly story: Story | null;
-  readonly activityInfo: ActivityInfo | null;
-  readonly genres: readonly Genre[];
-  readonly links: readonly ProfileLink[];
-  readonly published: boolean;
-};
-
 export type ArtistProfilePersistenceData = {
   id: string;
   artistId: string;
@@ -49,19 +36,29 @@ export type ArtistProfileView = {
   published: boolean;
 };
 
-export type ArtistProfile = {
-  getId: () => string;
-  getArtistId: () => string;
-  getName: () => string | null;
-  getTagline: () => string | null;
-  getImageUrl: () => string | null;
-  getStory: () => string | null;
-  getActivityInfo: () => string | null;
-  getGenres: () => string[];
-  getLinks: () => ProfileLinkData[];
-  isPublished: () => boolean;
-  publish: () => ArtistProfile;
-  unpublish: () => ArtistProfile;
-  toPersistence: () => ArtistProfilePersistenceData;
-  toView: () => ArtistProfileView;
+export type ProfileContentFields = {
+  readonly name: ProfileName | null;
+  readonly tagline: Tagline | null;
+  readonly imageUrl: ImageUrl | null;
+  readonly story: Story | null;
+  readonly activityInfo: ActivityInfo | null;
+  readonly genres: readonly Genre[];
+  readonly links: readonly ProfileLink[];
 };
+
+type ProfileIdentity = {
+  readonly id: string;
+  readonly artistId: string;
+};
+
+export type DraftProfile = ProfileIdentity &
+  ProfileContentFields & {
+    readonly _tag: "Draft";
+  };
+
+export type PublishedProfile = ProfileIdentity &
+  ProfileContentFields & {
+    readonly _tag: "Published";
+  };
+
+export type ArtistProfile = DraftProfile | PublishedProfile;

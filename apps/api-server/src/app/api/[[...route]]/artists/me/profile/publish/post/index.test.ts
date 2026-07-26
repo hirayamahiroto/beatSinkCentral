@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { reconstructUser } from "../../../../../../../../domain/users/factories";
 import { reconstructArtist } from "../../../../../../../../domain/artists/factories";
 import { reconstructArtistProfile } from "../../../../../../../../domain/artistProfiles/factories";
+import { publish } from "../../../../../../../../domain/artistProfiles/operations";
 import publishMyProfile from "./index";
 
 const mockUserRepository = { findBySub: vi.fn() };
@@ -61,7 +62,7 @@ describe("POST /artists/me/profile/publish", () => {
     });
     mockArtistProfileRepository.findByArtistId.mockResolvedValue(publishable);
     mockArtistProfileRepository.setPublished.mockResolvedValue(
-      publishable.publish(),
+      publish(publishable),
     );
 
     const res = await createApp("auth0|123").request("/", {

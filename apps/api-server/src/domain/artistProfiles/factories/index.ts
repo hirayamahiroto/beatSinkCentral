@@ -8,8 +8,11 @@ import {
   createProfileLink,
   type ProfileLinkInput,
 } from "../valueObjects/profileLink";
-import { createArtistProfileBehaviors } from "../behaviors";
-import type { ArtistProfile, ArtistProfileState } from "../entities";
+import type {
+  ArtistProfile,
+  DraftProfile,
+  ProfileContentFields,
+} from "../entities";
 
 const optional = <T>(
   value: string | null | undefined,
@@ -46,12 +49,9 @@ export type ArtistProfileContent = {
   links?: ProfileLinkInput[];
 };
 
-const buildState = (
-  base: { id: string; artistId: string; published: boolean },
+const buildContentFields = (
   content: ArtistProfileContent,
-): ArtistProfileState => ({
-  id: base.id,
-  artistId: base.artistId,
+): ProfileContentFields => ({
   name: optional(content.name, createProfileName),
   tagline: optional(content.tagline, createTagline),
   imageUrl: optional(content.imageUrl, createImageUrl),
@@ -59,7 +59,6 @@ const buildState = (
   activityInfo: optional(content.activityInfo, createActivityInfo),
   genres: toGenres(content.genres),
   links: toLinks(content.links),
-  published: base.published,
 });
 
 export type CreateArtistProfileParams = ArtistProfileContent & {
@@ -68,13 +67,12 @@ export type CreateArtistProfileParams = ArtistProfileContent & {
 
 export const createArtistProfile = (
   params: CreateArtistProfileParams,
-): ArtistProfile => {
-  const state = buildState(
-    { id: crypto.randomUUID(), artistId: params.artistId, published: false },
-    params,
-  );
-  return createArtistProfileBehaviors(state);
-};
+): DraftProfile => ({
+  _tag: "Draft",
+  id: crypto.randomUUID(),
+  artistId: params.artistId,
+  ...buildContentFields(params),
+});
 
 export type ReconstructArtistProfileParams = ArtistProfileContent & {
   id: string;
@@ -85,9 +83,9 @@ export type ReconstructArtistProfileParams = ArtistProfileContent & {
 export const reconstructArtistProfile = (
   params: ReconstructArtistProfileParams,
 ): ArtistProfile => {
-  const state = buildState(
-    { id: params.id, artistId: params.artistId, published: params.published },
-    params,
-  );
-  return createArtistProfileBehaviors(state);
+  const identity = { id: params.id, artistId: params.artistId };
+  const content = buildContentFields(params);
+  return params.published
+    ? { _tag: "Published", ...identity, ...content }
+    : { _tag: "Draft", ...identity, ...content };
 };
