@@ -13,12 +13,15 @@ describe("Email", () => {
       ];
 
       validEmails.forEach((email) => {
-        const emailObj = createEmail(email);
-        expect(emailObj.value).toBe(email);
+        const result = createEmail(email);
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+          expect(result.value.value).toBe(email);
+        }
       });
     });
 
-    it("無効なメールアドレスではエラーをスローする", () => {
+    it("無効なメールアドレスでは err を返す", () => {
       const invalidEmails = [
         "notanemail",
         "@example.com",
@@ -31,25 +34,35 @@ describe("Email", () => {
       ];
 
       invalidEmails.forEach((email) => {
-        expect(() => createEmail(email)).toThrow("InvalidEmailFormatError");
+        const result = createEmail(email);
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          expect(result.error.type).toBe("InvalidEmailFormatError");
+        }
       });
     });
 
     it("254文字を超えるメールアドレスは拒否される", () => {
       const longEmail = "a".repeat(243) + "@example.com";
-      expect(() => createEmail(longEmail)).toThrow("InvalidEmailFormatError");
+      expect(createEmail(longEmail).ok).toBe(false);
     });
 
     it("254文字のメールアドレスは許可される", () => {
       const maxLengthEmail = "a".repeat(242) + "@example.com";
-      const emailObj = createEmail(maxLengthEmail);
-      expect(emailObj.value).toBe(maxLengthEmail);
+      const result = createEmail(maxLengthEmail);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.value).toBe(maxLengthEmail);
+      }
     });
 
     it("日本語ドメインを含むメールアドレスを処理できる", () => {
       const email = "test@日本.jp";
-      const emailObj = createEmail(email);
-      expect(emailObj.value).toBe(email);
+      const result = createEmail(email);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.value).toBe(email);
+      }
     });
   });
 });

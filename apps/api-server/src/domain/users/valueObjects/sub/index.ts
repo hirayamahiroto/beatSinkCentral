@@ -1,4 +1,5 @@
 import { createTypedError } from "../../../../utils/errors/createTypedError";
+import { ok, err, type Result } from "../../../../utils/result";
 
 export type Sub = {
   readonly value: string;
@@ -15,9 +16,11 @@ const isValidSub = (sub: string): boolean => {
   return sub.trim().length > 0;
 };
 
-export const createSub = (value: string): Sub => {
+export const createSub = (
+  value: string,
+): Result<Sub, InvalidSubFormatError> => {
   if (!value || !isValidSub(value)) {
-    throw createInvalidSubFormatError();
+    return err(createInvalidSubFormatError());
   }
-  return { value };
+  return ok({ value });
 };

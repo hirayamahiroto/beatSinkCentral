@@ -8,11 +8,13 @@ const createMockDeps = () => {
     userRepository: {
       save: vi.fn(),
       findBySub: vi.fn(),
+      updateEmail: vi.fn(),
     },
     artistRepository: {
       save: vi.fn(),
       findByUserId: vi.fn(),
       findByAccountId: vi.fn(),
+      updateAccountId: vi.fn(),
     },
   } satisfies GetMeDeps;
   return deps;

@@ -14,11 +14,13 @@ const createMockDeps = () => {
     userRepository: {
       save: vi.fn(),
       findBySub: vi.fn(),
+      updateEmail: vi.fn(),
     },
     artistRepository: {
       save: vi.fn(),
       findByUserId: vi.fn(),
       findByAccountId: vi.fn(),
+      updateAccountId: vi.fn(),
     },
     txRunner: {
       run: vi.fn(async (fn) => fn({} as Parameters<typeof fn>[0])),
@@ -38,7 +40,7 @@ describe("createUserUseCase", () => {
     vi.clearAllMocks();
   });
 
-  it("新規ユーザーを作成してuserIdとartistIdを返す", async () => {
+  it("新規ユーザーを作成して ok(userId, artistId) を返す", async () => {
     const deps = createMockDeps();
     deps.userRepository.findBySub.mockResolvedValue(null);
     deps.artistRepository.findByAccountId.mockResolvedValue(null);
@@ -47,14 +49,17 @@ describe("createUserUseCase", () => {
 
     const result = await createUserUseCase(validInput, deps);
 
-    expect(typeof result.userId).toBe("string");
-    expect(typeof result.artistId).toBe("string");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(typeof result.value.userId).toBe("string");
+      expect(typeof result.value.artistId).toBe("string");
+    }
     expect(deps.userRepository.save).toHaveBeenCalledTimes(1);
     expect(deps.artistRepository.save).toHaveBeenCalledTimes(1);
     expect(deps.txRunner.run).toHaveBeenCalledTimes(1);
   });
 
-  it("既存ユーザーの場合はUserAlreadyRegisteredErrorをスローする", async () => {
+  it("既存ユーザーの場合は err(UserAlreadyRegisteredError) を返す", async () => {
     const deps = createMockDeps();
     const existingUser = reconstructUser({
       id: "existing-user-id",
@@ -64,14 +69,17 @@ describe("createUserUseCase", () => {
     deps.userRepository.findBySub.mockResolvedValue(existingUser);
     deps.artistRepository.findByAccountId.mockResolvedValue(null);
 
-    const promise = createUserUseCase(validInput, deps);
+    const result = await createUserUseCase(validInput, deps);
 
-    await expect(promise).rejects.toSatisfy(isUserAlreadyRegisteredError);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(isUserAlreadyRegisteredError(result.error)).toBe(true);
+    }
     expect(deps.userRepository.save).not.toHaveBeenCalled();
     expect(deps.artistRepository.save).not.toHaveBeenCalled();
   });
 
-  it("AccountIdが既に取られている場合はAccountIdAlreadyTakenErrorをスローする", async () => {
+  it("AccountIdが既に取られている場合は err(AccountIdAlreadyTakenError) を返す", async () => {
     const deps = createMockDeps();
     const existingArtist = reconstructArtist({
       artistId: "existing-artist-id",
@@ -82,9 +90,12 @@ describe("createUserUseCase", () => {
     deps.userRepository.findBySub.mockResolvedValue(null);
     deps.artistRepository.findByAccountId.mockResolvedValue(existingArtist);
 
-    const promise = createUserUseCase(validInput, deps);
+    const result = await createUserUseCase(validInput, deps);
 
-    await expect(promise).rejects.toSatisfy(isAccountIdAlreadyTakenError);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(isAccountIdAlreadyTakenError(result.error)).toBe(true);
+    }
     expect(deps.userRepository.save).not.toHaveBeenCalled();
     expect(deps.artistRepository.save).not.toHaveBeenCalled();
   });

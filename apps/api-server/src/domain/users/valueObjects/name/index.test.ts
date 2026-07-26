@@ -3,11 +3,15 @@ import { createName } from "./index";
 
 describe("createName", () => {
   it("有効な名前を返す", () => {
-    expect(createName("testuser").value).toBe("testuser");
+    const result = createName("testuser");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.value).toBe("testuser");
+    }
   });
 
-  it("無効な名前を返す", () => {
-    expect(() => createName("")).toThrow("InvalidNameFormatError");
-    expect(() => createName("a".repeat(256))).toThrow("InvalidNameFormatError");
+  it("無効な名前は err を返す", () => {
+    expect(createName("").ok).toBe(false);
+    expect(createName("a".repeat(256)).ok).toBe(false);
   });
 });
