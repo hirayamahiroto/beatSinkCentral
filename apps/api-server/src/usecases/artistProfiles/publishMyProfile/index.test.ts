@@ -60,7 +60,7 @@ describe("publishMyProfileUseCase", () => {
     vi.clearAllMocks();
   });
 
-  it("最小核が揃っていれば公開でき、published=true を返す", async () => {
+  it("最小核が揃っていれば公開でき、ok(published=true) を返す", async () => {
     const deps = createMockDeps();
     deps.userRepository.findBySub.mockResolvedValue(existingUser);
     deps.artistRepository.findByUserId.mockResolvedValue(existingArtist);
@@ -76,14 +76,17 @@ describe("publishMyProfileUseCase", () => {
       deps,
     );
 
-    expect(result).toEqual({ published: true });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toEqual({ published: true });
+    }
     expect(deps.artistProfileRepository.setPublished).toHaveBeenCalledWith(
       { artistId: "artist-1", published: true },
       expect.anything(),
     );
   });
 
-  it("最小核が欠けている状態で公開しようとすると ProfileNotPublishableError", async () => {
+  it("最小核が欠けている状態で公開しようとすると err(ProfileNotPublishableError)", async () => {
     const deps = createMockDeps();
     deps.userRepository.findBySub.mockResolvedValue(existingUser);
     deps.artistRepository.findByUserId.mockResolvedValue(existingArtist);
@@ -97,12 +100,15 @@ describe("publishMyProfileUseCase", () => {
       }),
     );
 
-    const promise = publishMyProfileUseCase(
+    const result = await publishMyProfileUseCase(
       { subId: existingUser.getSub(), published: true },
       deps,
     );
 
-    await expect(promise).rejects.toSatisfy(isProfileNotPublishableError);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(isProfileNotPublishableError(result.error)).toBe(true);
+    }
     expect(deps.artistProfileRepository.setPublished).not.toHaveBeenCalled();
   });
 
@@ -132,32 +138,41 @@ describe("publishMyProfileUseCase", () => {
       deps,
     );
 
-    expect(result).toEqual({ published: false });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toEqual({ published: false });
+    }
   });
 
-  it("プロフィール未作成なら ArtistProfileNotFoundError", async () => {
+  it("プロフィール未作成なら err(ArtistProfileNotFoundError)", async () => {
     const deps = createMockDeps();
     deps.userRepository.findBySub.mockResolvedValue(existingUser);
     deps.artistRepository.findByUserId.mockResolvedValue(existingArtist);
     deps.artistProfileRepository.findByArtistId.mockResolvedValue(null);
 
-    const promise = publishMyProfileUseCase(
+    const result = await publishMyProfileUseCase(
       { subId: existingUser.getSub(), published: true },
       deps,
     );
 
-    await expect(promise).rejects.toSatisfy(isArtistProfileNotFoundError);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(isArtistProfileNotFoundError(result.error)).toBe(true);
+    }
   });
 
-  it("ユーザー未登録なら UserNotFoundError", async () => {
+  it("ユーザー未登録なら err(UserNotFoundError)", async () => {
     const deps = createMockDeps();
     deps.userRepository.findBySub.mockResolvedValue(null);
 
-    const promise = publishMyProfileUseCase(
+    const result = await publishMyProfileUseCase(
       { subId: "auth0|unknown", published: true },
       deps,
     );
 
-    await expect(promise).rejects.toSatisfy(isUserNotFoundError);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(isUserNotFoundError(result.error)).toBe(true);
+    }
   });
 });

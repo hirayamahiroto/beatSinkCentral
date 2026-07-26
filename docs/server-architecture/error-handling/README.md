@@ -24,3 +24,7 @@
 - エラーは「失敗の事実」ではなく「**何のルールが、どう違反されたか**」を伝える情報資産である
 - ルールは層ごとに異なるので、**エラー定義もルールを知っている層に co-located** で置く
 - HTTP への翻訳は `errorMap` だけが行い、ドメインや usecase は HTTP を知らない
+
+## 検討中の方式
+
+- [result-boundary.md](./result-boundary.md) — **検討中 / パイロット**。失敗を throw ではなく `Result<Output, E>` で返し、型に出す方式（Model A）。現行の throw + `errorMap` と併存する移行中の記述。
