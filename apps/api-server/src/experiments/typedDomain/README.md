@@ -24,6 +24,7 @@ workflow は上記の型を `flatMap` / `map` で合成する railway スタイ�
 ```
 typedDomain/
 ├── shared/result/          Result<T,E> と ok/err/map/flatMap（全ドメイン共有）
+├── shared/defineUsecase/   deps の「過剰提供」を型で弾く DI ヘルパ（後述）
 ├── users/                  Email/Sub(brand) + User状態union + policies + registerUser
 ├── artists/                accountId/artistId(brand) + Artist + policies + createArtist
 ├── artistProfiles/         各VO(brand) + Profile状態union(draft/published) + policies + publishProfile
@@ -49,5 +50,21 @@ typedDomain/
 | 取り違え防止      | 規約頼み                               | コンパイラが強制                      |
 | 状態の不整合防止  | 実行時判定                             | コンパイル時に不可能化                |
 | errorMap との接続 | throw を捕捉する既存機構にそのまま乗る | Result → HTTP 変換の設計が別途必要    |
+
+## shared/defineUsecase — 依存の「受け渡し」を型で締める
+
+Usecase が本体で使える依存は `Deps` 型が縛る（＝「使用の制御」）が、**呼び出し側が余分に渡すこと（過剰提供）は構造的部分型＋スプレッドで素通り**する。`useCase(input, { ...container })` が通ってしまうのがそれ。
+
+`defineUsecase` はカリー化で deps を composition root に束ね、束ねる箇所で**余剰キーを `never` 制約で弾く**。
+
+```ts
+const updateMyEmail = defineUsecase<Deps, Input, Output>((deps) => (input) => ...);
+updateMyEmail({ userRepository, txRunner }); // ✅ ちょうど
+updateMyEmail({ ...container });             // ❌ コンパイルエラー（余剰キーを弾く／スプレッドでも効く）
+```
+
+- `Deps` 型（使用の制御）と `defineUsecase`（受け渡しの制御）は**別々の境界**を締める。
+- route は束ねた関数を呼ぶだけになり、deps を渡す責務が消える＝過剰提供が起きえない。
+- 効果は `shared/defineUsecase/index.test.ts` の `@ts-expect-error`（過剰・スプレッド・不足の3ケース）で固定。
 
 **採用可否は未決。** 全面移行するなら `docs/server-architecture/architecture.md` の規範更新が前提。
