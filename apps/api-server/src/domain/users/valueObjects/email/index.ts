@@ -2,6 +2,7 @@ import { createTypedError } from "../../../../utils/errors/createTypedError";
 import { ok, err, type Result } from "../../../../utils/result";
 
 export type Email = {
+  readonly _tag: "Email";
   readonly value: string;
 };
 
@@ -23,5 +24,5 @@ export const createEmail = (
   if (!isValidEmail(value)) {
     return err(createInvalidEmailFormatError());
   }
-  return ok({ value });
+  return ok({ _tag: "Email", value });
 };

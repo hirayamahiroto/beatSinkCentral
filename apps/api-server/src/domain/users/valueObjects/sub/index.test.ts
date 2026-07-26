@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { createSub } from "./index";
+import { createSub, type Sub } from "./index";
+import { createEmail } from "../email";
 
 describe("Sub", () => {
   describe("createSub", () => {
@@ -39,6 +40,15 @@ describe("Sub", () => {
     it("nullish値では err を返す", () => {
       expect(createSub(null as unknown as string).ok).toBe(false);
       expect(createSub(undefined as unknown as string).ok).toBe(false);
+    });
+
+    it("Email は Sub に代入できない（ブランドで区別・コンパイル時）", () => {
+      const email = createEmail("a@example.com");
+      if (email.ok) {
+        // @ts-expect-error Email と Sub は _tag が異なるため代入不可
+        const _sub: Sub = email.value;
+        void _sub;
+      }
     });
   });
 });

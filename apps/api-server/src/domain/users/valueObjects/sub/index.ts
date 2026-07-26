@@ -2,6 +2,7 @@ import { createTypedError } from "../../../../utils/errors/createTypedError";
 import { ok, err, type Result } from "../../../../utils/result";
 
 export type Sub = {
+  readonly _tag: "Sub";
   readonly value: string;
 };
 
@@ -22,5 +23,5 @@ export const createSub = (
   if (!value || !isValidSub(value)) {
     return err(createInvalidSubFormatError());
   }
-  return ok({ value });
+  return ok({ _tag: "Sub", value });
 };

@@ -2,6 +2,7 @@ import { createTypedError } from "../../../../utils/errors/createTypedError";
 import { ok, err, type Result } from "../../../../utils/result";
 
 export interface Name {
+  readonly _tag: "Name";
   readonly value: string;
 }
 
@@ -25,5 +26,5 @@ export const createName = (
   if (!isValidName(value)) {
     return err(createInvalidNameFormatError());
   }
-  return ok({ value });
+  return ok({ _tag: "Name", value });
 };
