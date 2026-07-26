@@ -2,6 +2,7 @@ import { z } from "zod";
 import { createTypedError } from "../../../../utils/errors/createTypedError";
 
 export type SnsUrl = {
+  readonly _tag: "SnsUrl";
   readonly value: string;
 };
 
@@ -24,5 +25,5 @@ export const createSnsUrl = (value: string): SnsUrl => {
   if (!result.success) {
     throw createInvalidSnsUrlFormatError();
   }
-  return { value: result.data };
+  return { _tag: "SnsUrl", value: result.data };
 };

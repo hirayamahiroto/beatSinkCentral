@@ -2,6 +2,7 @@ import { z } from "zod";
 import { createTypedError } from "../../../../utils/errors/createTypedError";
 
 export type ImageUrl = {
+  readonly _tag: "ImageUrl";
   readonly value: string;
 };
 
@@ -25,5 +26,5 @@ export const createImageUrl = (value: string): ImageUrl => {
   if (!result.success) {
     throw createInvalidImageUrlFormatError();
   }
-  return { value: result.data };
+  return { _tag: "ImageUrl", value: result.data };
 };

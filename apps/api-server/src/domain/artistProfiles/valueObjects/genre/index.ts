@@ -2,6 +2,7 @@ import { z } from "zod";
 import { createTypedError } from "../../../../utils/errors/createTypedError";
 
 export type Genre = {
+  readonly _tag: "Genre";
   readonly value: string;
 };
 
@@ -23,5 +24,5 @@ export const createGenre = (value: string): Genre => {
   if (!result.success) {
     throw createInvalidGenreFormatError();
   }
-  return { value: result.data };
+  return { _tag: "Genre", value: result.data };
 };

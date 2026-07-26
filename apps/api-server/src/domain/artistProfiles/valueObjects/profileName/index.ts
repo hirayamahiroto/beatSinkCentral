@@ -2,6 +2,7 @@ import { z } from "zod";
 import { createTypedError } from "../../../../utils/errors/createTypedError";
 
 export type ProfileName = {
+  readonly _tag: "ProfileName";
   readonly value: string;
 };
 
@@ -24,5 +25,5 @@ export const createProfileName = (value: string): ProfileName => {
   if (!result.success) {
     throw createInvalidProfileNameFormatError();
   }
-  return { value: result.data };
+  return { _tag: "ProfileName", value: result.data };
 };

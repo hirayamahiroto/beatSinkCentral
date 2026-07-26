@@ -9,6 +9,7 @@ describe("createProfileLink", () => {
       label: "メイン",
     });
     expect(link).toEqual({
+      _tag: "ProfileLink",
       type: "youtube",
       url: "https://youtube.com/@taro",
       label: "メイン",

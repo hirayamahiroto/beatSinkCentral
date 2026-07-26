@@ -2,6 +2,7 @@ import { z } from "zod";
 import { createTypedError } from "../../../../utils/errors/createTypedError";
 
 export type Story = {
+  readonly _tag: "Story";
   readonly value: string;
 };
 
@@ -23,5 +24,5 @@ export const createStory = (value: string): Story => {
   if (!result.success) {
     throw createInvalidStoryFormatError();
   }
-  return { value: result.data };
+  return { _tag: "Story", value: result.data };
 };

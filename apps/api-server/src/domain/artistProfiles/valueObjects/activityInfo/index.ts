@@ -2,6 +2,7 @@ import { z } from "zod";
 import { createTypedError } from "../../../../utils/errors/createTypedError";
 
 export type ActivityInfo = {
+  readonly _tag: "ActivityInfo";
   readonly value: string;
 };
 
@@ -24,5 +25,5 @@ export const createActivityInfo = (value: string): ActivityInfo => {
   if (!result.success) {
     throw createInvalidActivityInfoFormatError();
   }
-  return { value: result.data };
+  return { _tag: "ActivityInfo", value: result.data };
 };

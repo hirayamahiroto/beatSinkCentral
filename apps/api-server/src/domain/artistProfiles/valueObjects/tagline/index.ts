@@ -2,6 +2,7 @@ import { z } from "zod";
 import { createTypedError } from "../../../../utils/errors/createTypedError";
 
 export type Tagline = {
+  readonly _tag: "Tagline";
   readonly value: string;
 };
 
@@ -9,8 +10,8 @@ export type InvalidTaglineFormatError = Error & {
   readonly type: "InvalidTaglineFormatError";
 };
 
-export const createInvalidTaglineFormatError =
-  (): InvalidTaglineFormatError => createTypedError("InvalidTaglineFormatError");
+export const createInvalidTaglineFormatError = (): InvalidTaglineFormatError =>
+  createTypedError("InvalidTaglineFormatError");
 
 const taglineSchema = z
   .string()
@@ -23,5 +24,5 @@ export const createTagline = (value: string): Tagline => {
   if (!result.success) {
     throw createInvalidTaglineFormatError();
   }
-  return { value: result.data };
+  return { _tag: "Tagline", value: result.data };
 };

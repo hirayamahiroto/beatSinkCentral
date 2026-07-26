@@ -3,6 +3,7 @@ import { createTypedError } from "../../../../utils/errors/createTypedError";
 import { createSnsUrl } from "../snsUrl";
 
 export type ProfileLink = {
+  readonly _tag: "ProfileLink";
   readonly type: string;
   readonly url: string;
   readonly label: string | null;
@@ -47,6 +48,7 @@ export const createProfileLink = (input: ProfileLinkInput): ProfileLink => {
   }
 
   return {
+    _tag: "ProfileLink",
     type: typeResult.data,
     url,
     label: trimmedLabel.length > 0 ? trimmedLabel : null,

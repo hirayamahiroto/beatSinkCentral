@@ -3,6 +3,7 @@ import { createTypedError } from "../../../../utils/errors/createTypedError";
 import { ok, err, type Result } from "../../../../utils/result";
 
 export type ArtistId = {
+  readonly _tag: "ArtistId";
   readonly value: string;
 };
 
@@ -23,5 +24,5 @@ export const createArtistId = (
   if (!result.success) {
     return err(createInvalidArtistIdFormatError());
   }
-  return ok({ value: result.data });
+  return ok({ _tag: "ArtistId", value: result.data });
 };

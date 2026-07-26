@@ -3,6 +3,7 @@ import { createTypedError } from "../../../../utils/errors/createTypedError";
 import { ok, err, type Result } from "../../../../utils/result";
 
 export type AccountId = {
+  readonly _tag: "AccountId";
   readonly value: string;
 };
 
@@ -31,5 +32,5 @@ export const createAccountId = (
   if (!result.success) {
     return err(createInvalidAccountIdFormatError());
   }
-  return ok({ value: result.data });
+  return ok({ _tag: "AccountId", value: result.data });
 };
