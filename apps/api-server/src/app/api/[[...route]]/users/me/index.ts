@@ -2,7 +2,6 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { getContainer } from "../../../../../infrastructure/container";
 import { getMeUseCase } from "../../../../../usecases/users/getMe";
-import { updateMyEmailUseCase } from "../../../../../usecases/users/updateMyEmail";
 import { validateRequest } from "../../validators/validateRequest";
 
 export const updateMyEmailRequestSchema = z.object({
@@ -31,12 +30,12 @@ const app = new Hono()
     const body = c.req.valid("json");
     const auth0User = c.get("auth0User");
 
-    const { userRepository, txRunner } = getContainer();
+    const { updateMyEmail } = getContainer().usecases;
 
-    const result = await updateMyEmailUseCase(
-      { subId: auth0User.sub, email: body.email },
-      { userRepository, txRunner },
-    );
+    const result = await updateMyEmail({
+      subId: auth0User.sub,
+      email: body.email,
+    });
 
     return c.json(result);
   });

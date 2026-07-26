@@ -737,6 +737,50 @@ export const createUserRepository = (db: DatabaseClient): IUserRepository => ({
 
 ---
 
+## 依存注入の受け渡し制御（`defineUsecase`）
+
+Usecase が本体で使える依存は `Deps` 型が縛る（＝「使用の制御」。型に無い依存は本体から参照できずコンパイルエラー）。しかし **呼び出し側が余分な依存を渡すこと（過剰提供）は型で止まらない**。TypeScript の構造的部分型では「多い」オブジェクトが「少ない」型に代入でき、`{ ...container }` のスプレッドは excess property check の対象外になるためである。
+
+```typescript
+// UpdateMyEmailDeps が必要とするのは userRepository と txRunner の2つだけ
+updateMyEmailUseCase(input, { ...container }); // ❌ 5個渡しても素通り（型で止まらない）
+```
+
+過剰提供そのものは実害が小さいが、より重要なのは **Usecase の依存面が「静かに広がる」ことを検知できない**点にある。`{ ...container }` で渡していると、Usecase の `Deps` に依存を1個足しても call-site に差分が出ず、レビューで気づけない。
+
+これを構造で締めるため、Usecase は **`defineUsecase` でカリー化**して定義し、依存は **Composition Root（container）で正確に束ねる**。エントリポイント層は束ねた関数を呼ぶだけで、依存を渡さない。
+
+```typescript
+// usecases/shared/defineUsecase: 余剰キーを never 制約で弾くカリー化ヘルパ
+type NoExtraKeys<T, Deps> = Record<Exclude<keyof T, keyof Deps>, never>;
+export const defineUsecase =
+  <Deps, Input, Output>(impl: (deps: Deps) => (input: Input) => Promise<Output>) =>
+  <T extends Deps>(deps: T & NoExtraKeys<T, Deps>) =>
+    impl(deps);
+
+// usecase: カリー化して定義
+export const updateMyEmailUseCase = defineUsecase<Deps, Input, Output>(
+  (deps) => async (input) => { ... },
+);
+
+// Composition Root: 正確な依存で束ねる（余剰は never 制約で弾かれる）
+usecases: { updateMyEmail: updateMyEmailUseCase({ userRepository, txRunner }) }
+
+// エントリポイント層: 束ねた関数を呼ぶだけ（依存を渡さない）
+const { updateMyEmail } = getContainer().usecases;
+await updateMyEmail({ subId, email });
+```
+
+**効果**:
+
+- エントリポイント層から「依存を渡す」責務が消え、**過剰提供が原理的に起きえない**。
+- Usecase の依存面を広げるには Composition Root の束ね直しが必要になり、**変更が差分として必ず表面化**する。
+- `{ ...container }` はもちろん、変数渡し・スプレッドも `never` 制約でコンパイルエラーになる（excess property check に依存しない）。
+
+> **段階導入**: 全 usecase の一括移行ではなく、エンドポイント単位で `defineUsecase` 化してよい。移行済みは `container.usecases` 経由、未移行は従来どおり repository を直接受け取る形が混在してよい。
+
+---
+
 ## 設計原則: Functional Core, Imperative Shell
 
 本プロジェクトの層構造は **Functional Core, Imperative Shell** パターンに一致する。

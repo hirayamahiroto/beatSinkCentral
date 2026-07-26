@@ -2,6 +2,7 @@ import type { IUserRepository } from "../../../domain/users/repositories";
 import { assertRegistered } from "../../../domain/users/policies/assertRegistered";
 import { createEmail } from "../../../domain/users/valueObjects/email";
 import type { ITransactionRunner } from "../../../infrastructure/transaction";
+import { defineUsecase } from "../../shared/defineUsecase";
 
 export type UpdateMyEmailInput = {
   subId: string;
@@ -18,10 +19,11 @@ export type UpdateMyEmailDeps = {
   txRunner: ITransactionRunner;
 };
 
-export const updateMyEmailUseCase = async (
-  input: UpdateMyEmailInput,
-  deps: UpdateMyEmailDeps,
-): Promise<UpdateMyEmailOutput> => {
+export const updateMyEmailUseCase = defineUsecase<
+  UpdateMyEmailDeps,
+  UpdateMyEmailInput,
+  UpdateMyEmailOutput
+>((deps) => async (input) => {
   const newEmail = createEmail(input.email);
 
   return deps.txRunner.run(async (tx) => {
@@ -39,4 +41,4 @@ export const updateMyEmailUseCase = async (
       email: saved.getEmail(),
     };
   });
-};
+});

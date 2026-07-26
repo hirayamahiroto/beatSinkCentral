@@ -47,7 +47,7 @@ describe("updateMyEmailUseCase", () => {
       }),
     );
 
-    const result = await updateMyEmailUseCase(validInput, deps);
+    const result = await updateMyEmailUseCase(deps)(validInput);
 
     expect(result).toStrictEqual({
       userId: existingUser.getId(),
@@ -64,7 +64,7 @@ describe("updateMyEmailUseCase", () => {
     const deps = createMockDeps();
     deps.userRepository.findBySub.mockResolvedValue(null);
 
-    const promise = updateMyEmailUseCase(validInput, deps);
+    const promise = updateMyEmailUseCase(deps)(validInput);
 
     await expect(promise).rejects.toSatisfy(isUserNotFoundError);
     expect(deps.userRepository.updateEmail).not.toHaveBeenCalled();
@@ -73,10 +73,10 @@ describe("updateMyEmailUseCase", () => {
   it("emailが不正な形式の場合は、トランザクション開始前にInvalidEmailFormatErrorをスローする", async () => {
     const deps = createMockDeps();
 
-    const promise = updateMyEmailUseCase(
-      { ...validInput, email: "invalid" },
-      deps,
-    );
+    const promise = updateMyEmailUseCase(deps)({
+      ...validInput,
+      email: "invalid",
+    });
 
     await expect(promise).rejects.toMatchObject({
       type: "InvalidEmailFormatError",
