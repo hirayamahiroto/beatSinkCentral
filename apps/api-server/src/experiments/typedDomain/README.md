@@ -25,7 +25,7 @@ workflow は上記の型を `flatMap` / `map` で合成する railway スタイ�
 typedDomain/
 ├── shared/result/          Result<T,E> と ok/err/map/flatMap（全ドメイン共有）
 ├── shared/defineUsecase/   deps の「過剰提供」を型で弾く DI ヘルパ（後述）
-├── users/                  Email/Sub(brand) + User状態union + policies + registerUser
+├── users/                  Email/Sub(brand) + User状態union + policies + workflow + usecase(repository port + defineUsecase + Result)
 ├── artists/                accountId/artistId(brand) + Artist + policies + createArtist
 ├── artistProfiles/         各VO(brand) + Profile状態union(draft/published) + policies + publishProfile
 └── linkTypes/              マスタ参照型（code をbrand化）
@@ -66,5 +66,19 @@ updateMyEmail({ ...container });             // ❌ コンパイルエラー（�
 - `Deps` 型（使用の制御）と `defineUsecase`（受け渡しの制御）は**別々の境界**を締める。
 - route は束ねた関数を呼ぶだけになり、deps を渡す責務が消える＝過剰提供が起きえない。
 - 効果は `shared/defineUsecase/index.test.ts` の `@ts-expect-error`（過剰・スプレッド・不足の3ケース）で固定。
+
+## usecase 層（縦の完成形）
+
+`users/usecase/registerUser` は、この型スタイルの縦を1本通した例:
+
+- **repository ポート**（`users/repository`）= 純粋なインターフェース。DB を知らない。
+- **defineUsecase** で `Deps`（ポート + `newId`）を束ね、過剰提供を型で弾く。
+- 中で **workflow（`registerUser`）を呼び、`Result` をそのまま返す**（失敗が usecase シグネチャに出る）。副作用（fetch/save）はポート越し、ID 採番は `newId: () => string` を注入して純粋に保つ。
+
+```
+VO(Result) → workflow(Result) → usecase(defineUsecase + port, Result) → [境界で Result を分岐]
+```
+
+テストは in-memory の fake ポートで、成功 / 登録済み / 入力不正の3経路を Result で検証する。
 
 **採用可否は未決。** 全面移行するなら `docs/server-architecture/architecture.md` の規範更新が前提。
