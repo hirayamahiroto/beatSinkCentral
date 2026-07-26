@@ -24,13 +24,21 @@ workflow は上記の型を `flatMap` / `map` で合成する railway スタイ�
 ```
 typedDomain/
 ├── shared/result/          Result<T,E> と ok/err/map/flatMap（全ドメイン共有）
-├── users/                  Email/Sub(brand) + User状態union + registerUser workflow
-├── artists/                accountId/artistId(brand) + Artist + workflow
-├── artistProfiles/         profileName/tagline/story/... (brand) + Profile状態union(draft/published)
-└── linkTypes/              マスタ参照型（code/label/icon）
+├── users/                  Email/Sub(brand) + User状態union + policies + registerUser
+├── artists/                accountId/artistId(brand) + Artist + policies + createArtist
+├── artistProfiles/         各VO(brand) + Profile状態union(draft/published) + policies + publishProfile
+└── linkTypes/              マスタ参照型（code をbrand化）
 ```
 
 各ドメインは既存 `apps/api-server/src/domain/<name>` の項目・検証ルールを踏襲しつつ、上記スタイルへ置き換えている。
+
+### policy 層の粒度
+
+制約（不変条件）は **ドメインごとに `policies/index.ts` 1ファイル**に名前付き純粋関数として集約し、`Result<void, E>`（または絞り込み後の型）を返す。workflow はそれを `flatMap` で合成する。
+
+- 制約に**名前を付け・単独でテストでき・再利用できる**単位を保つ（＝「どんな制約があるか」の目録）。
+- ただし **1ルール＝1ディレクトリには割らない**。policy が helper を持つ・意味ある軸でまとまる段階で初めてディレクトリに分割する（`architecture.md` の「先回りでグルーピングしない」に沿う）。
+- `artistProfiles` の `assertProfilePublishable` は判定と同時に `DraftProfile → PublishedProfile` へ絞り込む（parse, don't validate）。
 
 ## 既存パターンとのトレードオフ
 

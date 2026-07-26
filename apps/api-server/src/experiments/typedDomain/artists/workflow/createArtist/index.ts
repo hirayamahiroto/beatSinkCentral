@@ -1,4 +1,4 @@
-import { type Result, err, flatMap, map } from "../../../shared/result";
+import { type Result, flatMap, map } from "../../../shared/result";
 import {
   createAccountId,
   type InvalidAccountIdFormatError,
@@ -8,10 +8,10 @@ import {
   type InvalidArtistIdFormatError,
 } from "../../valueObjects/artistId";
 import type { Artist } from "../../artist";
-
-export type AccountIdAlreadyTakenError = {
-  readonly type: "AccountIdAlreadyTakenError";
-};
+import {
+  assertAccountIdAvailable,
+  type AccountIdAlreadyTakenError,
+} from "../../policies";
 
 export type CreateArtistError =
   | InvalidAccountIdFormatError
@@ -27,17 +27,14 @@ export const createArtist = (
   input: CreateArtistInput,
   existingArtist: Artist | null,
   newArtistId: string,
-): Result<Artist, CreateArtistError> => {
-  if (existingArtist) {
-    return err({ type: "AccountIdAlreadyTakenError" });
-  }
-
-  return flatMap(createAccountId(input.accountId), (accountId) =>
-    map(createArtistId(newArtistId), (artistId) => ({
-      artistId,
-      accountId,
-      ownerUserId: input.ownerUserId,
-      profile: null,
-    })),
+): Result<Artist, CreateArtistError> =>
+  flatMap(assertAccountIdAvailable(existingArtist), () =>
+    flatMap(createAccountId(input.accountId), (accountId) =>
+      map(createArtistId(newArtistId), (artistId) => ({
+        artistId,
+        accountId,
+        ownerUserId: input.ownerUserId,
+        profile: null,
+      })),
+    ),
   );
-};
