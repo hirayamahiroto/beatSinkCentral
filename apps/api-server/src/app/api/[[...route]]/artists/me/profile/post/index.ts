@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getContainer } from "../../../../../../../infrastructure/container";
 import { saveMyProfileUseCase } from "../../../../../../../usecases/artistProfiles/saveMyProfile";
 import { validateRequest } from "../../../../validators/validateRequest";
+import { handleAppError } from "../../../../../../../errorMap";
 
 export const saveProfileRequestSchema = z.object({
   name: z.string().nullable().optional(),
@@ -42,7 +43,11 @@ const app = new Hono().post(
       { userRepository, artistRepository, artistProfileRepository, txRunner },
     );
 
-    return c.json(result);
+    if (!result.ok) {
+      return handleAppError(result.error, c);
+    }
+
+    return c.json(result.value);
   },
 );
 

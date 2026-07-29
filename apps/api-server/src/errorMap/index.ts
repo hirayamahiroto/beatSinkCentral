@@ -1,5 +1,8 @@
 import type { Context } from "hono";
-import type { ContentfulStatusCode } from "hono/utils/http-status";
+import type {
+  ClientErrorStatusCode,
+  ServerErrorStatusCode,
+} from "hono/utils/http-status";
 import type { UserAlreadyRegisteredError } from "../domain/users/policies/assertNotRegistered";
 import type { UserNotFoundError } from "../domain/users/policies/assertRegistered";
 import type { AccountIdAlreadyTakenError } from "../domain/artists/policies/assertAccountIdAvailable";
@@ -45,8 +48,10 @@ export type AppError =
   | InvalidSnsUrlFormatError
   | InvalidProfileLinkFormatError;
 
+type ErrorStatusCode = ClientErrorStatusCode | ServerErrorStatusCode;
+
 type ErrorMapping<SpecificError extends AppError> = {
-  status: ContentfulStatusCode;
+  status: ErrorStatusCode;
   message: (error: SpecificError) => string;
   details?: (error: SpecificError) => unknown;
 };
@@ -168,7 +173,7 @@ const buildMappedResponse = <Error extends AppError>(
 
 type ErrorResponse = {
   body: { error: string; details?: unknown };
-  status: ContentfulStatusCode;
+  status: ErrorStatusCode;
 };
 
 const resolveErrorResponse = (error: unknown): ErrorResponse => {

@@ -64,6 +64,8 @@ describe("reconstructArtistProfile", () => {
       artistId: "artist-1",
       published: true,
       name: "Taro",
+      imageUrl: "https://example.com/a.png",
+      story: "私の歩み",
       genres: ["bass"],
       links: [{ type: "x", url: "https://x.com/taro" }],
     });
@@ -72,6 +74,17 @@ describe("reconstructArtistProfile", () => {
     expect(profile._tag).toBe("Published");
     expect(isPublished(profile)).toBe(true);
     expect(toView(profile).name).toBe("Taro");
+  });
+
+  it("published:true なのに必須項目が欠けた永続化データはスローする（データ破損）", () => {
+    expect(() =>
+      reconstructArtistProfile({
+        id: "profile-1",
+        artistId: "artist-1",
+        published: true,
+        name: "Taro",
+      }),
+    ).toThrow();
   });
 
   it("toPersistence はプリミティブな永続化データを返す", () => {

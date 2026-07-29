@@ -13,6 +13,8 @@ import type {
   DraftProfile,
   ProfileContentFields,
 } from "../entities";
+import { publish } from "../operations";
+import { unwrapOrThrow } from "../../../utils/result";
 
 const optional = <T>(
   value: string | null | undefined,
@@ -83,9 +85,17 @@ export type ReconstructArtistProfileParams = ArtistProfileContent & {
 export const reconstructArtistProfile = (
   params: ReconstructArtistProfileParams,
 ): ArtistProfile => {
-  const identity = { id: params.id, artistId: params.artistId };
-  const content = buildContentFields(params);
-  return params.published
-    ? { _tag: "Published", ...identity, ...content }
-    : { _tag: "Draft", ...identity, ...content };
+  const draft: DraftProfile = {
+    _tag: "Draft",
+    id: params.id,
+    artistId: params.artistId,
+    ...buildContentFields(params),
+  };
+
+  if (!params.published) return draft;
+
+  return unwrapOrThrow(
+    publish(draft),
+    "reconstructArtistProfile: published profile is missing required fields",
+  );
 };

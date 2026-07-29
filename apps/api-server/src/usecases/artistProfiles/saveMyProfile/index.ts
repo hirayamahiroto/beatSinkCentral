@@ -12,12 +12,21 @@ import {
 } from "../../../domain/artistProfiles/factories";
 import {
   isPublished,
+  publish,
   toPersistence,
   toView,
 } from "../../../domain/artistProfiles/operations";
-import { assertRegistered } from "../../../domain/users/policies/assertRegistered";
-import { assertArtistExists } from "../../../domain/artists/policies/assertArtistExists";
+import {
+  createUserNotFoundError,
+  type UserNotFoundError,
+} from "../../../domain/users/policies/assertRegistered";
+import {
+  createArtistNotFoundError,
+  type ArtistNotFoundError,
+} from "../../../domain/artists/policies/assertArtistExists";
+import type { ProfileNotPublishableError } from "../../../domain/artistProfiles/policies/assertProfilePublishable";
 import type { ITransactionRunner } from "../../../infrastructure/transaction";
+import { type Result, ok, err } from "../../../utils/result";
 
 export type SaveMyProfileInput = ArtistProfileContent & {
   subId: string;
@@ -27,6 +36,11 @@ export type SaveMyProfileOutput = {
   accountId: string;
   profile: ArtistProfileView;
 };
+
+export type SaveMyProfileError =
+  | UserNotFoundError
+  | ArtistNotFoundError
+  | ProfileNotPublishableError;
 
 export type SaveMyProfileDeps = {
   userRepository: IUserRepository;
@@ -38,15 +52,15 @@ export type SaveMyProfileDeps = {
 export const saveMyProfileUseCase = async (
   input: SaveMyProfileInput,
   deps: SaveMyProfileDeps,
-): Promise<SaveMyProfileOutput> => {
+): Promise<Result<SaveMyProfileOutput, SaveMyProfileError>> => {
   const { subId, ...content } = input;
 
   return deps.txRunner.run(async (tx) => {
     const user = await deps.userRepository.findBySub(subId, tx);
-    assertRegistered(user);
+    if (!user) return err(createUserNotFoundError());
 
     const artist = await deps.artistRepository.findByUserId(user.getId());
-    assertArtistExists(artist);
+    if (!artist) return err(createArtistNotFoundError());
 
     const artistId = artist.getArtistId();
     const existing = await deps.artistProfileRepository.findByArtistId(
@@ -54,23 +68,27 @@ export const saveMyProfileUseCase = async (
       tx,
     );
 
-    const profile: ArtistProfile = existing
+    const draft = existing
       ? reconstructArtistProfile({
           id: existing.id,
           artistId,
-          published: isPublished(existing),
+          published: false,
           ...content,
         })
       : createArtistProfile({ artistId, ...content });
 
+    const profile: Result<ArtistProfile, ProfileNotPublishableError> =
+      existing && isPublished(existing) ? publish(draft) : ok(draft);
+    if (!profile.ok) return err(profile.error);
+
     const saved = await deps.artistProfileRepository.upsert(
-      toPersistence(profile),
+      toPersistence(profile.value),
       tx,
     );
 
-    return {
+    return ok({
       accountId: artist.getAccountId(),
       profile: toView(saved),
-    };
+    });
   });
 };

@@ -7,6 +7,7 @@ import { reconstructUser } from "../../../domain/users/factories";
 import { reconstructArtist } from "../../../domain/artists/factories";
 import { reconstructArtistProfile } from "../../../domain/artistProfiles/factories";
 import { publish } from "../../../domain/artistProfiles/operations";
+import { unwrapOrThrow } from "../../../utils/result";
 
 const createMockDeps = () =>
   ({
@@ -69,7 +70,7 @@ describe("publishMyProfileUseCase", () => {
       publishableProfile,
     );
     deps.artistProfileRepository.setPublished.mockResolvedValue(
-      publish(publishableProfile),
+      unwrapOrThrow(publish(publishableProfile), "fixture must be publishable"),
     );
 
     const result = await publishMyProfileUseCase(
@@ -118,12 +119,7 @@ describe("publishMyProfileUseCase", () => {
     deps.userRepository.findBySub.mockResolvedValue(existingUser);
     deps.artistRepository.findByUserId.mockResolvedValue(existingArtist);
     deps.artistProfileRepository.findByArtistId.mockResolvedValue(
-      reconstructArtistProfile({
-        id: "profile-1",
-        artistId: "artist-1",
-        published: true,
-        name: "Taro",
-      }),
+      unwrapOrThrow(publish(publishableProfile), "fixture must be publishable"),
     );
     deps.artistProfileRepository.setPublished.mockResolvedValue(
       reconstructArtistProfile({

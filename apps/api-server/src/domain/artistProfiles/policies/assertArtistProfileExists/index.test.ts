@@ -1,26 +1,22 @@
 import { describe, it, expect } from "vitest";
 import {
-  assertArtistProfileExists,
+  createArtistProfileNotFoundError,
   isArtistProfileNotFoundError,
 } from "./index";
-import { reconstructArtistProfile } from "../../factories";
 
-describe("assertArtistProfileExists", () => {
-  it("profile が存在すれば何もスローしない", () => {
-    const profile = reconstructArtistProfile({
-      id: "profile-1",
-      artistId: "artist-1",
-      published: false,
-    });
-    expect(() => assertArtistProfileExists(profile)).not.toThrow();
+describe("ArtistProfileNotFoundError", () => {
+  it("type を持つ Error として生成される", () => {
+    const error = createArtistProfileNotFoundError();
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error.type).toBe("ArtistProfileNotFoundError");
   });
 
-  it("null の場合は ArtistProfileNotFoundError をスローする", () => {
-    expect(() => assertArtistProfileExists(null)).toThrow();
-    try {
-      assertArtistProfileExists(null);
-    } catch (error) {
-      expect(isArtistProfileNotFoundError(error)).toBe(true);
-    }
+  it("isArtistProfileNotFoundError は自身のエラーだけを判別する", () => {
+    expect(
+      isArtistProfileNotFoundError(createArtistProfileNotFoundError()),
+    ).toBe(true);
+    expect(isArtistProfileNotFoundError(new Error("other"))).toBe(false);
+    expect(isArtistProfileNotFoundError(null)).toBe(false);
   });
 });

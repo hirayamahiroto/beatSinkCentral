@@ -15,8 +15,10 @@ import type {
 import type {
   ArtistProfile,
   ProfileLinkData,
+  PublishedProfile,
 } from "../../../domain/artistProfiles/entities";
 import { reconstructArtistProfile } from "../../../domain/artistProfiles/factories";
+import { isPublished } from "../../../domain/artistProfiles/operations";
 import { createArtistProfileNotFoundError } from "../../../domain/artistProfiles/policies/assertArtistProfileExists";
 import { createInvalidProfileLinkFormatError } from "../../../domain/artistProfiles/valueObjects/profileLink";
 import type { TransactionContext } from "../../transaction";
@@ -173,7 +175,7 @@ export const createArtistProfileRepository = (
 
   async findPublishedByAccountId(
     accountId: string,
-  ): Promise<ArtistProfile | null> {
+  ): Promise<PublishedProfile | null> {
     const [row] = await db
       .select(profileColumns)
       .from(artistProfilesTable)
@@ -192,7 +194,8 @@ export const createArtistProfileRepository = (
     if (!row) return null;
 
     const { genres, links } = await loadChildren(db, row.id);
-    return toEntity(row, genres, links);
+    const profile = toEntity(row, genres, links);
+    return isPublished(profile) ? profile : null;
   },
 
   async upsert(

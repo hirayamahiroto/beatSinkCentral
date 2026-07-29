@@ -4,6 +4,7 @@ import { reconstructUser } from "../../../../../../../../domain/users/factories"
 import { reconstructArtist } from "../../../../../../../../domain/artists/factories";
 import { reconstructArtistProfile } from "../../../../../../../../domain/artistProfiles/factories";
 import { publish } from "../../../../../../../../domain/artistProfiles/operations";
+import { unwrapOrThrow } from "../../../../../../../../utils/result";
 import publishMyProfile from "./index";
 
 const mockUserRepository = { findBySub: vi.fn() };
@@ -62,7 +63,7 @@ describe("POST /artists/me/profile/publish", () => {
     });
     mockArtistProfileRepository.findByArtistId.mockResolvedValue(publishable);
     mockArtistProfileRepository.setPublished.mockResolvedValue(
-      publish(publishable),
+      unwrapOrThrow(publish(publishable), "fixture must be publishable"),
     );
 
     const res = await createApp("auth0|123").request("/", {

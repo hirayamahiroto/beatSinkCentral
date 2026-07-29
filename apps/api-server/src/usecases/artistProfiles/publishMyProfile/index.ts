@@ -13,12 +13,13 @@ import {
   createArtistProfileNotFoundError,
   type ArtistProfileNotFoundError,
 } from "../../../domain/artistProfiles/policies/assertArtistProfileExists";
+import type { ProfileNotPublishableError } from "../../../domain/artistProfiles/policies/assertProfilePublishable";
+import type { ArtistProfile } from "../../../domain/artistProfiles/entities";
 import {
-  collectMissingPublishFields,
-  createProfileNotPublishableError,
-  type ProfileNotPublishableError,
-} from "../../../domain/artistProfiles/policies/assertProfilePublishable";
-import { isPublished } from "../../../domain/artistProfiles/operations";
+  isPublished,
+  publish,
+  unpublish,
+} from "../../../domain/artistProfiles/operations";
 import type { ITransactionRunner } from "../../../infrastructure/transaction";
 import { ok, err, type Result } from "../../../utils/result";
 
@@ -61,15 +62,15 @@ export const publishMyProfileUseCase = async (
     );
     if (!profile) return err(createArtistProfileNotFoundError());
 
-    if (input.published) {
-      const missingFields = collectMissingPublishFields(profile);
-      if (missingFields.length > 0) {
-        return err(createProfileNotPublishableError(missingFields));
-      }
-    }
+    const nextProfile: Result<ArtistProfile, ProfileNotPublishableError> =
+      input.published ? publish(profile) : ok(unpublish(profile));
+    if (!nextProfile.ok) return err(nextProfile.error);
 
     const saved = await deps.artistProfileRepository.setPublished(
-      { artistId: artist.getArtistId(), published: input.published },
+      {
+        artistId: artist.getArtistId(),
+        published: isPublished(nextProfile.value),
+      },
       tx,
     );
 

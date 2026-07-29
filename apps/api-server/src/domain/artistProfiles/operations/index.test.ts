@@ -1,25 +1,33 @@
 import { describe, it, expect } from "vitest";
 import {
   toView,
+  toPublishedView,
   toPersistence,
   isPublished,
   publish,
   unpublish,
 } from "./index";
 import { reconstructArtistProfile } from "../factories";
+import { isProfileNotPublishableError } from "../policies/assertProfilePublishable";
+import { unwrapOrThrow } from "../../../utils/result";
 
-const published = reconstructArtistProfile({
-  id: "profile-1",
-  artistId: "artist-1",
-  published: true,
-  name: "Taro",
-  tagline: "音で旅する",
-  imageUrl: "https://example.com/a.png",
-  story: "私の歩み",
-  activityInfo: "東京 / ソロ",
-  genres: ["bass", "inward"],
-  links: [{ type: "x", url: "https://x.com/taro" }],
-});
+const published = unwrapOrThrow(
+  publish(
+    reconstructArtistProfile({
+      id: "profile-1",
+      artistId: "artist-1",
+      published: false,
+      name: "Taro",
+      tagline: "音で旅する",
+      imageUrl: "https://example.com/a.png",
+      story: "私の歩み",
+      activityInfo: "東京 / ソロ",
+      genres: ["bass", "inward"],
+      links: [{ type: "x", url: "https://x.com/taro" }],
+    }),
+  ),
+  "fixture must be publishable",
+);
 
 describe("artistProfile operations", () => {
   it("toView は VO 構造を露出せずプリミティブなプレゼンテーションデータを返す", () => {
@@ -61,17 +69,51 @@ describe("artistProfile operations", () => {
     expect(isPublished(published)).toBe(true);
   });
 
-  it("publish は Published を返し、元の値は不変", () => {
+  it("publish は最小核が揃っていれば ok(Published) を返し、元の値は不変", () => {
+    const draft = unpublish(published);
+    const result = publish(draft);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value._tag).toBe("Published");
+      expect(isPublished(result.value)).toBe(true);
+    }
+    expect(isPublished(draft)).toBe(false);
+  });
+
+  it("publish は最小核が欠けていれば err(ProfileNotPublishableError) を返す", () => {
     const draft = reconstructArtistProfile({
       id: "profile-2",
       artistId: "artist-2",
       published: false,
       name: "Jiro",
     });
+
     const result = publish(draft);
-    expect(result._tag).toBe("Published");
-    expect(isPublished(result)).toBe(true);
-    expect(isPublished(draft)).toBe(false);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(isProfileNotPublishableError(result.error)).toBe(true);
+      expect(result.error.missingFields).toEqual([
+        "imageUrl",
+        "story",
+        "genres",
+        "links",
+      ]);
+    }
+  });
+
+  it("toPublishedView は必須項目を非 null・非空で返す", () => {
+    expect(toPublishedView(published)).toEqual({
+      name: "Taro",
+      tagline: "音で旅する",
+      imageUrl: "https://example.com/a.png",
+      story: "私の歩み",
+      activityInfo: "東京 / ソロ",
+      genres: ["bass", "inward"],
+      links: [{ type: "x", url: "https://x.com/taro", label: null }],
+      published: true,
+    });
   });
 
   it("未設定フィールドは null / 空配列で返す", () => {

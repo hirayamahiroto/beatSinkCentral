@@ -6,6 +6,10 @@ import type { ActivityInfo } from "../valueObjects/activityInfo";
 import type { Genre } from "../valueObjects/genre";
 import type { ProfileLink } from "../valueObjects/profileLink";
 
+export type NonEmptyArray<T> = [T, ...T[]];
+
+export type ReadonlyNonEmptyArray<T> = readonly [T, ...T[]];
+
 export type ProfileLinkData = {
   type: string;
   url: string;
@@ -36,15 +40,40 @@ export type ArtistProfileView = {
   published: boolean;
 };
 
-export type ProfileContentFields = {
-  readonly name: ProfileName | null;
+export type PublishedProfileView = {
+  name: string;
+  tagline: string | null;
+  imageUrl: string;
+  story: string;
+  activityInfo: string | null;
+  genres: NonEmptyArray<string>;
+  links: NonEmptyArray<ProfileLinkData>;
+  published: true;
+};
+
+type ProfileOptionalFields = {
   readonly tagline: Tagline | null;
+  readonly activityInfo: ActivityInfo | null;
+};
+
+export type ProfileContentFields = ProfileOptionalFields & {
+  readonly name: ProfileName | null;
   readonly imageUrl: ImageUrl | null;
   readonly story: Story | null;
-  readonly activityInfo: ActivityInfo | null;
   readonly genres: readonly Genre[];
   readonly links: readonly ProfileLink[];
 };
+
+export type PublishRequiredFields = {
+  readonly name: ProfileName;
+  readonly imageUrl: ImageUrl;
+  readonly story: Story;
+  readonly genres: ReadonlyNonEmptyArray<Genre>;
+  readonly links: ReadonlyNonEmptyArray<ProfileLink>;
+};
+
+export type PublishedContentFields = ProfileOptionalFields &
+  PublishRequiredFields;
 
 type ProfileIdentity = {
   readonly id: string;
@@ -57,7 +86,7 @@ export type DraftProfile = ProfileIdentity &
   };
 
 export type PublishedProfile = ProfileIdentity &
-  ProfileContentFields & {
+  PublishedContentFields & {
     readonly _tag: "Published";
   };
 

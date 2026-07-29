@@ -1,6 +1,6 @@
 import type { IArtistProfileRepository } from "../../../domain/artistProfiles/repositories";
-import type { ArtistProfileView } from "../../../domain/artistProfiles/entities";
-import { toView } from "../../../domain/artistProfiles/operations";
+import type { PublishedProfileView } from "../../../domain/artistProfiles/entities";
+import { toPublishedView } from "../../../domain/artistProfiles/operations";
 import {
   createArtistProfileNotFoundError,
   type ArtistProfileNotFoundError,
@@ -13,7 +13,7 @@ export type GetPublicProfileInput = {
 
 export type GetPublicProfileOutput = {
   accountId: string;
-  profile: ArtistProfileView;
+  profile: PublishedProfileView;
 };
 
 export type GetPublicProfileError = ArtistProfileNotFoundError;
@@ -35,6 +35,6 @@ export const getPublicProfileUseCase = async (
 
   return ok({
     accountId: input.accountId,
-    profile: toView(profile),
+    profile: toPublishedView(profile),
   });
 };
