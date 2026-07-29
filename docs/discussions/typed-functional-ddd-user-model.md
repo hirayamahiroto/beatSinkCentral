@@ -1,12 +1,12 @@
 # 提案: 型で表現する関数型DDD（ユーザードメインでの試作）
 
-| 項目       | 内容                                                                         |
-| ---------- | ---------------------------------------------------------------------------- |
-| ステータス | **検討中 / 未合意**（たたき台）                                              |
-| 起票日     | 2026-07-25                                                                   |
-| 対象       | `apps/api-server` ドメイン層のモデリングスタイル                             |
-| 関連       | draft PR #184、サンプル `apps/api-server/src/experiments/typedDomain/users/` |
-| 現行規範   | `docs/server-architecture/architecture.md`（本提案はこれと異なる案）         |
+| 項目       | 内容                                                                    |
+| ---------- | ----------------------------------------------------------------------- |
+| ステータス | **一部採用済み**（3手法は production へ取り込み。残る論点は §7 を参照） |
+| 起票日     | 2026-07-25                                                              |
+| 対象       | `apps/api-server` ドメイン層のモデリングスタイル                        |
+| 関連       | draft PR #184、サンプル `apps/api-server/src/experiments/`（§7 参照）   |
+| 現行規範   | `docs/server-architecture/architecture.md`（本提案はこれと異なる案）    |
 
 > `docs/discussions/` は「未合意の検討」を置く場所であり、規範ではない。合意できたら規範（`architecture`）へ昇格し、本ファイルは役目を終える。
 
@@ -91,7 +91,7 @@ export type User =
 
 副作用（DB fetch / save）は持たず、`existingUser` と `newId` を**引数で受け取る純粋関数**にする（現行 `registerNewUser` と同じ思想）。失敗は `RegisterUserError`（3種のユニオン）に型付けされる。
 
-> 実物は `apps/api-server/src/experiments/typedDomain/users/` にある（route / container / DB には未接続の隔離サンプル）。`@ts-expect-error` により、上記のコンパイルエラーが実際に成立することをテストで固定している。
+> このスタイルは production へ取り込み済み（§7）。隔離サンプル `experiments/typedDomain/` は削除した。
 
 ---
 
@@ -132,3 +132,37 @@ export type User =
 - Result は**まず自作最小**で始め、痛みが出たらライブラリ導入を再検討する（論点2）。
 - ブランドは**まず `_tag`**（デバッグ時に値が読めて分かりやすい）。ゼロコストが必要になったら `unique symbol` へ（論点3）。
 - 合意が取れた時点で本ファイルの内容を `architecture` に昇格し、`docs/discussions/` からは削除する。
+
+---
+
+## 7. 現在地（2026-07-29 時点）
+
+提案した3手法は production へ取り込み済み。隔離サンプル `experiments/typedDomain/` は
+「取り込み済みの提案が残っていると現在地が読めない」ため削除した（内容は git 履歴に残る）。
+
+| 提案手法                                   | production の状況                  | 主なコミット                                     |
+| ------------------------------------------ | ---------------------------------- | ------------------------------------------------ |
+| ブランド型（`_tag` 判別子）                | 全 VO に導入済み                   | `6904592`, `aaec52a`                             |
+| Result で失敗を型に出す                    | users / artists の VO、6 usecase   | `0ff385b`, `4efb06c`                             |
+| 状態を判別可能ユニオンで表現               | ArtistProfile の Draft / Published | `4f57908`, `a414538`                             |
+| `defineUsecase`（deps 過剰提供を型で弾く） | **未採用**                         | `apps/api-server/src/experiments/defineUsecase/` |
+
+§5 の論点1〜4 に対する現状の回答:
+
+1. **採用範囲** → (c) 全面移行の途中。集約ごと・軸ごとの部分適用で進行中（下表）
+2. **Result の出所** → 自作最小（`src/utils/result`）を継続
+3. **ブランドの実装** → `_tag` 判別子を採用
+4. **失敗の運び方** → route まで Result を運び、`handleAppError` に値で渡す。想定外例外は
+   `onError` が引き続き捕捉する（`docs/server-architecture/error-handling/result-boundary.md`）
+
+### 揃っていない箇所（残作業）
+
+| 軸                 | users                        | artists                  | artistProfiles                  |
+| ------------------ | ---------------------------- | ------------------------ | ------------------------------- |
+| エンティティ表現   | クロージャ + `behaviors`     | クロージャ + `behaviors` | プレーンレコード + `operations` |
+| VO の失敗表現      | Result                       | Result                   | **throw**                       |
+| usecase の失敗表現 | Result（`getMe` のみ素の値） | —                        | Result                          |
+
+`linkTypes/listLinkTypes` も throw のまま。優先順は「artistProfiles の VO を Result 化」
+→「`getMe` / `listLinkTypes` を Result 化」→「`behaviors` と `operations` の統一方針を決める」。
+3つめはカプセル化（getter）を捨てるかどうかの判断を含むため、単独で合意が必要。
