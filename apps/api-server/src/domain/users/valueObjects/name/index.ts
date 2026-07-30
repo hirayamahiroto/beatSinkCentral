@@ -1,6 +1,8 @@
 import { createTypedError } from "../../../../utils/errors/createTypedError";
+import { ok, err, type Result } from "../../../../utils/result";
 
 export interface Name {
+  readonly _tag: "Name";
   readonly value: string;
 }
 
@@ -18,9 +20,11 @@ const isValidName = (name: string): boolean => {
   return trimmed.length > 0 && trimmed.length <= maxLength;
 };
 
-export const createName = (value: string): Name => {
+export const createName = (
+  value: string,
+): Result<Name, InvalidNameFormatError> => {
   if (!isValidName(value)) {
-    throw createInvalidNameFormatError();
+    return err(createInvalidNameFormatError());
   }
-  return { value };
+  return ok({ _tag: "Name", value });
 };

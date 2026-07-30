@@ -1,6 +1,8 @@
 import { createTypedError } from "../../../../utils/errors/createTypedError";
+import { ok, err, type Result } from "../../../../utils/result";
 
 export type Email = {
+  readonly _tag: "Email";
   readonly value: string;
 };
 
@@ -16,9 +18,11 @@ const isValidEmail = (email: string): boolean => {
   return emailRegex.test(email) && email.length <= 254;
 };
 
-export const createEmail = (value: string): Email => {
+export const createEmail = (
+  value: string,
+): Result<Email, InvalidEmailFormatError> => {
   if (!isValidEmail(value)) {
-    throw createInvalidEmailFormatError();
+    return err(createInvalidEmailFormatError());
   }
-  return { value };
+  return ok({ _tag: "Email", value });
 };

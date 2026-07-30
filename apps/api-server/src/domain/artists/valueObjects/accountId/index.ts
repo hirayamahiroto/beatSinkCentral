@@ -1,7 +1,9 @@
 import { z } from "zod";
 import { createTypedError } from "../../../../utils/errors/createTypedError";
+import { ok, err, type Result } from "../../../../utils/result";
 
 export type AccountId = {
+  readonly _tag: "AccountId";
   readonly value: string;
 };
 
@@ -23,10 +25,12 @@ const accountIdSchema = z
     "accountId must be alphanumeric and underscores only",
   );
 
-export const createAccountId = (value: string): AccountId => {
+export const createAccountId = (
+  value: string,
+): Result<AccountId, InvalidAccountIdFormatError> => {
   const result = accountIdSchema.safeParse(value);
   if (!result.success) {
-    throw createInvalidAccountIdFormatError();
+    return err(createInvalidAccountIdFormatError());
   }
-  return { value: result.data };
+  return ok({ _tag: "AccountId", value: result.data });
 };

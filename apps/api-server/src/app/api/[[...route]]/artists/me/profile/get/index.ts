@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { getContainer } from "../../../../../../../infrastructure/container";
 import { getMyProfileUseCase } from "../../../../../../../usecases/artistProfiles/getMyProfile";
+import { handleAppError } from "../../../../../../../errorMap";
 
 const app = new Hono().get("/", async (c) => {
   const auth0User = c.get("auth0User");
@@ -12,7 +13,11 @@ const app = new Hono().get("/", async (c) => {
     { userRepository, artistRepository, artistProfileRepository },
   );
 
-  return c.json(result);
+  if (!result.ok) {
+    return handleAppError(result.error, c);
+  }
+
+  return c.json(result.value);
 });
 
 export default app;

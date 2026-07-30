@@ -1,4 +1,4 @@
-import type { ArtistProfile } from "../../entities";
+import type { ArtistProfile, PublishRequiredFields } from "../../entities";
 import { createTypedError } from "../../../../utils/errors/createTypedError";
 
 export type ProfileNotPublishableError = Error & {
@@ -22,17 +22,15 @@ export const collectMissingPublishFields = (
   profile: ArtistProfile,
 ): string[] => {
   const missing: string[] = [];
-  if (!profile.getName()) missing.push("name");
-  if (!profile.getImageUrl()) missing.push("imageUrl");
-  if (!profile.getStory()) missing.push("story");
-  if (profile.getGenres().length === 0) missing.push("genres");
-  if (profile.getLinks().length === 0) missing.push("links");
+  if (!profile.name) missing.push("name");
+  if (!profile.imageUrl) missing.push("imageUrl");
+  if (!profile.story) missing.push("story");
+  if (profile.genres.length === 0) missing.push("genres");
+  if (profile.links.length === 0) missing.push("links");
   return missing;
 };
 
-export const assertProfilePublishable = (profile: ArtistProfile): void => {
-  const missing = collectMissingPublishFields(profile);
-  if (missing.length > 0) {
-    throw createProfileNotPublishableError(missing);
-  }
-};
+export const isPublishable = (
+  profile: ArtistProfile,
+): profile is ArtistProfile & PublishRequiredFields =>
+  collectMissingPublishFields(profile).length === 0;

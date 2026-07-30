@@ -18,7 +18,7 @@ describe("getPublicProfileUseCase", () => {
     vi.clearAllMocks();
   });
 
-  it("公開プロフィールを accountId と view で返す", async () => {
+  it("公開プロフィールを ok(accountId, view) で返す", async () => {
     const deps = createMockDeps();
     deps.artistProfileRepository.findPublishedByAccountId.mockResolvedValue(
       reconstructArtistProfile({
@@ -38,22 +38,31 @@ describe("getPublicProfileUseCase", () => {
       deps,
     );
 
-    expect(result.accountId).toBe("beatboxer_taro");
-    expect(result.profile.name).toBe("Taro");
-    expect(result.profile.published).toBe(true);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.accountId).toBe("beatboxer_taro");
+      expect(result.value.profile.name).toBe("Taro");
+      expect(result.value.profile.published).toBe(true);
+    }
     expect(
       deps.artistProfileRepository.findPublishedByAccountId,
     ).toHaveBeenCalledWith("beatboxer_taro");
   });
 
-  it("非公開・未作成・存在しない accountId は ArtistProfileNotFoundError（404）", async () => {
+  it("非公開・未作成・存在しない accountId は err(ArtistProfileNotFoundError)", async () => {
     const deps = createMockDeps();
     deps.artistProfileRepository.findPublishedByAccountId.mockResolvedValue(
       null,
     );
 
-    await expect(
-      getPublicProfileUseCase({ accountId: "unknown" }, deps),
-    ).rejects.toSatisfy(isArtistProfileNotFoundError);
+    const result = await getPublicProfileUseCase(
+      { accountId: "unknown" },
+      deps,
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(isArtistProfileNotFoundError(result.error)).toBe(true);
+    }
   });
 });

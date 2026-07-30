@@ -1,7 +1,9 @@
 import { z } from "zod";
 import { createTypedError } from "../../../../utils/errors/createTypedError";
+import { type Result, ok, err } from "../../../../utils/result";
 
 export type Story = {
+  readonly _tag: "Story";
   readonly value: string;
 };
 
@@ -18,10 +20,12 @@ const storySchema = z
   .min(1, "story is required")
   .max(10000, "story must be 10000 characters or less");
 
-export const createStory = (value: string): Story => {
+export const createStory = (
+  value: string,
+): Result<Story, InvalidStoryFormatError> => {
   const result = storySchema.safeParse(value);
   if (!result.success) {
-    throw createInvalidStoryFormatError();
+    return err(createInvalidStoryFormatError());
   }
-  return { value: result.data };
+  return ok({ _tag: "Story", value: result.data });
 };

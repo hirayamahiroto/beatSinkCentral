@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createArtistProfileRepository } from "./index";
 import { isArtistProfileNotFoundError } from "../../../domain/artistProfiles/policies/assertArtistProfileExists";
+import { toView } from "../../../domain/artistProfiles/operations";
 
 const createDbMock = () => {
   const queue: unknown[] = [];
@@ -74,12 +75,13 @@ describe("createArtistProfileRepository", () => {
 
       const result = await repo.findByArtistId("artist-1");
 
-      expect(result?.getName()).toBe("Taro");
-      expect(result?.getGenres()).toEqual(["bass", "inward"]);
-      expect(result?.getLinks()).toEqual([
+      const view = result ? toView(result) : null;
+      expect(view?.name).toBe("Taro");
+      expect(view?.genres).toEqual(["bass", "inward"]);
+      expect(view?.links).toEqual([
         { type: "x", url: "https://x.com/taro", label: null },
       ]);
-      expect(result?.isPublished()).toBe(true);
+      expect(view?.published).toBe(true);
     });
   });
 
@@ -121,8 +123,8 @@ describe("createArtistProfileRepository", () => {
 
       expect(mock.spy("insert")).toHaveBeenCalled();
       expect(mock.spy("delete")).toHaveBeenCalledTimes(2);
-      expect(result.getName()).toBe("Taro");
-      expect(result.getGenres()).toEqual(["bass"]);
+      expect(toView(result).name).toBe("Taro");
+      expect(toView(result).genres).toEqual(["bass"]);
     });
   });
 

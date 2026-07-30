@@ -1,7 +1,9 @@
 import { z } from "zod";
 import { createTypedError } from "../../../../utils/errors/createTypedError";
+import { type Result, ok, err } from "../../../../utils/result";
 
 export type ImageUrl = {
+  readonly _tag: "ImageUrl";
   readonly value: string;
 };
 
@@ -20,10 +22,12 @@ const imageUrlSchema = z
   .max(2048, "imageUrl must be 2048 characters or less")
   .url("imageUrl must be a valid URL");
 
-export const createImageUrl = (value: string): ImageUrl => {
+export const createImageUrl = (
+  value: string,
+): Result<ImageUrl, InvalidImageUrlFormatError> => {
   const result = imageUrlSchema.safeParse(value);
   if (!result.success) {
-    throw createInvalidImageUrlFormatError();
+    return err(createInvalidImageUrlFormatError());
   }
-  return { value: result.data };
+  return ok({ _tag: "ImageUrl", value: result.data });
 };

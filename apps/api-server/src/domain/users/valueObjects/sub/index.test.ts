@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { createSub } from "./index";
+import { createSub, type Sub } from "./index";
+import { createEmail } from "../email";
 
 describe("Sub", () => {
   describe("createSub", () => {
@@ -12,30 +13,42 @@ describe("Sub", () => {
       ];
 
       validIds.forEach((id) => {
-        const sub = createSub(id);
-        expect(sub.value).toBe(id);
+        const result = createSub(id);
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+          expect(result.value.value).toBe(id);
+        }
       });
     });
 
-    it("空文字列ではエラーをスローする", () => {
-      expect(() => createSub("")).toThrow("InvalidSubFormatError");
+    it("空文字列では err を返す", () => {
+      const result = createSub("");
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe("InvalidSubFormatError");
+      }
     });
 
-    it("空白のみの文字列ではエラーをスローする", () => {
+    it("空白のみの文字列では err を返す", () => {
       const whitespaceStrings = ["   ", "\t", "\n", "  \t\n  "];
 
       whitespaceStrings.forEach((str) => {
-        expect(() => createSub(str)).toThrow("InvalidSubFormatError");
+        expect(createSub(str).ok).toBe(false);
       });
     });
 
-    it("nullish値ではエラーをスローする", () => {
-      expect(() => createSub(null as unknown as string)).toThrow(
-        "InvalidSubFormatError",
-      );
-      expect(() => createSub(undefined as unknown as string)).toThrow(
-        "InvalidSubFormatError",
-      );
+    it("nullish値では err を返す", () => {
+      expect(createSub(null as unknown as string).ok).toBe(false);
+      expect(createSub(undefined as unknown as string).ok).toBe(false);
+    });
+
+    it("Email は Sub に代入できない（ブランドで区別・コンパイル時）", () => {
+      const email = createEmail("a@example.com");
+      if (email.ok) {
+        // @ts-expect-error Email と Sub は _tag が異なるため代入不可
+        const _sub: Sub = email.value;
+        void _sub;
+      }
     });
   });
 });

@@ -1,6 +1,7 @@
 import type {
   ArtistProfile,
   ArtistProfilePersistenceData,
+  PublishedProfile,
 } from "../entities";
 import type { TransactionContext } from "../../../infrastructure/transaction";
 
@@ -17,7 +18,7 @@ export interface IArtistProfileRepository {
     tx?: TransactionContext,
   ): Promise<ArtistProfile | null>;
 
-  findPublishedByAccountId(accountId: string): Promise<ArtistProfile | null>;
+  findPublishedByAccountId(accountId: string): Promise<PublishedProfile | null>;
 
   upsert(
     data: ArtistProfileSaveData,

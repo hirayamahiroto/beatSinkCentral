@@ -1,8 +1,10 @@
 import { z } from "zod";
 import { createTypedError } from "../../../../utils/errors/createTypedError";
-import { createSnsUrl } from "../snsUrl";
+import { createSnsUrl, type InvalidSnsUrlFormatError } from "../snsUrl";
+import { type Result, ok, err, map } from "../../../../utils/result";
 
 export type ProfileLink = {
+  readonly _tag: "ProfileLink";
   readonly type: string;
   readonly url: string;
   readonly label: string | null;
@@ -33,22 +35,36 @@ export type ProfileLinkInput = {
   label?: string | null;
 };
 
-export const createProfileLink = (input: ProfileLinkInput): ProfileLink => {
-  const typeResult = typeSchema.safeParse(input.type);
-  if (!typeResult.success) {
-    throw createInvalidProfileLinkFormatError();
+export type CreateProfileLinkError =
+  | InvalidProfileLinkFormatError
+  | InvalidSnsUrlFormatError;
+
+const parseLabel = (
+  label: string | null | undefined,
+): Result<string | null, InvalidProfileLinkFormatError> => {
+  const trimmed = label?.trim();
+  if (trimmed === undefined || trimmed.length === 0) return ok(null);
+  if (!labelSchema.safeParse(trimmed).success) {
+    return err(createInvalidProfileLinkFormatError());
+  }
+  return ok(trimmed);
+};
+
+export const createProfileLink = (
+  input: ProfileLinkInput,
+): Result<ProfileLink, CreateProfileLinkError> => {
+  const type = typeSchema.safeParse(input.type);
+  if (!type.success) {
+    return err(createInvalidProfileLinkFormatError());
   }
 
-  const url = createSnsUrl(input.url).value;
+  const label = parseLabel(input.label);
+  if (!label.ok) return label;
 
-  const trimmedLabel = input.label?.trim() ?? "";
-  if (trimmedLabel.length > 0 && !labelSchema.safeParse(trimmedLabel).success) {
-    throw createInvalidProfileLinkFormatError();
-  }
-
-  return {
-    type: typeResult.data,
-    url,
-    label: trimmedLabel.length > 0 ? trimmedLabel : null,
-  };
+  return map(createSnsUrl(input.url), (url) => ({
+    _tag: "ProfileLink" as const,
+    type: type.data,
+    url: url.value,
+    label: label.value,
+  }));
 };

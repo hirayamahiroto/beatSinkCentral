@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getContainer } from "../../../../../../../../infrastructure/container";
 import { publishMyProfileUseCase } from "../../../../../../../../usecases/artistProfiles/publishMyProfile";
 import { validateRequest } from "../../../../../validators/validateRequest";
+import { handleAppError } from "../../../../../../../../errorMap";
 
 export const publishProfileRequestSchema = z.object({
   published: z.boolean({ required_error: "published is required" }),
@@ -30,7 +31,11 @@ const app = new Hono().post(
       { userRepository, artistRepository, artistProfileRepository, txRunner },
     );
 
-    return c.json(result);
+    if (!result.ok) {
+      return handleAppError(result.error, c);
+    }
+
+    return c.json(result.value);
   },
 );
 
