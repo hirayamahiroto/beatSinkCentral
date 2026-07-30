@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { createTypedError } from "../../../../utils/errors/createTypedError";
+import { type Result, ok, err } from "../../../../utils/result";
 
 export type ActivityInfo = {
   readonly value: string;
@@ -19,10 +20,12 @@ const activityInfoSchema = z
   .min(1, "activityInfo is required")
   .max(1000, "activityInfo must be 1000 characters or less");
 
-export const createActivityInfo = (value: string): ActivityInfo => {
+export const createActivityInfo = (
+  value: string,
+): Result<ActivityInfo, InvalidActivityInfoFormatError> => {
   const result = activityInfoSchema.safeParse(value);
   if (!result.success) {
-    throw createInvalidActivityInfoFormatError();
+    return err(createInvalidActivityInfoFormatError());
   }
-  return { value: result.data };
+  return ok({ value: result.data });
 };

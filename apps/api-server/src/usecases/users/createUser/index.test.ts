@@ -14,11 +14,13 @@ const createMockDeps = () => {
     userRepository: {
       save: vi.fn(),
       findBySub: vi.fn(),
+      updateEmail: vi.fn(),
     },
     artistRepository: {
       save: vi.fn(),
       findByUserId: vi.fn(),
       findByAccountId: vi.fn(),
+      updateAccountId: vi.fn(),
     },
     txRunner: {
       run: vi.fn(async (fn) => fn({} as Parameters<typeof fn>[0])),

@@ -71,10 +71,13 @@ describe("saveMyProfileUseCase", () => {
       deps,
     );
 
-    expect(result.accountId).toBe("beatboxer_taro");
-    expect(result.profile.name).toBe("Taro");
-    expect(result.profile.genres).toEqual(["bass", "inward"]);
-    expect(result.profile.published).toBe(false);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.accountId).toBe("beatboxer_taro");
+      expect(result.value.profile.name).toBe("Taro");
+      expect(result.value.profile.genres).toEqual(["bass", "inward"]);
+      expect(result.value.profile.published).toBe(false);
+    }
     expect(deps.artistProfileRepository.upsert).toHaveBeenCalledTimes(1);
   });
 
@@ -110,33 +113,62 @@ describe("saveMyProfileUseCase", () => {
     expect(persisted.name).toBe("New Name");
   });
 
-  it("ユーザー未登録なら UserNotFoundError（保存しない）", async () => {
+  it("ユーザー未登録なら err(UserNotFoundError)（保存しない）", async () => {
     const deps = createMockDeps();
     deps.userRepository.findBySub.mockResolvedValue(null);
 
-    const promise = saveMyProfileUseCase(
+    const result = await saveMyProfileUseCase(
       { subId: "auth0|unknown", name: "Taro" },
       deps,
     );
 
-    await expect(promise).rejects.toSatisfy(isUserNotFoundError);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(isUserNotFoundError(result.error)).toBe(true);
+    }
     expect(deps.artistProfileRepository.upsert).not.toHaveBeenCalled();
   });
 
-  it("不正な画像 URL は InvalidImageUrlFormatError をスローする", async () => {
+  it("不正な画像 URL は err(InvalidImageUrlFormatError)（保存しない）", async () => {
     const deps = createMockDeps();
     deps.userRepository.findBySub.mockResolvedValue(existingUser);
     deps.artistRepository.findByUserId.mockResolvedValue(existingArtist);
     deps.artistProfileRepository.findByArtistId.mockResolvedValue(null);
 
-    const promise = saveMyProfileUseCase(
+    const result = await saveMyProfileUseCase(
       { subId: existingUser.getSub(), imageUrl: "not-a-url" },
       deps,
     );
 
-    await expect(promise).rejects.toMatchObject({
-      type: "InvalidImageUrlFormatError",
-    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.type).toBe("InvalidImageUrlFormatError");
+    }
+    expect(deps.artistProfileRepository.upsert).not.toHaveBeenCalled();
+  });
+
+  it("既存プロフィール更新時の入力不正も err（スローしない）", async () => {
+    const deps = createMockDeps();
+    deps.userRepository.findBySub.mockResolvedValue(existingUser);
+    deps.artistRepository.findByUserId.mockResolvedValue(existingArtist);
+    deps.artistProfileRepository.findByArtistId.mockResolvedValue(
+      reconstructArtistProfile({
+        id: "profile-existing",
+        artistId: "artist-1",
+        published: false,
+        name: "Old Name",
+      }),
+    );
+
+    const result = await saveMyProfileUseCase(
+      { subId: existingUser.getSub(), imageUrl: "not-a-url" },
+      deps,
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.type).toBe("InvalidImageUrlFormatError");
+    }
     expect(deps.artistProfileRepository.upsert).not.toHaveBeenCalled();
   });
 });

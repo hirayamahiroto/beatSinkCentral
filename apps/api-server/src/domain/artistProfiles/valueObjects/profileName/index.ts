@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { createTypedError } from "../../../../utils/errors/createTypedError";
+import { type Result, ok, err } from "../../../../utils/result";
 
 export type ProfileName = {
   readonly value: string;
@@ -19,10 +20,12 @@ const profileNameSchema = z
   .min(1, "name is required")
   .max(255, "name must be 255 characters or less");
 
-export const createProfileName = (value: string): ProfileName => {
+export const createProfileName = (
+  value: string,
+): Result<ProfileName, InvalidProfileNameFormatError> => {
   const result = profileNameSchema.safeParse(value);
   if (!result.success) {
-    throw createInvalidProfileNameFormatError();
+    return err(createInvalidProfileNameFormatError());
   }
-  return { value: result.data };
+  return ok({ value: result.data });
 };

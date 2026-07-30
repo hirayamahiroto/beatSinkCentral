@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { createTypedError } from "../../../../utils/errors/createTypedError";
+import { type Result, ok, err } from "../../../../utils/result";
 
 export type Genre = {
   readonly value: string;
@@ -18,10 +19,12 @@ const genreSchema = z
   .min(1, "genre is required")
   .max(100, "genre must be 100 characters or less");
 
-export const createGenre = (value: string): Genre => {
+export const createGenre = (
+  value: string,
+): Result<Genre, InvalidGenreFormatError> => {
   const result = genreSchema.safeParse(value);
   if (!result.success) {
-    throw createInvalidGenreFormatError();
+    return err(createInvalidGenreFormatError());
   }
-  return { value: result.data };
+  return ok({ value: result.data });
 };
