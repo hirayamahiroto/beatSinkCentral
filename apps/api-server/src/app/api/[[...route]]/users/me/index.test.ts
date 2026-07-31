@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { reconstructUser } from "../../../../../domain/users/factories";
 import { reconstructArtist } from "../../../../../domain/artists/factories";
+import type { AuthenticatedUser } from "../../../../../middlewares/auth0";
 import usersMe from "./index";
 
 const mockUserRepository = {
@@ -20,10 +21,10 @@ vi.mock("../../../../../infrastructure/container", () => ({
   }),
 }));
 
-const createAppWithAuth = (auth0User: { sub?: string } | null) => {
+const createAppWithAuth = (auth0User: AuthenticatedUser) => {
   const app = new Hono();
   app.use("*", async (c, next) => {
-    c.set("auth0User", auth0User as never);
+    c.set("auth0User", auth0User);
     await next();
   });
   app.route("/", usersMe);
