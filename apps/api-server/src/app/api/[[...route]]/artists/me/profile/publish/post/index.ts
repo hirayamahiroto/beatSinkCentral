@@ -1,8 +1,10 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { getContainer } from "../../../../../../../../infrastructure/container";
-import { publishMyProfileUseCase } from "../../../../../../../../usecases/artistProfiles/publishMyProfile";
+import { getCapabilityDeps } from "../../../../../../../../infrastructure/capabilities";
+import { withWriteCapabilities } from "../../../../../../../../usecases/authorization";
+import { publishMyProfile } from "../../../../../../../../usecases/artistProfiles/publishMyProfile";
 import { validateRequest } from "../../../../../validators/validateRequest";
+import { handleAppError } from "../../../../../../../../errorMap";
 
 export const publishProfileRequestSchema = z.object({
   published: z.boolean({ required_error: "published is required" }),
@@ -18,19 +20,22 @@ const app = new Hono().post(
   async (c) => {
     const body = c.req.valid("json");
     const auth0User = c.get("auth0User");
-    const {
-      userRepository,
-      artistRepository,
-      artistProfileRepository,
-      txRunner,
-    } = getContainer();
 
-    const result = await publishMyProfileUseCase(
-      { subId: auth0User.sub, published: body.published },
-      { userRepository, artistRepository, artistProfileRepository, txRunner },
+    const result = await withWriteCapabilities(
+      getCapabilityDeps(),
+      auth0User.sub,
+      (caps) =>
+        publishMyProfile(
+          { actor: caps.actor, artistProfiles: caps.artistProfiles },
+          { published: body.published },
+        ),
     );
 
-    return c.json(result);
+    if (!result.ok) {
+      return handleAppError(result.error, c);
+    }
+
+    return c.json(result.value);
   },
 );
 

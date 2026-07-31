@@ -1,7 +1,8 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { getContainer } from "../../../../../../../infrastructure/container";
-import { saveMyProfileUseCase } from "../../../../../../../usecases/artistProfiles/saveMyProfile";
+import { getCapabilityDeps } from "../../../../../../../infrastructure/capabilities";
+import { withWriteCapabilities } from "../../../../../../../usecases/authorization";
+import { saveMyProfile } from "../../../../../../../usecases/artistProfiles/saveMyProfile";
 import { validateRequest } from "../../../../validators/validateRequest";
 import { handleAppError } from "../../../../../../../errorMap";
 
@@ -31,16 +32,15 @@ const app = new Hono().post(
   async (c) => {
     const body = c.req.valid("json");
     const auth0User = c.get("auth0User");
-    const {
-      userRepository,
-      artistRepository,
-      artistProfileRepository,
-      txRunner,
-    } = getContainer();
 
-    const result = await saveMyProfileUseCase(
-      { subId: auth0User.sub, ...body },
-      { userRepository, artistRepository, artistProfileRepository, txRunner },
+    const result = await withWriteCapabilities(
+      getCapabilityDeps(),
+      auth0User.sub,
+      (caps) =>
+        saveMyProfile(
+          { actor: caps.actor, artistProfiles: caps.artistProfiles },
+          body,
+        ),
     );
 
     if (!result.ok) {

@@ -1,41 +1,25 @@
-import type { IUserRepository } from "../../../domain/users/repositories";
-import type { IArtistRepository } from "../../../domain/artists/repositories";
-import type { IArtistProfileRepository } from "../../../domain/artistProfiles/repositories";
 import type { ArtistProfileView } from "../../../domain/artistProfiles/entities";
-import { assertRegistered } from "../../../domain/users/policies/assertRegistered";
-import { assertArtistExists } from "../../../domain/artists/policies/assertArtistExists";
-
-export type GetMyProfileInput = {
-  subId: string;
-};
+import { defineUsecase } from "../../shared/defineUsecase";
+import type { ReadCapabilities } from "../../capabilities";
+import { type Result, ok } from "../../../utils/result";
 
 export type GetMyProfileOutput = {
   accountId: string;
   profile: ArtistProfileView | null;
 };
 
-export type GetMyProfileDeps = {
-  userRepository: IUserRepository;
-  artistRepository: IArtistRepository;
-  artistProfileRepository: IArtistProfileRepository;
-};
+type GetMyProfileCaps = Pick<ReadCapabilities, "actor" | "artistProfiles">;
 
-export const getMyProfileUseCase = async (
-  input: GetMyProfileInput,
-  deps: GetMyProfileDeps,
-): Promise<GetMyProfileOutput> => {
-  const user = await deps.userRepository.findBySub(input.subId);
-  assertRegistered(user);
-
-  const artist = await deps.artistRepository.findByUserId(user.getId());
-  assertArtistExists(artist);
-
-  const profile = await deps.artistProfileRepository.findByArtistId(
-    artist.getArtistId(),
+export const getMyProfile = defineUsecase<
+  GetMyProfileCaps,
+  Result<GetMyProfileOutput, never>
+>(async (caps) => {
+  const profile = await caps.artistProfiles.findByArtistId(
+    caps.actor.artist.getArtistId(),
   );
 
-  return {
-    accountId: artist.getAccountId(),
+  return ok({
+    accountId: caps.actor.artist.getAccountId(),
     profile: profile ? profile.toView() : null,
-  };
-};
+  });
+});

@@ -1,14 +1,17 @@
-import type { IUserRepository } from "../../../domain/users/repositories";
-import type { IArtistRepository } from "../../../domain/artists/repositories";
-import type { IArtistProfileRepository } from "../../../domain/artistProfiles/repositories";
-import { assertRegistered } from "../../../domain/users/policies/assertRegistered";
-import { assertArtistExists } from "../../../domain/artists/policies/assertArtistExists";
-import { assertArtistProfileExists } from "../../../domain/artistProfiles/policies/assertArtistProfileExists";
-import { assertProfilePublishable } from "../../../domain/artistProfiles/policies/assertProfilePublishable";
-import type { ITransactionRunner } from "../../../infrastructure/transaction";
+import {
+  createArtistProfileNotFoundError,
+  type ArtistProfileNotFoundError,
+} from "../../../domain/artistProfiles/policies/assertArtistProfileExists";
+import {
+  collectMissingPublishFields,
+  createProfileNotPublishableError,
+  type ProfileNotPublishableError,
+} from "../../../domain/artistProfiles/policies/assertProfilePublishable";
+import { defineUsecase } from "../../shared/defineUsecase";
+import type { WriteCapabilities } from "../../capabilities";
+import { type Result, ok, err } from "../../../utils/result";
 
 export type PublishMyProfileInput = {
-  subId: string;
   published: boolean;
 };
 
@@ -16,39 +19,33 @@ export type PublishMyProfileOutput = {
   published: boolean;
 };
 
-export type PublishMyProfileDeps = {
-  userRepository: IUserRepository;
-  artistRepository: IArtistRepository;
-  artistProfileRepository: IArtistProfileRepository;
-  txRunner: ITransactionRunner;
-};
+export type PublishMyProfileError =
+  | ArtistProfileNotFoundError
+  | ProfileNotPublishableError;
 
-export const publishMyProfileUseCase = async (
-  input: PublishMyProfileInput,
-  deps: PublishMyProfileDeps,
-): Promise<PublishMyProfileOutput> => {
-  return deps.txRunner.run(async (tx) => {
-    const user = await deps.userRepository.findBySub(input.subId, tx);
-    assertRegistered(user);
+type PublishMyProfileCaps = Pick<WriteCapabilities, "actor" | "artistProfiles">;
 
-    const artist = await deps.artistRepository.findByUserId(user.getId());
-    assertArtistExists(artist);
+export const publishMyProfile = defineUsecase<
+  PublishMyProfileCaps,
+  Result<PublishMyProfileOutput, PublishMyProfileError>,
+  PublishMyProfileInput
+>(async (caps, input) => {
+  const artistId = caps.actor.artist.getArtistId();
 
-    const profile = await deps.artistProfileRepository.findByArtistId(
-      artist.getArtistId(),
-      tx,
-    );
-    assertArtistProfileExists(profile);
+  const profile = await caps.artistProfiles.findByArtistId(artistId);
+  if (!profile) return err(createArtistProfileNotFoundError());
 
-    if (input.published) {
-      assertProfilePublishable(profile);
+  if (input.published) {
+    const missingFields = collectMissingPublishFields(profile);
+    if (missingFields.length > 0) {
+      return err(createProfileNotPublishableError(missingFields));
     }
+  }
 
-    const saved = await deps.artistProfileRepository.setPublished(
-      { artistId: artist.getArtistId(), published: input.published },
-      tx,
-    );
-
-    return { published: saved.isPublished() };
+  const saved = await caps.artistProfiles.setPublished({
+    artistId,
+    published: input.published,
   });
-};
+
+  return ok({ published: saved.isPublished() });
+});

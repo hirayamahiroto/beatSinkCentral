@@ -3,11 +3,16 @@ import { Hono } from "hono";
 import { reconstructArtistProfile } from "../../../../../../domain/artistProfiles/factories";
 import getPublicProfile from "./index";
 
-const mockArtistProfileRepository = { findPublishedByAccountId: vi.fn() };
+const mockArtistProfiles = {
+  findByArtistId: vi.fn(),
+  findPublishedByAccountId: vi.fn(),
+};
 
-vi.mock("../../../../../../infrastructure/container", () => ({
-  getContainer: () => ({
-    artistProfileRepository: mockArtistProfileRepository,
+vi.mock("../../../../../../infrastructure/capabilities", () => ({
+  getCapabilityDeps: () => ({
+    buildPublicReadCapabilities: () => ({
+      artistProfiles: mockArtistProfiles,
+    }),
   }),
 }));
 
@@ -21,7 +26,7 @@ describe("GET /artists/:accountId", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("公開プロフィールを accountId と view で返す", async () => {
-    mockArtistProfileRepository.findPublishedByAccountId.mockResolvedValue(
+    mockArtistProfiles.findPublishedByAccountId.mockResolvedValue(
       reconstructArtistProfile({
         id: "p1",
         artistId: "artist-1",
@@ -40,8 +45,16 @@ describe("GET /artists/:accountId", () => {
     expect(res.status).toBe(200);
     expect(body.accountId).toBe("beatboxer_taro");
     expect(body.profile.name).toBe("Taro");
-    expect(
-      mockArtistProfileRepository.findPublishedByAccountId,
-    ).toHaveBeenCalledWith("beatboxer_taro");
+    expect(mockArtistProfiles.findPublishedByAccountId).toHaveBeenCalledWith(
+      "beatboxer_taro",
+    );
+  });
+
+  it("公開プロフィールが無ければ 404 を返す", async () => {
+    mockArtistProfiles.findPublishedByAccountId.mockResolvedValue(null);
+
+    const res = await createApp().request("/beatboxer_taro", { method: "GET" });
+
+    expect(res.status).toBe(404);
   });
 });

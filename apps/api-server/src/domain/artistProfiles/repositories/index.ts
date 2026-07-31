@@ -1,9 +1,4 @@
-import type {
-  ArtistProfile,
-  ArtistProfilePersistenceData,
-} from "../entities";
-import type { TransactionContext } from "../../../infrastructure/transaction";
-
+import type { ArtistProfile, ArtistProfilePersistenceData } from "../entities";
 export type ArtistProfileSaveData = ArtistProfilePersistenceData;
 
 export type ArtistProfileSetPublishedData = {
@@ -11,21 +6,12 @@ export type ArtistProfileSetPublishedData = {
   published: boolean;
 };
 
-export interface IArtistProfileRepository {
-  findByArtistId(
-    artistId: string,
-    tx?: TransactionContext,
-  ): Promise<ArtistProfile | null>;
-
+export interface IArtistProfileReader {
+  findByArtistId(artistId: string): Promise<ArtistProfile | null>;
   findPublishedByAccountId(accountId: string): Promise<ArtistProfile | null>;
+}
 
-  upsert(
-    data: ArtistProfileSaveData,
-    tx?: TransactionContext,
-  ): Promise<ArtistProfile>;
-
-  setPublished(
-    data: ArtistProfileSetPublishedData,
-    tx?: TransactionContext,
-  ): Promise<ArtistProfile>;
+export interface IArtistProfileWriter {
+  upsert(data: ArtistProfileSaveData): Promise<ArtistProfile>;
+  setPublished(data: ArtistProfileSetPublishedData): Promise<ArtistProfile>;
 }
