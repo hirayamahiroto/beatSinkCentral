@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
-  assertProfilePublishable,
   collectMissingPublishFields,
+  createProfileNotPublishableError,
   isProfileNotPublishableError,
 } from "./index";
 import { reconstructArtistProfile } from "../../factories";
@@ -17,29 +17,21 @@ const fullContent = {
   links: [{ type: "x", url: "https://x.com/taro" }],
 };
 
-describe("assertProfilePublishable", () => {
-  it("最小核が揃っていれば何もスローしない", () => {
+describe("collectMissingPublishFields", () => {
+  it("最小核が揃っていれば空配列を返す", () => {
     const profile = reconstructArtistProfile(fullContent);
-    expect(() => assertProfilePublishable(profile)).not.toThrow();
+
     expect(collectMissingPublishFields(profile)).toEqual([]);
   });
 
-  it("不足フィールドがある場合は ProfileNotPublishableError をスローする", () => {
+  it("不足しているフィールド名を列挙する", () => {
     const profile = reconstructArtistProfile({
       ...fullContent,
       story: "",
       links: [],
     });
 
-    expect(() => assertProfilePublishable(profile)).toThrow();
-    try {
-      assertProfilePublishable(profile);
-    } catch (error) {
-      expect(isProfileNotPublishableError(error)).toBe(true);
-      if (isProfileNotPublishableError(error)) {
-        expect(error.missingFields).toEqual(["story", "links"]);
-      }
-    }
+    expect(collectMissingPublishFields(profile)).toEqual(["story", "links"]);
   });
 
   it("タグライン・活動情報は公開ゲート対象外", () => {
@@ -48,6 +40,31 @@ describe("assertProfilePublishable", () => {
       tagline: undefined,
       activityInfo: undefined,
     });
+
     expect(collectMissingPublishFields(profile)).toEqual([]);
+  });
+});
+
+describe("ProfileNotPublishableError", () => {
+  it("不足フィールドを保持した Error を生成する", () => {
+    const error = createProfileNotPublishableError(["story", "links"]);
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error.type).toBe("ProfileNotPublishableError");
+    expect(error.missingFields).toEqual(["story", "links"]);
+  });
+
+  it("生成したエラーを型ガードで判別できる", () => {
+    expect(
+      isProfileNotPublishableError(createProfileNotPublishableError([])),
+    ).toBe(true);
+  });
+
+  it("別のエラーや非 Error は判別しない", () => {
+    expect(isProfileNotPublishableError(new Error("boom"))).toBe(false);
+    expect(
+      isProfileNotPublishableError({ type: "ProfileNotPublishableError" }),
+    ).toBe(false);
+    expect(isProfileNotPublishableError(null)).toBe(false);
   });
 });

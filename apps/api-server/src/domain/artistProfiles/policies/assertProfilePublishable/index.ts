@@ -29,10 +29,3 @@ export const collectMissingPublishFields = (
   if (profile.getLinks().length === 0) missing.push("links");
   return missing;
 };
-
-export const assertProfilePublishable = (profile: ArtistProfile): void => {
-  const missing = collectMissingPublishFields(profile);
-  if (missing.length > 0) {
-    throw createProfileNotPublishableError(missing);
-  }
-};
