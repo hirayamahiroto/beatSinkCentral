@@ -18,7 +18,7 @@ import type {
   ProfileLinkData,
 } from "../../../domain/artistProfiles/entities";
 import { reconstructArtistProfile } from "../../../domain/artistProfiles/factories";
-import { createArtistProfileNotFoundError } from "../../../domain/artistProfiles/policies/assertArtistProfileExists";
+import { createArtistProfileNotFoundError } from "../../../domain/artistProfiles/errors/artistProfileNotFound";
 import { createInvalidProfileLinkFormatError } from "../../../domain/artistProfiles/valueObjects/profileLink";
 import type { TransactionContext } from "../../transaction";
 

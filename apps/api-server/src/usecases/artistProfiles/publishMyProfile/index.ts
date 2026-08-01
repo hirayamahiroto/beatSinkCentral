@@ -1,12 +1,11 @@
 import {
   createArtistProfileNotFoundError,
   type ArtistProfileNotFoundError,
-} from "../../../domain/artistProfiles/policies/assertArtistProfileExists";
+} from "../../../domain/artistProfiles/errors/artistProfileNotFound";
 import {
-  collectMissingPublishFields,
-  createProfileNotPublishableError,
+  ensurePublishable,
   type ProfileNotPublishableError,
-} from "../../../domain/artistProfiles/policies/assertProfilePublishable";
+} from "../../../domain/artistProfiles/policies/publishability";
 import { defineUsecase } from "../../shared/defineUsecase";
 import type { WriteCapabilities } from "../../capabilities";
 import { type Result, ok, err } from "../../../utils/result";
@@ -36,10 +35,8 @@ export const publishMyProfile = defineUsecase<
   if (!profile) return err(createArtistProfileNotFoundError());
 
   if (input.published) {
-    const missingFields = collectMissingPublishFields(profile);
-    if (missingFields.length > 0) {
-      return err(createProfileNotPublishableError(missingFields));
-    }
+    const publishable = ensurePublishable(profile);
+    if (!publishable.ok) return publishable;
   }
 
   const saved = await caps.artistProfiles.setPublished({

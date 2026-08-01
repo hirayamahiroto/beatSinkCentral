@@ -2,7 +2,7 @@ import type { ArtistProfileView } from "../../../domain/artistProfiles/entities"
 import {
   createArtistProfileNotFoundError,
   type ArtistProfileNotFoundError,
-} from "../../../domain/artistProfiles/policies/assertArtistProfileExists";
+} from "../../../domain/artistProfiles/errors/artistProfileNotFound";
 import { defineUsecase } from "../../shared/defineUsecase";
 import type { PublicReadCapabilities } from "../../capabilities";
 import { type Result, ok, err } from "../../../utils/result";

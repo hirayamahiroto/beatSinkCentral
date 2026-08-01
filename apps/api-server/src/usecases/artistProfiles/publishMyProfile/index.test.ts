@@ -3,8 +3,8 @@ import { reconstructUser } from "../../../domain/users/factories";
 import { reconstructArtist } from "../../../domain/artists/factories";
 import { reconstructArtistProfile } from "../../../domain/artistProfiles/factories";
 import { publishMyProfile } from "./index";
-import { isArtistProfileNotFoundError } from "../../../domain/artistProfiles/policies/assertArtistProfileExists";
-import { isProfileNotPublishableError } from "../../../domain/artistProfiles/policies/assertProfilePublishable";
+import { isArtistProfileNotFoundError } from "../../../domain/artistProfiles/errors/artistProfileNotFound";
+import { isProfileNotPublishableError } from "../../../domain/artistProfiles/policies/publishability";
 import type { Actor, WriteCapabilities } from "../../capabilities";
 
 const actor: Actor = {

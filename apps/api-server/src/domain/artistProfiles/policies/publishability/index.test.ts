@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   collectMissingPublishFields,
   createProfileNotPublishableError,
+  ensurePublishable,
   isProfileNotPublishableError,
 } from "./index";
 import { reconstructArtistProfile } from "../../factories";
@@ -42,6 +43,26 @@ describe("collectMissingPublishFields", () => {
     });
 
     expect(collectMissingPublishFields(profile)).toEqual([]);
+  });
+});
+
+describe("ensurePublishable", () => {
+  it("最小核が揃っていれば ok を返す", () => {
+    const result = ensurePublishable(reconstructArtistProfile(fullContent));
+
+    expect(result.ok).toBe(true);
+  });
+
+  it("不足があれば不足フィールドを載せた err を返す", () => {
+    const result = ensurePublishable(
+      reconstructArtistProfile({ ...fullContent, story: "", links: [] }),
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(isProfileNotPublishableError(result.error)).toBe(true);
+      expect(result.error.missingFields).toEqual(["story", "links"]);
+    }
   });
 });
 
