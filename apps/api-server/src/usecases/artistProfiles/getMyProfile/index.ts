@@ -1,5 +1,4 @@
 import type { ArtistProfileView } from "../../../domain/artistProfiles/entities";
-import { defineUsecase } from "../../shared/defineUsecase";
 import type { ReadCapabilities } from "../../capabilities";
 import { type Result, ok } from "../../../utils/result";
 
@@ -10,10 +9,9 @@ export type GetMyProfileOutput = {
 
 type GetMyProfileCaps = Pick<ReadCapabilities, "actor" | "artistProfiles">;
 
-export const getMyProfile = defineUsecase<
-  GetMyProfileCaps,
-  Result<GetMyProfileOutput, never>
->(async (caps) => {
+export const getMyProfile = async (
+  caps: GetMyProfileCaps,
+): Promise<Result<GetMyProfileOutput, never>> => {
   const profile = await caps.artistProfiles.findByArtistId(
     caps.actor.artist.getArtistId(),
   );
@@ -22,4 +20,4 @@ export const getMyProfile = defineUsecase<
     accountId: caps.actor.artist.getAccountId(),
     profile: profile ? profile.toView() : null,
   });
-});
+};

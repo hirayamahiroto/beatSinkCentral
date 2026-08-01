@@ -29,11 +29,6 @@ export type WriteCapabilities = {
   artistProfiles: IArtistProfileReader & IArtistProfileWriter;
 };
 
-export type CapabilitiesSlice =
-  | Partial<PublicReadCapabilities>
-  | Partial<ReadCapabilities>
-  | Partial<WriteCapabilities>;
-
 export type CapabilityDeps = {
   resolveActor(subId: string): Promise<Result<Actor, ResolveActorError>>;
 

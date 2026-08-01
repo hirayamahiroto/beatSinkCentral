@@ -6,7 +6,6 @@ import {
   ensurePublishable,
   type ProfileNotPublishableError,
 } from "../../../domain/artistProfiles/policies/publishability";
-import { defineUsecase } from "../../shared/defineUsecase";
 import type { WriteCapabilities } from "../../capabilities";
 import { type Result, ok, err } from "../../../utils/result";
 
@@ -24,11 +23,10 @@ export type PublishMyProfileError =
 
 type PublishMyProfileCaps = Pick<WriteCapabilities, "actor" | "artistProfiles">;
 
-export const publishMyProfile = defineUsecase<
-  PublishMyProfileCaps,
-  Result<PublishMyProfileOutput, PublishMyProfileError>,
-  PublishMyProfileInput
->(async (caps, input) => {
+export const publishMyProfile = async (
+  caps: PublishMyProfileCaps,
+  input: PublishMyProfileInput,
+): Promise<Result<PublishMyProfileOutput, PublishMyProfileError>> => {
   const artistId = caps.actor.artist.getArtistId();
 
   const profile = await caps.artistProfiles.findByArtistId(artistId);
@@ -45,4 +43,4 @@ export const publishMyProfile = defineUsecase<
   });
 
   return ok({ published: saved.isPublished() });
-});
+};

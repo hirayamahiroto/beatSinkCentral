@@ -36,11 +36,7 @@ const app = new Hono().post(
     const result = await withWriteCapabilities(
       getCapabilityDeps(),
       auth0User.sub,
-      (caps) =>
-        saveMyProfile(
-          { actor: caps.actor, artistProfiles: caps.artistProfiles },
-          body,
-        ),
+      (caps) => saveMyProfile(caps, body),
     );
 
     if (!result.ok) {

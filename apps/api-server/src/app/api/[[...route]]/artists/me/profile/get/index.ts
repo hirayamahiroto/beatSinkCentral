@@ -10,8 +10,7 @@ const app = new Hono().get("/", async (c) => {
   const result = await withReadCapabilities(
     getCapabilityDeps(),
     auth0User.sub,
-    (caps) =>
-      getMyProfile({ actor: caps.actor, artistProfiles: caps.artistProfiles }),
+    (caps) => getMyProfile(caps),
   );
 
   if (!result.ok) {

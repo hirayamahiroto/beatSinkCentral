@@ -5,7 +5,6 @@ import {
   type ArtistProfileContent,
   type ArtistProfileContentError,
 } from "../../../domain/artistProfiles/factories";
-import { defineUsecase } from "../../shared/defineUsecase";
 import type { WriteCapabilities } from "../../capabilities";
 import { type Result, ok, err } from "../../../utils/result";
 
@@ -20,11 +19,10 @@ export type SaveMyProfileError = ArtistProfileContentError;
 
 type SaveMyProfileCaps = Pick<WriteCapabilities, "actor" | "artistProfiles">;
 
-export const saveMyProfile = defineUsecase<
-  SaveMyProfileCaps,
-  Result<SaveMyProfileOutput, SaveMyProfileError>,
-  SaveMyProfileInput
->(async (caps, content) => {
+export const saveMyProfile = async (
+  caps: SaveMyProfileCaps,
+  content: SaveMyProfileInput,
+): Promise<Result<SaveMyProfileOutput, SaveMyProfileError>> => {
   const artistId = caps.actor.artist.getArtistId();
   const existing = await caps.artistProfiles.findByArtistId(artistId);
 
@@ -44,4 +42,4 @@ export const saveMyProfile = defineUsecase<
     accountId: caps.actor.artist.getAccountId(),
     profile: saved.toView(),
   });
-});
+};

@@ -3,7 +3,6 @@ import {
   createArtistProfileNotFoundError,
   type ArtistProfileNotFoundError,
 } from "../../../domain/artistProfiles/errors/artistProfileNotFound";
-import { defineUsecase } from "../../shared/defineUsecase";
 import type { PublicReadCapabilities } from "../../capabilities";
 import { type Result, ok, err } from "../../../utils/result";
 
@@ -20,11 +19,10 @@ export type GetPublicProfileError = ArtistProfileNotFoundError;
 
 type GetPublicProfileCaps = Pick<PublicReadCapabilities, "artistProfiles">;
 
-export const getPublicProfile = defineUsecase<
-  GetPublicProfileCaps,
-  Result<GetPublicProfileOutput, GetPublicProfileError>,
-  GetPublicProfileInput
->(async (caps, input) => {
+export const getPublicProfile = async (
+  caps: GetPublicProfileCaps,
+  input: GetPublicProfileInput,
+): Promise<Result<GetPublicProfileOutput, GetPublicProfileError>> => {
   const profile = await caps.artistProfiles.findPublishedByAccountId(
     input.accountId,
   );
@@ -34,4 +32,4 @@ export const getPublicProfile = defineUsecase<
     accountId: input.accountId,
     profile: profile.toView(),
   });
-});
+};

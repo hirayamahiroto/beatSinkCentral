@@ -24,11 +24,7 @@ const app = new Hono().post(
     const result = await withWriteCapabilities(
       getCapabilityDeps(),
       auth0User.sub,
-      (caps) =>
-        publishMyProfile(
-          { actor: caps.actor, artistProfiles: caps.artistProfiles },
-          { published: body.published },
-        ),
+      (caps) => publishMyProfile(caps, { published: body.published }),
     );
 
     if (!result.ok) {
