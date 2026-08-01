@@ -20,6 +20,8 @@ import { type Result, ok, err } from "../../utils/result";
 
 type Executor = DatabaseClient | TransactionContext;
 
+// Drizzle の transaction は throw でしかロールバックしないため、業務エラー（err）を
+// 例外に載せて境界の外で復元する
 class RollbackSignal<T, E> extends Error {
   constructor(readonly result: Result<T, E>) {
     super("rollback");
