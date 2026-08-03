@@ -88,4 +88,13 @@ describe("unwrapOrThrow", () => {
       "broken data",
     );
   });
+
+  it("失敗なら元のエラーを cause に保持する", () => {
+    try {
+      unwrapOrThrow(positive(-1), "broken data");
+      expect.unreachable();
+    } catch (error) {
+      expect((error as Error).cause).toEqual({ type: "Negative", input: -1 });
+    }
+  });
 });

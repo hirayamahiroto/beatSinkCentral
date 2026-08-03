@@ -55,7 +55,7 @@ export const unwrapOrThrow = <T, E>(
   message: string,
 ): T => {
   if (!result.ok) {
-    throw new Error(message);
+    throw new Error(message, { cause: result.error });
   }
   return result.value;
 };
