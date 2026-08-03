@@ -5,6 +5,10 @@ import { reconstructArtistProfile } from "../../../domain/artistProfiles/factori
 import { publishMyProfile } from "./index";
 import { isArtistProfileNotFoundError } from "../../../domain/artistProfiles/errors/artistProfileNotFound";
 import { isProfileNotPublishableError } from "../../../domain/artistProfiles/policies/publishability";
+import type {
+  IArtistProfileReader,
+  IArtistProfileWriter,
+} from "../../../domain/artistProfiles/repositories";
 import type { Actor, WriteCapabilities } from "../../capabilities";
 
 const actor: Actor = {
@@ -37,10 +41,14 @@ const createCaps = () =>
   ({
     actor,
     artistProfiles: {
-      findByArtistId: vi.fn(async () => null),
-      findPublishedByAccountId: vi.fn(async () => null),
-      upsert: vi.fn(),
-      setPublished: vi.fn(),
+      findByArtistId: vi.fn<IArtistProfileReader["findByArtistId"]>(
+        async () => null,
+      ),
+      findPublishedByAccountId: vi.fn<
+        IArtistProfileReader["findPublishedByAccountId"]
+      >(async () => null),
+      upsert: vi.fn<IArtistProfileWriter["upsert"]>(),
+      setPublished: vi.fn<IArtistProfileWriter["setPublished"]>(),
     },
   }) satisfies WriteCapabilities;
 
@@ -49,11 +57,9 @@ describe("publishMyProfile", () => {
 
   it("最小核が揃っていれば公開でき、ok(published=true) を返す", async () => {
     const caps = createCaps();
-    caps.artistProfiles.findByArtistId.mockResolvedValue(
-      publishableProfile() as never,
-    );
+    caps.artistProfiles.findByArtistId.mockResolvedValue(publishableProfile());
     caps.artistProfiles.setPublished.mockResolvedValue(
-      publishableProfile().publish() as never,
+      publishableProfile().publish(),
     );
 
     const result = await publishMyProfile(caps, { published: true });
@@ -77,7 +83,7 @@ describe("publishMyProfile", () => {
         published: false,
         name: "Taro",
         links: [],
-      }) as never,
+      }),
     );
 
     const result = await publishMyProfile(caps, { published: true });
@@ -97,7 +103,7 @@ describe("publishMyProfile", () => {
         artistId: "artist-1",
         published: true,
         name: "Taro",
-      }) as never,
+      }),
     );
     caps.artistProfiles.setPublished.mockResolvedValue(
       reconstructArtistProfile({
@@ -105,7 +111,7 @@ describe("publishMyProfile", () => {
         artistId: "artist-1",
         published: false,
         name: "Taro",
-      }) as never,
+      }),
     );
 
     const result = await publishMyProfile(caps, { published: false });

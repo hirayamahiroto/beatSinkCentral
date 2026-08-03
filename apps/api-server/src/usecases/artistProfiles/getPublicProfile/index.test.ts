@@ -1,16 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { reconstructUser } from "../../../domain/users/factories";
-import { reconstructArtist } from "../../../domain/artists/factories";
 import { reconstructArtistProfile } from "../../../domain/artistProfiles/factories";
 import { getPublicProfile } from "./index";
 import { isArtistProfileNotFoundError } from "../../../domain/artistProfiles/errors/artistProfileNotFound";
+import type { IArtistProfileReader } from "../../../domain/artistProfiles/repositories";
 import type { PublicReadCapabilities } from "../../capabilities";
 
 const createCaps = () =>
   ({
     artistProfiles: {
-      findByArtistId: vi.fn(async () => null),
-      findPublishedByAccountId: vi.fn(async () => null),
+      findByArtistId: vi.fn<IArtistProfileReader["findByArtistId"]>(
+        async () => null,
+      ),
+      findPublishedByAccountId: vi.fn<
+        IArtistProfileReader["findPublishedByAccountId"]
+      >(async () => null),
     },
   }) satisfies PublicReadCapabilities;
 
@@ -25,7 +28,7 @@ describe("getPublicProfile", () => {
         artistId: "artist-1",
         published: true,
         name: "Taro",
-      }) as never,
+      }),
     );
 
     const result = await getPublicProfile(caps, {

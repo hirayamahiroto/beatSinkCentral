@@ -4,6 +4,10 @@ import { reconstructUser } from "../../../domain/users/factories";
 import { reconstructArtist } from "../../../domain/artists/factories";
 import { reconstructArtistProfile } from "../../../domain/artistProfiles/factories";
 import type { ArtistProfilePersistenceData } from "../../../domain/artistProfiles/entities";
+import type {
+  IArtistProfileReader,
+  IArtistProfileWriter,
+} from "../../../domain/artistProfiles/repositories";
 import type { Actor, WriteCapabilities } from "../../capabilities";
 
 const existingUser = reconstructUser({
@@ -28,10 +32,14 @@ const createCaps = () =>
   ({
     actor,
     artistProfiles: {
-      findByArtistId: vi.fn(async () => null),
-      findPublishedByAccountId: vi.fn(async () => null),
-      upsert: vi.fn(echoUpsert),
-      setPublished: vi.fn(),
+      findByArtistId: vi.fn<IArtistProfileReader["findByArtistId"]>(
+        async () => null,
+      ),
+      findPublishedByAccountId: vi.fn<
+        IArtistProfileReader["findPublishedByAccountId"]
+      >(async () => null),
+      upsert: vi.fn<IArtistProfileWriter["upsert"]>(echoUpsert),
+      setPublished: vi.fn<IArtistProfileWriter["setPublished"]>(),
     },
   }) satisfies WriteCapabilities;
 
@@ -76,13 +84,12 @@ describe("saveMyProfile", () => {
         artistId: "artist-1",
         published: true,
         name: "Old Name",
-      }) as never,
+      }),
     );
 
     await saveMyProfile(caps, { name: "New Name" });
 
-    const persisted = caps.artistProfiles.upsert.mock
-      .calls[0][0] as ArtistProfilePersistenceData;
+    const persisted = caps.artistProfiles.upsert.mock.calls[0][0];
     expect(persisted.id).toBe("profile-existing");
     expect(persisted.published).toBe(true);
     expect(persisted.name).toBe("New Name");
@@ -108,7 +115,7 @@ describe("saveMyProfile", () => {
         artistId: "artist-1",
         published: false,
         name: "Old Name",
-      }) as never,
+      }),
     );
 
     const result = await saveMyProfile(caps, { imageUrl: "not-a-url" });
