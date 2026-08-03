@@ -37,7 +37,7 @@ export const getCapabilityDeps = (() => {
       const userRepository = createUserRepository(db);
       const artistRepository = createArtistRepository(db);
 
-      const buildScopedRepos = (executor: Executor) => ({
+      const buildWriteScopedRepos = (executor: Executor) => ({
         artistProfiles: {
           ...createArtistProfileReader(executor),
           ...createArtistProfileWriter(executor),
@@ -60,7 +60,7 @@ export const getCapabilityDeps = (() => {
         },
 
         buildReadCapabilities(actor: Actor): ReadCapabilities {
-          return { actor, ...buildScopedRepos(db) };
+          return { actor, artistProfiles: createArtistProfileReader(db) };
         },
 
         async runWithWriteCapabilities(actor, work) {
@@ -68,7 +68,7 @@ export const getCapabilityDeps = (() => {
             return await db.transaction(async (tx) => {
               const caps: WriteCapabilities = {
                 actor,
-                ...buildScopedRepos(tx),
+                ...buildWriteScopedRepos(tx),
               };
               const result = await work(caps);
               if (!result.ok) throw new RollbackSignal(result);
