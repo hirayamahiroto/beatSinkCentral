@@ -2,67 +2,58 @@
 
 このドキュメントは、[implementation.md](./implementation.md) で構築したエラーハンドリング基盤を **ログ基盤・監視・SLO/SRE 運用** に繋ぐためのロードマップを示す。
 
-現状は「クライアントに返すエラーレスポンス」の設計が完了した段階。次に必要なのは **内部ログ基盤の整備と監視サービス（Datadog 等）との連携** であり、これを後づけしやすい構造になっているかを整理する。
+「クライアントに返すエラーレスポンス」と「内部ログ」の分離までが実装済み。残っているのは **リクエスト相関情報の注入と監視サービス（Datadog 等）との連携**。
 
 ---
 
 ## 現状の拡張性評価
 
-現状のエラーは全て `resolveErrorResponse` を通過するため、**ログ出力点が1箇所に集中している**。これが拡張の最大のメリット。
+エラーは全て `createAppErrorHandler` が返すハンドラを通過するため、**ログ出力点が1箇所に集中している**。これが拡張の最大のメリット。
 
-| 観点                                        | 現状                                    | 監視基盤への適合度   |
-| ------------------------------------------- | --------------------------------------- | -------------------- |
-| ログ出力点の集約                            | ✅ `resolveErrorResponse` の 2 箇所     | ◎                    |
-| 構造化フォーマット                          | ✅ JSON オブジェクト                    | ◎                    |
-| エラー種別の識別可能性                      | ✅ `type` フィールド                    | ◎                    |
-| ドメインコンテキスト（accountId 等）の保持  | ✅ `extras` で型付き保持                | ◎                    |
-| 重要度分岐                                  | △ `console.warn` / `console.error` のみ | ○（要強化）          |
-| リクエスト相関（trace_id, request_id）      | ❌ 未実装                               | ✗（要追加）          |
-| サービスメタデータ（env, service, version） | ❌ 未実装                               | ✗（要追加）          |
-| センシティブ情報のマスク                    | ❌ 未実装                               | △                    |
-| ログ出力先の差し替え                        | ❌ `console.*` 直書き                   | ✗（要 interface 化） |
-
-「基礎は良い、足りないのは周辺装備」という評価。周辺装備は本体の構造を変えずに追加できる。
+| 観点                                        | 現状                                             | 監視基盤への適合度 |
+| ------------------------------------------- | ------------------------------------------------ | ------------------ |
+| ログ出力点の集約                            | ✅ ハンドラ 1 箇所                               | ◎                  |
+| 構造化フォーマット                          | ✅ `event` + フィールドの JSON オブジェクト      | ◎                  |
+| エラー種別の識別可能性                      | ✅ `errorType` フィールド                        | ◎                  |
+| ドメインコンテキスト（accountId 等）の保持  | ✅ `logFields` → `context` に型付きで宣言        | ◎                  |
+| 重要度分岐                                  | ✅ errorMap の `logLevel`（info / warn / error） | ◎                  |
+| ログ出力先の差し替え                        | ✅ `Logger` 型経由（既定は console）             | ◎                  |
+| センシティブ情報の非露出                    | ✅ `logFields` のホワイトリスト方式              | ○                  |
+| リクエスト相関（trace_id, request_id）      | ❌ 未実装                                        | ✗（要追加）        |
+| サービスメタデータ（env, service, version） | ❌ 未実装                                        | ✗（要追加）        |
 
 ---
 
-## レベル1: Logger interface を挟む（最小侵襲）
+## クライアント向けと内部向けの分離ルール
 
-`console.warn` / `console.error` を Logger interface 経由に置き換え、実装を環境で差し替えられるようにする。
+同じエラー1件を2つの宛先に出す。何をどちらに出すかの判断基準を固定する。
 
-```typescript
-// utils/logger/index.ts（将来追加）
-export interface Logger {
-  warn(event: string, fields: Record<string, unknown>): void;
-  error(event: string, fields: Record<string, unknown>): void;
-}
-```
+| 情報                                 | クライアント | 内部ログ | 理由                                                    |
+| ------------------------------------ | ------------ | -------- | ------------------------------------------------------- |
+| 次の行動を判断できる文言             | ○            | ×        | 文言はプレゼンテーション。集計軸は `errorType` で足りる |
+| ドメインコンテキスト（accountId 等） | 必要な分だけ | ○        | 影響範囲の特定に必要                                    |
+| フォーム inline 表示用の issues      | ○            | ×        | 入力値（`received`）を含みうる。ログには path のみ      |
+| 未知エラーの `message` / `stack`     | ×            | ○        | 内部事情の漏洩を防ぎつつ、調査可能性は落とさない        |
+| DB / 外部 API の内部事情             | ×            | ○        | 500 + 汎用文言で返し、詳細はログへ                      |
 
-- 開発環境: console ベース
-- 本番環境: pino / winston / Datadog SDK などへ差し替え
+**ログに出るのは `logFields` で宣言したフィールドだけ**。エラーオブジェクトを spread しないため、後からエラー型にセンシティブな値を足しても勝手にログへ流れない（`.claude/rules/code-review-checklist.md` §4-3 に対応）。
 
-変更箇所は `resolveErrorResponse` 内の 2 行だけ。
+### logLevel の付与ルール
 
----
+| level   | 対象                                                  | SLO 上の扱い   | 例                                                      |
+| ------- | ----------------------------------------------------- | -------------- | ------------------------------------------------------- |
+| `info`  | ユーザー入力起因・業務上の正常拒否（400/404/409/422） | カウントしない | `UserAlreadyRegisteredError`, `InvalidEmailFormatError` |
+| `warn`  | 正常系だが頻度異常を検知したいもの                    | カウントしない | `UnauthorizedError`（401）, `InvalidSubFormatError`     |
+| `error` | サーバ側 / 依存先の契約違反                           | カウントする   | 未知のエラー（500）、DB タイムアウト                    |
 
-## レベル2: errorMap にログ制御を追加する（必要になったら）
+`warn` の判断軸は「ユーザーの操作では直せないが、サービスは動作している」もの。
 
-per-error で log level や追加フィールドを宣言できるよう errorMap を拡張:
-
-```typescript
-AccountIdAlreadyTakenError: {
-  status: 409,
-  message: (error) => `Account ID already taken: ${error.accountId}`,
-  logLevel: "info",                                    // 高頻度 4xx は info 降格
-  logFields: (error) => ({ accountId: error.accountId }), // Datadog の custom attribute
-},
-```
-
-**今は実装しない**。既存エントリは後方互換のまま、必要になったタイミングで型を拡張すれば追加可能。
+- `UnauthorizedError`: セッション期限切れは正常だが、連続発生は不正アクセス試行の兆候になりうる
+- `InvalidSubFormatError`: `sub` は認証基盤（Auth0）由来でユーザー入力ではない。壊れた値が来るのは上流の契約違反
 
 ---
 
-## レベル3: リクエストコンテキストの注入
+## 次の一手①: リクエストコンテキストの注入
 
 監視基盤と連携するために必須になる情報:
 
@@ -71,28 +62,26 @@ AccountIdAlreadyTakenError: {
 - `route`（どのエンドポイントで起きたか）
 - `env` / `service` / `version`
 
-Node.js の `AsyncLocalStorage` で request-scoped なコンテキストを保持し、`resolveErrorResponse` から拾って Logger に渡す構成が標準的。
+Node.js の `AsyncLocalStorage` で request-scoped なコンテキストを保持し、`buildErrorLog` の結果に合成して Logger に渡す構成が標準的。
 
 ```typescript
 // middlewares/requestContext.ts（将来追加）
 // リクエスト開始時に AsyncLocalStorage.enterWith({ traceId, userId, route })
 
-// resolveErrorResponse 内で
-logger.warn("[AppError]", {
+// ハンドラ内の emit で
+logger[level](event, {
   ...getRequestContext(), // traceId, userId, route 等
-  type: error.type,
-  status: response.status,
-  ...extractExtras(error), // 構造化コンテキスト
+  ...fields,
 });
 ```
 
-この拡張も **エラーハンドリング本体には手を入れずに** 追加できる。
+`emit` 1 箇所の拡張で済み、errorMap のエントリには一切手を入れない。
 
 ---
 
-## レベル4: Datadog / 監視基盤アダプタ
+## 次の一手②: Datadog / 監視基盤アダプタ
 
-Logger interface さえあれば、実装を差し替えるだけ。
+`Logger` 型さえあれば、実装を差し替えるだけ。
 
 ```typescript
 // infrastructure/logger/datadog.ts（将来追加）
@@ -103,13 +92,14 @@ export const createDatadogLogger = (): Logger => {
     /* Datadog 互換の JSON 設定 */
   });
   return {
+    info: (event, fields) => pinoLogger.info({ event, ...fields }),
     warn: (event, fields) => pinoLogger.warn({ event, ...fields }),
     error: (event, fields) => pinoLogger.error({ event, ...fields }),
   };
 };
 ```
 
-`resolveErrorResponse` / errorMap / factory は変更ゼロ。
+差し替え点は `handleAppError` の配線 1 行（`createAppErrorHandler(createDatadogLogger())`）。errorMap / エラー定義 / ルートは変更ゼロ。
 
 ---
 
@@ -119,24 +109,25 @@ export const createDatadogLogger = (): Logger => {
 
 ```text
 1. co-located で typed error を定義（1ファイル）
-2. errorMap に 1行追加（status + message）
-3. （必要なら）logFields を追加
+2. errorMap に 1エントリ追加（status + clientMessage + logLevel）
+3. （必要なら）clientDetails / logFields を追加
 4. テスト追加
 ```
 
-`resolveErrorResponse` / Logger / onError / ルート は一切触らない、という性質は保たれる。
+ハンドラ / Logger / onError / ルート は一切触らない、という性質は保たれる。
 
 ---
 
 ## ロードマップまとめ
 
-| フェーズ | タスク                                              | 影響範囲                                |
-| -------- | --------------------------------------------------- | --------------------------------------- |
-| 現在     | クライアント向けレスポンス設計                      | 完了                                    |
-| 次       | Logger interface を新設し console 呼び出しを置換    | `resolveErrorResponse` の 2 行          |
-| その次   | リクエストコンテキスト（trace_id 等）を注入する基盤 | middleware 1 本 + Logger 呼び出しの拡張 |
-| その次   | 必要なら errorMap に logLevel / logFields を追加    | 型の拡張（後方互換）                    |
-| その次   | Datadog / 監視基盤アダプタの実装                    | Logger interface の実装 1 本            |
+| フェーズ | タスク                                                      | 影響範囲                         |
+| -------- | ----------------------------------------------------------- | -------------------------------- |
+| 完了     | クライアント向けレスポンス設計                              | —                                |
+| 完了     | `Logger` 型を新設し console 直書きを置換                    | 出力点 1 箇所                    |
+| 完了     | errorMap を `client*` / `log*` に分離し `logLevel` を必須化 | 型の拡張 + 全エントリ            |
+| 次       | リクエストコンテキスト（trace_id 等）を注入する基盤         | middleware 1 本 + `emit` の拡張  |
+| その次   | Datadog / 監視基盤アダプタの実装                            | `Logger` の実装 1 本 + 配線 1 行 |
+| その次   | リクエスト総量メトリクス（SLI の分母）の整備                | 本設計の範囲外（別途）           |
 
 順序は前から後ろに積むだけで済む構造になっている。逆順でも欠けた層を飛ばす形でもなく、**下から順に積み上げる** のが自然な進め方。
 
@@ -207,7 +198,7 @@ errorType:* AND status:500            → PagerDuty 発火条件
 
 #### 4. 構造化コンテキストによる影響範囲特定
 
-SLO が悪化したとき、「どの顧客セグメント / どのテナントで起きているか」を特定する必要がある。`extras` に `accountId` / `tenantId` 等のドメイン語彙が型付きで乗っていれば、Datadog で次元別にグルーピングして影響範囲を即座に可視化できる。
+SLO が悪化したとき、「どの顧客セグメント / どのテナントで起きているか」を特定する必要がある。`logFields` で `accountId` / `tenantId` 等のドメイン語彙を宣言しておけば、`context.*` として Datadog で次元別にグルーピングでき、影響範囲を即座に可視化できる。
 
 ### 接続に必要な補足整備（別途必要）
 
