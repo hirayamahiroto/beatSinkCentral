@@ -71,11 +71,14 @@ apps/api-server/src/
 │
 ├── middlewares/              # ミドルウェア
 │   ├── auth0/                # Auth0 認証・メール検証
-│   └── basicAuth/            # ベーシック認証
+│   ├── basicAuth/            # ベーシック認証
+│   └── requestContext/       # リクエスト相関 ID の確定
 │
 └── utils/                    # ユーティリティ
     ├── client/               # Hono クライアント生成
-    └── config/               # 設定管理
+    ├── config/               # 設定管理
+    ├── logger/               # ログ出力先の抽象
+    └── requestContext/       # リクエストスコープの相関情報保持
 ```
 
 ---
@@ -633,11 +636,14 @@ HTTPリクエスト/レスポンスの処理を担当。
 
 横断的関心事を処理。
 
-| ミドルウェア                | 責務                         |
-| --------------------------- | ---------------------------- |
-| `requireAuthMiddleware`     | Auth0 セッション検証         |
-| `requireVerifiedMiddleware` | メールアドレス検証チェック   |
-| `basicAuthMiddleware`       | ベーシック認証（オプション） |
+| ミドルウェア                | 責務                                           |
+| --------------------------- | ---------------------------------------------- |
+| `requestContextMiddleware`  | リクエスト相関 ID（requestId / traceId）の確定 |
+| `requireAuthMiddleware`     | Auth0 セッション検証                           |
+| `requireVerifiedMiddleware` | メールアドレス検証チェック                     |
+| `basicAuthMiddleware`       | ベーシック認証（オプション）                   |
+
+`requestContextMiddleware` は認証より前に置く。認証失敗（401）のログにも相関情報を載せるため。
 
 ### ユースケース層 (`usecases/`)
 

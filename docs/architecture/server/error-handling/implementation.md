@@ -15,15 +15,16 @@
 
 ## 全体像
 
-5つの部品で構成する。
+6つの部品で構成する。
 
-| 部品         | 位置                                | 責務                                                                   |
-| ------------ | ----------------------------------- | ---------------------------------------------------------------------- |
-| ① エラー定義 | 各レイヤーに co-located             | `type + factory + (必要なら) assert関数` を定義                        |
-| ② errorMap   | `apps/api-server/src/errorMap/`     | エラー種別 → **クライアント向けレスポンス** と **内部ログ** の変換表   |
-| ③ onError    | Hono のルートエントリ               | 投げられたエラーを errorMap に引き当てて、ログ出力とレスポンス化を行う |
-| ④ ルート     | 各 API ルート                       | try/catch せずに throw させる（onError が受け取る）                    |
-| ⑤ Logger     | `apps/api-server/src/utils/logger/` | ログの出力先を差し替え可能にする抽象（既定は console）                 |
+| 部品                     | 位置                                                      | 責務                                                                   |
+| ------------------------ | --------------------------------------------------------- | ---------------------------------------------------------------------- |
+| ① エラー定義             | 各レイヤーに co-located                                   | `type + factory + (必要なら) assert関数` を定義                        |
+| ② errorMap               | `apps/api-server/src/errorMap/`                           | エラー種別 → **クライアント向けレスポンス** と **内部ログ** の変換表   |
+| ③ onError                | Hono のルートエントリ                                     | 投げられたエラーを errorMap に引き当てて、ログ出力とレスポンス化を行う |
+| ④ ルート                 | 各 API ルート                                             | try/catch せずに throw させる（onError が受け取る）                    |
+| ⑤ Logger                 | `apps/api-server/src/utils/logger/`                       | ログの出力先を差し替え可能にする抽象（既定は console）                 |
+| ⑥ リクエストコンテキスト | `apps/api-server/src/{utils,middlewares}/requestContext/` | リクエスト相関 ID を 1 回だけ確定させ、ログに載せる                    |
 
 ### 処理フロー
 
@@ -384,6 +385,52 @@ export const createConsoleLogger = (): Logger => ({
 - 第1引数は `event`（`"AppError"` / `"UnhandledError"`）、第2引数は構造化フィールド。文字列連結でメッセージを組み立てない（監視基盤で次元として扱えなくなる）
 - 本番で pino / Datadog SDK に差し替える場合も、実装するのは `Logger` 1本だけ（`errorMap` / エラー定義 / ルートは変更ゼロ）
 - テストでは `createAppErrorHandler(fakeLogger)` に記録用の実装を渡し、`console` の spy に依存せず「どの level にどのフィールドが出たか」を検証する
+
+---
+
+## ⑥ リクエストコンテキスト
+
+「どのリクエストで起きたか」を追うための相関情報を、ログ出力時に合成する。
+
+```typescript
+// route.ts: 認証より前に置き、401 のログにも相関情報が乗るようにする
+const app = new Hono()
+  .basePath("/api")
+  .use("*", requestContextMiddleware)
+  .use("/users/*", requireAuthMiddleware);
+
+// errorMap の emit で合成する
+const emit = (
+  logger: Logger,
+  c: Context,
+  { level, event, fields }: ErrorLog,
+) => {
+  logger[level](event, {
+    ...getRequestContext(), // requestId / traceId
+    method: c.req.method,
+    route: c.req.routePath,
+    ...fields,
+  });
+};
+```
+
+出力されるログの形:
+
+```json
+{
+  "requestId": "iad1::abc-123",
+  "traceId": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "method": "POST",
+  "route": "/api/artists/me/profile",
+  "errorType": "ProfileNotPublishableError",
+  "status": 422,
+  "context": { "missingFields": ["story"] }
+}
+```
+
+- `requestId` / `traceId` は **1 リクエストに 1 回だけ確定させる値**なので `AsyncLocalStorage` に置く
+- `method` / `route` は `c` から常に導出できるので保持しない
+- `route` を middleware で読むと `/api/*` になる（Hono の仕様）。詳細と PII の扱いは [operations.md](./operations.md) の「リクエスト相関情報の注入」を参照
 
 ---
 

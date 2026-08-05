@@ -13,6 +13,7 @@ import { createInvalidArtistIdFormatError } from "../domain/artists/valueObjects
 import { createInvalidRequestFormatError } from "../app/api/[[...route]]/errors/invalidRequestFormat";
 import { createUnauthorizedError } from "../middlewares/auth0/errors/unauthorized";
 import { createProfileNotPublishableError } from "../domain/artistProfiles/policies/publishability";
+import { requestContextMiddleware } from "../middlewares/requestContext";
 
 type RecordedLog = {
   level: LogLevel;
@@ -71,6 +72,8 @@ const logOf = async (error: unknown) => {
   expect(logs).toHaveLength(1);
   return logs[0];
 };
+
+const REQUEST_FIELDS = { method: "GET", route: "/" };
 
 describe("createAppErrorHandler", () => {
   describe("クライアント向けレスポンス", () => {
@@ -187,7 +190,11 @@ describe("createAppErrorHandler", () => {
       expect(await logOf(createUserAlreadyRegisteredError())).toStrictEqual({
         level: "info",
         event: "AppError",
-        fields: { errorType: "UserAlreadyRegisteredError", status: 409 },
+        fields: {
+          ...REQUEST_FIELDS,
+          errorType: "UserAlreadyRegisteredError",
+          status: 409,
+        },
       });
     });
 
@@ -195,7 +202,11 @@ describe("createAppErrorHandler", () => {
       expect(await logOf(createUnauthorizedError())).toStrictEqual({
         level: "warn",
         event: "AppError",
-        fields: { errorType: "UnauthorizedError", status: 401 },
+        fields: {
+          ...REQUEST_FIELDS,
+          errorType: "UnauthorizedError",
+          status: 401,
+        },
       });
     });
 
@@ -203,7 +214,11 @@ describe("createAppErrorHandler", () => {
       expect(await logOf(createInvalidSubFormatError())).toStrictEqual({
         level: "warn",
         event: "AppError",
-        fields: { errorType: "InvalidSubFormatError", status: 422 },
+        fields: {
+          ...REQUEST_FIELDS,
+          errorType: "InvalidSubFormatError",
+          status: 422,
+        },
       });
     });
 
@@ -214,6 +229,7 @@ describe("createAppErrorHandler", () => {
         level: "error",
         event: "UnhandledError",
         fields: {
+          ...REQUEST_FIELDS,
           errorName: "Error",
           message: "connect ECONNREFUSED 10.0.0.1:5432",
           stack: rawError.stack,
@@ -225,6 +241,7 @@ describe("createAppErrorHandler", () => {
       expect(
         (await logOf(createAccountIdAlreadyTakenError("taken_id"))).fields,
       ).toStrictEqual({
+        ...REQUEST_FIELDS,
         errorType: "AccountIdAlreadyTakenError",
         status: 409,
         context: { accountId: "taken_id" },
@@ -236,6 +253,7 @@ describe("createAppErrorHandler", () => {
         (await logOf(createProfileNotPublishableError(["name", "story"])))
           .fields,
       ).toStrictEqual({
+        ...REQUEST_FIELDS,
         errorType: "ProfileNotPublishableError",
         status: 422,
         context: { missingFields: ["name", "story"] },
@@ -259,6 +277,7 @@ describe("createAppErrorHandler", () => {
 
       expect(JSON.stringify(await response.json())).toContain("secret-value");
       expect(logs[0].fields).toStrictEqual({
+        ...REQUEST_FIELDS,
         errorType: "InvalidRequestFormatError",
         status: 400,
         context: { issuePaths: ["plan"] },
@@ -281,6 +300,65 @@ describe("createAppErrorHandler", () => {
       expect(body).not.toHaveProperty("errorType");
       expect(body).not.toHaveProperty("context");
       expect(body).not.toHaveProperty("stack");
+      expect(body).not.toHaveProperty("requestId");
+      expect(body).not.toHaveProperty("route");
+    });
+  });
+
+  describe("リクエスト相関", () => {
+    const requestWithContext = async (
+      error: unknown,
+      headers: Record<string, string>,
+    ) => {
+      const { logger, logs } = createRecordingLogger();
+      await new Hono()
+        .use("*", requestContextMiddleware)
+        .get("/artists/:accountId", () => {
+          throw error;
+        })
+        .onError(createAppErrorHandler(logger))
+        .request("/artists/beatboxer_taro", { headers });
+      expect(logs).toHaveLength(1);
+      return logs[0];
+    };
+
+    it("requestId と traceId をログに載せる", async () => {
+      const traceId = "4bf92f3577b34da6a3ce929d0e0e4736";
+
+      const log = await requestWithContext(createUnauthorizedError(), {
+        "x-request-id": "req-1",
+        traceparent: `00-${traceId}-00f067aa0ba902b7-01`,
+      });
+
+      expect(log.fields).toStrictEqual({
+        requestId: "req-1",
+        traceId,
+        method: "GET",
+        route: "/artists/:accountId",
+        errorType: "UnauthorizedError",
+        status: 401,
+      });
+    });
+
+    it("route はパス値ではなくルートパターンを載せる", async () => {
+      const log = await requestWithContext(createUnauthorizedError(), {});
+
+      expect(log.fields.route).toBe("/artists/:accountId");
+      expect(JSON.stringify(log.fields)).not.toContain("beatboxer_taro");
+    });
+
+    it("相関ヘッダが無くても requestId は確定する", async () => {
+      const log = await requestWithContext(createUnauthorizedError(), {});
+
+      expect(log.fields.requestId).toBeTruthy();
+      expect(log.fields).not.toHaveProperty("traceId");
+    });
+
+    it("リクエストコンテキスト外でも method / route だけでログを残す", async () => {
+      const log = await logOf(createUnauthorizedError());
+
+      expect(log.fields).not.toHaveProperty("requestId");
+      expect(log.fields).toMatchObject({ method: "GET", route: "/" });
     });
   });
 });
@@ -304,6 +382,8 @@ describe("handleAppError", () => {
     await requestWithDefaultHandler(createUserAlreadyRegisteredError());
 
     expect(infoSpy).toHaveBeenCalledWith("AppError", {
+      method: "GET",
+      route: "/",
       errorType: "UserAlreadyRegisteredError",
       status: 409,
     });
@@ -316,6 +396,8 @@ describe("handleAppError", () => {
     await requestWithDefaultHandler(rawError);
 
     expect(errorSpy).toHaveBeenCalledWith("UnhandledError", {
+      method: "GET",
+      route: "/",
       errorName: "Error",
       message: "boom",
       stack: rawError.stack,

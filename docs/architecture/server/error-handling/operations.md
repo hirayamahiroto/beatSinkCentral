@@ -2,7 +2,7 @@
 
 このドキュメントは、[implementation.md](./implementation.md) で構築したエラーハンドリング基盤を **ログ基盤・監視・SLO/SRE 運用** に繋ぐためのロードマップを示す。
 
-「クライアントに返すエラーレスポンス」と「内部ログ」の分離までが実装済み。残っているのは **リクエスト相関情報の注入と監視サービス（Datadog 等）との連携**。
+「クライアントに返すエラーレスポンス」と「内部ログ」の分離、およびリクエスト相関情報の注入までが実装済み。残っているのは **監視サービス（Datadog 等）との連携**。
 
 ---
 
@@ -19,8 +19,8 @@
 | 重要度分岐                                  | ✅ errorMap の `logLevel`（info / warn / error） | ◎                  |
 | ログ出力先の差し替え                        | ✅ `Logger` 型経由（既定は console）             | ◎                  |
 | センシティブ情報の非露出                    | ✅ `logFields` のホワイトリスト方式              | ○                  |
-| リクエスト相関（trace_id, request_id）      | ❌ 未実装                                        | ✗（要追加）        |
-| サービスメタデータ（env, service, version） | ❌ 未実装                                        | ✗（要追加）        |
+| リクエスト相関（requestId, traceId, route） | ✅ `AsyncLocalStorage` + `Context`               | ◎                  |
+| サービスメタデータ（env, service, version） | ➖ Vercel のログに自動付与されるため持たない     | ○                  |
 
 ---
 
@@ -53,33 +53,62 @@
 
 ---
 
-## 次の一手①: リクエストコンテキストの注入
+## リクエスト相関情報の注入
 
-監視基盤と連携するために必須になる情報:
+1 件のエラーログから「どのリクエストで起きたか」を追えるようにする。エラーの内容（`errorType` / `context`）だけでは、同時刻に走った他のリクエストと区別できない。
 
-- `trace_id` / `span_id`（分散トレースとの相関）
-- `request_id` / `user_id`（リクエスト単位での絞り込み）
-- `route`（どのエンドポイントで起きたか）
-- `env` / `service` / `version`
+### 何をどこから取るか
 
-Node.js の `AsyncLocalStorage` で request-scoped なコンテキストを保持し、`buildErrorLog` の結果に合成して Logger に渡す構成が標準的。
+相関情報の出所は 2 つある。**混ぜずに分ける**のが要点。
 
-```typescript
-// middlewares/requestContext.ts（将来追加）
-// リクエスト開始時に AsyncLocalStorage.enterWith({ traceId, userId, route })
+| フィールド  | 出所                | 理由                                                             |
+| ----------- | ------------------- | ---------------------------------------------------------------- |
+| `requestId` | `AsyncLocalStorage` | リクエストごとに 1 回だけ確定させる値。リクエストからは導出不能  |
+| `traceId`   | `AsyncLocalStorage` | 同上（上流の `traceparent` を 1 回だけ解析する）                 |
+| `method`    | Hono の `Context`   | リクエストから常に導出できる                                     |
+| `route`     | Hono の `Context`   | 同上。ただし**ルータ解決後**でなければ正しい値が取れない（後述） |
 
-// ハンドラ内の emit で
-logger[level](event, {
-  ...getRequestContext(), // traceId, userId, route 等
-  ...fields,
-});
+```text
+apps/api-server/src/
+├── utils/requestContext/          # AsyncLocalStorage による保持（HTTP を知らない）
+└── middlewares/requestContext/    # ヘッダから相関情報を作って run する（HTTP を知る）
 ```
 
-`emit` 1 箇所の拡張で済み、errorMap のエントリには一切手を入れない。
+`utils/requestContext` は `runWithRequestContext` / `getRequestContext` だけを公開し、`getRequestContext()` は **`RequestContext | undefined`** を返す。リクエスト外（起動時・バッチ等）から呼ばれうるため、「無いかもしれない」を型で表す。
+
+### route は middleware では取れない
+
+Hono の `c.req.routePath` は**そのミドルウェア自身の登録パターン**を返す。`.use("*", ...)` の中で読むと `/api/*` になり、ハンドラのルートは分からない。
+
+| 読む場所             | `c.req.routePath` の値    |
+| -------------------- | ------------------------- |
+| `.use("*")` の中     | `/api/*`                  |
+| ハンドラ / `onError` | `/api/artists/:accountId` |
+
+そのため `route` は AsyncLocalStorage に入れず、ログ出力時点（`emit`）に `c` から読む。
+
+`c.req.path`（`/api/artists/beatboxer_taro`）ではなく `routePath` を使うのは 2 つの理由から:
+
+1. パス中の値（accountId 等）がログに残らない
+2. カーディナリティが有界になり、Datadog の facet として集計できる
+
+### requestId の決め方
+
+`x-request-id` → `x-vercel-id` → 生成（`crypto.randomUUID()`）の順。上流が付けた ID があればそれを引き継ぐことで、Vercel のプラットフォームログと突き合わせられる。
+
+`traceId` は W3C Trace Context（`traceparent`）の `trace-id` 部分のみを取り出す。形式不正・全ゼロの場合は**フィールドを載せない**（偽の相関 ID を作らない）。
+
+### user_id を載せない理由
+
+Auth0 の `sub` は PII に当たるためログに出さない（`.claude/rules/code-review-checklist.md` §4-3）。内部 ID は認証時点では未解決で、usecase 内の `resolveActor` を通した後にしか確定しない。ユーザー単位の絞り込みが必要になった段階で、解決済みの内部 ID を context に足す。
+
+### env / service / version
+
+Vercel のログには project / 環境 / デプロイメントが自動で付くため、アプリ側では持たない。他の実行環境へ移す際に必要になったら Logger 実装側で付与する（errorMap には影響しない）。
 
 ---
 
-## 次の一手②: Datadog / 監視基盤アダプタ
+## 次の一手: Datadog / 監視基盤アダプタ
 
 `Logger` 型さえあれば、実装を差し替えるだけ。
 
@@ -99,7 +128,9 @@ export const createDatadogLogger = (): Logger => {
 };
 ```
 
-差し替え点は `handleAppError` の配線 1 行（`createAppErrorHandler(createDatadogLogger())`）。errorMap / エラー定義 / ルートは変更ゼロ。
+差し替え点は `handleAppError` の配線 1 行（`createAppErrorHandler(createDatadogLogger())`）。errorMap / エラー定義 / ルート / リクエストコンテキストは変更ゼロ。
+
+トレース連携で `traceId` を Datadog の予約フィールド（`dd.trace_id`）に載せ替える必要がある場合も、この Logger 実装内で名前を変換する。アプリ側のフィールド名は変えない。
 
 ---
 
@@ -114,7 +145,7 @@ export const createDatadogLogger = (): Logger => {
 4. テスト追加
 ```
 
-ハンドラ / Logger / onError / ルート は一切触らない、という性質は保たれる。
+ハンドラ / Logger / onError / ルート / リクエストコンテキスト は一切触らない、という性質は保たれる。
 
 ---
 
@@ -125,8 +156,8 @@ export const createDatadogLogger = (): Logger => {
 | 完了     | クライアント向けレスポンス設計                              | —                                |
 | 完了     | `Logger` 型を新設し console 直書きを置換                    | 出力点 1 箇所                    |
 | 完了     | errorMap を `client*` / `log*` に分離し `logLevel` を必須化 | 型の拡張 + 全エントリ            |
-| 次       | リクエストコンテキスト（trace_id 等）を注入する基盤         | middleware 1 本 + `emit` の拡張  |
-| その次   | Datadog / 監視基盤アダプタの実装                            | `Logger` の実装 1 本 + 配線 1 行 |
+| 完了     | リクエスト相関（requestId / traceId / route）を注入         | middleware 1 本 + `emit` の拡張  |
+| 次       | Datadog / 監視基盤アダプタの実装                            | `Logger` の実装 1 本 + 配線 1 行 |
 | その次   | リクエスト総量メトリクス（SLI の分母）の整備                | 本設計の範囲外（別途）           |
 
 順序は前から後ろに積むだけで済む構造になっている。逆順でも欠けた層を飛ばす形でもなく、**下から順に積み上げる** のが自然な進め方。

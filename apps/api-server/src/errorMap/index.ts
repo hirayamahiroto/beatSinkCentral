@@ -26,6 +26,7 @@ import type { InvalidRequestFormatError } from "../app/api/[[...route]]/errors/i
 import type { UnauthorizedError } from "../middlewares/auth0/errors/unauthorized";
 import type { LogFields, LogLevel, Logger } from "../utils/logger";
 import { createConsoleLogger } from "../utils/logger";
+import { getRequestContext } from "../utils/requestContext";
 
 export type AppError =
   | InvalidRequestFormatError
@@ -249,18 +250,28 @@ const buildUnhandledErrorLog = (error: Error): ErrorLog => ({
   },
 });
 
-const emit = (logger: Logger, { level, event, fields }: ErrorLog): void => {
-  logger[level](event, fields);
+const emit = (
+  logger: Logger,
+  c: Context,
+  { level, event, fields }: ErrorLog,
+): void => {
+  logger[level](event, {
+    ...getRequestContext(),
+    method: c.req.method,
+    // Hono の routePath は middleware 実行時点では自身のパターン（/api/*）を返すため、ルータ解決後の c から読む
+    route: c.req.routePath,
+    ...fields,
+  });
 };
 
 export const createAppErrorHandler =
   (logger: Logger) => (error: Error, c: Context) => {
     if (isAppError(error)) {
-      emit(logger, buildErrorLog(error));
+      emit(logger, c, buildErrorLog(error));
       const { body, status } = buildClientResponse(error);
       return c.json(body, status);
     }
-    emit(logger, buildUnhandledErrorLog(error));
+    emit(logger, c, buildUnhandledErrorLog(error));
     return c.json({ error: "Internal Server Error" }, 500);
   };
 
