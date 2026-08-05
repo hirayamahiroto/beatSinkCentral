@@ -94,6 +94,48 @@ describe("artistProfileRepository", () => {
     });
   });
 
+  describe("listPublishedSummaries", () => {
+    it("accountId / name / imageUrl の要約を返し、件数上限を渡す", async () => {
+      mock.enqueue([
+        { accountId: "taro", name: "Taro", imageUrl: "https://e.com/a.png" },
+        { accountId: "hana", name: "Hana", imageUrl: null },
+      ]);
+      const reader = createArtistProfileReader(mock.db as never);
+
+      const result = await reader.listPublishedSummaries({ limit: 100 });
+
+      expect(result).toEqual([
+        { accountId: "taro", name: "Taro", imageUrl: "https://e.com/a.png" },
+        { accountId: "hana", name: "Hana", imageUrl: null },
+      ]);
+      expect(mock.spy("limit")).toHaveBeenCalledWith(100);
+    });
+
+    it("name が欠けた行は除外する", async () => {
+      mock.enqueue([
+        { accountId: "taro", name: "Taro", imageUrl: null },
+        { accountId: "noname", name: null, imageUrl: null },
+      ]);
+      const reader = createArtistProfileReader(mock.db as never);
+
+      const result = await reader.listPublishedSummaries({ limit: 100 });
+
+      expect(result).toEqual([
+        { accountId: "taro", name: "Taro", imageUrl: null },
+      ]);
+    });
+
+    it("公開行が無ければ空配列を返す（子テーブルを引かない）", async () => {
+      mock.enqueue([]);
+      const reader = createArtistProfileReader(mock.db as never);
+
+      const result = await reader.listPublishedSummaries({ limit: 100 });
+
+      expect(result).toEqual([]);
+      expect(mock.spy("orderBy")).toHaveBeenCalled();
+    });
+  });
+
   describe("upsert", () => {
     it("保存内容を反映した Entity を返し、子テーブルを置換する", async () => {
       mock.enqueue(

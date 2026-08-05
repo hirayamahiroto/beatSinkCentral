@@ -1,4 +1,4 @@
-import { and, eq, isNull, asc, inArray } from "drizzle-orm";
+import { and, eq, isNull, isNotNull, asc, desc, inArray } from "drizzle-orm";
 import {
   DatabaseClient,
   artistsTable,
@@ -12,6 +12,8 @@ import type {
   IArtistProfileWriter,
   ArtistProfileSaveData,
   ArtistProfileSetPublishedData,
+  ListPublishedSummariesInput,
+  PublishedProfileSummary,
 } from "../../../domain/artistProfiles/repositories";
 import type {
   ArtistProfile,
@@ -45,6 +47,13 @@ const profileColumns = {
   activityInfo: artistProfilesTable.activityInfo,
   published: artistProfilesTable.published,
 };
+
+// Drizzle の isNotNull は取得行の型を絞らないため、述語で narrow して契約の name: string を満たす
+const hasName = (row: {
+  accountId: string;
+  name: string | null;
+  imageUrl: string | null;
+}): row is PublishedProfileSummary => row.name !== null;
 
 const loadChildren = async (executor: Executor, profileId: string) => {
   const [genreRows, linkRows] = await Promise.all([
@@ -190,6 +199,36 @@ export const createArtistProfileReader = (
 
     const { genres, links } = await loadChildren(executor, row.id);
     return toEntity(row, genres, links);
+  },
+
+  async listPublishedSummaries({
+    limit,
+  }: ListPublishedSummariesInput): Promise<PublishedProfileSummary[]> {
+    const rows = await executor
+      .select({
+        accountId: artistsTable.accountId,
+        name: artistProfilesTable.name,
+        imageUrl: artistProfilesTable.imageUrl,
+      })
+      .from(artistProfilesTable)
+      .innerJoin(
+        artistsTable,
+        eq(artistProfilesTable.artistId, artistsTable.id),
+      )
+      .where(
+        and(
+          eq(artistProfilesTable.published, true),
+          isNull(artistProfilesTable.deletedAt),
+          isNotNull(artistProfilesTable.name),
+        ),
+      )
+      .orderBy(
+        desc(artistProfilesTable.publishedAt),
+        asc(artistsTable.accountId),
+      )
+      .limit(limit);
+
+    return rows.filter(hasName);
   },
 });
 

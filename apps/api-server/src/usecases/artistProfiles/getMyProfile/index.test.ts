@@ -30,6 +30,9 @@ const createCaps = () =>
       findPublishedByAccountId: vi.fn<
         IArtistProfileReader["findPublishedByAccountId"]
       >(async () => null),
+      listPublishedSummaries: vi.fn<
+        IArtistProfileReader["listPublishedSummaries"]
+      >(async () => []),
     },
   }) satisfies ReadCapabilities;
 
