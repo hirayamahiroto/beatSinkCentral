@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { createTypedError } from "../../../../utils/errors/createTypedError";
+import { type Result, ok, err } from "../../../../utils/result";
 
 export type ArtistId = {
   readonly value: string;
@@ -15,10 +16,12 @@ export const createInvalidArtistIdFormatError =
 
 const artistIdSchema = z.string().trim().min(1, "artistId is required");
 
-export const createArtistId = (value: string): ArtistId => {
+export const createArtistId = (
+  value: string,
+): Result<ArtistId, InvalidArtistIdFormatError> => {
   const result = artistIdSchema.safeParse(value);
   if (!result.success) {
-    throw createInvalidArtistIdFormatError();
+    return err(createInvalidArtistIdFormatError());
   }
-  return { value: result.data };
+  return ok({ value: result.data });
 };

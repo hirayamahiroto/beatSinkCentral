@@ -4,9 +4,9 @@ import {
   type UpdateMyAccountIdDeps,
   type UpdateMyAccountIdInput,
 } from "./index";
-import { isUserNotFoundError } from "../../../domain/users/policies/assertRegistered";
-import { isArtistNotFoundError } from "../../../domain/artists/policies/assertArtistExists";
-import { isAccountIdAlreadyTakenError } from "../../../domain/artists/policies/assertAccountIdAvailable";
+import { isUserNotFoundError } from "../../../domain/users/errors/userNotFound";
+import { isArtistNotFoundError } from "../../../domain/artists/errors/artistNotFound";
+import { isAccountIdAlreadyTakenError } from "../../../domain/artists/errors/accountIdAlreadyTaken";
 import { reconstructUser } from "../../../domain/users/factories";
 import { reconstructArtist } from "../../../domain/artists/factories";
 
@@ -69,10 +69,13 @@ describe("updateMyAccountIdUseCase", () => {
 
     const result = await updateMyAccountIdUseCase(validInput, deps);
 
-    expect(result).toStrictEqual({
-      artistId: existingArtist.getArtistId(),
-      accountId: validInput.accountId,
-    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toStrictEqual({
+        artistId: existingArtist.getArtistId(),
+        accountId: validInput.accountId,
+      });
+    }
     expect(deps.artistRepository.updateAccountId).toHaveBeenCalledTimes(1);
   });
 
@@ -86,15 +89,18 @@ describe("updateMyAccountIdUseCase", () => {
       deps,
     );
 
-    expect(result).toStrictEqual({
-      artistId: existingArtist.getArtistId(),
-      accountId: "old_handle",
-    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toStrictEqual({
+        artistId: existingArtist.getArtistId(),
+        accountId: "old_handle",
+      });
+    }
     expect(deps.artistRepository.findByAccountId).not.toHaveBeenCalled();
     expect(deps.artistRepository.updateAccountId).not.toHaveBeenCalled();
   });
 
-  it("他のartistが同じaccountIdを使用している場合はAccountIdAlreadyTakenErrorをスローする", async () => {
+  it("他のartistが同じaccountIdを使用している場合はAccountIdAlreadyTakenErrorをerrで返す", async () => {
     const deps = createMockDeps();
     deps.userRepository.findBySub.mockResolvedValue(existingUser);
     deps.artistRepository.findByUserId.mockResolvedValue(existingArtist);
@@ -106,44 +112,54 @@ describe("updateMyAccountIdUseCase", () => {
     });
     deps.artistRepository.findByAccountId.mockResolvedValue(otherArtist);
 
-    const promise = updateMyAccountIdUseCase(validInput, deps);
+    const result = await updateMyAccountIdUseCase(validInput, deps);
 
-    await expect(promise).rejects.toSatisfy(isAccountIdAlreadyTakenError);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(isAccountIdAlreadyTakenError(result.error)).toBe(true);
+    }
     expect(deps.artistRepository.updateAccountId).not.toHaveBeenCalled();
   });
 
-  it("ユーザーが存在しない場合はUserNotFoundErrorをスローする", async () => {
+  it("ユーザーが存在しない場合はUserNotFoundErrorをerrで返す", async () => {
     const deps = createMockDeps();
     deps.userRepository.findBySub.mockResolvedValue(null);
 
-    const promise = updateMyAccountIdUseCase(validInput, deps);
+    const result = await updateMyAccountIdUseCase(validInput, deps);
 
-    await expect(promise).rejects.toSatisfy(isUserNotFoundError);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(isUserNotFoundError(result.error)).toBe(true);
+    }
     expect(deps.artistRepository.updateAccountId).not.toHaveBeenCalled();
   });
 
-  it("artistが存在しない場合はArtistNotFoundErrorをスローする", async () => {
+  it("artistが存在しない場合はArtistNotFoundErrorをerrで返す", async () => {
     const deps = createMockDeps();
     deps.userRepository.findBySub.mockResolvedValue(existingUser);
     deps.artistRepository.findByUserId.mockResolvedValue(null);
 
-    const promise = updateMyAccountIdUseCase(validInput, deps);
+    const result = await updateMyAccountIdUseCase(validInput, deps);
 
-    await expect(promise).rejects.toSatisfy(isArtistNotFoundError);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(isArtistNotFoundError(result.error)).toBe(true);
+    }
     expect(deps.artistRepository.updateAccountId).not.toHaveBeenCalled();
   });
 
-  it("accountIdが不正な形式の場合は、トランザクション開始前にInvalidAccountIdFormatErrorをスローする", async () => {
+  it("accountIdが不正な形式の場合は、トランザクションを開始せずInvalidAccountIdFormatErrorをerrで返す", async () => {
     const deps = createMockDeps();
 
-    const promise = updateMyAccountIdUseCase(
+    const result = await updateMyAccountIdUseCase(
       { ...validInput, accountId: "invalid handle" },
       deps,
     );
 
-    await expect(promise).rejects.toMatchObject({
-      type: "InvalidAccountIdFormatError",
-    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.type).toBe("InvalidAccountIdFormatError");
+    }
     expect(deps.txRunner.run).not.toHaveBeenCalled();
     expect(deps.userRepository.findBySub).not.toHaveBeenCalled();
   });

@@ -8,16 +8,22 @@ import usersMe from "./index";
 const mockUserRepository = {
   save: vi.fn(),
   findBySub: vi.fn(),
+  updateEmail: vi.fn(),
 };
 
 const mockArtistRepository = {
   findByUserId: vi.fn(),
 };
 
+const mockTxRunner = {
+  run: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn({})),
+};
+
 vi.mock("../../../../../infrastructure/container", () => ({
   getContainer: () => ({
     userRepository: mockUserRepository,
     artistRepository: mockArtistRepository,
+    txRunner: mockTxRunner,
   }),
 }));
 
@@ -98,6 +104,60 @@ describe("User Me API", () => {
         accountId: "user_123",
         hasProfile: true,
       },
+    });
+  });
+
+  describe("POST /", () => {
+    const postEmail = (email: string) =>
+      createAppWithAuth({ sub: "auth0|123" }).request("/", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+    it("emailを更新して200と更新後の値を返す", async () => {
+      mockUserRepository.findBySub.mockResolvedValue(
+        reconstructUser({
+          id: "user-1",
+          subId: "auth0|123",
+          email: "old@example.com",
+        }),
+      );
+      mockUserRepository.updateEmail.mockResolvedValue(
+        reconstructUser({
+          id: "user-1",
+          subId: "auth0|123",
+          email: "new@example.com",
+        }),
+      );
+
+      const res = await postEmail("new@example.com");
+
+      expect(res.status).toBe(200);
+      expect(await res.json()).toStrictEqual({
+        userId: "user-1",
+        email: "new@example.com",
+      });
+    });
+
+    it("ユーザーが未登録なら404を返す", async () => {
+      mockUserRepository.findBySub.mockResolvedValue(null);
+
+      const res = await postEmail("new@example.com");
+
+      expect(res.status).toBe(404);
+      expect(await res.json()).toStrictEqual({ error: "User not found" });
+      expect(mockUserRepository.updateEmail).not.toHaveBeenCalled();
+    });
+
+    it("emailの形式が不正なら422を返し、トランザクションを開始しない", async () => {
+      const res = await postEmail("invalid");
+
+      expect(res.status).toBe(422);
+      expect(await res.json()).toStrictEqual({
+        error: "Invalid email format",
+      });
+      expect(mockTxRunner.run).not.toHaveBeenCalled();
     });
   });
 });

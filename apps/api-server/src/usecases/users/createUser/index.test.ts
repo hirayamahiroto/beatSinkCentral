@@ -4,8 +4,8 @@ import {
   type CreateUserDeps,
   type CreateUserInput,
 } from "./index";
-import { isUserAlreadyRegisteredError } from "../../../domain/users/policies/assertNotRegistered";
-import { isAccountIdAlreadyTakenError } from "../../../domain/artists/policies/assertAccountIdAvailable";
+import { isUserAlreadyRegisteredError } from "../../../domain/users/errors/userAlreadyRegistered";
+import { isAccountIdAlreadyTakenError } from "../../../domain/artists/errors/accountIdAlreadyTaken";
 import { reconstructUser } from "../../../domain/users/factories";
 import { reconstructArtist } from "../../../domain/artists/factories";
 
@@ -49,14 +49,17 @@ describe("createUserUseCase", () => {
 
     const result = await createUserUseCase(validInput, deps);
 
-    expect(typeof result.userId).toBe("string");
-    expect(typeof result.artistId).toBe("string");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(typeof result.value.userId).toBe("string");
+      expect(typeof result.value.artistId).toBe("string");
+    }
     expect(deps.userRepository.save).toHaveBeenCalledTimes(1);
     expect(deps.artistRepository.save).toHaveBeenCalledTimes(1);
     expect(deps.txRunner.run).toHaveBeenCalledTimes(1);
   });
 
-  it("既存ユーザーの場合はUserAlreadyRegisteredErrorをスローする", async () => {
+  it("既存ユーザーの場合はUserAlreadyRegisteredErrorをerrで返す", async () => {
     const deps = createMockDeps();
     const existingUser = reconstructUser({
       id: "existing-user-id",
@@ -66,14 +69,17 @@ describe("createUserUseCase", () => {
     deps.userRepository.findBySub.mockResolvedValue(existingUser);
     deps.artistRepository.findByAccountId.mockResolvedValue(null);
 
-    const promise = createUserUseCase(validInput, deps);
+    const result = await createUserUseCase(validInput, deps);
 
-    await expect(promise).rejects.toSatisfy(isUserAlreadyRegisteredError);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(isUserAlreadyRegisteredError(result.error)).toBe(true);
+    }
     expect(deps.userRepository.save).not.toHaveBeenCalled();
     expect(deps.artistRepository.save).not.toHaveBeenCalled();
   });
 
-  it("AccountIdが既に取られている場合はAccountIdAlreadyTakenErrorをスローする", async () => {
+  it("AccountIdが既に取られている場合はAccountIdAlreadyTakenErrorをerrで返す", async () => {
     const deps = createMockDeps();
     const existingArtist = reconstructArtist({
       artistId: "existing-artist-id",
@@ -84,9 +90,30 @@ describe("createUserUseCase", () => {
     deps.userRepository.findBySub.mockResolvedValue(null);
     deps.artistRepository.findByAccountId.mockResolvedValue(existingArtist);
 
-    const promise = createUserUseCase(validInput, deps);
+    const result = await createUserUseCase(validInput, deps);
 
-    await expect(promise).rejects.toSatisfy(isAccountIdAlreadyTakenError);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(isAccountIdAlreadyTakenError(result.error)).toBe(true);
+    }
+    expect(deps.userRepository.save).not.toHaveBeenCalled();
+    expect(deps.artistRepository.save).not.toHaveBeenCalled();
+  });
+
+  it("emailが不正な場合は保存せずInvalidEmailFormatErrorをerrで返す", async () => {
+    const deps = createMockDeps();
+    deps.userRepository.findBySub.mockResolvedValue(null);
+    deps.artistRepository.findByAccountId.mockResolvedValue(null);
+
+    const result = await createUserUseCase(
+      { ...validInput, email: "invalid" },
+      deps,
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.type).toBe("InvalidEmailFormatError");
+    }
     expect(deps.userRepository.save).not.toHaveBeenCalled();
     expect(deps.artistRepository.save).not.toHaveBeenCalled();
   });

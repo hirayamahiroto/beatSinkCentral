@@ -1,10 +1,23 @@
 import type { IUserRepository } from "../../../domain/users/repositories";
 import type { IArtistRepository } from "../../../domain/artists/repositories";
-import { assertRegistered } from "../../../domain/users/policies/assertRegistered";
-import { assertArtistExists } from "../../../domain/artists/policies/assertArtistExists";
-import { assertAccountIdAvailable } from "../../../domain/artists/policies/assertAccountIdAvailable";
-import { createAccountId } from "../../../domain/artists/valueObjects/accountId";
+import {
+  createUserNotFoundError,
+  type UserNotFoundError,
+} from "../../../domain/users/errors/userNotFound";
+import {
+  createArtistNotFoundError,
+  type ArtistNotFoundError,
+} from "../../../domain/artists/errors/artistNotFound";
+import {
+  createAccountIdAlreadyTakenError,
+  type AccountIdAlreadyTakenError,
+} from "../../../domain/artists/errors/accountIdAlreadyTaken";
+import {
+  createAccountId,
+  type InvalidAccountIdFormatError,
+} from "../../../domain/artists/valueObjects/accountId";
 import type { ITransactionRunner } from "../../../infrastructure/transaction";
+import { type Result, ok, err } from "../../../utils/result";
 
 export type UpdateMyAccountIdInput = {
   subId: string;
@@ -16,6 +29,12 @@ export type UpdateMyAccountIdOutput = {
   accountId: string;
 };
 
+export type UpdateMyAccountIdError =
+  | InvalidAccountIdFormatError
+  | UserNotFoundError
+  | ArtistNotFoundError
+  | AccountIdAlreadyTakenError;
+
 export type UpdateMyAccountIdDeps = {
   userRepository: IUserRepository;
   artistRepository: IArtistRepository;
@@ -25,38 +44,46 @@ export type UpdateMyAccountIdDeps = {
 export const updateMyAccountIdUseCase = async (
   input: UpdateMyAccountIdInput,
   deps: UpdateMyAccountIdDeps,
-): Promise<UpdateMyAccountIdOutput> => {
-  const newAccountId = createAccountId(input.accountId);
+): Promise<Result<UpdateMyAccountIdOutput, UpdateMyAccountIdError>> => {
+  const parsed = createAccountId(input.accountId);
+  if (!parsed.ok) return parsed;
+  const newAccountId = parsed.value;
 
-  return deps.txRunner.run(async (tx) => {
-    const user = await deps.userRepository.findBySub(input.subId, tx);
-    assertRegistered(user);
-
-    const artist = await deps.artistRepository.findByUserId(user.getId());
-    assertArtistExists(artist);
-
-    if (artist.hasAccountId(newAccountId)) {
-      return {
-        artistId: artist.getArtistId(),
-        accountId: artist.getAccountId(),
-      };
-    }
-
-    const taken = await deps.artistRepository.findByAccountId(
-      newAccountId.value,
+  return deps.txRunner.run(
+    async (
       tx,
-    );
-    assertAccountIdAvailable(taken);
+    ): Promise<Result<UpdateMyAccountIdOutput, UpdateMyAccountIdError>> => {
+      const user = await deps.userRepository.findBySub(input.subId, tx);
+      if (!user) return err(createUserNotFoundError());
 
-    const updated = artist.changeAccountId(newAccountId);
-    const saved = await deps.artistRepository.updateAccountId(
-      { artistId: updated.getArtistId(), accountId: updated.getAccountId() },
-      tx,
-    );
+      const artist = await deps.artistRepository.findByUserId(user.getId());
+      if (!artist) return err(createArtistNotFoundError());
 
-    return {
-      artistId: saved.getArtistId(),
-      accountId: saved.getAccountId(),
-    };
-  });
+      if (artist.hasAccountId(newAccountId)) {
+        return ok({
+          artistId: artist.getArtistId(),
+          accountId: artist.getAccountId(),
+        });
+      }
+
+      const taken = await deps.artistRepository.findByAccountId(
+        newAccountId.value,
+        tx,
+      );
+      if (taken) {
+        return err(createAccountIdAlreadyTakenError(taken.getAccountId()));
+      }
+
+      const updated = artist.changeAccountId(newAccountId);
+      const saved = await deps.artistRepository.updateAccountId(
+        { artistId: updated.getArtistId(), accountId: updated.getAccountId() },
+        tx,
+      );
+
+      return ok({
+        artistId: saved.getArtistId(),
+        accountId: saved.getAccountId(),
+      });
+    },
+  );
 };

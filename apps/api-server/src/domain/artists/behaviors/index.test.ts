@@ -1,64 +1,65 @@
 import { describe, it, expect } from "vitest";
-import { createArtistBehaviors } from "./index";
-import { createArtistId } from "../valueObjects/artistId";
-import { createAccountId } from "../valueObjects/accountId";
+import { reconstructArtist } from "../factories";
+import { createAccountId, type AccountId } from "../valueObjects/accountId";
+import { unwrapOrThrow } from "../../../utils/result";
 
-const baseState = {
-  artistId: createArtistId("artist-1"),
-  accountId: createAccountId("user_123"),
+const accountIdOf = (value: string): AccountId =>
+  unwrapOrThrow(createAccountId(value), "test setup: invalid accountId");
+
+const baseParams = {
+  artistId: "artist-1",
+  accountId: "user_123",
   ownerUserId: "user-1",
   profile: null,
 };
 
+const artist = reconstructArtist(baseParams);
+
 describe("createArtistBehaviors", () => {
   it("getArtistIdで値を返す", () => {
-    expect(createArtistBehaviors(baseState).getArtistId()).toBe("artist-1");
+    expect(artist.getArtistId()).toBe("artist-1");
   });
 
   it("getAccountIdで値を返す", () => {
-    expect(createArtistBehaviors(baseState).getAccountId()).toBe("user_123");
+    expect(artist.getAccountId()).toBe("user_123");
   });
 
   it("profileがnullの場合はgetProfile/hasProfileがnull/falseを返す", () => {
-    const artist = createArtistBehaviors(baseState);
     expect(artist.getProfile()).toBeNull();
     expect(artist.hasProfile()).toBe(false);
   });
 
   it("profileがある場合はgetProfile/hasProfileが値/trueを返す", () => {
-    const artist = createArtistBehaviors({
-      ...baseState,
+    const withProfile = reconstructArtist({
+      ...baseParams,
       profile: { name: "Test Artist" },
     });
-    expect(artist.getProfile()).toStrictEqual({ name: "Test Artist" });
-    expect(artist.hasProfile()).toBe(true);
+
+    expect(withProfile.getProfile()).toStrictEqual({ name: "Test Artist" });
+    expect(withProfile.hasProfile()).toBe(true);
   });
 
   describe("hasAccountId", () => {
     it("同じ値の AccountId なら true", () => {
-      const artist = createArtistBehaviors(baseState);
-      expect(artist.hasAccountId(createAccountId("user_123"))).toBe(true);
+      expect(artist.hasAccountId(accountIdOf("user_123"))).toBe(true);
     });
 
     it("異なる値の AccountId なら false", () => {
-      const artist = createArtistBehaviors(baseState);
-      expect(artist.hasAccountId(createAccountId("other_handle"))).toBe(false);
+      expect(artist.hasAccountId(accountIdOf("other_handle"))).toBe(false);
     });
   });
 
   describe("changeAccountId", () => {
     it("新しいaccountId VOを持つArtistを返す", () => {
-      const artist = createArtistBehaviors(baseState);
-      const updated = artist.changeAccountId(createAccountId("new_handle"));
+      const updated = artist.changeAccountId(accountIdOf("new_handle"));
 
       expect(updated.getAccountId()).toBe("new_handle");
-      expect(updated.getArtistId()).toBe(baseState.artistId.value);
-      expect(updated.getOwnerUserId()).toBe(baseState.ownerUserId);
+      expect(updated.getArtistId()).toBe(baseParams.artistId);
+      expect(updated.getOwnerUserId()).toBe(baseParams.ownerUserId);
     });
 
     it("元のArtistは不変", () => {
-      const artist = createArtistBehaviors(baseState);
-      artist.changeAccountId(createAccountId("new_handle"));
+      artist.changeAccountId(accountIdOf("new_handle"));
 
       expect(artist.getAccountId()).toBe("user_123");
     });

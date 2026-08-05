@@ -14,7 +14,7 @@ import type {
   ArtistPersistenceData,
 } from "../../../domain/artists/entities";
 import { reconstructArtist } from "../../../domain/artists/factories";
-import { createArtistNotFoundError } from "../../../domain/artists/policies/assertArtistExists";
+import { createArtistNotFoundError } from "../../../domain/artists/errors/artistNotFound";
 import type { TransactionContext } from "../../transaction";
 
 export const createArtistRepository = (

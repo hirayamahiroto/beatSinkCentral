@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getContainer } from "../../../../../infrastructure/container";
 import { createUserUseCase } from "../../../../../usecases/users/createUser";
 import { validateRequest } from "../../validators/validateRequest";
+import { handleAppError } from "../../../../../errorMap";
 
 export const requestSchema = z.object({
   email: z
@@ -39,13 +40,11 @@ const app = new Hono().post(
       },
     );
 
-    return c.json(
-      {
-        userId: result.userId,
-        artistId: result.artistId,
-      },
-      201,
-    );
+    if (!result.ok) {
+      return handleAppError(result.error, c);
+    }
+
+    return c.json(result.value, 201);
   },
 );
 

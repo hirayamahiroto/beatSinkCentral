@@ -1,4 +1,3 @@
-import type { Artist } from "../../entities";
 import { createTypedError } from "../../../../utils/errors/createTypedError";
 
 export type ArtistNotFoundError = Error & {
@@ -15,12 +14,4 @@ export const isArtistNotFoundError = (
     error instanceof Error &&
     (error as Partial<ArtistNotFoundError>).type === "ArtistNotFoundError"
   );
-};
-
-export const assertArtistExists: (
-  artist: Artist | null,
-) => asserts artist is Artist = (artist) => {
-  if (!artist) {
-    throw createArtistNotFoundError();
-  }
 };

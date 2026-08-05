@@ -1,15 +1,53 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import usersCreate, { type CreateUserRequestBody } from "./index";
 import { handleAppError } from "../../../../../errorMap";
+import { reconstructUser } from "../../../../../domain/users/factories";
+import { reconstructArtist } from "../../../../../domain/artists/factories";
 
-vi.mock("../../../../../infrastructure/database", () => ({
-  db: {
-    insert: vi.fn(),
-  },
+const mockUserRepository = {
+  save: vi.fn(),
+  findBySub: vi.fn(),
+  updateEmail: vi.fn(),
+};
+
+const mockArtistRepository = {
+  save: vi.fn(),
+  findByUserId: vi.fn(),
+  findByAccountId: vi.fn(),
+  updateAccountId: vi.fn(),
+};
+
+const mockTxRunner = {
+  run: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn({})),
+};
+
+vi.mock("../../../../../infrastructure/container", () => ({
+  getContainer: () => ({
+    userRepository: mockUserRepository,
+    artistRepository: mockArtistRepository,
+    txRunner: mockTxRunner,
+  }),
 }));
 
 const app = new Hono().route("/", usersCreate).onError(handleAppError);
+
+const createAppWithAuth = () => {
+  const authed = new Hono();
+  authed.use("*", async (c, next) => {
+    c.set("auth0User", { sub: "auth0|123" });
+    await next();
+  });
+  authed.route("/", usersCreate);
+  return authed;
+};
+
+const postCreate = (body: CreateUserRequestBody) =>
+  createAppWithAuth().request("/", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
 
 describe("User Create API", () => {
   describe("POST / - バリデーション", () => {
@@ -152,6 +190,79 @@ describe("User Create API", () => {
             issue.path[0] === "email" && issue.message === "email is required",
         ),
       ).toBe(true);
+    });
+  });
+
+  describe("POST / - ドメインの失敗をHTTPへ変換する", () => {
+    const validPayload = {
+      email: "test@example.com",
+      accountId: "test_account",
+    } satisfies CreateUserRequestBody;
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+      mockUserRepository.findBySub.mockResolvedValue(null);
+      mockArtistRepository.findByAccountId.mockResolvedValue(null);
+      mockUserRepository.save.mockResolvedValue(undefined);
+      mockArtistRepository.save.mockResolvedValue(undefined);
+    });
+
+    it("新規登録に成功すると201とuserId/artistIdを返す", async () => {
+      const res = await postCreate(validPayload);
+      const body = (await res.json()) as { userId: string; artistId: string };
+
+      expect(res.status).toBe(201);
+      expect(typeof body.userId).toBe("string");
+      expect(typeof body.artistId).toBe("string");
+    });
+
+    it("既に登録済みなら409を返し、保存しない", async () => {
+      mockUserRepository.findBySub.mockResolvedValue(
+        reconstructUser({
+          id: "user-1",
+          subId: "auth0|123",
+          email: validPayload.email,
+        }),
+      );
+
+      const res = await postCreate(validPayload);
+
+      expect(res.status).toBe(409);
+      expect(await res.json()).toStrictEqual({
+        error: "User already registered",
+      });
+      expect(mockUserRepository.save).not.toHaveBeenCalled();
+    });
+
+    it("accountIdが使用済みなら409と衝突したaccountIdを含むメッセージを返す", async () => {
+      mockArtistRepository.findByAccountId.mockResolvedValue(
+        reconstructArtist({
+          artistId: "artist-1",
+          accountId: validPayload.accountId,
+          ownerUserId: "other-user",
+          profile: null,
+        }),
+      );
+
+      const res = await postCreate(validPayload);
+      const body = (await res.json()) as { error: string };
+
+      expect(res.status).toBe(409);
+      expect(body.error).toContain(validPayload.accountId);
+      expect(mockArtistRepository.save).not.toHaveBeenCalled();
+    });
+
+    it("accountIdがVOの形式に反する場合は422を返し、保存しない", async () => {
+      const res = await postCreate({
+        ...validPayload,
+        accountId: "invalid handle",
+      });
+
+      expect(res.status).toBe(422);
+      expect(await res.json()).toStrictEqual({
+        error: "Invalid accountId format",
+      });
+      expect(mockArtistRepository.save).not.toHaveBeenCalled();
     });
   });
 });
