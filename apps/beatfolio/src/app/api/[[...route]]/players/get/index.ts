@@ -4,15 +4,19 @@ import type { RequestContextEnv } from "../../../../../middlewares/requestContex
 const app = new Hono<RequestContextEnv>().get("/", async (c) => {
   const apiClient = c.get("apiClient");
 
-  const res = await apiClient.api.artists.$get();
+  try {
+    const res = await apiClient.api.artists.$get();
 
-  if (!res.ok) {
+    if (!res.ok) {
+      return c.json({ error: "Failed to fetch players" }, 502);
+    }
+
+    const { profiles } = await res.json();
+
+    return c.json({ players: profiles });
+  } catch {
     return c.json({ error: "Failed to fetch players" }, 502);
   }
-
-  const { profiles } = await res.json();
-
-  return c.json({ players: profiles });
 });
 
 export default app;

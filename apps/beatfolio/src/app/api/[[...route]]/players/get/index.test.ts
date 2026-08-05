@@ -82,4 +82,32 @@ describe("GET /players", () => {
 
     expect(res.status).toBe(502);
   });
+
+  it("api-server への接続自体が失敗したら 502 を返す", async () => {
+    artistsGet.mockRejectedValue(new TypeError("fetch failed"));
+
+    const res = await createApp().request("/", { method: "GET" });
+
+    expect(res.status).toBe(502);
+    expect(await res.json()).toStrictEqual({
+      error: "Failed to fetch players",
+    });
+  });
+
+  it("応答の解析に失敗したら 502 を返す", async () => {
+    artistsGet.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => {
+        throw new SyntaxError("Unexpected end of JSON input");
+      },
+    });
+
+    const res = await createApp().request("/", { method: "GET" });
+
+    expect(res.status).toBe(502);
+    expect(await res.json()).toStrictEqual({
+      error: "Failed to fetch players",
+    });
+  });
 });
