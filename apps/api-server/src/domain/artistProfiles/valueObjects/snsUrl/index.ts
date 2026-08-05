@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { createTypedError } from "../../../../utils/errors/createTypedError";
+import { type Result, ok, err } from "../../../../utils/result";
 
 export type SnsUrl = {
   readonly value: string;
@@ -19,10 +20,12 @@ const snsUrlSchema = z
   .max(2048, "snsUrl must be 2048 characters or less")
   .url("snsUrl must be a valid URL");
 
-export const createSnsUrl = (value: string): SnsUrl => {
+export const createSnsUrl = (
+  value: string,
+): Result<SnsUrl, InvalidSnsUrlFormatError> => {
   const result = snsUrlSchema.safeParse(value);
   if (!result.success) {
-    throw createInvalidSnsUrlFormatError();
+    return err(createInvalidSnsUrlFormatError());
   }
-  return { value: result.data };
+  return ok({ value: result.data });
 };

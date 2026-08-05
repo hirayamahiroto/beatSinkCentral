@@ -1,5 +1,8 @@
 import type { Context } from "hono";
-import type { ContentfulStatusCode } from "hono/utils/http-status";
+import type {
+  ClientErrorStatusCode,
+  ServerErrorStatusCode,
+} from "hono/utils/http-status";
 import type { UserAlreadyRegisteredError } from "../domain/users/policies/assertNotRegistered";
 import type { UserNotFoundError } from "../domain/users/policies/assertRegistered";
 import type { AccountIdAlreadyTakenError } from "../domain/artists/policies/assertAccountIdAvailable";
@@ -9,8 +12,8 @@ import type { InvalidSubFormatError } from "../domain/users/valueObjects/sub";
 import type { InvalidNameFormatError } from "../domain/users/valueObjects/name";
 import type { InvalidAccountIdFormatError } from "../domain/artists/valueObjects/accountId";
 import type { InvalidArtistIdFormatError } from "../domain/artists/valueObjects/artistId";
-import type { ArtistProfileNotFoundError } from "../domain/artistProfiles/policies/assertArtistProfileExists";
-import type { ProfileNotPublishableError } from "../domain/artistProfiles/policies/assertProfilePublishable";
+import type { ArtistProfileNotFoundError } from "../domain/artistProfiles/errors/artistProfileNotFound";
+import type { ProfileNotPublishableError } from "../domain/artistProfiles/policies/publishability";
 import type { InvalidProfileNameFormatError } from "../domain/artistProfiles/valueObjects/profileName";
 import type { InvalidTaglineFormatError } from "../domain/artistProfiles/valueObjects/tagline";
 import type { InvalidImageUrlFormatError } from "../domain/artistProfiles/valueObjects/imageUrl";
@@ -45,8 +48,10 @@ export type AppError =
   | InvalidSnsUrlFormatError
   | InvalidProfileLinkFormatError;
 
+type ErrorStatusCode = ClientErrorStatusCode | ServerErrorStatusCode;
+
 type ErrorMapping<SpecificError extends AppError> = {
-  status: ContentfulStatusCode;
+  status: ErrorStatusCode;
   message: (error: SpecificError) => string;
   details?: (error: SpecificError) => unknown;
 };
@@ -168,7 +173,7 @@ const buildMappedResponse = <Error extends AppError>(
 
 type ErrorResponse = {
   body: { error: string; details?: unknown };
-  status: ContentfulStatusCode;
+  status: ErrorStatusCode;
 };
 
 const resolveErrorResponse = (error: unknown): ErrorResponse => {

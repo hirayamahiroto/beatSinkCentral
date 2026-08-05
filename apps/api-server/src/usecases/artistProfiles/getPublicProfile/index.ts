@@ -1,6 +1,10 @@
-import type { IArtistProfileRepository } from "../../../domain/artistProfiles/repositories";
 import type { ArtistProfileView } from "../../../domain/artistProfiles/entities";
-import { assertArtistProfileExists } from "../../../domain/artistProfiles/policies/assertArtistProfileExists";
+import {
+  createArtistProfileNotFoundError,
+  type ArtistProfileNotFoundError,
+} from "../../../domain/artistProfiles/errors/artistProfileNotFound";
+import type { PublicReadCapabilities } from "../../capabilities";
+import { type Result, ok, err } from "../../../utils/result";
 
 export type GetPublicProfileInput = {
   accountId: string;
@@ -11,22 +15,21 @@ export type GetPublicProfileOutput = {
   profile: ArtistProfileView;
 };
 
-export type GetPublicProfileDeps = {
-  artistProfileRepository: IArtistProfileRepository;
-};
+export type GetPublicProfileError = ArtistProfileNotFoundError;
 
-export const getPublicProfileUseCase = async (
+type GetPublicProfileCaps = Pick<PublicReadCapabilities, "artistProfiles">;
+
+export const getPublicProfile = async (
+  caps: GetPublicProfileCaps,
   input: GetPublicProfileInput,
-  deps: GetPublicProfileDeps,
-): Promise<GetPublicProfileOutput> => {
-  const profile =
-    await deps.artistProfileRepository.findPublishedByAccountId(
-      input.accountId,
-    );
-  assertArtistProfileExists(profile);
+): Promise<Result<GetPublicProfileOutput, GetPublicProfileError>> => {
+  const profile = await caps.artistProfiles.findPublishedByAccountId(
+    input.accountId,
+  );
+  if (!profile) return err(createArtistProfileNotFoundError());
 
-  return {
+  return ok({
     accountId: input.accountId,
     profile: profile.toView(),
-  };
+  });
 };

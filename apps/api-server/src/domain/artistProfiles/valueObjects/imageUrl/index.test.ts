@@ -3,22 +3,28 @@ import { createImageUrl } from "./index";
 
 describe("createImageUrl", () => {
   it("有効な URL で生成する", () => {
-    expect(createImageUrl("https://example.com/a.png").value).toBe(
-      "https://example.com/a.png",
-    );
+    const result = createImageUrl("https://example.com/a.png");
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.value).toBe("https://example.com/a.png");
+    }
   });
 
-  it("URL でない文字列はエラーをスローする", () => {
-    expect(() => createImageUrl("not-a-url")).toThrow();
+  it("URL でない文字列は err を返す", () => {
+    expect(createImageUrl("not-a-url").ok).toBe(false);
   });
 
-  it("空文字はエラーをスローする", () => {
-    expect(() => createImageUrl("")).toThrow();
+  it("空文字は err を返す", () => {
+    expect(createImageUrl("").ok).toBe(false);
   });
 
-  it("スローされるエラーは InvalidImageUrlFormatError 型", () => {
-    expect(() => createImageUrl("not-a-url")).toThrowError(
-      expect.objectContaining({ type: "InvalidImageUrlFormatError" }),
-    );
+  it("返るエラーは InvalidImageUrlFormatError 型", () => {
+    const result = createImageUrl("not-a-url");
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.type).toBe("InvalidImageUrlFormatError");
+    }
   });
 });

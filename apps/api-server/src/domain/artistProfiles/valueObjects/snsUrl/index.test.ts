@@ -3,20 +3,28 @@ import { createSnsUrl } from "./index";
 
 describe("createSnsUrl", () => {
   it("有効な URL で生成する", () => {
-    expect(createSnsUrl("https://x.com/taro").value).toBe("https://x.com/taro");
+    const result = createSnsUrl("https://x.com/taro");
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.value).toBe("https://x.com/taro");
+    }
   });
 
-  it("URL でない文字列はエラーをスローする", () => {
-    expect(() => createSnsUrl("at-taro")).toThrow();
+  it("URL でない文字列は err を返す", () => {
+    expect(createSnsUrl("at-taro").ok).toBe(false);
   });
 
-  it("空文字はエラーをスローする", () => {
-    expect(() => createSnsUrl("")).toThrow();
+  it("空文字は err を返す", () => {
+    expect(createSnsUrl("").ok).toBe(false);
   });
 
-  it("スローされるエラーは InvalidSnsUrlFormatError 型", () => {
-    expect(() => createSnsUrl("at-taro")).toThrowError(
-      expect.objectContaining({ type: "InvalidSnsUrlFormatError" }),
-    );
+  it("返るエラーは InvalidSnsUrlFormatError 型", () => {
+    const result = createSnsUrl("at-taro");
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.type).toBe("InvalidSnsUrlFormatError");
+    }
   });
 });

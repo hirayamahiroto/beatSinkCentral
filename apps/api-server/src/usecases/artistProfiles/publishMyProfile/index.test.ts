@@ -1,93 +1,82 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { publishMyProfileUseCase, type PublishMyProfileDeps } from "./index";
-import { isUserNotFoundError } from "../../../domain/users/policies/assertRegistered";
-import { isArtistProfileNotFoundError } from "../../../domain/artistProfiles/policies/assertArtistProfileExists";
-import { isProfileNotPublishableError } from "../../../domain/artistProfiles/policies/assertProfilePublishable";
 import { reconstructUser } from "../../../domain/users/factories";
 import { reconstructArtist } from "../../../domain/artists/factories";
 import { reconstructArtistProfile } from "../../../domain/artistProfiles/factories";
+import { publishMyProfile } from "./index";
+import { isArtistProfileNotFoundError } from "../../../domain/artistProfiles/errors/artistProfileNotFound";
+import { isProfileNotPublishableError } from "../../../domain/artistProfiles/policies/publishability";
+import type {
+  IArtistProfileReader,
+  IArtistProfileWriter,
+} from "../../../domain/artistProfiles/repositories";
+import type { Actor, WriteCapabilities } from "../../capabilities";
 
-const createMockDeps = () =>
+const actor: Actor = {
+  user: reconstructUser({
+    id: "550e8400-e29b-41d4-a716-446655440000",
+    subId: "auth0|123456789",
+    email: "test@example.com",
+  }),
+  artist: reconstructArtist({
+    artistId: "artist-1",
+    accountId: "beatboxer_taro",
+    ownerUserId: "550e8400-e29b-41d4-a716-446655440000",
+    profile: null,
+  }),
+};
+
+const publishableProfile = () =>
+  reconstructArtistProfile({
+    id: "profile-1",
+    artistId: "artist-1",
+    published: false,
+    name: "Taro",
+    imageUrl: "https://example.com/a.png",
+    story: "私の歩み",
+    genres: ["bass"],
+    links: [{ type: "x", url: "https://x.com/taro" }],
+  });
+
+const createCaps = () =>
   ({
-    userRepository: {
-      save: vi.fn(),
-      findBySub: vi.fn(),
-      updateEmail: vi.fn(),
+    actor,
+    artistProfiles: {
+      findByArtistId: vi.fn<IArtistProfileReader["findByArtistId"]>(
+        async () => null,
+      ),
+      findPublishedByAccountId: vi.fn<
+        IArtistProfileReader["findPublishedByAccountId"]
+      >(async () => null),
+      upsert: vi.fn<IArtistProfileWriter["upsert"]>(),
+      setPublished: vi.fn<IArtistProfileWriter["setPublished"]>(),
     },
-    artistRepository: {
-      save: vi.fn(),
-      findByUserId: vi.fn(),
-      findByAccountId: vi.fn(),
-      updateAccountId: vi.fn(),
-    },
-    artistProfileRepository: {
-      findByArtistId: vi.fn(),
-      findPublishedByAccountId: vi.fn(),
-      upsert: vi.fn(),
-      setPublished: vi.fn(),
-    },
-    txRunner: {
-      run: vi.fn(async (fn) => fn({} as Parameters<typeof fn>[0])),
-    },
-  }) satisfies PublishMyProfileDeps;
+  }) satisfies WriteCapabilities;
 
-const existingUser = reconstructUser({
-  id: "550e8400-e29b-41d4-a716-446655440000",
-  subId: "auth0|123456789",
-  email: "test@example.com",
-});
+describe("publishMyProfile", () => {
+  beforeEach(() => vi.clearAllMocks());
 
-const existingArtist = reconstructArtist({
-  artistId: "artist-1",
-  accountId: "beatboxer_taro",
-  ownerUserId: existingUser.getId(),
-  profile: null,
-});
+  it("最小核が揃っていれば公開でき、ok(published=true) を返す", async () => {
+    const caps = createCaps();
+    caps.artistProfiles.findByArtistId.mockResolvedValue(publishableProfile());
+    caps.artistProfiles.setPublished.mockResolvedValue(
+      publishableProfile().publish(),
+    );
 
-const publishableProfile = reconstructArtistProfile({
-  id: "profile-1",
-  artistId: "artist-1",
-  published: false,
-  name: "Taro",
-  imageUrl: "https://example.com/a.png",
-  story: "私の歩み",
-  genres: ["bass"],
-  links: [{ type: "x", url: "https://x.com/taro" }],
-});
+    const result = await publishMyProfile(caps, { published: true });
 
-describe("publishMyProfileUseCase", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toEqual({ published: true });
+    }
+    expect(caps.artistProfiles.setPublished).toHaveBeenCalledWith({
+      artistId: "artist-1",
+      published: true,
+    });
   });
 
-  it("最小核が揃っていれば公開でき、published=true を返す", async () => {
-    const deps = createMockDeps();
-    deps.userRepository.findBySub.mockResolvedValue(existingUser);
-    deps.artistRepository.findByUserId.mockResolvedValue(existingArtist);
-    deps.artistProfileRepository.findByArtistId.mockResolvedValue(
-      publishableProfile,
-    );
-    deps.artistProfileRepository.setPublished.mockResolvedValue(
-      publishableProfile.publish(),
-    );
-
-    const result = await publishMyProfileUseCase(
-      { subId: existingUser.getSub(), published: true },
-      deps,
-    );
-
-    expect(result).toEqual({ published: true });
-    expect(deps.artistProfileRepository.setPublished).toHaveBeenCalledWith(
-      { artistId: "artist-1", published: true },
-      expect.anything(),
-    );
-  });
-
-  it("最小核が欠けている状態で公開しようとすると ProfileNotPublishableError", async () => {
-    const deps = createMockDeps();
-    deps.userRepository.findBySub.mockResolvedValue(existingUser);
-    deps.artistRepository.findByUserId.mockResolvedValue(existingArtist);
-    deps.artistProfileRepository.findByArtistId.mockResolvedValue(
+  it("最小核が欠けている状態で公開しようとすると err(ProfileNotPublishableError)", async () => {
+    const caps = createCaps();
+    caps.artistProfiles.findByArtistId.mockResolvedValue(
       reconstructArtistProfile({
         id: "profile-1",
         artistId: "artist-1",
@@ -97,20 +86,18 @@ describe("publishMyProfileUseCase", () => {
       }),
     );
 
-    const promise = publishMyProfileUseCase(
-      { subId: existingUser.getSub(), published: true },
-      deps,
-    );
+    const result = await publishMyProfile(caps, { published: true });
 
-    await expect(promise).rejects.toSatisfy(isProfileNotPublishableError);
-    expect(deps.artistProfileRepository.setPublished).not.toHaveBeenCalled();
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(isProfileNotPublishableError(result.error)).toBe(true);
+    }
+    expect(caps.artistProfiles.setPublished).not.toHaveBeenCalled();
   });
 
   it("非公開化は最小核を検証せず常に可能", async () => {
-    const deps = createMockDeps();
-    deps.userRepository.findBySub.mockResolvedValue(existingUser);
-    deps.artistRepository.findByUserId.mockResolvedValue(existingArtist);
-    deps.artistProfileRepository.findByArtistId.mockResolvedValue(
+    const caps = createCaps();
+    caps.artistProfiles.findByArtistId.mockResolvedValue(
       reconstructArtistProfile({
         id: "profile-1",
         artistId: "artist-1",
@@ -118,7 +105,7 @@ describe("publishMyProfileUseCase", () => {
         name: "Taro",
       }),
     );
-    deps.artistProfileRepository.setPublished.mockResolvedValue(
+    caps.artistProfiles.setPublished.mockResolvedValue(
       reconstructArtistProfile({
         id: "profile-1",
         artistId: "artist-1",
@@ -127,37 +114,23 @@ describe("publishMyProfileUseCase", () => {
       }),
     );
 
-    const result = await publishMyProfileUseCase(
-      { subId: existingUser.getSub(), published: false },
-      deps,
-    );
+    const result = await publishMyProfile(caps, { published: false });
 
-    expect(result).toEqual({ published: false });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toEqual({ published: false });
+    }
   });
 
-  it("プロフィール未作成なら ArtistProfileNotFoundError", async () => {
-    const deps = createMockDeps();
-    deps.userRepository.findBySub.mockResolvedValue(existingUser);
-    deps.artistRepository.findByUserId.mockResolvedValue(existingArtist);
-    deps.artistProfileRepository.findByArtistId.mockResolvedValue(null);
+  it("プロフィール未作成なら err(ArtistProfileNotFoundError)", async () => {
+    const caps = createCaps();
 
-    const promise = publishMyProfileUseCase(
-      { subId: existingUser.getSub(), published: true },
-      deps,
-    );
+    const result = await publishMyProfile(caps, { published: true });
 
-    await expect(promise).rejects.toSatisfy(isArtistProfileNotFoundError);
-  });
-
-  it("ユーザー未登録なら UserNotFoundError", async () => {
-    const deps = createMockDeps();
-    deps.userRepository.findBySub.mockResolvedValue(null);
-
-    const promise = publishMyProfileUseCase(
-      { subId: "auth0|unknown", published: true },
-      deps,
-    );
-
-    await expect(promise).rejects.toSatisfy(isUserNotFoundError);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(isArtistProfileNotFoundError(result.error)).toBe(true);
+    }
+    expect(caps.artistProfiles.setPublished).not.toHaveBeenCalled();
   });
 });

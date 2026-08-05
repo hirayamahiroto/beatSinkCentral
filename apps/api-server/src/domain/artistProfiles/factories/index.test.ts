@@ -1,9 +1,18 @@
 import { describe, it, expect } from "vitest";
-import { createArtistProfile, reconstructArtistProfile } from "./index";
+import {
+  createArtistProfile,
+  reviseArtistProfile,
+  reconstructArtistProfile,
+} from "./index";
+import { unwrapOrThrow } from "../../../utils/result";
+
+const expectOk = <T, E>(
+  result: { ok: true; value: T } | { ok: false; error: E },
+): T => unwrapOrThrow(result, "expected ok");
 
 describe("createArtistProfile", () => {
   it("新規作成時は ID を生成し、初期状態は非公開", () => {
-    const profile = createArtistProfile({ artistId: "artist-1" });
+    const profile = expectOk(createArtistProfile({ artistId: "artist-1" }));
 
     expect(profile.getId()).toBeTruthy();
     expect(profile.getArtistId()).toBe("artist-1");
@@ -11,13 +20,15 @@ describe("createArtistProfile", () => {
   });
 
   it("空文字・空白のみのフィールドは null として扱う（下書き許容）", () => {
-    const profile = createArtistProfile({
-      artistId: "artist-1",
-      name: "  ",
-      story: "",
-      genres: ["", "  "],
-      links: [],
-    });
+    const profile = expectOk(
+      createArtistProfile({
+        artistId: "artist-1",
+        name: "  ",
+        story: "",
+        genres: ["", "  "],
+        links: [],
+      }),
+    );
 
     expect(profile.getName()).toBeNull();
     expect(profile.getStory()).toBeNull();
@@ -26,16 +37,18 @@ describe("createArtistProfile", () => {
   });
 
   it("値が入ったフィールドは振る舞いで取得できる", () => {
-    const profile = createArtistProfile({
-      artistId: "artist-1",
-      name: "Beatboxer Taro",
-      tagline: "音で世界を旅する",
-      imageUrl: "https://example.com/a.png",
-      story: "幼少期から…",
-      activityInfo: "東京 / ソロ",
-      genres: ["bass", "inward"],
-      links: [{ type: "x", url: "https://x.com/taro" }],
-    });
+    const profile = expectOk(
+      createArtistProfile({
+        artistId: "artist-1",
+        name: "Beatboxer Taro",
+        tagline: "音で世界を旅する",
+        imageUrl: "https://example.com/a.png",
+        story: "幼少期から…",
+        activityInfo: "東京 / ソロ",
+        genres: ["bass", "inward"],
+        links: [{ type: "x", url: "https://x.com/taro" }],
+      }),
+    );
 
     expect(profile.getName()).toBe("Beatboxer Taro");
     expect(profile.getTagline()).toBe("音で世界を旅する");
@@ -46,10 +59,72 @@ describe("createArtistProfile", () => {
     ]);
   });
 
-  it("不正な画像 URL はエラーをスローする", () => {
-    expect(() =>
-      createArtistProfile({ artistId: "artist-1", imageUrl: "not-a-url" }),
-    ).toThrow();
+  it("不正な画像 URL は err(InvalidImageUrlFormatError) を返す", () => {
+    const result = createArtistProfile({
+      artistId: "artist-1",
+      imageUrl: "not-a-url",
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.type).toBe("InvalidImageUrlFormatError");
+    }
+  });
+
+  it("複数フィールドが不正なら最初の失敗で短絡する", () => {
+    const result = createArtistProfile({
+      artistId: "artist-1",
+      name: "a".repeat(256),
+      imageUrl: "not-a-url",
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.type).toBe("InvalidProfileNameFormatError");
+    }
+  });
+
+  it("配列要素の不正も err として返る", () => {
+    const result = createArtistProfile({
+      artistId: "artist-1",
+      links: [{ type: "x", url: "not-a-url" }],
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.type).toBe("InvalidSnsUrlFormatError");
+    }
+  });
+});
+
+describe("reviseArtistProfile", () => {
+  it("ID と published を引数から保持する", () => {
+    const profile = expectOk(
+      reviseArtistProfile({
+        id: "profile-1",
+        artistId: "artist-1",
+        published: true,
+        name: "Taro",
+      }),
+    );
+
+    expect(profile.getId()).toBe("profile-1");
+    expect(profile.isPublished()).toBe(true);
+    expect(profile.getName()).toBe("Taro");
+  });
+
+  it("入力が不正なら err を返す（スローしない）", () => {
+    const result = reviseArtistProfile({
+      id: "profile-1",
+      artistId: "artist-1",
+      published: false,
+      imageUrl: "not-a-url",
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.type).toBe("InvalidImageUrlFormatError");
+    }
   });
 });
 
@@ -67,6 +142,17 @@ describe("reconstructArtistProfile", () => {
     expect(profile.getId()).toBe("profile-1");
     expect(profile.isPublished()).toBe(true);
     expect(profile.getName()).toBe("Taro");
+  });
+
+  it("フィールド値が不正な永続化データはスローする（データ破損）", () => {
+    expect(() =>
+      reconstructArtistProfile({
+        id: "profile-1",
+        artistId: "artist-1",
+        published: false,
+        imageUrl: "not-a-url",
+      }),
+    ).toThrow();
   });
 
   it("toPersistence はプリミティブな永続化データを返す", () => {

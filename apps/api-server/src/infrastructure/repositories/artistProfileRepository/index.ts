@@ -8,7 +8,8 @@ import {
   linkTypesTable,
 } from "../../../../../../packages/database/src/utils/createClient";
 import type {
-  IArtistProfileRepository,
+  IArtistProfileReader,
+  IArtistProfileWriter,
   ArtistProfileSaveData,
   ArtistProfileSetPublishedData,
 } from "../../../domain/artistProfiles/repositories";
@@ -17,7 +18,7 @@ import type {
   ProfileLinkData,
 } from "../../../domain/artistProfiles/entities";
 import { reconstructArtistProfile } from "../../../domain/artistProfiles/factories";
-import { createArtistProfileNotFoundError } from "../../../domain/artistProfiles/policies/assertArtistProfileExists";
+import { createArtistProfileNotFoundError } from "../../../domain/artistProfiles/errors/artistProfileNotFound";
 import { createInvalidProfileLinkFormatError } from "../../../domain/artistProfiles/valueObjects/profileLink";
 import type { TransactionContext } from "../../transaction";
 
@@ -147,14 +148,10 @@ const replaceChildren = async (
   }
 };
 
-export const createArtistProfileRepository = (
-  db: DatabaseClient,
-): IArtistProfileRepository => ({
-  async findByArtistId(
-    artistId: string,
-    tx?: TransactionContext,
-  ): Promise<ArtistProfile | null> {
-    const executor = tx ?? db;
+export const createArtistProfileReader = (
+  executor: Executor,
+): IArtistProfileReader => ({
+  async findByArtistId(artistId: string): Promise<ArtistProfile | null> {
     const [row] = await executor
       .select(profileColumns)
       .from(artistProfilesTable)
@@ -174,7 +171,7 @@ export const createArtistProfileRepository = (
   async findPublishedByAccountId(
     accountId: string,
   ): Promise<ArtistProfile | null> {
-    const [row] = await db
+    const [row] = await executor
       .select(profileColumns)
       .from(artistProfilesTable)
       .innerJoin(
@@ -191,15 +188,15 @@ export const createArtistProfileRepository = (
       .limit(1);
     if (!row) return null;
 
-    const { genres, links } = await loadChildren(db, row.id);
+    const { genres, links } = await loadChildren(executor, row.id);
     return toEntity(row, genres, links);
   },
+});
 
-  async upsert(
-    data: ArtistProfileSaveData,
-    tx?: TransactionContext,
-  ): Promise<ArtistProfile> {
-    const executor = tx ?? db;
+export const createArtistProfileWriter = (
+  executor: Executor,
+): IArtistProfileWriter => ({
+  async upsert(data: ArtistProfileSaveData): Promise<ArtistProfile> {
     const [row] = await executor
       .insert(artistProfilesTable)
       .values({
@@ -231,9 +228,7 @@ export const createArtistProfileRepository = (
 
   async setPublished(
     data: ArtistProfileSetPublishedData,
-    tx?: TransactionContext,
   ): Promise<ArtistProfile> {
-    const executor = tx ?? db;
     const [row] = await executor
       .update(artistProfilesTable)
       .set({

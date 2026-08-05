@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createArtistProfileRepository } from "./index";
-import { isArtistProfileNotFoundError } from "../../../domain/artistProfiles/policies/assertArtistProfileExists";
+import { createArtistProfileReader, createArtistProfileWriter } from "./index";
+import { isArtistProfileNotFoundError } from "../../../domain/artistProfiles/errors/artistProfileNotFound";
 
 const createDbMock = () => {
   const queue: unknown[] = [];
@@ -46,7 +46,7 @@ const profileRow = {
   published: true,
 };
 
-describe("createArtistProfileRepository", () => {
+describe("artistProfileRepository", () => {
   let mock: ReturnType<typeof createDbMock>;
 
   beforeEach(() => {
@@ -57,9 +57,9 @@ describe("createArtistProfileRepository", () => {
   describe("findByArtistId", () => {
     it("行が無ければ null を返す（子テーブルを引かない）", async () => {
       mock.enqueue([]);
-      const repo = createArtistProfileRepository(mock.db as never);
+      const reader = createArtistProfileReader(mock.db as never);
 
-      const result = await repo.findByArtistId("artist-1");
+      const result = await reader.findByArtistId("artist-1");
 
       expect(result).toBeNull();
     });
@@ -70,9 +70,9 @@ describe("createArtistProfileRepository", () => {
         [{ genre: "bass" }, { genre: "inward" }],
         [{ type: "x", url: "https://x.com/taro", label: null }],
       );
-      const repo = createArtistProfileRepository(mock.db as never);
+      const reader = createArtistProfileReader(mock.db as never);
 
-      const result = await repo.findByArtistId("artist-1");
+      const result = await reader.findByArtistId("artist-1");
 
       expect(result?.getName()).toBe("Taro");
       expect(result?.getGenres()).toEqual(["bass", "inward"]);
@@ -86,9 +86,9 @@ describe("createArtistProfileRepository", () => {
   describe("findPublishedByAccountId", () => {
     it("公開行が無ければ null を返す", async () => {
       mock.enqueue([]);
-      const repo = createArtistProfileRepository(mock.db as never);
+      const reader = createArtistProfileReader(mock.db as never);
 
-      const result = await repo.findPublishedByAccountId("beatboxer_taro");
+      const result = await reader.findPublishedByAccountId("beatboxer_taro");
 
       expect(result).toBeNull();
     });
@@ -104,9 +104,9 @@ describe("createArtistProfileRepository", () => {
         [{ id: 1, code: "x" }],
         undefined,
       );
-      const repo = createArtistProfileRepository(mock.db as never);
+      const writer = createArtistProfileWriter(mock.db as never);
 
-      const result = await repo.upsert({
+      const result = await writer.upsert({
         id: "profile-1",
         artistId: "artist-1",
         name: "Taro",
@@ -129,10 +129,10 @@ describe("createArtistProfileRepository", () => {
   describe("setPublished", () => {
     it("対象が無ければ ArtistProfileNotFoundError をスローする", async () => {
       mock.enqueue([]);
-      const repo = createArtistProfileRepository(mock.db as never);
+      const writer = createArtistProfileWriter(mock.db as never);
 
       await expect(
-        repo.setPublished({ artistId: "artist-1", published: true }),
+        writer.setPublished({ artistId: "artist-1", published: true }),
       ).rejects.toSatisfy(isArtistProfileNotFoundError);
     });
   });

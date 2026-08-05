@@ -2,14 +2,13 @@ import { createMiddleware } from "hono/factory";
 import { auth0 } from "../../infrastructure/auth0";
 import { createUnauthorizedError } from "./errors/unauthorized";
 
-// Auth0セッションからユーザー情報の型を抽出
-type Auth0Session = Awaited<ReturnType<typeof auth0.getSession>>;
-type Auth0User = NonNullable<Auth0Session>["user"];
+export type AuthenticatedUser = {
+  sub: string;
+};
 
-// Honoのコンテキスト変数に型を追加
 declare module "hono" {
   interface ContextVariableMap {
-    auth0User: Auth0User;
+    auth0User: AuthenticatedUser;
   }
 }
 
@@ -19,7 +18,7 @@ export const requireAuthMiddleware = createMiddleware(async (c, next) => {
     throw createUnauthorizedError();
   }
 
-  c.set("auth0User", session.user);
+  c.set("auth0User", { sub: session.user.sub });
 
   await next();
 });
