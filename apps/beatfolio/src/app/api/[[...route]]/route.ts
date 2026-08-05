@@ -5,6 +5,7 @@ import {
   type RequestContextEnv,
 } from "../../../middlewares/requestContext";
 import test from "./test";
+import listPlayers from "./players/get";
 import getPlayerDetail from "./players/detail/get";
 import getOnboarding from "./onboarding/get";
 import getDashboard from "./dashboard/get";
@@ -22,6 +23,7 @@ const app = new Hono<Env>()
   .basePath("/api")
   .use("*", requestContextMiddleware)
   .route("/test", test)
+  .route("/players", listPlayers)
   .route("/players", getPlayerDetail)
   .route("/onboarding", getOnboarding)
   .route("/dashboard", getDashboard)

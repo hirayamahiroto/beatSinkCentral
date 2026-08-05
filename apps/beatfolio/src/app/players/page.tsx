@@ -1,6 +1,15 @@
-import PlayersPage from "@ui/design-system/components/pages/PlayersPage";
-import { players } from "../../../../../packages/data/players";
+import { createBeatfolioBffServerClient } from "../../utils/client";
+import { PlayersClientAdapter } from "./PlayersClientAdapter";
 
-export default function Players() {
-  return <PlayersPage players={players} />;
+export default async function Players() {
+  const client = createBeatfolioBffServerClient();
+  const res = await client.api.players.$get();
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch players");
+  }
+
+  const { players } = await res.json();
+
+  return <PlayersClientAdapter players={players} />;
 }
