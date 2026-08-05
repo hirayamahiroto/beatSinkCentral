@@ -213,13 +213,14 @@ const user = createUser("secret123");
 
 ### ドメイン層のディレクトリ構造と責務分離
 
-各ドメインオブジェクトは以下の4つに責務を分離しています。
+各ドメインオブジェクトは以下に責務を分離しています。
 
 ```
 domain/users/
 ├── entities/      ← 型（振る舞いの契約）+ 内部状態の型
 ├── behaviors/     ← 振る舞いの実装
 ├── factories/     ← Entityの生成
+├── errors/        ← ドメインエラーの型 + factory + 型ガード
 ├── policies/      ← 外部状態に依存する不変条件の判定
 └── valueObjects/  ← 値オブジェクト
 ```
@@ -229,8 +230,11 @@ domain/users/
 | entities     | 「何であるか」を定義         | User型、UserState型         |
 | behaviors    | 「何ができるか」を実装       | 振る舞いの具体的な実装      |
 | factories    | 「どう作るか」を実装         | createUser、reconstructUser |
-| policies     | 「不変条件を判定する」を実装 | assertNotRegistered 等      |
+| errors       | 「何が破られたか」を定義     | UserNotFoundError 等        |
+| policies     | 「不変条件を判定する」を実装 | ensurePublishable 等        |
 | valueObjects | 値の制約と正規化             | Email, Sub, Username 等     |
+
+`errors/` と `policies/` は分ける。エラー型は「何が破られたか」の語彙であり判定ロジックを持たない。判定に業務知識が必要なもの（公開可否の最小核など）だけを `policies/` に置き、単なる存在チェックはルールを知っている呼び出し元が行う。詳細は [error-handling/layer-responsibilities.md](./error-handling/layer-responsibilities.md) を参照。
 
 振る舞いをfactoriesに直接書くと、**振る舞いが増えるたびにファクトリが肥大化**します。
 
@@ -461,44 +465,30 @@ user.state; // ❌ エラー: プロパティが存在しない
 
 ---
 
-#### Policy（外部状態に依存する不変条件）
+#### Error（ドメインエラーの語彙）
 
-Entity / VO だけでは判定できない不変条件 — 典型的には**他のリソースの存在有無に依存するルール** — はPolicyとして切り出す。
+「何のルールが破られたか」を表す型を `errors/{errorName}/` に置く。**判定ロジックは持たない**。
 
 ```
-domain/users/policies/
-└── {policyName}/
-    ├── index.ts         # 純粋関数として assert / check を実装
+domain/users/errors/
+└── {errorName}/
+    ├── index.ts         # type + factory + 型ガード
     └── index.test.ts
 ```
-
-Policyが担う判定の例:
-
-- 「この User はすでに登録されているか」
-- 「この accountId はすでに使われているか」
-- 「この集約は削除可能な状態か（子リソースが存在しないか）」
-
-**重要**: Policy自身はRepositoryに直接触れない。呼び出し元（Usecase）が値をfetchしてPolicyに渡す形にすることで、Policyは純粋関数のままにできる。
 
 **実装例**:
 
 ```typescript
-// domain/users/policies/assertNotRegistered/index.ts
-import type { User } from "../../entities";
+// domain/users/errors/userAlreadyRegistered/index.ts
+import { createTypedError } from "../../../../utils/errors/createTypedError";
 
 export type UserAlreadyRegisteredError = Error & {
   readonly type: "UserAlreadyRegisteredError";
 };
 
 export const createUserAlreadyRegisteredError =
-  (): UserAlreadyRegisteredError => {
-    const error = new Error(
-      "User already registered",
-    ) as UserAlreadyRegisteredError;
-    return Object.assign(error, {
-      type: "UserAlreadyRegisteredError" as const,
-    });
-  };
+  (): UserAlreadyRegisteredError =>
+    createTypedError("UserAlreadyRegisteredError");
 
 export const isUserAlreadyRegisteredError = (
   error: unknown,
@@ -506,26 +496,66 @@ export const isUserAlreadyRegisteredError = (
   error instanceof Error &&
   (error as Partial<UserAlreadyRegisteredError>).type ===
     "UserAlreadyRegisteredError";
+```
 
-export const assertNotRegistered = (userIfRegistered: User | null): void => {
-  if (userIfRegistered) throw createUserAlreadyRegisteredError();
+ポイント:
+
+- **投げない**: エラーは `Result` の `err` に載せる値。`throw` する `assertXxx` は置かない
+- **HTTPを知らない**: status コードもクライアント向け文言もここには書かない
+- **PIIを含めない**: メッセージに Auth0 sub 等の識別子を含めると、ログ経由で漏れる
+
+#### Policy（外部状態に依存する不変条件）
+
+Entity / VO だけでは判定できない不変条件のうち、**判定そのものに業務知識があるもの**をPolicyとして切り出す。
+
+```
+domain/artistProfiles/policies/
+└── {ruleName}/
+    ├── index.ts         # ルールの定義 + ensureXxx(): Result<void, E>
+    └── index.test.ts
+```
+
+Policyが担う判定の例:
+
+- 「このプロフィールは公開できる状態か（公開に必要な最小核は何か）」
+- 「この集約は削除可能な状態か（子リソースが存在しないか）」
+
+**単なる存在チェックにPolicyを作らない**: 「User が存在するか」「accountId が既に使われているか」は判定に業務知識がない。ルールを知っている呼び出し元が `if (!user) return err(createUserNotFoundError())` と書けば足り、間に関数を挟むと呼び出し箇所から条件が見えなくなる。
+
+**重要**: Policy自身はRepositoryに直接触れない。呼び出し元（Usecase）が値をfetchしてPolicyに渡す形にすることで、Policyは純粋関数のままにできる。
+
+**実装例**:
+
+```typescript
+// domain/artistProfiles/policies/publishability/index.ts
+export const collectMissingPublishFields = (
+  profile: ArtistProfile,
+): PublishRequiredField[] => {
+  const missing: PublishRequiredField[] = [];
+  if (!profile.getName()) missing.push("name");
+  if (!profile.getImageUrl()) missing.push("imageUrl");
+  // ...
+  return missing;
+};
+
+export const ensurePublishable = (
+  profile: ArtistProfile,
+): Result<void, ProfileNotPublishableError> => {
+  const missingFields = collectMissingPublishFields(profile);
+  if (missingFields.length > 0) {
+    return err(createProfileNotPublishableError(missingFields));
+  }
+  return ok(undefined);
 };
 ```
 
 ポイント:
 
-- **純粋関数**: 入力（`User | null`）だけで結果が決まる
-- **エラー型をco-locate**: ポリシー違反時に投げる型・factory・型ガードを同じファイルに置く
-- **PIIを含めない**: メッセージに Auth0 sub 等の識別子を含めると、ログ経由で漏れる
+- **純粋関数**: 入力だけで結果が決まる
+- **`Result` を返す**: `ensureXxx` は `Result<void, E>`。`throw` しない
+- **ルール本体を持つ**: 「公開に必要な最小核」のような業務知識がここに一元化される
 
 **Policyのディレクトリは先回りでグルーピングしない**: Policyが増えて意味のある軸（registration / profile / security等）が見えた段階で初めてサブディレクトリに束ねる。
-
-```
-domain/users/policies/
-├── assertNotRegistered/
-├── assertProfilePublishable/     # 将来追加
-└── canChangeEmail/               # 将来追加
-```
 
 ---
 
@@ -545,28 +575,34 @@ domain/
 - 複数のEntity/VOを組み合わせる業務ルールである
 - 状態を持たない（呼び出すたびに同じ結果）
 - **副作用を持たない**（DB・外部APIに触れない）
-- 入力として生の値を受け取り、出力としてEntity群を返す
+- 入力として生の値を受け取り、出力として `Result<Entity群, E>` を返す
 
 **実装例**:
 
 ```typescript
 // domain/services/userRegistration/index.ts
-import { assertNotRegistered } from "../../users/policies/assertNotRegistered";
-
 export const registerNewUser = (
   input: RegisterNewUserInput,
   userIfRegistered: User | null,
-): RegisterNewUserResult => {
-  // ポリシーで不変条件を判定（違反なら throw）
-  assertNotRegistered(userIfRegistered);
+  artistIfAccountIdTaken: Artist | null,
+): Result<RegisterNewUserResult, RegisterNewUserError> => {
+  if (userIfRegistered) return err(createUserAlreadyRegisteredError());
+  if (artistIfAccountIdTaken) {
+    return err(
+      createAccountIdAlreadyTakenError(artistIfAccountIdTaken.getAccountId()),
+    );
+  }
 
-  // 不変条件を通ったらEntityを組み立てる
   const user = createUser({ subId: input.subId, email: input.email });
-  const artist = createArtist({
-    accountId: input.accountId,
-    ownerUserId: user.getId(),
-  });
-  return { user, artist };
+  if (!user.ok) return user;
+
+  return map(
+    createArtist({
+      accountId: input.accountId,
+      ownerUserId: user.value.getId(),
+    }),
+    (artist) => ({ user: user.value, artist }),
+  );
 };
 ```
 
@@ -575,7 +611,7 @@ export const registerNewUser = (
 ポイント:
 
 - **I/OはUsecase層に押し出す**: Domain ServiceはRepositoryを呼ばず、**すでに取得済みの値**を引数で受け取る
-- **不変条件はpolicyに押し出す**: ルール判定はpolicyが担当し、Domain Serviceはpolicyを呼ぶだけ
+- **失敗は `err` で返す**: エラー union（`RegisterNewUserError`）に、自身が判定する違反と VO 由来の違反の両方が現れる
 - **組み立てはDomain Service自身が行う**: 複数Entityの関連付け（`ownerUserId = user.getId()`）はここに置く
 
 **Domain ServiceとPolicyの使い分け**:

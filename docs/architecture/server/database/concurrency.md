@@ -74,10 +74,10 @@
 
 ## 既存 usecase の方針記録
 
-| Usecase                    | 方針 | 備考                                                                            |
-| -------------------------- | ---- | ------------------------------------------------------------------------------- |
-| `createUserUseCase`        | LWW  | 新規作成のみ。一意制約違反は別途 `UserAlreadyRegisteredError`                   |
-| `updateMyEmailUseCase`     | LWW  | 自分の email を自分で変更。競合確率低                                           |
-| `updateMyAccountIdUseCase` | LWW  | 自分の accountId を自分で変更。他人重複は `assertAccountIdAvailable` で別途検出 |
+| Usecase                    | 方針 | 備考                                                                              |
+| -------------------------- | ---- | --------------------------------------------------------------------------------- |
+| `createUserUseCase`        | LWW  | 新規作成のみ。一意制約違反は別途 `UserAlreadyRegisteredError`                     |
+| `updateMyEmailUseCase`     | LWW  | 自分の email を自分で変更。競合確率低                                             |
+| `updateMyAccountIdUseCase` | LWW  | 自分の accountId を自分で変更。他人重複は `AccountIdAlreadyTakenError` で別途検出 |
 
 新しい usecase を追加した時は、この表に方針を 1 行追記する。
