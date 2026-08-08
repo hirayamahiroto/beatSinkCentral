@@ -69,15 +69,25 @@
 1. 対象テーブルに `version INTEGER NOT NULL DEFAULT 0` カラムを追加
 2. Repository の `findXxx` で `version` も読み出し、Entity の state に保持
 3. `updateXxx` の WHERE 句に `AND version = ?` を加え、SET 句で `version = version + 1`
-4. UPDATE の `rowCount` が 0 なら競合検出 → ドメインエラー（例: `ConflictError`）を throw
-5. エントリポイントは errorMap で 409 Conflict にマップし、クライアントは再読み込みを促す
+4. UPDATE の `rowCount` が 0 なら競合検出 → 型付きドメインエラー（例: `ConflictError`）を usecase が `err` で返す
+5. エントリポイントは `handleAppError` に渡し、errorMap で 409 Conflict にマップする。クライアントは再読み込みを促す
+
+## 一意制約違反の扱い
+
+「事前に重複を SELECT で確認してから書く」形は、確認と書き込みの間に他リクエストが同じ値を確定させる余地が残る。一意制約は DB が最後の砦であり、**制約違反が上がってきた時に何が起きるか**まで決めておく。
+
+1. **Repository が翻訳する**: 制約名で一意制約違反（PostgreSQL の `23505`）を判別し、対応する型付きドメインエラー（例: `AccountIdAlreadyTakenError`）を throw する。PostgreSQL のエラーコードを知ってよいのは Infrastructure 層だけ
+2. **usecase がトランザクション境界の外で `err` に戻す**: Drizzle の `transaction` は throw でしかロールバックしないため、例外はトランザクションの外まで抜けさせる。`txRunner.run` を `try/catch` で包み、型ガードで判別して `err` を返す
+3. **usecase のエラー union は事前チェックと同じ型を使う**: 事前の SELECT で検出した場合も、制約違反で検出した場合も、クライアントから見た失敗は同じもの。同じ型に寄せることで HTTP 変換も自動的に揃う
+
+事前の SELECT は「競合していない通常経路で無駄な例外を出さないため」に残す。制約違反の変換はそれを置き換えるものではなく、取りこぼしの受け皿。
 
 ## 既存 usecase の方針記録
 
-| Usecase                    | 方針 | 備考                                                                              |
-| -------------------------- | ---- | --------------------------------------------------------------------------------- |
-| `createUserUseCase`        | LWW  | 新規作成のみ。一意制約違反は別途 `UserAlreadyRegisteredError`                     |
-| `updateMyEmailUseCase`     | LWW  | 自分の email を自分で変更。競合確率低                                             |
-| `updateMyAccountIdUseCase` | LWW  | 自分の accountId を自分で変更。他人重複は `AccountIdAlreadyTakenError` で別途検出 |
+| Usecase                    | 方針 | 備考                                                                                                                |
+| -------------------------- | ---- | ------------------------------------------------------------------------------------------------------------------- |
+| `createUserUseCase`        | LWW  | 新規作成のみ。accountId 重複は事前 SELECT と一意制約違反の両方から `AccountIdAlreadyTakenError` へ寄せる            |
+| `updateMyEmailUseCase`     | LWW  | 自分の email を自分で変更。競合確率低                                                                               |
+| `updateMyAccountIdUseCase` | LWW  | 自分の accountId を自分で変更。他人重複は事前 SELECT と一意制約違反の両方から `AccountIdAlreadyTakenError` へ寄せる |
 
 新しい usecase を追加した時は、この表に方針を 1 行追記する。

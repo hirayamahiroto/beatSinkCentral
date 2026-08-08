@@ -5,7 +5,10 @@ import {
   type CreateUserInput,
 } from "./index";
 import { isUserAlreadyRegisteredError } from "../../../domain/users/errors/userAlreadyRegistered";
-import { isAccountIdAlreadyTakenError } from "../../../domain/artists/errors/accountIdAlreadyTaken";
+import {
+  createAccountIdAlreadyTakenError,
+  isAccountIdAlreadyTakenError,
+} from "../../../domain/artists/errors/accountIdAlreadyTaken";
 import { reconstructUser } from "../../../domain/users/factories";
 import { reconstructArtist } from "../../../domain/artists/factories";
 
@@ -116,6 +119,36 @@ describe("createUserUseCase", () => {
     }
     expect(deps.userRepository.save).not.toHaveBeenCalled();
     expect(deps.artistRepository.save).not.toHaveBeenCalled();
+  });
+
+  it("並行登録で保存時に一意制約違反が起きた場合はAccountIdAlreadyTakenErrorをerrで返す", async () => {
+    const deps = createMockDeps();
+    deps.userRepository.findBySub.mockResolvedValue(null);
+    deps.artistRepository.findByAccountId.mockResolvedValue(null);
+    deps.userRepository.save.mockResolvedValue(undefined);
+    deps.artistRepository.save.mockRejectedValue(
+      createAccountIdAlreadyTakenError(validInput.accountId),
+    );
+
+    const result = await createUserUseCase(validInput, deps);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(isAccountIdAlreadyTakenError(result.error)).toBe(true);
+    }
+  });
+
+  it("一意制約違反以外の例外はそのまま伝播する", async () => {
+    const deps = createMockDeps();
+    deps.userRepository.findBySub.mockResolvedValue(null);
+    deps.artistRepository.findByAccountId.mockResolvedValue(null);
+    deps.userRepository.save.mockResolvedValue(undefined);
+    const connectionError = new Error("connection terminated");
+    deps.artistRepository.save.mockRejectedValue(connectionError);
+
+    await expect(createUserUseCase(validInput, deps)).rejects.toBe(
+      connectionError,
+    );
   });
 
   it("findBySub と findByAccountId は同一トランザクション内で実行される", async () => {

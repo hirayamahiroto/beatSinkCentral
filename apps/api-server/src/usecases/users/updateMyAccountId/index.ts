@@ -10,6 +10,7 @@ import {
 } from "../../../domain/artists/errors/artistNotFound";
 import {
   createAccountIdAlreadyTakenError,
+  isAccountIdAlreadyTakenError,
   type AccountIdAlreadyTakenError,
 } from "../../../domain/artists/errors/accountIdAlreadyTaken";
 import {
@@ -49,41 +50,49 @@ export const updateMyAccountIdUseCase = async (
   if (!parsed.ok) return parsed;
   const newAccountId = parsed.value;
 
-  return deps.txRunner.run(
-    async (
-      tx,
-    ): Promise<Result<UpdateMyAccountIdOutput, UpdateMyAccountIdError>> => {
-      const user = await deps.userRepository.findBySub(input.subId, tx);
-      if (!user) return err(createUserNotFoundError());
+  try {
+    return await deps.txRunner.run(
+      async (
+        tx,
+      ): Promise<Result<UpdateMyAccountIdOutput, UpdateMyAccountIdError>> => {
+        const user = await deps.userRepository.findBySub(input.subId, tx);
+        if (!user) return err(createUserNotFoundError());
 
-      const artist = await deps.artistRepository.findByUserId(user.getId());
-      if (!artist) return err(createArtistNotFoundError());
+        const artist = await deps.artistRepository.findByUserId(user.getId());
+        if (!artist) return err(createArtistNotFoundError());
 
-      if (artist.hasAccountId(newAccountId)) {
+        if (artist.hasAccountId(newAccountId)) {
+          return ok({
+            artistId: artist.getArtistId(),
+            accountId: artist.getAccountId(),
+          });
+        }
+
+        const taken = await deps.artistRepository.findByAccountId(
+          newAccountId.value,
+          tx,
+        );
+        if (taken) {
+          return err(createAccountIdAlreadyTakenError(taken.getAccountId()));
+        }
+
+        const updated = artist.changeAccountId(newAccountId);
+        const saved = await deps.artistRepository.updateAccountId(
+          {
+            artistId: updated.getArtistId(),
+            accountId: updated.getAccountId(),
+          },
+          tx,
+        );
+
         return ok({
-          artistId: artist.getArtistId(),
-          accountId: artist.getAccountId(),
+          artistId: saved.getArtistId(),
+          accountId: saved.getAccountId(),
         });
-      }
-
-      const taken = await deps.artistRepository.findByAccountId(
-        newAccountId.value,
-        tx,
-      );
-      if (taken) {
-        return err(createAccountIdAlreadyTakenError(taken.getAccountId()));
-      }
-
-      const updated = artist.changeAccountId(newAccountId);
-      const saved = await deps.artistRepository.updateAccountId(
-        { artistId: updated.getArtistId(), accountId: updated.getAccountId() },
-        tx,
-      );
-
-      return ok({
-        artistId: saved.getArtistId(),
-        accountId: saved.getAccountId(),
-      });
-    },
-  );
+      },
+    );
+  } catch (error) {
+    if (isAccountIdAlreadyTakenError(error)) return err(error);
+    throw error;
+  }
 };

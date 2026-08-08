@@ -6,7 +6,10 @@ import {
 } from "./index";
 import { isUserNotFoundError } from "../../../domain/users/errors/userNotFound";
 import { isArtistNotFoundError } from "../../../domain/artists/errors/artistNotFound";
-import { isAccountIdAlreadyTakenError } from "../../../domain/artists/errors/accountIdAlreadyTaken";
+import {
+  createAccountIdAlreadyTakenError,
+  isAccountIdAlreadyTakenError,
+} from "../../../domain/artists/errors/accountIdAlreadyTaken";
 import { reconstructUser } from "../../../domain/users/factories";
 import { reconstructArtist } from "../../../domain/artists/factories";
 
@@ -162,5 +165,35 @@ describe("updateMyAccountIdUseCase", () => {
     }
     expect(deps.txRunner.run).not.toHaveBeenCalled();
     expect(deps.userRepository.findBySub).not.toHaveBeenCalled();
+  });
+
+  it("並行更新で更新時に一意制約違反が起きた場合はAccountIdAlreadyTakenErrorをerrで返す", async () => {
+    const deps = createMockDeps();
+    deps.userRepository.findBySub.mockResolvedValue(existingUser);
+    deps.artistRepository.findByUserId.mockResolvedValue(existingArtist);
+    deps.artistRepository.findByAccountId.mockResolvedValue(null);
+    deps.artistRepository.updateAccountId.mockRejectedValue(
+      createAccountIdAlreadyTakenError(validInput.accountId),
+    );
+
+    const result = await updateMyAccountIdUseCase(validInput, deps);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(isAccountIdAlreadyTakenError(result.error)).toBe(true);
+    }
+  });
+
+  it("一意制約違反以外の例外はそのまま伝播する", async () => {
+    const deps = createMockDeps();
+    deps.userRepository.findBySub.mockResolvedValue(existingUser);
+    deps.artistRepository.findByUserId.mockResolvedValue(existingArtist);
+    deps.artistRepository.findByAccountId.mockResolvedValue(null);
+    const connectionError = new Error("connection terminated");
+    deps.artistRepository.updateAccountId.mockRejectedValue(connectionError);
+
+    await expect(updateMyAccountIdUseCase(validInput, deps)).rejects.toBe(
+      connectionError,
+    );
   });
 });

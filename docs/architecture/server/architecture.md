@@ -616,12 +616,12 @@ export const registerNewUser = (
 
 **Domain ServiceとPolicyの使い分け**:
 
-| 層             | 役割                                               |
-| -------------- | -------------------------------------------------- |
-| Policy         | **単一のルール判定**。違反時はthrow                |
-| Domain Service | 複数Entityの組み立て。必要に応じてPolicyを呼び出す |
+| 層             | 役割                                                                 |
+| -------------- | -------------------------------------------------------------------- |
+| Policy         | **単一のルール判定**。`ensureXxx` が `Result<void, E>` を返す        |
+| Domain Service | 複数Entityの組み立て。必要に応じてPolicyを呼び出し、`err` を伝播する |
 
-1つのルールだけならPolicyで完結させる。複数のルールや組み立てが絡む場合はDomain ServiceがPolicyを順番に呼び出す。
+1つのルールだけならPolicyで完結させる。複数のルールや組み立てが絡む場合はDomain ServiceがPolicyを順番に呼び出し、最初の `err` をそのまま返す。
 
 > **ブラックボックス化ではなく名前付け**
 >
