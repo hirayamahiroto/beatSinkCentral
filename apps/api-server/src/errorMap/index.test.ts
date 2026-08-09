@@ -381,12 +381,16 @@ describe("handleAppError", () => {
 
     await requestWithDefaultHandler(createUserAlreadyRegisteredError());
 
-    expect(infoSpy).toHaveBeenCalledWith("AppError", {
-      method: "GET",
-      route: "/",
-      errorType: "UserAlreadyRegisteredError",
-      status: 409,
-    });
+    expect(infoSpy).toHaveBeenCalledWith(
+      JSON.stringify({
+        level: "info",
+        event: "AppError",
+        method: "GET",
+        route: "/",
+        errorType: "UserAlreadyRegisteredError",
+        status: 409,
+      }),
+    );
   });
 
   it("未知のエラーは console.error へ出力する", async () => {
@@ -395,12 +399,16 @@ describe("handleAppError", () => {
 
     await requestWithDefaultHandler(rawError);
 
-    expect(errorSpy).toHaveBeenCalledWith("UnhandledError", {
-      method: "GET",
-      route: "/",
-      errorName: "Error",
-      message: "boom",
-      stack: rawError.stack,
-    });
+    expect(errorSpy).toHaveBeenCalledWith(
+      JSON.stringify({
+        level: "error",
+        event: "UnhandledError",
+        method: "GET",
+        route: "/",
+        errorName: "Error",
+        message: "boom",
+        stack: rawError.stack,
+      }),
+    );
   });
 });

@@ -37,6 +37,14 @@ describe("parseTraceId", () => {
   it("全て 0 の trace-id は無効なので undefined を返す", () => {
     expect(parseTraceId(`00-${"0".repeat(32)}-${SPAN_ID}-01`)).toBeUndefined();
   });
+
+  it("バージョン ff は W3C 仕様上無効なので undefined を返す", () => {
+    expect(parseTraceId(`ff-${TRACE_ID}-${SPAN_ID}-01`)).toBeUndefined();
+  });
+
+  it("全て 0 の parent-id は無効なので undefined を返す", () => {
+    expect(parseTraceId(`00-${TRACE_ID}-${"0".repeat(16)}-01`)).toBeUndefined();
+  });
 });
 
 describe("buildRequestContext", () => {
@@ -58,6 +66,28 @@ describe("buildRequestContext", () => {
         traceparent: undefined,
       }),
     ).toStrictEqual({ requestId: "from-vercel" });
+  });
+
+  it("x-request-id が空文字なら x-vercel-id を使う", () => {
+    expect(
+      buildRequestContext({
+        requestId: "",
+        vercelId: "from-vercel",
+        traceparent: undefined,
+      }),
+    ).toStrictEqual({ requestId: "from-vercel" });
+  });
+
+  it("相関ヘッダがどちらも空文字なら requestId を生成する", () => {
+    const context = buildRequestContext({
+      requestId: "",
+      vercelId: "",
+      traceparent: undefined,
+    });
+
+    expect(context.requestId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+    );
   });
 
   it("どちらも無ければ requestId を生成する", () => {

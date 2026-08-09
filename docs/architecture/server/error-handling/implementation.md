@@ -206,11 +206,11 @@ const buildErrorLog = <SpecificError extends AppError>(
 export const createAppErrorHandler =
   (logger: Logger) => (error: Error, c: Context) => {
     if (isAppError(error)) {
-      emit(logger, buildErrorLog(error));
+      emit(logger, c, buildErrorLog(error));
       const { body, status } = buildClientResponse(error);
       return c.json(body, status);
     }
-    emit(logger, buildUnhandledErrorLog(error));
+    emit(logger, c, buildUnhandledErrorLog(error));
     return c.json({ error: "Internal Server Error" }, 500);
   };
 
@@ -414,10 +414,12 @@ const emit = (
 };
 ```
 
-出力されるログの形:
+出力されるログの形（`createConsoleLogger` は 1 行 1 JSON で出す）:
 
 ```json
 {
+  "level": "warn",
+  "event": "AppError",
   "requestId": "iad1::abc-123",
   "traceId": "4bf92f3577b34da6a3ce929d0e0e4736",
   "method": "POST",
@@ -428,6 +430,7 @@ const emit = (
 }
 ```
 
+- `console.info(event, fields)` のように引数を分けると、収集側が第2引数を検査用の整形表現として扱いフィールドにならないため、1 行の JSON 文字列に統合してから出す
 - `requestId` / `traceId` は **1 リクエストに 1 回だけ確定させる値**なので `AsyncLocalStorage` に置く
 - `method` / `route` は `c` から常に導出できるので保持しない
 - `route` を middleware で読むと `/api/*` になる（Hono の仕様）。詳細と PII の扱いは [operations.md](./operations.md) の「リクエスト相関情報の注入」を参照

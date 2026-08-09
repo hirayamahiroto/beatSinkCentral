@@ -128,7 +128,7 @@ export const createDatadogLogger = (): Logger => {
 };
 ```
 
-差し替え点は `handleAppError` の配線 1 行（`createAppErrorHandler(createDatadogLogger())`）。errorMap / エラー定義 / ルート / リクエストコンテキストは変更ゼロ。
+差し替え点は `route.ts` の `onError` 配線 1 行。既定の `.onError(handleAppError)`（= `createAppErrorHandler(createConsoleLogger())` の別名）を `.onError(createAppErrorHandler(createDatadogLogger()))` に変えるだけで、errorMap / エラー定義 / ルート / リクエストコンテキストは変更ゼロ。
 
 トレース連携で `traceId` を Datadog の予約フィールド（`dd.trace_id`）に載せ替える必要がある場合も、この Logger 実装内で名前を変換する。アプリ側のフィールド名は変えない。
 
@@ -230,6 +230,12 @@ errorType:* AND status:500            → PagerDuty 発火条件
 #### 4. 構造化コンテキストによる影響範囲特定
 
 SLO が悪化したとき、「どの顧客セグメント / どのテナントで起きているか」を特定する必要がある。`logFields` で `accountId` / `tenantId` 等のドメイン語彙を宣言しておけば、`context.*` として Datadog で次元別にグルーピングでき、影響範囲を即座に可視化できる。
+
+ただし **facet 化は監視基盤側の制約を決めてから**行う。`context.*` はユーザー由来の値をそのまま含みうるため、無制限に facet を張るとカーディナリティとコストが読めなくなる。Datadog を接続する時点で次を決め、本ドキュメントに追記する。
+
+- facet を許可するキーの一覧（既定は不許可。必要になったものだけ足す）
+- キーごとの想定カーディナリティ上限と、超えた場合の扱い（内部 ID への置換 / ハッシュ化）
+- `context.*` の保持期間（相関情報より短くてよいか）
 
 ### 接続に必要な補足整備（別途必要）
 
