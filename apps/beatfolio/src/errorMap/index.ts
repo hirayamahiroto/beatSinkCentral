@@ -35,7 +35,7 @@ type ErrorResponse = {
 const isBffError = (error: unknown): error is BffError => {
   if (!(error instanceof Error)) return false;
   const type = (error as { type?: unknown }).type;
-  return typeof type === "string" && type in errorMap;
+  return typeof type === "string" && Object.hasOwn(errorMap, type);
 };
 
 const buildMappedResponse = <Error extends BffError>(

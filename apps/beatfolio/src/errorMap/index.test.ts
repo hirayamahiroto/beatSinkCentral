@@ -42,6 +42,14 @@ describe("handleBffError", () => {
     expect(await res.json()).toStrictEqual({ error: "Internal Server Error" });
   });
 
+  it("Object.prototype のプロパティ名を type に持つエラーも 500 にする", async () => {
+    const error = Object.assign(new Error("boom"), { type: "toString" });
+    const res = await createApp(error).request("/");
+
+    expect(res.status).toBe(500);
+    expect(await res.json()).toStrictEqual({ error: "Internal Server Error" });
+  });
+
   it("マップ済みエラーは warn、未知のエラーは error でログする", async () => {
     await createApp(createUpstreamUnavailableError(new Error("x"))).request(
       "/",
