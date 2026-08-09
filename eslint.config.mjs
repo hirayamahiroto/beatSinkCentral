@@ -4,6 +4,7 @@ import storybook from "eslint-plugin-storybook";
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { FlatCompat } from '@eslint/eslintrc';
+import { typeSafetyRules } from './eslint.rules.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -18,7 +19,8 @@ const eslintConfig = [
   {
     ignores: ['node_modules', '.next', 'dist', 'build', '.turbo'],
   },
-  ...storybook.configs["flat/recommended"]
+  ...storybook.configs["flat/recommended"],
+  typeSafetyRules
 ];
 
 export default eslintConfig;
