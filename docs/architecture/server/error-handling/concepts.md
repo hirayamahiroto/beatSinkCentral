@@ -219,14 +219,16 @@ throw createTypedError("AccountIdAlreadyTakenError", { accountId });
 ```
 
 ```typescript
-// errorMap 側: HTTP の作法と人間向け文言に翻訳
+// errorMap 側: 宛先ごとの作法に翻訳する（クライアント向け / 内部ログ向け）
 AccountIdAlreadyTakenError: {
   status: 409,
-  message: (error) => `Account ID already taken: ${error.accountId}`,
+  clientMessage: (error) => `Account ID already taken: ${error.accountId}`,
+  logLevel: "info",
+  logFields: (error) => ({ accountId: error.accountId }),
 },
 ```
 
-ドメインの `throw` には HTTP ステータスも英語の文言も含まれない。errorMap はドメインの発信した「型 + context」を受け取って、プレゼンテーションの作法に翻訳する。
+ドメインの `throw` には HTTP ステータスも文言もログレベルも含まれない。errorMap はドメインの発信した「型 + context」を受け取って、**宛先ごとに** プレゼンテーションの作法に翻訳する。同じ `accountId` が、クライアントには文言の一部として、ログには集計可能なフィールドとして現れる。
 
 ### この分離が効いてくる場面
 
@@ -255,7 +257,12 @@ CLI / バッチ / Worker から同じ domain を使うとき、HTTP status や J
 
 #### 4. ログと API レスポンスの分離
 
-クライアントには generic なメッセージだけ返し、サーバログには zod の issue detail を構造化して残す、といった「見せる粒度を相手ごとに変える」設計がドメイン側を変えずに可能になる。
+「見せる粒度を相手ごとに変える」設計が、ドメイン側を変えずに可能になる。粒度の違いは一方向ではなく、情報の種類によって向きが変わる。
+
+- **クライアントに厚く / ログに薄く**: zod の issue はフォームの inline 表示に必要なのでクライアントへ返すが、入力値を含みうるためログには path だけ残す
+- **クライアントに薄く / ログに厚く**: 未知のエラーはクライアントには汎用文言のみ返し、`stack` は内部ログにだけ残す
+
+どちらもドメインは関与しない。判断の場所は errorMap 1 箇所（実際のルールは [operations.md](./operations.md) の分離ルール表）。
 
 ### ドメインが「知っていい」ギリギリの線
 

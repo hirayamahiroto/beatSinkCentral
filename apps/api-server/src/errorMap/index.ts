@@ -24,6 +24,9 @@ import type { InvalidSnsUrlFormatError } from "../domain/artistProfiles/valueObj
 import type { InvalidProfileLinkFormatError } from "../domain/artistProfiles/valueObjects/profileLink";
 import type { InvalidRequestFormatError } from "../app/api/[[...route]]/errors/invalidRequestFormat";
 import type { UnauthorizedError } from "../middlewares/auth0/errors/unauthorized";
+import type { LogFields, LogLevel, Logger } from "../utils/logger";
+import { createConsoleLogger } from "../utils/logger";
+import { getRequestContext } from "../utils/requestContext";
 
 export type AppError =
   | InvalidRequestFormatError
@@ -52,8 +55,10 @@ type ErrorStatusCode = ClientErrorStatusCode | ServerErrorStatusCode;
 
 type ErrorMapping<SpecificError extends AppError> = {
   status: ErrorStatusCode;
-  message: (error: SpecificError) => string;
-  details?: (error: SpecificError) => unknown;
+  clientMessage: (error: SpecificError) => string;
+  clientDetails?: (error: SpecificError) => unknown;
+  logLevel: LogLevel;
+  logFields?: (error: SpecificError) => LogFields;
 };
 
 type ErrorMap = {
@@ -65,89 +70,116 @@ type ErrorMap = {
 const errorMap: ErrorMap = {
   InvalidRequestFormatError: {
     status: 400,
-    message: () => "Invalid request",
-    details: (error) => error.issues,
+    clientMessage: () => "Invalid request",
+    clientDetails: (error) => error.issues,
+    logLevel: "info",
+    logFields: (error) => ({
+      issuePaths: error.issues.map((issue) => issue.path.join(".")),
+    }),
   },
   UnauthorizedError: {
     status: 401,
-    message: () => "Unauthorized",
+    clientMessage: () => "Unauthorized",
+    logLevel: "warn",
   },
   UserAlreadyRegisteredError: {
     status: 409,
-    message: () => "User already registered",
+    clientMessage: () => "User already registered",
+    logLevel: "info",
   },
   UserNotFoundError: {
     status: 404,
-    message: () => "User not found",
+    clientMessage: () => "User not found",
+    logLevel: "info",
   },
   AccountIdAlreadyTakenError: {
     status: 409,
-    message: (error) => `Account ID already taken: ${error.accountId}`,
+    clientMessage: (error) => `Account ID already taken: ${error.accountId}`,
+    logLevel: "info",
+    logFields: (error) => ({ accountId: error.accountId }),
   },
   ArtistNotFoundError: {
     status: 404,
-    message: () => "Artist not found",
+    clientMessage: () => "Artist not found",
+    logLevel: "info",
   },
   InvalidEmailFormatError: {
     status: 422,
-    message: () => "Invalid email format",
+    clientMessage: () => "Invalid email format",
+    logLevel: "info",
   },
   InvalidSubFormatError: {
     status: 422,
-    message: () => "Invalid sub format",
+    clientMessage: () => "Invalid sub format",
+    logLevel: "warn",
   },
   InvalidNameFormatError: {
     status: 422,
-    message: () => "Invalid name format",
+    clientMessage: () => "Invalid name format",
+    logLevel: "info",
   },
   InvalidAccountIdFormatError: {
     status: 422,
-    message: () => "Invalid accountId format",
+    clientMessage: () => "Invalid accountId format",
+    logLevel: "info",
   },
   InvalidArtistIdFormatError: {
     status: 422,
-    message: () => "Invalid artistId format",
+    clientMessage: () => "Invalid artistId format",
+    logLevel: "info",
   },
   ArtistProfileNotFoundError: {
     status: 404,
-    message: () => "Artist profile not found",
+    clientMessage: () => "Artist profile not found",
+    logLevel: "info",
   },
   ProfileNotPublishableError: {
     status: 422,
-    message: () => "Profile is not publishable: required fields are missing",
-    details: (error) => ({ missingFields: error.missingFields }),
+    clientMessage: () =>
+      "Profile is not publishable: required fields are missing",
+    clientDetails: (error) => ({ missingFields: error.missingFields }),
+    logLevel: "info",
+    logFields: (error) => ({ missingFields: error.missingFields }),
   },
   InvalidProfileNameFormatError: {
     status: 422,
-    message: () => "Invalid name format",
+    clientMessage: () => "Invalid name format",
+    logLevel: "info",
   },
   InvalidTaglineFormatError: {
     status: 422,
-    message: () => "Invalid tagline format",
+    clientMessage: () => "Invalid tagline format",
+    logLevel: "info",
   },
   InvalidImageUrlFormatError: {
     status: 422,
-    message: () => "Invalid imageUrl format",
+    clientMessage: () => "Invalid imageUrl format",
+    logLevel: "info",
   },
   InvalidStoryFormatError: {
     status: 422,
-    message: () => "Invalid story format",
+    clientMessage: () => "Invalid story format",
+    logLevel: "info",
   },
   InvalidActivityInfoFormatError: {
     status: 422,
-    message: () => "Invalid activityInfo format",
+    clientMessage: () => "Invalid activityInfo format",
+    logLevel: "info",
   },
   InvalidGenreFormatError: {
     status: 422,
-    message: () => "Invalid genre format",
+    clientMessage: () => "Invalid genre format",
+    logLevel: "info",
   },
   InvalidSnsUrlFormatError: {
     status: 422,
-    message: () => "Invalid snsUrl format",
+    clientMessage: () => "Invalid snsUrl format",
+    logLevel: "info",
   },
   InvalidProfileLinkFormatError: {
     status: 422,
-    message: () => "Invalid profile link format",
+    clientMessage: () => "Invalid profile link format",
+    logLevel: "info",
   },
 };
 
@@ -157,13 +189,32 @@ const isAppError = (error: unknown): error is AppError => {
   return typeof type === "string" && type in errorMap;
 };
 
-const buildMappedResponse = <Error extends AppError>(
-  error: Error,
-): ErrorResponse => {
-  const mapping = errorMap[error.type as Error["type"]] as ErrorMapping<Error>;
-  const body: ErrorResponse["body"] = { error: mapping.message(error) };
-  if (mapping.details) {
-    body.details = mapping.details(error);
+type ClientResponse = {
+  body: { error: string; details?: unknown };
+  status: ErrorStatusCode;
+};
+
+type ErrorLog = {
+  level: LogLevel;
+  event: string;
+  fields: LogFields;
+};
+
+const APP_ERROR_EVENT = "AppError";
+const UNHANDLED_ERROR_EVENT = "UnhandledError";
+
+const resolveMapping = <SpecificError extends AppError>(
+  error: SpecificError,
+): ErrorMapping<SpecificError> =>
+  errorMap[error.type as SpecificError["type"]] as ErrorMapping<SpecificError>;
+
+const buildClientResponse = <SpecificError extends AppError>(
+  error: SpecificError,
+): ClientResponse => {
+  const mapping = resolveMapping(error);
+  const body: ClientResponse["body"] = { error: mapping.clientMessage(error) };
+  if (mapping.clientDetails) {
+    body.details = mapping.clientDetails(error);
   }
   return {
     body,
@@ -171,29 +222,57 @@ const buildMappedResponse = <Error extends AppError>(
   };
 };
 
-type ErrorResponse = {
-  body: { error: string; details?: unknown };
-  status: ErrorStatusCode;
-};
-
-const resolveErrorResponse = (error: unknown): ErrorResponse => {
-  if (isAppError(error)) {
-    const response = buildMappedResponse(error);
-    console.warn("[AppError]", {
-      type: error.type,
-      status: response.status,
-      message: error.message,
-    });
-    return response;
+const buildErrorLog = <SpecificError extends AppError>(
+  error: SpecificError,
+): ErrorLog => {
+  const mapping = resolveMapping(error);
+  const fields: LogFields = {
+    errorType: error.type,
+    status: mapping.status,
+  };
+  if (mapping.logFields) {
+    fields.context = mapping.logFields(error);
   }
-  console.error("[Unhandled error]", error);
   return {
-    body: { error: "Internal Server Error" },
-    status: 500,
+    level: mapping.logLevel,
+    event: APP_ERROR_EVENT,
+    fields,
   };
 };
 
-export const handleAppError = (error: Error, c: Context) => {
-  const { body, status } = resolveErrorResponse(error);
-  return c.json(body, status);
+const buildUnhandledErrorLog = (error: Error): ErrorLog => ({
+  level: "error",
+  event: UNHANDLED_ERROR_EVENT,
+  fields: {
+    errorName: error.name,
+    message: error.message,
+    stack: error.stack,
+  },
+});
+
+const emit = (
+  logger: Logger,
+  c: Context,
+  { level, event, fields }: ErrorLog,
+): void => {
+  logger[level](event, {
+    ...getRequestContext(),
+    method: c.req.method,
+    // Hono の routePath は middleware 実行時点では自身のパターン（/api/*）を返すため、ルータ解決後の c から読む
+    route: c.req.routePath,
+    ...fields,
+  });
 };
+
+export const createAppErrorHandler =
+  (logger: Logger) => (error: Error, c: Context) => {
+    if (isAppError(error)) {
+      emit(logger, c, buildErrorLog(error));
+      const { body, status } = buildClientResponse(error);
+      return c.json(body, status);
+    }
+    emit(logger, c, buildUnhandledErrorLog(error));
+    return c.json({ error: "Internal Server Error" }, 500);
+  };
+
+export const handleAppError = createAppErrorHandler(createConsoleLogger());
