@@ -53,6 +53,7 @@ apps/api-server/src/
 │   │   ├── behaviors/        # 振る舞いの実装
 │   │   ├── factories/        # Entityの生成
 │   │   ├── repositories/     # IUserRepository インターフェース
+│   │   ├── errors/           # ドメインエラーの型 + factory + 型ガード
 │   │   ├── policies/         # 不変条件の判定
 │   │   └── valueObjects/     # 値オブジェクト
 │   │       ├── Auth0UserId/
@@ -576,9 +577,11 @@ domain/
 **配置の条件**:
 
 - 複数のEntity/VOを組み合わせる業務ルールである
-- 状態を持たない（呼び出すたびに同じ結果）
-- **副作用を持たない**（DB・外部APIに触れない）
+- 状態を持たない（インスタンス変数・モジュールスコープの可変状態を持たない）
+- **I/O を持たない**（DB・外部API・時刻取得に触れない）
 - 入力として生の値を受け取り、出力として `Result<Entity群, E>` を返す
+
+**ここでいう「純粋」は I/O を持たないことを指し、完全な決定性までは要求しない**。`create{Entity}` は内部で `crypto.randomUUID()` により ID を採番するため、同じ入力でも生成される ID は毎回異なる。ID は Entity の同一性そのもので、外部から渡すと呼び出し側が採番責務を負ってしまうため、生成器を注入せず Entity ファクトリに閉じている。テストで ID を固定したい場合は `crypto.randomUUID` をスタブする。
 
 **実装例**:
 
@@ -875,32 +878,43 @@ UserとArtistが別集約であっても、「新規登録時には原子的に�
 ```typescript
 describe("createUser", () => {
   it("有効なパラメータでUserを作成し、振る舞いで正しい値を返す", () => {
-    const user = createUser({
+    const result = createUser({
       subId: "auth0|123456789",
       email: "test@example.com",
     });
 
-    expect(user.getId()).toBeTruthy();
-    expect(user.getSub()).toBe("auth0|123456789");
-    expect(user.getEmail()).toBe("test@example.com");
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.getId()).toBeTruthy();
+    expect(result.value.getSub()).toBe("auth0|123456789");
+    expect(result.value.getEmail()).toBe("test@example.com");
   });
 
   it("toPersistenceで永続化用データを返す", () => {
-    const user = createUser({
+    const result = createUser({
       subId: "auth0|123456789",
       email: "test@example.com",
     });
-    const data = user.toPersistence();
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const data = result.value.toPersistence();
 
     expect(data.id).toBeTruthy();
     expect(data.subId).toBe("auth0|123456789");
     expect(data.email).toBe("test@example.com");
   });
 
-  it("無効なemailでエラーをスローする", () => {
-    expect(() =>
-      createUser({ subId: "auth0|123456789", email: "invalid-email" }),
-    ).toThrow();
+  it("無効なemailでInvalidEmailFormatErrorをerrで返す", () => {
+    const result = createUser({
+      subId: "auth0|123456789",
+      email: "invalid-email",
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.type).toBe("InvalidEmailFormatError");
+    }
   });
 });
 

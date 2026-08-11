@@ -368,12 +368,15 @@ Integration / E2E を書くかどうかは、以下の観点で判断する:
 
 ### 層ごとの検証
 
-| 層          | 検証                                                                             |
-| ----------- | -------------------------------------------------------------------------------- |
-| Domain / VO | 正しい条件で **期待した typed error が throw される** こと(`.toThrow(typeName)`) |
-| errorMap    | 各エラー型が **正しい HTTP status / message に変換される** こと                  |
-| Usecase     | 前提違反で **typed error が伝播する** こと(HTTP には言及しない)                  |
-| Entrypoint  | HTTP レスポンスの最終形(errorMap を通じた結果)                                   |
+| 層          | 検証                                                                                              |
+| ----------- | ------------------------------------------------------------------------------------------------- |
+| Domain / VO | 正しい条件で **期待した typed error が `err` で返る** こと(`result.ok === false` と `error.type`) |
+| Factory     | `create` は入力不正で `err` / `reconstruct` は保存値の破損で throw（500 相当）                    |
+| errorMap    | 各エラー型が **正しい HTTP status / message に変換される** こと                                   |
+| Usecase     | 前提違反で **typed error が `err` として伝播する** こと(HTTP には言及しない)                      |
+| Entrypoint  | HTTP レスポンスの最終形(errorMap を通じた結果)                                                    |
+
+`throw` を検証するのは `reconstruct` の破綻・Infrastructure 障害・エントリ層の形式検証だけ。業務上の失敗は戻り値なので `toThrow` / `rejects` ではなく `result.ok` で判定する。
 
 ### 原則: 二重に書かない
 
@@ -488,15 +491,17 @@ expect(result.formattedName).toBe("Alice (admin)");
 
 ```typescript
 // ❌ Usecase のテストで email の形式を検証(VO の責務)
-it("usecase", () => {
-  expect(() => createUserUseCase({ email: "invalid" })).toThrow(/email/);
+it("usecase", async () => {
+  const result = await createUserUseCase({ email: "invalid" }, deps);
+  expect(result.ok).toBe(false);
+  if (!result.ok) expect(result.error.message).toMatch(/email/);
 });
 
-// ✅ Usecase では VO でエラーになることだけ確認(詳細は VO のテスト)
-it("usecase", () => {
-  expect(() => createUserUseCase({ email: "invalid" })).toThrow(
-    InvalidEmailFormatError,
-  );
+// ✅ Usecase では VO の err がそのまま伝播することだけ確認(詳細は VO のテスト)
+it("usecase", async () => {
+  const result = await createUserUseCase({ email: "invalid" }, deps);
+  expect(result.ok).toBe(false);
+  if (!result.ok) expect(result.error.type).toBe("InvalidEmailFormatError");
 });
 ```
 
@@ -559,7 +564,7 @@ it("getter", () => {
 | Integration        | Repository の実 DB 検証は Phase 2 で必須。モック戦略の正当化のため       |
 | E2E                | 原則整備しない。Entrypoint Sociable Unit + Repository Integration で代替 |
 | 判断軸             | 「コアか」ではなく「Unit で検出できないリスクがあるか」で判断            |
-| エラーハンドリング | typed error の throw 検証 / HTTP 変換は errorMap 側に閉じる              |
+| エラーハンドリング | typed error の `err` 検証 / HTTP 変換は errorMap 側に閉じる              |
 | ドメインイベント   | 集約ルートのテストで発火内容を契約として検証                             |
 | テスト命名・配置   | `{FuncName}/index.test.ts` / 日本語 describe・it                         |
 | 書くタイミング     | 下層から積み上げ。TDD 強制はしないが、PR 時点で揃っていること            |

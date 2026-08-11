@@ -84,10 +84,12 @@
 
 ## 既存 usecase の方針記録
 
-| Usecase                    | 方針 | 備考                                                                                                                |
-| -------------------------- | ---- | ------------------------------------------------------------------------------------------------------------------- |
-| `createUserUseCase`        | LWW  | 新規作成のみ。accountId 重複は事前 SELECT と一意制約違反の両方から `AccountIdAlreadyTakenError` へ寄せる            |
-| `updateMyEmailUseCase`     | LWW  | 自分の email を自分で変更。競合確率低                                                                               |
-| `updateMyAccountIdUseCase` | LWW  | 自分の accountId を自分で変更。他人重複は事前 SELECT と一意制約違反の両方から `AccountIdAlreadyTakenError` へ寄せる |
+| Usecase                    | 通常更新の方針 | `accountId` の一意性     | 備考                                                                                                      |
+| -------------------------- | -------------- | ------------------------ | --------------------------------------------------------------------------------------------------------- |
+| `createUserUseCase`        | LWW            | DB 一意制約で拒否（409） | 新規作成のみ。事前 SELECT と一意制約違反の両方から `AccountIdAlreadyTakenError` へ寄せる                  |
+| `updateMyEmailUseCase`     | LWW            | 対象外                   | 自分の email を自分で変更。競合確率低                                                                     |
+| `updateMyAccountIdUseCase` | LWW            | DB 一意制約で拒否（409） | 自分の accountId を自分で変更。事前 SELECT と一意制約違反の両方から `AccountIdAlreadyTakenError` へ寄せる |
+
+LWW は競合を検出せず後の書き込みを採用する方式であり、`accountId` の重複はこれとは別経路で扱う。**重複を検出したら後勝ちにせず 409 で拒否する**（詳細は前節「一意制約違反の扱い」）。`accountId` を持つ usecase を追加する時は、通常更新の方針とは独立にこの拒否経路を実装する。
 
 新しい usecase を追加した時は、この表に方針を 1 行追記する。

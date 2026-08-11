@@ -118,7 +118,7 @@ try {
 - **ファクトリ関数**: `create{ErrorName}` 命名で `Error` インスタンスを生成し `Object.assign` でフィールドを付与
 - **型ガード関数 (`isXxxError`)**: errorMap 側が `type` フィールドで判別するため **原則不要**。レイヤーをまたいで型で分岐したい場合やテストで判別したい場合のみ定義する
 
-`Error` を基底に使うのはスタックトレース互換性のため（`Result` の `err` に載せる場合も、ログにスタックを残せる利点は変わらない）。判別は `instanceof` ではなく **`type` フィールド** で行う。
+`Error` を基底に使うのはスタックトレース互換性のため（`Result` の `err` に載せる場合も、ログにスタックを残せる利点は変わらない）。**どのエラーかの判別は `instanceof` ではなく `type` フィールド** で行う。型ガードが `error instanceof Error` を併記するのは、`unknown` を絞り込む前段のチェックであって、エラー種別の判別軸ではない。
 
 ### 実装テンプレート
 
@@ -479,10 +479,13 @@ export type Logger = {
   [Level in LogLevel]: (event: string, fields: LogFields) => void;
 };
 
+const serialize = (level: LogLevel, event: string, fields: LogFields): string =>
+  JSON.stringify({ level, event, ...fields });
+
 export const createConsoleLogger = (): Logger => ({
-  info: (event, fields) => console.info(event, fields),
-  warn: (event, fields) => console.warn(event, fields),
-  error: (event, fields) => console.error(event, fields),
+  info: (event, fields) => console.info(serialize("info", event, fields)),
+  warn: (event, fields) => console.warn(serialize("warn", event, fields)),
+  error: (event, fields) => console.error(serialize("error", event, fields)),
 });
 ```
 
