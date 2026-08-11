@@ -123,8 +123,7 @@ const app = new Hono<RequestContextEnv>().get("/", async (c) => {
 
   const res = await apiClient.api.users.me.$get();
   if (!res.ok) {
-    const error = await res.json();
-    return c.json(error, res.status);
+    return c.json({ error: "Failed to fetch dashboard" }, 502);
   }
   const me = await res.json();
 
@@ -252,8 +251,25 @@ const res = await client.api.artists.me.$post({ json: { accountId } });
 
 ### エラー契約
 
-- **read / write ルート**: api-server のレスポンスを透過する（`return c.json(error, res.status)`）。BFF 独自のエラー変換は持たない。
+BFF が依拠するルールは **「api-server は応答する」「契約どおりの形を返す」** の2つ。この違反が BFF 層のエラーであり、api-server 側と同じ構造（型付きエラー + `errorMap` + エントリポイントでの一括変換）で扱う。
+
+`fetch` の失敗モードは2つあり、**`!res.ok` は前者しか捕捉しない**ことに注意する。
+
+| 失敗モード                                     | Promise                | 検知する層                                                     | HTTP                     |
+| ---------------------------------------------- | ---------------------- | -------------------------------------------------------------- | ------------------------ |
+| 上流に到達できない（DNS / 接続拒否 / timeout） | **reject**             | `createApiServerClient`（`UpstreamUnavailableError` を throw） | 502                      |
+| 上流がエラーステータスを返した                 | resolve（`ok: false`） | 各 route（`!res.ok`）                                          | read: 502 ／ write: 透過 |
+| 応答が解析できない                             | reject                 | 未対応（`.onError()` が 500 化）                               | 500                      |
+
+- **到達不能の検知は route ではなく client 層**が担う。route ごとに `try/catch` を重ねない。client が型付きエラーを throw し、`route.ts` の `.onError(handleBffError)` が `errorMap` で HTTP へ変換する。
+- **`errorMap` は BFF 側にも置く**（`apps/beatfolio/src/errorMap/`）。api-server の `errorMap` と同じ形で、HTTP への翻訳をここだけが行う。
+- **未知のエラーは 500 + `console.error`**。上流障害（502）と BFF 自身のバグ（500）を混ぜない。混ぜると切り分け不能になる（[エラーハンドリングの層責務](../../server/error-handling/layer-responsibilities.md#例外-bff-から見た-api-serverゲートウェイの上流障害)）。
+- **read の `!res.ok` は 502 に寄せる**。ただし「対象が存在しない」を画面が区別する必要がある場合は上流のステータスを透過してよい（例: `players/detail/get` の 404）。
+- **write は上流のレスポンスを透過する**（`c.json(error, res.status)`）。api-server の `errorMap` が返す業務エラー（409 / 422 等）をユーザーへ届ける必要があるため。
 - **`page.tsx`（read 呼び出し側）**: BFF read ルートのレスポンスを純粋関数（resolver）に渡し、その判定に従って `redirect()` 実行 or 描画する（throw でエラーバウンダリに委ねる選択も resolver の戻り値で表現する）。
+
+> **未対応（今後の検討）**
+> 「応答が解析できない」を `UpstreamContractViolationError` として 502 に寄せること、到達不能を timeout（504）と接続失敗（502）に分けること、`page.tsx` 側の失敗表示（`error.tsx` / リトライ）は未設計。
 
 ### テスタビリティ: テストしやすさを「分離できているか」の指標にする
 

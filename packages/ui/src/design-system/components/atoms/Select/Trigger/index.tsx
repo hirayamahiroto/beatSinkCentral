@@ -9,3 +9,5 @@ export const SelectTrigger = React.forwardRef<
   HTMLButtonElement,
   SelectTriggerProps
 >((props, ref) => <PrimitiveSelectTrigger ref={ref} {...props} />);
+
+SelectTrigger.displayName = "SelectTrigger";

@@ -16,6 +16,7 @@ import updateMyEmail from "./users/me/post";
 import updateMyAccountId from "./artists/me/post";
 import saveMyProfile from "./artists/me/profile/post";
 import publishMyProfile from "./artists/me/profile/publish/post";
+import { handleBffError } from "../../../errorMap";
 
 export type Env = RequestContextEnv;
 
@@ -33,7 +34,8 @@ const app = new Hono<Env>()
   .route("/users/me", updateMyEmail)
   .route("/artists/me", updateMyAccountId)
   .route("/artists/me/profile", saveMyProfile)
-  .route("/artists/me/profile/publish", publishMyProfile);
+  .route("/artists/me/profile/publish", publishMyProfile)
+  .onError(handleBffError);
 
 export type AppType = typeof app;
 

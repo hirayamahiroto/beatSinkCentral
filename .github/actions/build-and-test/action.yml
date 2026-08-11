@@ -23,6 +23,10 @@ runs:
       run: npm ci
       shell: bash
 
+    - name: 🔍 Lint
+      run: npx turbo run lint --filter=${{ inputs.package-filter }}
+      shell: bash
+
     - name: 🏗️ Build
       run: npx turbo run build --filter=${{ inputs.package-filter }}
       shell: bash

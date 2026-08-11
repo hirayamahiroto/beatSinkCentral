@@ -3,7 +3,7 @@ import { PlayerDetailProps } from "./index";
 
 const samplePlayerData: PlayerDetailProps = {
   playerData: {
-    image: image1 as any,
+    image: image1 as unknown as string,
     name: "HIROTO",
     tagline: "ビートボクサー・エンジニア・クリエイター",
     signatureSound: {
