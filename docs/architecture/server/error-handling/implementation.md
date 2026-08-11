@@ -237,10 +237,9 @@ export const handleAppError = createAppErrorHandler(createConsoleLogger());
 Hono の `onError` で一元的に捕捉し、errorMap が公開する `handleAppError` をそのまま渡す。ルートハンドラでは `try/catch` を書かず、onError 側も HTTP 変換の詳細を持たない（詳細は `errorMap` 側に閉じる）。
 
 ```typescript
-// app/api/[[...route]]/route.ts
+// src/index.ts
 import { Hono } from "hono";
-import { handle } from "hono/vercel";
-import { handleAppError } from "../../../errorMap";
+import { handleAppError } from "./errorMap";
 
 const app = new Hono()
   .basePath("/api")
@@ -248,8 +247,9 @@ const app = new Hono()
   // ... 他ルート
   .onError(handleAppError);
 
-export const GET = handle(app);
-export const POST = handle(app);
+export type AppType = typeof app;
+
+export default app;
 ```
 
 ### 注意点
@@ -269,7 +269,7 @@ export const POST = handle(app);
 エントリポイント層に「リクエスト形式違反」のエラーを co-located で置き、その throw 処理を共通ファクトリに包む。
 
 ```typescript
-// app/api/[[...route]]/errors/invalidRequestFormat/index.ts
+// src/routes/errors/invalidRequestFormat/index.ts
 import type { ZodIssue } from "zod";
 
 export type InvalidRequestFormatError = Error & {
@@ -291,7 +291,7 @@ export const createInvalidRequestFormatError = (
 ```
 
 ```typescript
-// app/api/[[...route]]/validators/validateRequest/index.ts
+// src/routes/validators/validateRequest/index.ts
 import { zValidator } from "@hono/zod-validator";
 import type { ZodSchema } from "zod";
 import { createInvalidRequestFormatError } from "../../errors/invalidRequestFormat";
@@ -320,7 +320,7 @@ export const validateRequest = <Schema extends ZodSchema>(
 ### ルート実装例
 
 ```typescript
-// app/api/[[...route]]/users/create/index.ts
+// src/routes/users/create/index.ts
 import { Hono } from "hono";
 import { z } from "zod";
 import { createUserUseCase } from "...";
@@ -393,7 +393,7 @@ export const createConsoleLogger = (): Logger => ({
 「どのリクエストで起きたか」を追うための相関情報を、ログ出力時に合成する。
 
 ```typescript
-// route.ts: 認証より前に置き、401 のログにも相関情報が乗るようにする
+// src/index.ts: 認証より前に置き、401 のログにも相関情報が乗るようにする
 const app = new Hono()
   .basePath("/api")
   .use("*", requestContextMiddleware)

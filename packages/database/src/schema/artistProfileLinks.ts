@@ -7,8 +7,8 @@ import {
   timestamp,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import { artistProfilesTable } from "./artistProfiles";
-import { linkTypesTable } from "./linkTypes";
+import { artistProfilesTable } from "./artistProfiles.js";
+import { linkTypesTable } from "./linkTypes.js";
 
 export const artistProfileLinksTable = pgTable("artist_profile_links", {
   id: uuid("id").primaryKey().defaultRandom(),

@@ -5,7 +5,7 @@ import {
   createArtistProfileReader,
   createArtistProfileWriter,
 } from "../repositories/artistProfileRepository";
-import type { DatabaseClient } from "../../../../../packages/database/src/utils/createClient";
+import type { DatabaseClient } from "database";
 import type { TransactionContext } from "../transaction";
 import type {
   Actor,

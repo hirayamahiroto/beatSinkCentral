@@ -6,7 +6,7 @@ import {
   artistProfileGenresTable,
   artistProfileLinksTable,
   linkTypesTable,
-} from "../../../../../../packages/database/src/utils/createClient";
+} from "database";
 import type {
   IArtistProfileReader,
   IArtistProfileWriter,

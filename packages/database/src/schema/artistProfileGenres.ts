@@ -1,6 +1,12 @@
-import { pgTable, uuid, varchar, integer, timestamp } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  uuid,
+  varchar,
+  integer,
+  timestamp,
+} from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import { artistProfilesTable } from "./artistProfiles";
+import { artistProfilesTable } from "./artistProfiles.js";
 
 export const artistProfileGenresTable = pgTable("artist_profile_genres", {
   id: uuid("id").primaryKey().defaultRandom(),

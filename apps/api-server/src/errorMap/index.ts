@@ -1,4 +1,5 @@
 import type { Context } from "hono";
+import { HTTPException } from "hono/http-exception";
 import type {
   ClientErrorStatusCode,
   ServerErrorStatusCode,
@@ -22,7 +23,7 @@ import type { InvalidActivityInfoFormatError } from "../domain/artistProfiles/va
 import type { InvalidGenreFormatError } from "../domain/artistProfiles/valueObjects/genre";
 import type { InvalidSnsUrlFormatError } from "../domain/artistProfiles/valueObjects/snsUrl";
 import type { InvalidProfileLinkFormatError } from "../domain/artistProfiles/valueObjects/profileLink";
-import type { InvalidRequestFormatError } from "../app/api/[[...route]]/errors/invalidRequestFormat";
+import type { InvalidRequestFormatError } from "../routes/errors/invalidRequestFormat";
 import type { UnauthorizedError } from "../middlewares/auth0/errors/unauthorized";
 import type { LogFields, LogLevel, Logger } from "../utils/logger";
 import { createConsoleLogger } from "../utils/logger";
@@ -201,6 +202,7 @@ type ErrorLog = {
 };
 
 const APP_ERROR_EVENT = "AppError";
+const HTTP_EXCEPTION_EVENT = "HttpException";
 const UNHANDLED_ERROR_EVENT = "UnhandledError";
 
 const resolveMapping = <SpecificError extends AppError>(
@@ -240,6 +242,14 @@ const buildErrorLog = <SpecificError extends AppError>(
   };
 };
 
+const buildHttpExceptionLog = (error: HTTPException): ErrorLog => ({
+  level: "warn",
+  event: HTTP_EXCEPTION_EVENT,
+  fields: {
+    status: error.status,
+  },
+});
+
 const buildUnhandledErrorLog = (error: Error): ErrorLog => ({
   level: "error",
   event: UNHANDLED_ERROR_EVENT,
@@ -270,6 +280,10 @@ export const createAppErrorHandler =
       emit(logger, c, buildErrorLog(error));
       const { body, status } = buildClientResponse(error);
       return c.json(body, status);
+    }
+    if (error instanceof HTTPException) {
+      emit(logger, c, buildHttpExceptionLog(error));
+      return error.getResponse();
     }
     emit(logger, c, buildUnhandledErrorLog(error));
     return c.json({ error: "Internal Server Error" }, 500);

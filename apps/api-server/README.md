@@ -1,36 +1,39 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# api-server
 
-## Getting Started
+beatSinkCentral の API サーバー。**Hono standalone**（Next.js には依存しない）で、Vercel Functions 上で動く。
 
-First, run the development server:
+設計は `docs/architecture/server/` を参照する。索引は `docs/README.md`。
+
+## ローカル開発
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run dev            # tsx watch src/server.ts（既定ポート 3001。PORT で変更可）
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+必要な環境変数は `.env.example` を参照。`AUTH0_SECRET` は beatfolio と同じ値にする（同一のセッション Cookie を復号するため）。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## コマンド
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| コマンド         | 内容                                                     |
+| ---------------- | -------------------------------------------------------- |
+| `npm run dev`    | ローカル開発サーバー（Node + @hono/node-server）         |
+| `npm run build`  | 型チェック（`tsc --noEmit`）。成果物は Vercel が生成する |
+| `npm run lint`   | ESLint                                                   |
+| `npm test`       | Vitest（Node 環境）                                      |
+| `npm start`      | ローカルで本番相当に起動                                 |
 
-## Learn More
+## 構成
 
-To learn more about Next.js, take a look at the following resources:
+| パス          | 役割                                                          |
+| ------------- | ------------------------------------------------------------- |
+| `src/index.ts`  | Hono アプリ本体。`export default app` を Vercel が検出する    |
+| `src/server.ts` | ローカル開発用の Node サーバー（Vercel では使わない）         |
+| `src/routes/`   | エンドポイント定義（1 ユニット = 1 エンドポイント）           |
+| `src/usecases/` | ユースケース                                                  |
+| `src/domain/`   | ドメイン層（純粋。DB / フレームワークに依存しない）           |
+| `src/infrastructure/` | DB・Auth0・リポジトリ実装                               |
+| `src/middlewares/`    | Basic 認証・Auth0 セッション検証・リクエスト相関 ID     |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## デプロイ
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Vercel の framework preset は `hono`。プロジェクト設定は `infrastructure/` の Terraform で管理する（`docs/architecture/infrastructure/README.md`）。

@@ -64,7 +64,7 @@ npm run build
 | DB 設計思想（マスタ参照・DB 由来の表示語彙）         | `docs/architecture/server/database/design.md`       | 種別/媒体/分類のモデリング・表示語彙の出所を判断する時 |
 | DB マイグレーション                                  | `docs/architecture/server/database/migration.md`    | スキーマ変更時                                         |
 | DB 接続パターン（Supabase Pooler / Direct 使い分け） | `docs/architecture/server/database/connection.md`   | 新環境の DB セットアップ・CI/CD の DB エラー調査時     |
-| 外部クライアント実装（Next.js 遅延初期化）           | `docs/architecture/server/external-clients.md`      | Database / Auth0 / Redis 等の追加・初期化変更時        |
+| 外部クライアント実装（遅延初期化）                   | `docs/architecture/server/external-clients.md`      | Database / Auth0 / Redis 等の追加・初期化変更時        |
 | 認証                                                 | `docs/architecture/authentication.md`               | 認証・認可フローの追加・変更時                         |
 | フロントエンド全般                                   | `docs/architecture/frontend/README.md`              | UI 実装時                                              |
 | 画面 URL 設計（遷移・階層・BFF ルート対応）          | `docs/architecture/frontend/routing.md`             | 画面追加・URL 変更時                                   |

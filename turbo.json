@@ -4,7 +4,7 @@
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".next/**", "!.next/cache/**"]
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
     },
     "beatfolio#build": {
       "outputs": [".next/**", "!.next/cache/**", "dist/**"],
@@ -21,7 +21,8 @@
       ]
     },
     "api-server#build": {
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"],
+      "dependsOn": ["^build"],
+      "outputs": [],
       "env": [
         "DATABASE_URL",
         "API_SERVER_BASE_URL",
@@ -44,7 +45,9 @@
     "start": {
       "dependsOn": ["build"]
     },
-    "test": {}
+    "test": {
+      "dependsOn": ["^build"]
+    }
   },
   "globalDependencies": ["**/.env.*local"]
 }

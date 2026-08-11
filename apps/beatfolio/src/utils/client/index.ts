@@ -1,5 +1,5 @@
 import { hc } from "hono/client";
-import type { AppType as ApiServerAppType } from "./../../../../api-server/src/app/api/[[...route]]/route";
+import type { AppType as ApiServerAppType } from "./../../../../api-server/src/index";
 import type { AppType as BeatfolioBffAppType } from "../../app/api/[[...route]]/route";
 import { apiServerConfig, beatfolioBffConfig } from "../config";
 import { createUpstreamUnavailableError } from "./errors/upstreamUnavailable";

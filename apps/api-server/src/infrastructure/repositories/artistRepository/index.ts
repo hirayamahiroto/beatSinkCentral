@@ -4,7 +4,7 @@ import {
   artistsTable,
   artistOwnersTable,
   artistProfilesTable,
-} from "../../../../../../packages/database/src/utils/createClient";
+} from "database";
 import type {
   IArtistRepository,
   ArtistUpdateAccountIdData,

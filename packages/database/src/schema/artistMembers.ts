@@ -10,8 +10,8 @@ import {
   createSelectSchema,
   createUpdateSchema,
 } from "drizzle-zod";
-import { usersTable } from "./users";
-import { artistsTable } from "./artists";
+import { usersTable } from "./users.js";
+import { artistsTable } from "./artists.js";
 
 export const artistMembersTable = pgTable(
   "artist_members",

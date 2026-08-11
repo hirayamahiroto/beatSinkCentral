@@ -3,7 +3,7 @@
 #   terraform import vercel_project.api_server <project_id>
 resource "vercel_project" "api_server" {
   name      = var.project_name
-  framework = "nextjs"
+  framework = "hono"
 
   git_repository = {
     type              = "github"
@@ -13,6 +13,8 @@ resource "vercel_project" "api_server" {
 
   root_directory = var.root_directory
 
+  # Hono プリセットの buildCommand は null（Vercel が src/index.ts を自動ビルド）だが、
+  # ワークスペースの database パッケージの dist を先に生成する必要があるため明示する
   build_command   = "cd ../.. && npx turbo run build --filter=api-server"
   install_command = "cd ../.. && npm install"
 }

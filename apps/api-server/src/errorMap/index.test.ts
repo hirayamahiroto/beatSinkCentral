@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { Hono } from "hono";
+import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 import { createAppErrorHandler, handleAppError } from "./index";
 import type { LogFields, LogLevel, Logger } from "../utils/logger";
@@ -10,7 +11,7 @@ import { createInvalidSubFormatError } from "../domain/users/valueObjects/sub";
 import { createInvalidNameFormatError } from "../domain/users/valueObjects/name";
 import { createInvalidAccountIdFormatError } from "../domain/artists/valueObjects/accountId";
 import { createInvalidArtistIdFormatError } from "../domain/artists/valueObjects/artistId";
-import { createInvalidRequestFormatError } from "../app/api/[[...route]]/errors/invalidRequestFormat";
+import { createInvalidRequestFormatError } from "../routes/errors/invalidRequestFormat";
 import { createUnauthorizedError } from "../middlewares/auth0/errors/unauthorized";
 import { createProfileNotPublishableError } from "../domain/artistProfiles/policies/publishability";
 import { requestContextMiddleware } from "../middlewares/requestContext";
@@ -391,6 +392,35 @@ describe("handleAppError", () => {
         status: 409,
       }),
     );
+  });
+
+  it("HTTPException は自身のレスポンスをそのまま返し、status を warn で記録する", async () => {
+    const { response, logs } = await requestWithError(
+      new HTTPException(401, {
+        res: new Response(JSON.stringify({ error: "Basic Auth Required" }), {
+          status: 401,
+          headers: {
+            "WWW-Authenticate": 'Basic realm="Secure Area"',
+            "content-type": "application/json",
+          },
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(401);
+    expect(response.headers.get("WWW-Authenticate")).toBe(
+      'Basic realm="Secure Area"',
+    );
+    expect(await response.json()).toStrictEqual({
+      error: "Basic Auth Required",
+    });
+    expect(logs).toStrictEqual([
+      {
+        level: "warn",
+        event: "HttpException",
+        fields: { method: "GET", route: "/", status: 401 },
+      },
+    ]);
   });
 
   it("未知のエラーは console.error へ出力する", async () => {

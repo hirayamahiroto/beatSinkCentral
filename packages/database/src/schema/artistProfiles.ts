@@ -11,7 +11,7 @@ import {
   createSelectSchema,
   createUpdateSchema,
 } from "drizzle-zod";
-import { artistsTable } from "./artists";
+import { artistsTable } from "./artists.js";
 
 export const artistProfilesTable = pgTable("artist_profiles", {
   id: uuid("id").primaryKey().defaultRandom(),

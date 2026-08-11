@@ -1,4 +1,4 @@
-import type { DatabaseClient } from "../../../../../packages/database/src/utils/createClient";
+import type { DatabaseClient } from "database";
 
 export type TransactionContext = Parameters<
   Parameters<DatabaseClient["transaction"]>[0]

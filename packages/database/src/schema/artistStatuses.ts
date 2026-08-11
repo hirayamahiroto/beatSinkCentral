@@ -7,9 +7,9 @@ import {
 } from "drizzle-orm/pg-core";
 import { isNull } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import { artistsTable } from "./artists";
-import { artistStatusMastersTable } from "./artistStatusMasters";
-import { usersTable } from "./users";
+import { artistsTable } from "./artists.js";
+import { artistStatusMastersTable } from "./artistStatusMasters.js";
+import { usersTable } from "./users.js";
 
 export const artistStatusesTable = pgTable(
   "artist_statuses",

@@ -1,8 +1,5 @@
 import { asc } from "drizzle-orm";
-import {
-  DatabaseClient,
-  linkTypesTable,
-} from "../../../../../../packages/database/src/utils/createClient";
+import { DatabaseClient, linkTypesTable } from "database";
 import type { ILinkTypeRepository } from "../../../domain/linkTypes/repositories";
 import type { LinkTypeView } from "../../../domain/linkTypes/entities";
 

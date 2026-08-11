@@ -1,0 +1,51 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { Hono } from "hono";
+import listPublicProfiles from "./index";
+
+const mockArtistProfiles = {
+  findByArtistId: vi.fn(),
+  findPublishedByAccountId: vi.fn(),
+  listPublishedSummaries: vi.fn(),
+};
+
+vi.mock("../../../infrastructure/capabilities", () => ({
+  getCapabilityDeps: () => ({
+    buildPublicReadCapabilities: () => ({
+      artistProfiles: mockArtistProfiles,
+    }),
+  }),
+}));
+
+const createApp = () => {
+  const app = new Hono();
+  app.route("/", listPublicProfiles);
+  return app;
+};
+
+describe("GET /artists", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("公開プロフィールの一覧を返す", async () => {
+    mockArtistProfiles.listPublishedSummaries.mockResolvedValue([
+      { accountId: "taro", name: "Taro", imageUrl: "https://e.com/a.png" },
+    ]);
+
+    const res = await createApp().request("/", { method: "GET" });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      profiles: [
+        { accountId: "taro", name: "Taro", imageUrl: "https://e.com/a.png" },
+      ],
+    });
+  });
+
+  it("公開プロフィールが無ければ空配列を 200 で返す", async () => {
+    mockArtistProfiles.listPublishedSummaries.mockResolvedValue([]);
+
+    const res = await createApp().request("/", { method: "GET" });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ profiles: [] });
+  });
+});

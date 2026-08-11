@@ -1,7 +1,4 @@
-import {
-  createDatabaseClient,
-  DatabaseClient,
-} from "../../../../../packages/database/src/utils/createClient";
+import { createDatabaseClient, DatabaseClient } from "database";
 
 export const getDb = (() => {
   let db: DatabaseClient | null = null;

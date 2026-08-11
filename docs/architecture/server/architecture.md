@@ -42,8 +42,10 @@ DIで実装を外から注入することで、依存が常にDomainに向かう
 
 ```
 apps/api-server/src/
-├── app/api/[[...route]]/     # Hono ルーティング（プレゼンテーション層）
-│   ├── route.ts              # メインルーター
+├── index.ts                  # Hono アプリ本体（default export / AppType）
+├── server.ts                 # ローカル開発用の Node サーバー
+│
+├── routes/                   # Hono ルーティング（プレゼンテーション層）
 │   ├── test/                 # GET/POST /api/test
 │   └── users/create/         # POST /api/users/create
 │
@@ -624,7 +626,7 @@ Domain Service         Policyを呼び、複数のEntityを組み立てて返す
 
 ## 各層の責務
 
-### プレゼンテーション層 (`app/api/`)
+### プレゼンテーション層 (`routes/`)
 
 HTTPリクエスト/レスポンスの処理を担当。
 
@@ -887,13 +889,14 @@ describe("reconstructUser", () => {
 
 ## 使用技術
 
-| カテゴリ       | 技術                             |
-| -------------- | -------------------------------- |
-| フレームワーク | Next.js 15 (App Router) + Hono 4 |
-| 認証           | @auth0/nextjs-auth0              |
-| バリデーション | Zod + @hono/zod-validator        |
-| テスト         | Vitest                           |
-| 言語           | TypeScript 5                     |
+| カテゴリ       | 技術                                           |
+| -------------- | ---------------------------------------------- |
+| フレームワーク | Hono 4（standalone。Next.js には依存しない）   |
+| ホスティング   | Vercel Functions（framework preset は `hono`） |
+| 認証           | Auth0 セッション Cookie の復号（jose + hkdf）  |
+| バリデーション | Zod + @hono/zod-validator                      |
+| テスト         | Vitest（Node 環境）                            |
+| 言語           | TypeScript 5                                   |
 
 ---
 

@@ -111,11 +111,42 @@ if (!user) {
 - ユーザー作成・更新処理
 - ビジネスロジックの実行
 
+## セッション検証の仕組み
+
+beatfolio と api-server は**別デプロイ**だが、セッションの実体は Auth0 SDK が発行する暗号化 Cookie 1 つで、それを BFF がサーバー間で転送する。
+
+```
+ブラウザ
+  │  Cookie: __session（beatfolio のドメインに紐づく）
+  ▼
+beatfolio（Next.js + @auth0/nextjs-auth0）
+  │  cookie ヘッダを api-server へ転送
+  ▼
+api-server（Hono standalone）
+     __session を自前で復号して sub を得る
+```
+
+api-server は **Auth0 SDK に依存しない**。Cookie の暗号方式は SDK と同一（`hkdf(sha256, AUTH0_SECRET, "", "JWE CEK", 32)` で鍵を導出し、`dir` + `A256GCM` の JWE を復号）で、`jose` + `@panva/hkdf` だけで実装している。
+
+| 層       | 実装                                             | 責務                                    |
+| -------- | ------------------------------------------------ | --------------------------------------- |
+| データ   | `infrastructure/auth0/sessionProvider`           | Cookie の再結合・復号・`sub` の取り出し |
+| 初期化   | `infrastructure/auth0` の `getSessionProvider()` | `AUTH0_SECRET` の解決（遅延初期化）     |
+| エントリ | `middlewares/auth0` の `requireAuthMiddleware`   | Cookie の受け渡しと 401 の確定          |
+
+`SessionProvider` インターフェースを挟んでいるため、検証方式（Cookie 復号 / Bearer JWT 等）を差し替えても middleware とルートは変わらない。
+
+### 制約と将来の移行
+
+- **`AUTH0_SECRET` を beatfolio と api-server で共有する必要がある**（同じ Cookie を両者が復号するため）。片方の環境変数が漏れると両サービスのセッションを偽造できる。
+- 将来 **Bearer JWT（Auth0 の JWKS で検証）** に移すと、api-server は公開鍵で検証するだけになり共有秘密が不要になる。移行には Auth0 側の API（audience）登録と beatfolio 側のトークン送出変更が必要なため、フロントと合わせた段階移行とする。
+- Cookie の形式は Auth0 SDK の内部仕様に依存する。SDK のメジャー更新時は `sessionProvider` の定数（Cookie 名・チャンク区切り・鍵導出パラメータ）を確認する。鍵導出は固定値テストで担保している。
+
 ## ミドルウェア構成
 
 ```
 requireAuthMiddleware
-├── Auth0セッションの検証
+├── Auth0セッションCookieの復号・検証
 └── auth0Userをコンテキストに設定
 
 requireVerifiedMiddleware（オプション）
@@ -132,6 +163,7 @@ requireRegisteredMiddleware（新規追加予定）
 1. **auth0UserId/emailはセッションから取得**
    - リクエストボディからは受け取らない
    - なりすまし防止
+   - ⚠️ **現在の実装はこの規範に違反している**。`POST /api/users` と `POST /api/users/me` が `email` をリクエストボディから受け取っている。詳細と対応方針は [api-server セキュリティ調査](../discussions/api-server-security-review.md) の S-1 を参照（本ドキュメントが規範であり、実装を合わせる）
 
 2. **email_verified チェック**
    - 必要に応じて `requireVerifiedMiddleware` を適用

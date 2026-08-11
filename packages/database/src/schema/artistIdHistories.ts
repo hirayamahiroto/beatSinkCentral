@@ -1,7 +1,7 @@
 import { pgTable, uuid, varchar, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import { artistsTable } from "./artists";
-import { usersTable } from "./users";
+import { artistsTable } from "./artists.js";
+import { usersTable } from "./users.js";
 
 export const artistIdHistoriesTable = pgTable("artist_id_histories", {
   id: uuid("id").primaryKey().defaultRandom(),
