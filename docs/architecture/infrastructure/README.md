@@ -2,6 +2,20 @@
 
 Vercel project と env を Terraform で管理する。Dashboard 操作は禁止、変更はすべて HCL の編集 + `terraform apply` 経由で行う。
 
+## 設定の所有者(Terraform と vercel.json の分担)
+
+Vercel の設定は 2 箇所に分かれる。**どちらが持つかを取り違えない**。
+
+| 設定                                             | 所有者                        | 理由                                                                                       |
+| ------------------------------------------------ | ----------------------------- | ------------------------------------------------------------------------------------------ |
+| project の存在・名前・team・git 連携             | Terraform (`vercel.tf`)       | アカウント境界の資源。コードから作るものではない                                           |
+| 環境変数(値・target・sensitive)                 | Terraform (`env.tf`)          | シークレットを含み、tfvars で環境ごとに切り替える                                          |
+| framework preset・build / install command 等     | `apps/<app>/vercel.json`      | **アプリのコードと同じコミットで変わる**。ビルド方式の変更を preview で即検証する必要がある |
+
+`vercel.json` は Dashboard / project 設定を**上書きする**（宣言したキーのみ）。ビルド設定をここに置くことで、ランタイムやフレームワークを変える PR が **`terraform apply` を待たずに preview で検証できる**。逆に env やプロジェクト自体を `vercel.json` に書くことはしない（シークレットが平文でリポジトリに入る／資源の生成が二重管理になる）。
+
+`vercel.tf` にも `framework` / `build_command` を書いているが、これは import 済みの project 設定を HCL 上で表現しておくためのもので、**実際に効くのは `vercel.json` 側**。両者が食い違ったまま放置しない。
+
 ## ディレクトリ構成
 
 app ごとに **自己完結型**。shared 層は持たない(app 間の依存を作らない)。
@@ -30,9 +44,12 @@ beatSinkCentral/
 | `env.tf`                    | env 群(production / preview / 共通)                    |
 | `terraform.tfvars.example`  | 入力変数のサンプル                                      |
 
+ビルド設定は `infrastructure/` の外、`apps/<app>/vercel.json` に置く(上記「設定の所有者」参照)。
+
 ## 運用ルール
 
 - env 変更は **HCL 編集 → tfvars 更新 → `terraform apply`** のフローで行う
+- ビルド設定(framework / build command)の変更は `apps/<app>/vercel.json` を編集し、preview デプロイで確認する
 - Vercel Dashboard での手動編集は禁止(次の apply で上書きされる)
 - 両 app で同値が必要な値は両方の tfvars を同時更新
 - PR では `terraform plan` をレビュー対象にする(Phase 5 で自動化予定)
