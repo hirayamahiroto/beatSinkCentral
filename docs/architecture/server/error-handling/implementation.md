@@ -4,12 +4,58 @@
 
 本ドキュメントのスコープ:
 
-- エラーをどう書くか（`type` + factory + assert）
+- 失敗をどう表すか（`Result<T, E>`）
+- エラーをどう書くか（`type` + factory）
 - クライアント向けレスポンスと内部ログへの変換をどう共通化するか（`errorMap` / `Logger`）
-- ルートハンドラに何を書かない / 書くか（`onError`）
+- ルートハンドラに何を書かない / 書くか（`handleAppError` / `onError`）
 - 新しいエラーを追加する手順
 
 設計思想は [concepts.md](./concepts.md)、運用への接続（ログ基盤・SLO）は [operations.md](./operations.md) を参照。
+
+---
+
+## 大原則: 業務上の失敗は `Result` で返す
+
+**想定内の失敗（値が不正・対象が存在しない・業務ルール違反）は `throw` しない。`Result<T, E>` の `err` として返す。**
+
+`throw` は「その関数が失敗しうる」ことを型に現さない。呼び出し元は実装を読むまで失敗の可能性に気づけず、usecase のシグネチャからも失敗が消える。`Result` にすると失敗が戻り値の型に現れ、成功値を使うには `if (!result.ok)` で判別するしかない。
+
+TypeScript は戻り値を捨てる呼び出し自体は防げないため、「`Result` を受け取ったのに何もしない」はコンパイルエラーにならない。型が保証するのは **判別せずに `value` / `error` へ触れないこと** であり、`Result` を無視しない規律は本ドキュメントの規範とレビューで担保する。
+
+`throw` を使うのは次の 3 つだけ。
+
+| 用途                                                 | 例                                                                           |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------- |
+| 到達してはならない状態（プログラム誤り・データ破損） | DB から復元した値が VO の制約に反する（`unwrapOrThrow`）                     |
+| エントリポイント層の形式検証                         | zod の検証失敗（`InvalidRequestFormatError` → `onError`）                    |
+| トランザクションのロールバックを起こす必要がある時   | Repository が一意制約違反を型付きエラーに翻訳する（usecase が `err` に戻す） |
+
+1つ目は 500 に落ちるべき事象であり、クライアントに返す業務エラーではない。2つ目は Hono のミドルウェア層で起きるため戻り値を持てず、`onError` で受ける。
+
+3つ目は Drizzle の `transaction` が **throw でしかロールバックしない**という外部制約による。書き込みが制約で弾かれた事実を `err` で返すとトランザクションが中途半端に確定してしまうため、例外として境界の外まで抜けさせ、usecase が `try/catch` で受けて `err` に戻す。**業務エラーを throw のまま外に流すのではなく、usecase の `Result` の中に必ず畳み込む**（詳細は [database/concurrency.md](../database/concurrency.md#一意制約違反の扱い) 参照）。
+
+```typescript
+try {
+  return await deps.txRunner.run(async (tx) => {
+    /* ... */
+  });
+} catch (error) {
+  if (isAccountIdAlreadyTakenError(error)) return err(error);
+  throw error;
+}
+```
+
+### `Result` の道具
+
+`apps/api-server/src/utils/result` が提供する。
+
+| 関数            | 用途                                                                   |
+| --------------- | ---------------------------------------------------------------------- |
+| `ok` / `err`    | 成功 / 失敗を構築する                                                  |
+| `map`           | 成功値だけを変換する                                                   |
+| `all`           | 複数フィールドをまとめて検証し、最初の失敗を返す（値の型は個別に保つ） |
+| `traverse`      | 配列の各要素を検証し、最初の失敗を返す                                 |
+| `unwrapOrThrow` | 「失敗しえない」前提の箇所で剥がす。破れたら例外（= 500）              |
 
 ---
 
@@ -17,14 +63,14 @@
 
 6つの部品で構成する。
 
-| 部品                     | 位置                                                      | 責務                                                                   |
-| ------------------------ | --------------------------------------------------------- | ---------------------------------------------------------------------- |
-| ① エラー定義             | 各レイヤーに co-located                                   | `type + factory + (必要なら) assert関数` を定義                        |
-| ② errorMap               | `apps/api-server/src/errorMap/`                           | エラー種別 → **クライアント向けレスポンス** と **内部ログ** の変換表   |
-| ③ onError                | Hono のルートエントリ                                     | 投げられたエラーを errorMap に引き当てて、ログ出力とレスポンス化を行う |
-| ④ ルート                 | 各 API ルート                                             | try/catch せずに throw させる（onError が受け取る）                    |
-| ⑤ Logger                 | `apps/api-server/src/utils/logger/`                       | ログの出力先を差し替え可能にする抽象（既定は console）                 |
-| ⑥ リクエストコンテキスト | `apps/api-server/src/{utils,middlewares}/requestContext/` | リクエスト相関 ID を 1 回だけ確定させ、ログに載せる                    |
+| 部品                     | 位置                                                      | 責務                                                                 |
+| ------------------------ | --------------------------------------------------------- | -------------------------------------------------------------------- |
+| ① エラー定義             | 各レイヤーに co-located                                   | `type + factory (+ 必要なら型ガード)` を定義                         |
+| ② errorMap               | `apps/api-server/src/errorMap/`                           | エラー種別 → **クライアント向けレスポンス** と **内部ログ** の変換表 |
+| ③ ルート                 | 各 API ルート                                             | usecase の `Result` を判定し、`err` を `handleAppError` に渡す       |
+| ④ onError                | Hono のルートエントリ                                     | 形式検証エラーと想定外の例外の最後の受け皿（業務エラーは通らない）   |
+| ⑤ Logger                 | `apps/api-server/src/utils/logger/`                       | ログの出力先を差し替え可能にする抽象（既定は console）               |
+| ⑥ リクエストコンテキスト | `apps/api-server/src/{utils,middlewares}/requestContext/` | リクエスト相関 ID を 1 回だけ確定させ、ログに載せる                  |
 
 ### 処理フロー
 
@@ -35,28 +81,28 @@
          │ HTTP Request
          ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ ④ ルートハンドラ                                            │
+│ ③ ルートハンドラ                                            │
 │    認証 / zod バリデーション / usecase 呼び出し             │
-│    （try/catch は書かない）                                 │
+│    result.ok を判定して handleAppError へ渡す               │
 └────────┬────────────────────────────────────────────────────┘
-         │
-         ▼
+         │ 呼び出し             ▲ Result<T, E>
+         ▼                     │
 ┌─────────────────────────────────────────────────────────────┐
 │ usecase / domain                                            │
-│    ルール違反を検知したら ① で定義したエラーを throw        │
-└────────┬────────────────────────────────────────────────────┘
-         │ throw
-         ▼
-┌─────────────────────────────────────────────────────────────┐
-│ ③ onError (Hono)                                            │
-│    error.type を見て ② errorMap を引き、2方向に分けて出す    │
-│      → クライアント: status + clientMessage (+ clientDetails)│
-│      → 内部ログ:     logLevel + errorType + logFields       │
-│    未知のエラーは 500（内部ログにのみ詳細を残す）           │
+│    ルール違反を検知したら ① のエラーを err で返す           │
 └─────────────────────────────────────────────────────────────┘
+
+         ② errorMap: error.type を引き、2方向に分けて出す
+           → クライアント: status + clientMessage (+ clientDetails)
+           → 内部ログ:     logLevel + errorType + logFields
+         ▲
+         │ handleAppError(result.error, c)     ← 業務エラーの経路
+         │ onError(error, c)                   ← 形式検証 / 想定外の例外
 ```
 
-同じエラー1件から**宛先の異なる2つの出力**が作られる。クライアント向けは「ユーザーが次の行動を取れる情報」に絞り、内部ログは「開発者が原因を特定できる情報」を持つ。両者は同じ表から引くが、混ざらない。
+業務エラーとシステム障害が **同じ変換表（errorMap）に、別の経路で** 入る。どちらも最終的に `handleAppError` が HTTP へ翻訳する。
+
+さらに、同じエラー1件から**宛先の異なる2つの出力**が作られる。クライアント向けは「ユーザーが次の行動を取れる情報」に絞り、内部ログは「開発者が原因を特定できる情報」を持つ。両者は同じ表から引くが、混ざらない。
 
 ---
 
@@ -70,39 +116,45 @@
 
 - **type**: `Error` を基底に、判別用の `type` フィールドと固有のコンテキスト情報を持つ型
 - **ファクトリ関数**: `create{ErrorName}` 命名で `Error` インスタンスを生成し `Object.assign` でフィールドを付与
-- **型ガード関数 (`isXxxError`)**: errorMap 側が `type` フィールドで判別するため **原則不要**。レイヤーをまたいで型で分岐したい場合のみ定義する
+- **型ガード関数 (`isXxxError`)**: errorMap 側が `type` フィールドで判別するため **原則不要**。レイヤーをまたいで型で分岐したい場合やテストで判別したい場合のみ定義する
 
-`Error` を基底に使うのはスタックトレース・`throw` 互換性のため（JSの制約上、ここだけは `new Error()` が必要）。判別は `instanceof` ではなく **`type` フィールド** で行う。
+`Error` を基底に使うのはスタックトレース互換性のため（`Result` の `err` に載せる場合も、ログにスタックを残せる利点は変わらない）。**どのエラーかの判別は `instanceof` ではなく `type` フィールド** で行う。型ガードが `error instanceof Error` を併記するのは、`unknown` を絞り込む前段のチェックであって、エラー種別の判別軸ではない。
 
 ### 実装テンプレート
 
+エラーは `err` に載せる値であり、自分では投げない。`{domain}/errors/{errorName}/` に型 + factory + 型ガードだけを置く。
+
 ```typescript
-// domain/users/policies/assertNotRegistered/index.ts
-import type { User } from "../../entities";
+// domain/users/errors/userAlreadyRegistered/index.ts
+import { createTypedError } from "../../../../utils/errors/createTypedError";
 
 export type UserAlreadyRegisteredError = Error & {
   readonly type: "UserAlreadyRegisteredError";
 };
 
 export const createUserAlreadyRegisteredError =
-  (): UserAlreadyRegisteredError => {
-    const error = new Error(
-      "User already registered",
-    ) as UserAlreadyRegisteredError;
-    return Object.assign(error, {
-      type: "UserAlreadyRegisteredError" as const,
-    });
-  };
+  (): UserAlreadyRegisteredError =>
+    createTypedError("UserAlreadyRegisteredError");
 
-export const assertNotRegistered = (userIfRegistered: User | null): void => {
-  if (userIfRegistered) throw createUserAlreadyRegisteredError();
-};
+export const isUserAlreadyRegisteredError = (
+  error: unknown,
+): error is UserAlreadyRegisteredError =>
+  error instanceof Error &&
+  (error as Partial<UserAlreadyRegisteredError>).type ===
+    "UserAlreadyRegisteredError";
+```
+
+判定は **ルールを持つ呼び出し元** が行い、`err` で返す。
+
+```typescript
+// domain/services/userRegistration/index.ts
+if (userIfRegistered) return err(createUserAlreadyRegisteredError());
 ```
 
 コンテキスト情報を型に載せたい場合（例: `accountId` を文言やログフィールドに使いたい）は、該当フィールドを type に追加して factory が受け取る形にする。宛先ごとの使い分けは errorMap 側で決めるので、ドメインは「どんな文脈だったか」だけを持たせる。
 
 ```typescript
-// domain/artists/errors.ts（コンテキスト付きの例）
+// domain/artists/errors/accountIdAlreadyTaken/index.ts（コンテキスト付きの例）
 export type AccountIdAlreadyTakenError = Error & {
   readonly type: "AccountIdAlreadyTakenError";
   readonly accountId: string;
@@ -110,20 +162,54 @@ export type AccountIdAlreadyTakenError = Error & {
 
 export const createAccountIdAlreadyTakenError = (
   accountId: string,
-): AccountIdAlreadyTakenError => {
-  const error = new Error(
-    `Account ID already taken: ${accountId}`,
-  ) as AccountIdAlreadyTakenError;
-  return Object.assign(error, {
-    type: "AccountIdAlreadyTakenError" as const,
-    accountId,
-  });
+): AccountIdAlreadyTakenError =>
+  createTypedError("AccountIdAlreadyTakenError", { accountId });
+```
+
+### Value Object のテンプレート
+
+VO のファクトリは `Result<T, InvalidXFormatError>` を返す。
+
+```typescript
+// domain/users/valueObjects/email/index.ts
+export const createEmail = (
+  value: string,
+): Result<Email, InvalidEmailFormatError> => {
+  if (!isValidEmail(value)) {
+    return err(createInvalidEmailFormatError());
+  }
+  return ok({ value });
 };
+```
+
+### Entity ファクトリの 2 系統
+
+同じ VO 群を組み立てるが、**入力の出所によって失敗の意味が変わる**ため関数を分ける。
+
+| 関数                  | 入力の出所   | 戻り値              | 失敗の意味                        |
+| --------------------- | ------------ | ------------------- | --------------------------------- |
+| `create{Entity}`      | ユーザー入力 | `Result<Entity, E>` | 入力が不正 → 422 で返す           |
+| `reconstruct{Entity}` | DB から復元  | `Entity`            | 保存値が壊れている → 500 に落とす |
+
+`reconstruct` は内部で `unwrapOrThrow` を使う。ユーザー入力を `reconstruct` に渡すと、入力不正が 422 ではなく 500 になるので **絶対に混ぜない**。
+
+```typescript
+export const createUser = (
+  params: CreateUserParams,
+): Result<User, UserFieldError> =>
+  map(buildState(crypto.randomUUID(), params), createUserBehaviors);
+
+export const reconstructUser = (params: ReconstructUserParams): User =>
+  unwrapOrThrow(
+    map(buildState(params.id, params), createUserBehaviors),
+    "reconstructUser: stored user has invalid field values",
+  );
 ```
 
 ### co-location の原則
 
-- エラー型と、そのエラーを投げる判定ロジック（assert関数）は同じディレクトリに置く
+- エラー型とその factory / 型ガードは同じディレクトリに置く。ディレクトリ名はエラーの名前に揃える（`errors/userNotFound/`）
+- ルール判定そのものは、そのルールを知っているモジュール（VO / service / usecase）が持ち、`err` で返す
 - HTTP のことを知ってはいけない（status コードはここには書かない）
 - 共通基底（`UseCaseError` 等）は現時点では作らない
 
@@ -167,6 +253,11 @@ type ErrorMapping<SpecificError extends AppError> = {
 
 ```typescript
 // apps/api-server/src/errorMap/index.ts
+import type { UserAlreadyRegisteredError } from "../domain/users/errors/userAlreadyRegistered";
+import type { AccountIdAlreadyTakenError } from "../domain/artists/errors/accountIdAlreadyTaken";
+
+export type AppError = UserAlreadyRegisteredError | AccountIdAlreadyTakenError;
+
 const errorMap: ErrorMap = {
   UserAlreadyRegisteredError: {
     status: 409,
@@ -214,6 +305,7 @@ export const createAppErrorHandler =
     return c.json({ error: "Internal Server Error" }, 500);
   };
 
+// 公開面: ルートから result.error を渡す / Hono の onError にそのまま渡す
 export const handleAppError = createAppErrorHandler(createConsoleLogger());
 ```
 
@@ -225,6 +317,7 @@ export const handleAppError = createAppErrorHandler(createConsoleLogger());
 - ログに出るのは **`logFields` で明示的に宣言したフィールドだけ**（ホワイトリスト方式）。エラーオブジェクトを丸ごと spread しないため、後からエラー型にセンシティブな値を足しても勝手にログへ漏れない
 - ログには `clientMessage` を含めない。文言はプレゼンテーションの都合で変わるが、集計軸は `errorType` で足りる
 - 公開 API は `handleAppError`（console 配線済み）と `createAppErrorHandler`（logger 注入用）。ビルダ群は実装詳細として閉じる
+- **業務エラーもシステム障害も同じ変換表を通る**。違うのは入り口（ルートから直接渡すか、onError が拾うか）だけ
 
 ### 未知のエラーの扱い
 
@@ -232,37 +325,23 @@ export const handleAppError = createAppErrorHandler(createConsoleLogger());
 
 ---
 
-## ③ onError ハンドラ
+## ③ ルートハンドラ
 
-Hono の `onError` で一元的に捕捉し、errorMap が公開する `handleAppError` をそのまま渡す。ルートハンドラでは `try/catch` を書かず、onError 側も HTTP 変換の詳細を持たない（詳細は `errorMap` 側に閉じる）。
+usecase の `Result` を判定し、`err` なら `handleAppError` に渡す。`try/catch` は書かない。
 
 ```typescript
-// app/api/[[...route]]/route.ts
-import { Hono } from "hono";
-import { handle } from "hono/vercel";
-import { handleAppError } from "../../../errorMap";
+const result = await updateMyAccountIdUseCase(input, deps);
 
-const app = new Hono()
-  .basePath("/api")
-  .route("/users", usersRoute)
-  // ... 他ルート
-  .onError(handleAppError);
+if (!result.ok) {
+  return handleAppError(result.error, c);
+}
 
-export const GET = handle(app);
-export const POST = handle(app);
+return c.json(result.value);
 ```
 
-### 注意点
+`result.value` は `result.ok` で判別するまで型に現れないため、**成功時のレスポンス組み立てを書けば失敗の分岐が必ず要る**。これが `throw` + `onError` だけの構成には無い保証。
 
-- **zod バリデーションエラー** も同じ経路に流す。`zValidator` の第3引数フックで `InvalidRequestFormatError` を `throw` する設計に揃え、`onError → handleAppError → errorMap` で 400 + `details` に変換する（フック内で `c.json(..., 400)` を直書きしない）。実装は後述の `validateRequest` ファクトリを参照
-- **認証ミドルウェアのエラー** も同じ経路に流す。`requireAuthMiddleware` は `UnauthorizedError` を throw し、errorMap が 401 に変換する。ミドルウェア内で `c.json(..., 401)` を直書きしないのは、直書きすると 401 だけログ経路から外れて観測できなくなるため
-- **Infrastructure 層の技術的例外**（DB接続失敗等）は `isAppError` にマッチせず 500 に落ちる。これで正しい（500 はまさに "依存先の契約違反" の表現）
-
----
-
-## ④ ルートハンドラ
-
-エラーを try/catch しない。usecase を呼んで結果を返すだけ。zod バリデーションエラーも `validateRequest` ファクトリ経由で `onError` に流すので、ハンドラ内に 400 のレスポンス組み立ては書かない。
+zod バリデーションエラーは `validateRequest` ファクトリ経由で `onError` に流すので、ハンドラ内に 400 のレスポンス組み立ては書かない。
 
 ### InvalidRequestFormatError と validateRequest ファクトリ
 
@@ -325,6 +404,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { createUserUseCase } from "...";
 import { validateRequest } from "../../validators/validateRequest";
+import { handleAppError } from "../../../../../errorMap";
 
 const requestSchema = z.object({
   email: z.string().min(1, "email is required").email("Invalid email format"),
@@ -339,16 +419,18 @@ const app = new Hono().post(
   validateRequest("json", requestSchema),
   async (c) => {
     const body = c.req.valid("json");
-    const session = await auth0.getSession();
-    if (!session?.user) return c.json({ error: "Unauthorized" }, 401);
+    const auth0User = c.get("auth0User");
 
-    // try/catch 不要。AppError も未知のエラーも onError が拾う
     const result = await createUserUseCase(
-      { subId: session.user.sub, email: body.email, accountId: body.accountId },
+      { subId: auth0User.sub, email: body.email, accountId: body.accountId },
       getContainer(),
     );
 
-    return c.json({ userId: result.userId, artistId: result.artistId }, 201);
+    if (!result.ok) {
+      return handleAppError(result.error, c);
+    }
+
+    return c.json(result.value, 201);
   },
 );
 
@@ -358,6 +440,28 @@ export default app;
 各 zod ルールに渡したメッセージは、レスポンス `details[].message` にそのまま乗るのでクライアントのフォーム inline 表示に使える。
 
 一方で**同じ issues をそのまま内部ログには出さない**。zod の issue は種類によって入力値そのもの（`received`）を含むため、ログには `issuePaths`（どのフィールドで失敗したか）だけを載せる。クライアントに返すのはユーザー自身の入力のエコーバックなので問題ないが、ログは残り続ける前提で扱う。
+
+---
+
+## ④ onError ハンドラ
+
+`onError` は **業務エラーの経路ではない**。形式検証エラー（`InvalidRequestFormatError`）と、想定外の例外（`reconstruct` の破綻・DB 障害）の最後の受け皿として置く。
+
+```typescript
+// app/api/[[...route]]/route.ts
+const app = new Hono()
+  .basePath("/api")
+  .route("/users", usersRoute)
+  // ... 他ルート
+  .onError(handleAppError);
+```
+
+### 注意点
+
+- **zod バリデーションエラー** は `zValidator` の第3引数フックで `throw` する。ミドルウェア層は戻り値を持てないため `Result` にできず、`onError → handleAppError → errorMap` で 400 + `details` に変換する
+- **認証ミドルウェアのエラー** も同じ経路に流す。`requireAuthMiddleware` は `UnauthorizedError` を throw し、errorMap が 401 に変換する。ミドルウェア内で `c.json(..., 401)` を直書きしないのは、直書きすると 401 だけログ経路から外れて観測できなくなるため
+- **Infrastructure 層の技術的例外**（DB接続失敗等）は `isAppError` にマッチせず 500 に落ちる。これで正しい（500 はまさに "依存先の契約違反" の表現）
+- **業務エラーが onError に到達したら設計の破れ**。`Result` にすべき失敗が `throw` されている可能性を疑う
 
 ---
 
@@ -375,10 +479,13 @@ export type Logger = {
   [Level in LogLevel]: (event: string, fields: LogFields) => void;
 };
 
+const serialize = (level: LogLevel, event: string, fields: LogFields): string =>
+  JSON.stringify({ level, event, ...fields });
+
 export const createConsoleLogger = (): Logger => ({
-  info: (event, fields) => console.info(event, fields),
-  warn: (event, fields) => console.warn(event, fields),
-  error: (event, fields) => console.error(event, fields),
+  info: (event, fields) => console.info(serialize("info", event, fields)),
+  warn: (event, fields) => console.warn(serialize("warn", event, fields)),
+  error: (event, fields) => console.error(serialize("error", event, fields)),
 });
 ```
 
@@ -440,23 +547,26 @@ const emit = (
 ## 新しいエラーを追加する手順
 
 ```text
-1. エラーを投げるレイヤーを決める（domain / usecase）
-2. 該当ディレクトリに co-located で type + factory (+ assert関数) を定義
-3. errorMap/index.ts の AppError union に型を追加
+1. エラーを検知するレイヤーを決める（domain / usecase）
+2. {domain}/errors/{errorName}/ に type + factory (+ 型ガード) を定義
+3. 検知する関数の戻り値を Result<T, E> にし、E の union に型を足す
+4. errorMap/index.ts の AppError union に型を追加
    → TypeScriptが errorMap の未実装キーを指摘する
-4. errorMap に status / clientMessage / logLevel を実装
+5. errorMap に status / clientMessage / logLevel を実装
    （必要なら clientDetails / logFields も）
-5. usecase / policy から throw する
+6. 検知箇所で err(createXxxError()) を返す
 ```
 
-ルートハンドラも onError も **触らない**。これが本設計の最大のメリット。
+ルートハンドラは `result.ok` の判定を既に持っているため **触らない**。onError も不変。
 
 ---
 
 ## 設計上の利点
 
-- **追加コスト最小**: 新エラーは「co-located 定義 + errorMap に1エントリ」だけ。ルート / onError / Logger は不変
+- **失敗が型に現れる**: usecase のシグネチャを見れば失敗しうるエラーが分かる。`value` / `error` は `result.ok` で判別しないと触れない
+- **追加コスト最小**: 新エラーは「co-located 定義 + エラー union に1行 + errorMap に1エントリ」だけ。ルート / onError / Logger は不変
 - **型で網羅性を強制**: AppError union に追加すれば errorMap のキーは型で補完される → マッピング漏れをコンパイル時に検知
 - **レイヤーの独立性維持**: ドメイン / usecase は HTTP もログも知らない。errorMap だけが橋渡しをする
 - **宛先の混同を防ぐ**: `client*` / `log*` の接頭辞で、その値がユーザーに見えるのかログに残るのかが型定義だけで分かる
-- **テスト容易性**: usecase のテストは「適切なエラーを throw するか」だけを検証すればよい。HTTP 変換とログ出力は errorMap のユニットテストで独立に検証可能
+- **テスト容易性**: usecase のテストは「適切なエラーを `err` で返すか」を戻り値で検証すればよい（`rejects` を挟まない）。HTTP 変換とログ出力は errorMap のユニットテストで独立に検証可能
+- **業務エラーと障害の分離**: 500 に落ちるのは本当に想定外の事象だけになり、ログ・アラートの信号品質が上がる

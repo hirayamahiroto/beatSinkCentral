@@ -4,7 +4,7 @@ import { reconstructUser } from "../../../../../../../../domain/users/factories"
 import { reconstructArtist } from "../../../../../../../../domain/artists/factories";
 import { reconstructArtistProfile } from "../../../../../../../../domain/artistProfiles/factories";
 import { ok, err } from "../../../../../../../../utils/result";
-import { createUserNotFoundError } from "../../../../../../../../domain/users/policies/assertRegistered";
+import { createUserNotFoundError } from "../../../../../../../../domain/users/errors/userNotFound";
 import publishMyProfile from "./index";
 
 const actor = {

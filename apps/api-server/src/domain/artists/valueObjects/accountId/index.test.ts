@@ -3,26 +3,45 @@ import { createAccountId } from "./index";
 
 describe("createAccountId", () => {
   it("有効な値でAccountIdを生成する", () => {
-    expect(createAccountId("user_123").value).toBe("user_123");
+    const result = createAccountId("user_123");
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.value).toBe("user_123");
+    }
   });
 
   it("英数字とアンダースコアを許可する", () => {
-    expect(createAccountId("abcXYZ_0123").value).toBe("abcXYZ_0123");
+    const result = createAccountId("abcXYZ_0123");
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.value).toBe("abcXYZ_0123");
+    }
   });
 
-  it("空文字でエラー", () => {
-    expect(() => createAccountId("")).toThrow();
+  it("空文字は err を返す", () => {
+    expect(createAccountId("").ok).toBe(false);
   });
 
-  it("ハイフンを含む値でエラー", () => {
-    expect(() => createAccountId("user-123")).toThrow();
+  it("ハイフンを含む値は err を返す", () => {
+    expect(createAccountId("user-123").ok).toBe(false);
   });
 
-  it("記号を含む値でエラー", () => {
-    expect(() => createAccountId("user!123")).toThrow();
+  it("記号を含む値は err を返す", () => {
+    expect(createAccountId("user!123").ok).toBe(false);
   });
 
-  it("256文字以上でエラー", () => {
-    expect(() => createAccountId("a".repeat(256))).toThrow();
+  it("256文字以上は err を返す", () => {
+    expect(createAccountId("a".repeat(256)).ok).toBe(false);
+  });
+
+  it("返るエラーは InvalidAccountIdFormatError 型", () => {
+    const result = createAccountId("user-123");
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.type).toBe("InvalidAccountIdFormatError");
+    }
   });
 });
