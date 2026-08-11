@@ -16,6 +16,7 @@
   ],
   "scripts": {
     "build": "tsc --project tsconfig.build.json",
+    "prepare": "npm run build",
     "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
     "db:migrate": "drizzle-kit migrate --config=drizzle.config.ts",
     "db:seed": "tsx src/seed.ts",

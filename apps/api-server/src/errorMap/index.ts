@@ -281,12 +281,22 @@ export const createAppErrorHandler =
       const { body, status } = buildClientResponse(error);
       return c.json(body, status);
     }
-    if (error instanceof HTTPException) {
-      emit(logger, c, buildHttpExceptionLog(error));
-      return error.getResponse();
-    }
     emit(logger, c, buildUnhandledErrorLog(error));
     return c.json({ error: "Internal Server Error" }, 500);
   };
 
+export const createRequestErrorHandler =
+  (logger: Logger) =>
+  (error: Error, c: Context): Response => {
+    if (error instanceof HTTPException) {
+      emit(logger, c, buildHttpExceptionLog(error));
+      return error.getResponse();
+    }
+    return createAppErrorHandler(logger)(error, c);
+  };
+
 export const handleAppError = createAppErrorHandler(createConsoleLogger());
+
+export const handleRequestError = createRequestErrorHandler(
+  createConsoleLogger(),
+);

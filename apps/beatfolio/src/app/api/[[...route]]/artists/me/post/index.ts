@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import type { RequestContextEnv } from "../../../../../../middlewares/requestContext";
+import { forwardUpstreamError } from "../../../../../../utils/upstream";
 
 const updateAccountIdRequestSchema = z.object({
   accountId: z.string().nonempty(),
@@ -26,8 +27,7 @@ const app = new Hono<RequestContextEnv>().post(
     });
 
     if (!res.ok) {
-      const error = await res.json();
-      return c.json(error, res.status);
+      return forwardUpstreamError(res);
     }
 
     const data = await res.json();

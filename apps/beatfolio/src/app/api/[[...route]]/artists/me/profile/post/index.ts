@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import type { RequestContextEnv } from "../../../../../../../middlewares/requestContext";
+import { forwardUpstreamError } from "../../../../../../../utils/upstream";
 
 const saveProfileRequestSchema = z.object({
   name: z.string().nullable().optional(),
@@ -38,8 +39,7 @@ const app = new Hono<RequestContextEnv>().post(
     const res = await apiClient.api.artists.me.profile.$post({ json: body });
 
     if (!res.ok) {
-      const error = await res.json();
-      return c.json(error, res.status);
+      return forwardUpstreamError(res);
     }
 
     return c.json(await res.json());

@@ -2,7 +2,12 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
-import { createAppErrorHandler, handleAppError } from "./index";
+import {
+  createAppErrorHandler,
+  createRequestErrorHandler,
+  handleAppError,
+  handleRequestError,
+} from "./index";
 import type { LogFields, LogLevel, Logger } from "../utils/logger";
 import { createUserAlreadyRegisteredError } from "../domain/users/policies/assertNotRegistered";
 import { createAccountIdAlreadyTakenError } from "../domain/artists/policies/assertAccountIdAvailable";
@@ -58,7 +63,7 @@ const requestWithError = async (error: unknown) => {
     .get("/", () => {
       throw error;
     })
-    .onError(createAppErrorHandler(logger))
+    .onError(createRequestErrorHandler(logger))
     .request("/");
   return { response, logs };
 };
@@ -394,18 +399,44 @@ describe("handleAppError", () => {
     );
   });
 
-  it("HTTPException は自身のレスポンスをそのまま返し、status を warn で記録する", async () => {
-    const { response, logs } = await requestWithError(
-      new HTTPException(401, {
-        res: new Response(JSON.stringify({ error: "Basic Auth Required" }), {
-          status: 401,
-          headers: {
-            "WWW-Authenticate": 'Basic realm="Secure Area"',
-            "content-type": "application/json",
-          },
-        }),
+  it("未知のエラーは console.error へ出力する", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const rawError = new Error("boom");
+
+    await requestWithDefaultHandler(rawError);
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      JSON.stringify({
+        level: "error",
+        event: "UnhandledError",
+        method: "GET",
+        route: "/",
+        errorName: "Error",
+        message: "boom",
+        stack: rawError.stack,
       }),
     );
+  });
+});
+
+describe("createRequestErrorHandler", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const basicAuthException = () =>
+    new HTTPException(401, {
+      res: new Response(JSON.stringify({ error: "Basic Auth Required" }), {
+        status: 401,
+        headers: {
+          "WWW-Authenticate": 'Basic realm="Secure Area"',
+          "content-type": "application/json",
+        },
+      }),
+    });
+
+  it("HTTPException は自身のレスポンスをそのまま返し、status を warn で記録する", async () => {
+    const { response, logs } = await requestWithError(basicAuthException());
 
     expect(response.status).toBe(401);
     expect(response.headers.get("WWW-Authenticate")).toBe(
@@ -423,21 +454,53 @@ describe("handleAppError", () => {
     ]);
   });
 
-  it("未知のエラーは console.error へ出力する", async () => {
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    const rawError = new Error("boom");
+  it("AppError は createAppErrorHandler と同じ応答に委譲する", async () => {
+    const { response, logs } = await requestWithError(
+      createUserAlreadyRegisteredError(),
+    );
 
-    await requestWithDefaultHandler(rawError);
+    expect(response.status).toBe(409);
+    expect(await response.json()).toStrictEqual({
+      error: "User already registered",
+    });
+    expect(logs).toStrictEqual([
+      {
+        level: "info",
+        event: "AppError",
+        fields: {
+          method: "GET",
+          route: "/",
+          errorType: "UserAlreadyRegisteredError",
+          status: 409,
+        },
+      },
+    ]);
+  });
+});
 
-    expect(errorSpy).toHaveBeenCalledWith(
+describe("handleRequestError", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("既定の logger として console を使い HTTPException を warn へ出力する", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const response = await new Hono()
+      .get("/", () => {
+        throw new HTTPException(401, { message: "nope" });
+      })
+      .onError(handleRequestError)
+      .request("/");
+
+    expect(response.status).toBe(401);
+    expect(warnSpy).toHaveBeenCalledWith(
       JSON.stringify({
-        level: "error",
-        event: "UnhandledError",
+        level: "warn",
+        event: "HttpException",
         method: "GET",
         route: "/",
-        errorName: "Error",
-        message: "boom",
-        stack: rawError.stack,
+        status: 401,
       }),
     );
   });

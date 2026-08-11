@@ -5,7 +5,8 @@
     "paths": {
       "@/*": ["./src/*"],
       "@ui/*": ["../../packages/ui/src/*"],
-      "@data/*": ["../../packages/data/src/*"]
+      "@data/*": ["../../packages/data/src/*"],
+      "database": ["../../packages/database/src/index.ts"]
     }
   },
   "include": [

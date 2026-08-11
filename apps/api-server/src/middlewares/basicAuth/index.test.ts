@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { Hono } from "hono";
-import { handleAppError } from "../../errorMap";
+import { handleRequestError } from "../../errorMap";
 import { basicAuthMiddleware, readBasicAuthCredentials } from "./index";
 
 const USERNAME = "user";
@@ -16,7 +16,7 @@ const buildApp = () =>
   new Hono()
     .use("*", basicAuthMiddleware)
     .get("/", (c) => c.json({ ok: true }))
-    .onError(handleAppError);
+    .onError(handleRequestError);
 
 const basicHeader = (username: string, password: string) =>
   `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`;

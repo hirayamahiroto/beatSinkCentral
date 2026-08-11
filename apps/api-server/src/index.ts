@@ -12,7 +12,7 @@ import listLinkTypes from "./routes/link-types/get";
 import { basicAuthMiddleware } from "./middlewares/basicAuth";
 import { requireAuthMiddleware } from "./middlewares/auth0";
 import { requestContextMiddleware } from "./middlewares/requestContext";
-import { handleAppError } from "./errorMap";
+import { handleRequestError } from "./errorMap";
 
 const app = new Hono()
   .basePath("/api")
@@ -33,7 +33,7 @@ const app = new Hono()
   .route("/artists", listPublicProfiles)
   .route("/artists", getPublicProfile)
   .route("/link-types", listLinkTypes)
-  .onError(handleAppError);
+  .onError(handleRequestError);
 
 export type AppType = typeof app;
 

@@ -13,7 +13,8 @@
     "isolatedModules": true,
     "incremental": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "database": ["../../packages/database/src/index.ts"]
     }
   },
   "include": ["src/**/*.ts", "vitest.config.mts"],
