@@ -2,6 +2,8 @@
 
 本プロジェクトにおける「複数リクエストが同じレコードを同時に書き換えるケース」の扱いを定める。
 
+トランザクション**境界をどこに置くか**は [architecture.md の権能モデル](../architecture.md#権能capabilitiesモデル)で定める（`runWithWriteCapabilities` が境界を持ち、usecase は境界を意識しない）。本ドキュメントが扱うのは、その境界をまたいで**競合が起きたときにどう振る舞うか**である。
+
 ## 基本方針：Last Write Wins (LWW)
 
 特別なロック機構（楽観的ロック / 悲観的ロック）を導入しない usecase は、**LWW を基本** とする。
@@ -69,8 +71,10 @@
 1. 対象テーブルに `version INTEGER NOT NULL DEFAULT 0` カラムを追加
 2. Repository の `findXxx` で `version` も読み出し、Entity の state に保持
 3. `updateXxx` の WHERE 句に `AND version = ?` を加え、SET 句で `version = version + 1`
-4. UPDATE の `rowCount` が 0 なら競合検出 → ドメインエラー（例: `ConflictError`）を throw
+4. UPDATE の `rowCount` が 0 なら競合検出 → ドメインエラー（例: `ConflictError`）を `err(...)` で返す
 5. エントリポイントは errorMap で 409 Conflict にマップし、クライアントは再読み込みを促す
+
+usecase が `err` を返すと `runWithWriteCapabilities` がトランザクションをロールバックするため、競合を検出した時点で同一境界内の書き込みは残らない。
 
 ## 既存 usecase の方針記録
 
@@ -79,5 +83,7 @@
 | `createUserUseCase`        | LWW  | 新規作成のみ。一意制約違反は別途 `UserAlreadyRegisteredError`                   |
 | `updateMyEmailUseCase`     | LWW  | 自分の email を自分で変更。競合確率低                                           |
 | `updateMyAccountIdUseCase` | LWW  | 自分の accountId を自分で変更。他人重複は `assertAccountIdAvailable` で別途検出 |
+| `saveMyProfile`            | LWW  | 本人が自分のプロフィールを保存。単一主体の単発操作                              |
+| `publishMyProfile`         | LWW  | 本人が公開状態を切り替える。公開可否は `ensurePublishable` で判定               |
 
 新しい usecase を追加した時は、この表に方針を 1 行追記する。

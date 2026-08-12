@@ -61,13 +61,20 @@ apps/api-server/src/
 │   └── services/             # Domain Service（複数集約をまたぐロジック）
 │
 ├── usecases/                 # ユースケース層（アプリケーション層）
-│   └── users/                # CreateUserUseCase
+│   ├── capabilities/         # 権能型の定義（Actor / PublicRead / Read / Write）
+│   ├── authorization/        # subId → Actor 解決の集約点
+│   ├── users/                # CreateUserUseCase
+│   └── artistProfiles/       # プロフィールの取得・保存・公開
+│
+├── errorMap/                 # AppError → HTTP / ログへの変換
 │
 ├── infrastructure/           # インフラストラクチャ層
 │   ├── auth0/                # Auth0 クライアント
-│   ├── container/            # Composition Root（依存関係の組み立て）
+│   ├── capabilities/         # 権能の組み立てとトランザクション境界
+│   ├── container/            # Composition Root（移行前の旧経路）
 │   ├── database/             # データベースクライアント
-│   └── repositories/         # リポジトリ実装
+│   ├── repositories/         # リポジトリ実装
+│   └── transaction/          # トランザクションランナー（移行前の旧経路）
 │
 ├── middlewares/              # ミドルウェア
 │   ├── auth0/                # Auth0 認証・メール検証
@@ -77,8 +84,10 @@ apps/api-server/src/
 └── utils/                    # ユーティリティ
     ├── client/               # Hono クライアント生成
     ├── config/               # 設定管理
+    ├── errors/               # 型付きエラーの生成
     ├── logger/               # ログ出力先の抽象
-    └── requestContext/       # リクエストスコープの相関情報保持
+    ├── requestContext/       # リクエストスコープの相関情報保持
+    └── result/               # Result<T, E>（失敗を返り値で表す）
 ```
 
 ---
@@ -149,6 +158,189 @@ return { userId: user.id, email: user.email };
 const user = await userRepository.findBySub(sub); // User Entity
 return { userId: user.getId(), email: user.getEmail() };
 ```
+
+---
+
+## 権能（capabilities）モデル
+
+Usecase が受け取る依存を「**権能（capability）**」として型で表現し、**その usecase に必要な操作だけが型として届く**状態を作る。リポジトリ一式をまとめて渡す方式（`getContainer`）に代わる、新規実装の規範。
+
+### なぜ権能で渡すか
+
+| 課題（リポジトリ一式を渡す場合）                               | 権能モデルでの解決                                            |
+| -------------------------------------------------------------- | ------------------------------------------------------------- |
+| 読み取り専用の usecase からも `save` / `upsert` が呼べてしまう | Writer を型として届かせない（呼ぼうとするとコンパイルエラー） |
+| 認可（誰の操作か）の解決が usecase ごとに散らばる              | `subId → Actor` の解決を 1 箇所に集約する                     |
+| トランザクション境界の張り忘れ・`tx` の渡し忘れが静かに通る    | 境界を usecase の外に出し、渡し忘れ自体を発生させない         |
+
+「渡していないものは呼べない」をコンパイラに強制させることが目的である。
+
+### 層構造
+
+| モジュール                    | 責務                                                        | 知っていること      |
+| ----------------------------- | ----------------------------------------------------------- | ------------------- |
+| `usecases/capabilities`       | 権能型の定義（`Actor` / `PublicRead` / `Read` / `Write`）   | Domain のみ         |
+| `usecases/authorization`      | `subId → Actor` 解決の集約点（`withRead` / `withWrite`）    | `capabilities` のみ |
+| `infrastructure/capabilities` | 権能の組み立てとトランザクション境界（`getCapabilityDeps`） | DB・リポジトリ実装  |
+
+`usecases/capabilities` は型定義だけを持ち、DB を知らない。実体の組み立ては `infrastructure/capabilities` が担う（依存は常に内向き）。
+
+```typescript
+// usecases/capabilities — 権能型の定義
+export type Actor = {
+  readonly user: User;
+  readonly artist: Artist;
+};
+
+export type PublicReadCapabilities = {
+  artistProfiles: IArtistProfileReader;
+};
+
+export type ReadCapabilities = {
+  actor: Actor;
+  artistProfiles: IArtistProfileReader;
+};
+
+export type WriteCapabilities = {
+  actor: Actor;
+  artistProfiles: IArtistProfileReader & IArtistProfileWriter;
+};
+```
+
+```typescript
+// usecases/authorization — Actor 解決を通してから work を実行する
+export const withWriteCapabilities = async <T, E>(
+  deps: CapabilityDeps,
+  subId: string,
+  work: (caps: WriteCapabilities) => Promise<Result<T, E>>,
+): Promise<Result<T, E | ResolveActorError>> => {
+  const actor = await deps.resolveActor(subId);
+  if (!actor.ok) return actor;
+
+  return deps.runWithWriteCapabilities(actor.value, work);
+};
+```
+
+### 読み取り / 書き込みの権能をどう分けるか
+
+| 権能型                   | Actor | リポジトリ      | 使う場面                                       | 呼び出し方                                          |
+| ------------------------ | ----- | --------------- | ---------------------------------------------- | --------------------------------------------------- |
+| `PublicReadCapabilities` | なし  | Reader          | 認証不要の公開読み取り（公開プロフィール一覧） | `getCapabilityDeps().buildPublicReadCapabilities()` |
+| `ReadCapabilities`       | あり  | Reader          | 認証済み本人の読み取り                         | `withReadCapabilities(deps, subId, work)`           |
+| `WriteCapabilities`      | あり  | Reader & Writer | 認証済み本人の更新                             | `withWriteCapabilities(deps, subId, work)`          |
+
+**Reader / Writer をインターフェースレベルで分割する理由**は、読み取り専用 usecase に Writer を型として届かせないため。1 つの `IArtistProfileRepository` に読み書きを同居させると、「読むだけの usecase」でも書き込みメソッドが補完に出て呼べてしまい、レビューでしか防げない。分割しておけば、`ReadCapabilities` を受け取る usecase が `upsert` を呼んだ時点でコンパイルエラーになる。
+
+Actor の有無で型を分ける理由も同じで、`PublicReadCapabilities` には `actor` が無いため、公開エンドポイントの usecase が「本人だけが見られる情報」に手を伸ばせない。
+
+### usecase は必要な権能だけを受け取る
+
+usecase は権能型をそのまま受けず、`Pick` で自分が使う分だけに絞った型を宣言する。何に触るかがシグネチャだけで読める。
+
+```typescript
+// usecases/artistProfiles/getMyProfile
+type GetMyProfileCaps = Pick<ReadCapabilities, "actor" | "artistProfiles">;
+
+export const getMyProfile = async (
+  caps: GetMyProfileCaps,
+): Promise<Result<GetMyProfileOutput, never>> => {
+  const profile = await caps.artistProfiles.findByArtistId(
+    caps.actor.artist.getArtistId(),
+  );
+
+  return ok({
+    accountId: caps.actor.artist.getAccountId(),
+    profile: profile ? profile.toView() : null,
+  });
+};
+```
+
+`Pick` は「足りないもの」を防ぐが、「余分に渡されたもの」は構造的部分型のため素通りする。渡しすぎ自体をコンパイルエラーにする `defineUsecase` + `Exact` は**未導入**（後述の「移行中の状態」を参照）。現時点の規範は `Pick` による絞り込みである。
+
+### 新しい集約を足すとき
+
+1. `domain/{aggregate}/repositories` に `I{X}Reader` と `I{X}Writer` を**分けて**定義する
+2. その集約をどの権能で扱うかを決め、`usecases/capabilities` の該当型にフィールドを追加する
+   - 認証不要で読める → `PublicReadCapabilities` に Reader
+   - 本人だけが読める → `ReadCapabilities` に Reader
+   - 本人が更新する → `WriteCapabilities` に `Reader & Writer`
+3. `infrastructure/capabilities` の `buildPublicReadCapabilities` / `buildReadCapabilities` / 書き込み用リポジトリ組み立てに実体を追加する
+4. usecase 側は `Pick` で必要なフィールドだけを受け取る
+
+権能型に足さない限り usecase からは触れないため、「どの集約がどの経路で参照されるか」は `usecases/capabilities` を読めば把握できる。
+
+### トランザクション境界の置き場所
+
+> **境界は `runWithWriteCapabilities` が持ち、usecase は境界を意識しない。**
+
+`WriteCapabilities` のリポジトリは、権能を組み立てる時点でトランザクションにバインド済みである。usecase から見ると「ただのリポジトリ」で、`tx` を引き回す記述は一切現れない。
+
+```typescript
+// infrastructure/capabilities
+async runWithWriteCapabilities(actor, work) {
+  try {
+    return await db.transaction(async (tx) => {
+      const caps: WriteCapabilities = { actor, ...buildWriteScopedRepos(tx) };
+      const result = await work(caps);
+      if (!result.ok) throw new RollbackSignal(result);
+      return result;
+    });
+  } catch (error) {
+    if (error instanceof RollbackSignal) return error.result;
+    throw error;
+  }
+}
+```
+
+**業務エラーでもロールバックする**。usecase が `err` を返した場合、Drizzle の `transaction` は throw でしかロールバックしないため、`RollbackSignal` に結果を載せて境界の外で復元する。これにより「バリデーションで弾かれたのに途中まで書き込まれている」状態が構造上作れない。
+
+**リポジトリが `tx?` を引数で受け取る旧方式を廃止した理由**は、渡し忘れが静かに db 直参照になるため。`save(data, tx)` の `tx` を書き忘れてもコンパイルは通り、テストも通り、本番で「トランザクション外の書き込み」だけが残る。権能側でバインドしてしまえば、渡し忘れという操作自体が存在しない。
+
+並行更新（LWW / 楽観的ロック）の方針は [database/concurrency.md](./database/concurrency.md) を参照。
+
+### 失敗の表現（Result 境界）
+
+Value Object と usecase は **throw せず `Result<T, E>` を返す**。エントリポイントが `ok` を判別して分岐する。
+
+```typescript
+const result = await withWriteCapabilities(
+  getCapabilityDeps(),
+  auth0User.sub,
+  (caps) => saveMyProfile(caps, body),
+);
+
+if (!result.ok) {
+  return handleAppError(result.error, c);
+}
+
+return c.json(result.value);
+```
+
+`Result` を採るのは、**失敗の種類がシグネチャに現れる**ためである。`Promise<Result<Output, ArtistProfileContentError>>` を見れば、何で失敗しうるかが呼び出し側に伝わり、errorMap への追加漏れが型で検出できる。
+
+throw が残るのは次の 3 経路で、いずれも `.onError(handleAppError)` が受ける。
+
+| 経路                                    | 理由                                                 |
+| --------------------------------------- | ---------------------------------------------------- |
+| ミドルウェア（`requireAuthMiddleware`） | usecase に到達する前の遮断で、返り値の経路を持たない |
+| `validateRequest`（zod フック）         | Hono のバリデータフックの契約が throw                |
+| 未知の例外（DB 接続断など）             | 想定外の失敗は握りつぶさず 500 として観測する        |
+
+`handleAppError` は直接呼び出し（Result 経路）と `onError`（throw 経路）の両方で同じ実体を使うため、どちらを通ってもログとレスポンスの形は揃う。詳細は [error-handling/README.md](./error-handling/README.md)。
+
+### 移行中の状態
+
+capabilities は **artistProfiles 集約にのみ**適用済みで、`getContainer` + `txRunner` の旧経路が並存している。
+
+| 対象                                                                             | 現在           | 方針     |
+| -------------------------------------------------------------------------------- | -------------- | -------- |
+| `artistProfiles` の usecase（get / save / publish / 公開一覧）                   | 権能モデル     | 規範     |
+| `getMe` / `createUser` / `updateMyEmail` / `updateMyAccountId` / `listLinkTypes` | `getContainer` | 移行対象 |
+| `defineUsecase` + `Exact`（権能の渡しすぎを型で防ぐファクトリ）                  | 未導入         | 導入予定 |
+
+**新規実装は権能モデルで書く。** `getContainer` は移行が完了するまで残る互換経路であり、新しい usecase の参照先にはしない。
+
+`getMe` は「Actor が解決できないこと（未登録）が正常系」で、`withReadCapabilities` に載せると 404 に化ける。`createUser` は「Actor がまだ存在しない」状態から始まる。この 2 本を権能モデルの内側に入れるか、明示的な例外として外に置くかは設計判断が未確定であり、確定後にこの節へ「なぜ例外なのか」を追記する。
 
 ---
 
@@ -649,8 +841,42 @@ HTTPリクエスト/レスポンスの処理を担当。
 
 ビジネスロジックを実装。「集約を組み立てる → 永続化する」の2ステップに見える。ドメイン判定は一切書かず、fetch / call / save の配線だけを担当する。ドメインルールはDomain Service → Policyに押し込まれている。
 
+Usecase が受け取る依存は[権能（capabilities）モデル](#権能capabilitiesモデル)で型付けし、失敗は `Result<T, E>` で返す。トランザクション境界は権能の組み立て側が持つため、usecase には `tx` の引き回しも `txRunner.run` も現れない。
+
 ```typescript
-// usecases/users/createUser/index.ts
+// usecases/artistProfiles/saveMyProfile/index.ts
+type SaveMyProfileCaps = Pick<WriteCapabilities, "actor" | "artistProfiles">;
+
+export const saveMyProfile = async (
+  caps: SaveMyProfileCaps,
+  content: SaveMyProfileInput,
+): Promise<Result<SaveMyProfileOutput, SaveMyProfileError>> => {
+  const artistId = caps.actor.artist.getArtistId();
+  const existing = await caps.artistProfiles.findByArtistId(artistId);
+
+  const profile = existing
+    ? reviseArtistProfile({
+        id: existing.getId(),
+        artistId,
+        published: existing.isPublished(),
+        ...content,
+      })
+    : createArtistProfile({ artistId, ...content }); // 生成の可否判定は Factory → VO に委譲
+  if (!profile.ok) return err(profile.error);
+
+  const saved = await caps.artistProfiles.upsert(profile.value.toPersistence());
+
+  return ok({
+    accountId: caps.actor.artist.getAccountId(),
+    profile: saved.toView(),
+  });
+};
+```
+
+次は移行前の旧経路（`getContainer` + `txRunner`）の形。usecase 自身がトランザクション境界を張り、失敗は throw で表す。**新規実装ではこの形を使わない。**
+
+```typescript
+// usecases/users/createUser/index.ts（移行対象）
 export const createUserUseCase = async (
   input: CreateUserInput,
   deps: CreateUserDeps,
@@ -770,9 +996,11 @@ return { userId: saved.getId() }; // 出力
 > **集約境界 ≠ トランザクション境界**
 
 - **集約境界**: ドメインモデル上の不変条件の境界（Entity/VOの世界）
-- **トランザクション境界**: 永続化の原子性の境界（Usecase/Repositoryの世界）
+- **トランザクション境界**: 永続化の原子性の境界（権能の組み立て側の世界）
 
-UserとArtistが別集約であっても、「新規登録時には原子的に作られなければならない」という業務要件があれば、Usecase層が両者にまたがるトランザクションを張ることは正当である。
+UserとArtistが別集約であっても、「新規登録時には原子的に作られなければならない」という業務要件があれば、両者にまたがるトランザクションを張ることは正当である。
+
+境界を**どこに置くか**は権能モデルで確定している。`runWithWriteCapabilities` が境界を持ち、そこで組み立てられた `WriteCapabilities` のリポジトリはすべて同じトランザクションにバインドされる。usecase は「原子的に書かれること」を前提にしてよく、境界を張る責務は負わない。
 
 ### Atomic Designとの類似
 
