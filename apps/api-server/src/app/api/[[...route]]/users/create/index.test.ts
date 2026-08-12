@@ -5,28 +5,24 @@ import { handleAppError } from "../../../../../errorMap";
 import { reconstructUser } from "../../../../../domain/users/factories";
 import { reconstructArtist } from "../../../../../domain/artists/factories";
 
-const mockUserRepository = {
+const mockUsers = {
   save: vi.fn(),
   findBySub: vi.fn(),
   updateEmail: vi.fn(),
 };
 
-const mockArtistRepository = {
+const mockArtists = {
   save: vi.fn(),
   findByUserId: vi.fn(),
   findByAccountId: vi.fn(),
   updateAccountId: vi.fn(),
 };
 
-const mockTxRunner = {
-  run: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn({})),
-};
-
-vi.mock("../../../../../infrastructure/container", () => ({
-  getContainer: () => ({
-    userRepository: mockUserRepository,
-    artistRepository: mockArtistRepository,
-    txRunner: mockTxRunner,
+vi.mock("../../../../../infrastructure/capabilities", () => ({
+  getCapabilityDeps: () => ({
+    runWithRegistrationCapabilities: (
+      work: (caps: unknown) => Promise<unknown>,
+    ) => work({ users: mockUsers, artists: mockArtists }),
   }),
 }));
 
@@ -201,10 +197,10 @@ describe("User Create API", () => {
 
     beforeEach(() => {
       vi.clearAllMocks();
-      mockUserRepository.findBySub.mockResolvedValue(null);
-      mockArtistRepository.findByAccountId.mockResolvedValue(null);
-      mockUserRepository.save.mockResolvedValue(undefined);
-      mockArtistRepository.save.mockResolvedValue(undefined);
+      mockUsers.findBySub.mockResolvedValue(null);
+      mockArtists.findByAccountId.mockResolvedValue(null);
+      mockUsers.save.mockResolvedValue(undefined);
+      mockArtists.save.mockResolvedValue(undefined);
     });
 
     it("新規登録に成功すると201とuserId/artistIdを返す", async () => {
@@ -217,7 +213,7 @@ describe("User Create API", () => {
     });
 
     it("既に登録済みなら409を返し、保存しない", async () => {
-      mockUserRepository.findBySub.mockResolvedValue(
+      mockUsers.findBySub.mockResolvedValue(
         reconstructUser({
           id: "user-1",
           subId: "auth0|123",
@@ -231,11 +227,11 @@ describe("User Create API", () => {
       expect(await res.json()).toStrictEqual({
         error: "User already registered",
       });
-      expect(mockUserRepository.save).not.toHaveBeenCalled();
+      expect(mockUsers.save).not.toHaveBeenCalled();
     });
 
     it("accountIdが使用済みなら409と衝突したaccountIdを含むメッセージを返す", async () => {
-      mockArtistRepository.findByAccountId.mockResolvedValue(
+      mockArtists.findByAccountId.mockResolvedValue(
         reconstructArtist({
           artistId: "artist-1",
           accountId: validPayload.accountId,
@@ -249,7 +245,7 @@ describe("User Create API", () => {
 
       expect(res.status).toBe(409);
       expect(body.error).toContain(validPayload.accountId);
-      expect(mockArtistRepository.save).not.toHaveBeenCalled();
+      expect(mockArtists.save).not.toHaveBeenCalled();
     });
 
     it("accountIdがVOの形式に反する場合は422を返し、保存しない", async () => {
@@ -262,7 +258,7 @@ describe("User Create API", () => {
       expect(await res.json()).toStrictEqual({
         error: "Invalid accountId format",
       });
-      expect(mockArtistRepository.save).not.toHaveBeenCalled();
+      expect(mockArtists.save).not.toHaveBeenCalled();
     });
   });
 });

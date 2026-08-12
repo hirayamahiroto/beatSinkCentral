@@ -27,6 +27,27 @@ vi.mock("../../../../../infrastructure/container", () => ({
   }),
 }));
 
+const mockResolveActorState = vi.fn();
+
+vi.mock("../../../../../infrastructure/capabilities", () => ({
+  getCapabilityDeps: () => ({
+    resolveActorState: (subId: string) => mockResolveActorState(subId),
+  }),
+}));
+
+const user = reconstructUser({
+  id: "user-1",
+  subId: "auth0|123",
+  email: "test@example.com",
+});
+
+const artist = reconstructArtist({
+  artistId: "artist-1",
+  accountId: "user_123",
+  ownerUserId: "user-1",
+  profile: { name: "Test" },
+});
+
 const createAppWithAuth = (auth0User: AuthenticatedUser) => {
   const app = new Hono();
   app.use("*", async (c, next) => {
@@ -42,8 +63,8 @@ describe("User Me API", () => {
     vi.clearAllMocks();
   });
 
-  it("未登録ユーザーの場合はregistered:falseを返す", async () => {
-    mockUserRepository.findBySub.mockResolvedValue(null);
+  it("未登録ユーザーの場合は404にせずregistered:falseを返す", async () => {
+    mockResolveActorState.mockResolvedValue({ status: "unregistered" });
     const app = createAppWithAuth({ sub: "auth0|unknown" });
 
     const res = await app.request("/", { method: "GET" });
@@ -53,14 +74,7 @@ describe("User Me API", () => {
   });
 
   it("登録済みでartist未紐付けの場合はartist:nullを返す", async () => {
-    mockUserRepository.findBySub.mockResolvedValue(
-      reconstructUser({
-        id: "user-1",
-        subId: "auth0|123",
-        email: "test@example.com",
-      }),
-    );
-    mockArtistRepository.findByUserId.mockResolvedValue(null);
+    mockResolveActorState.mockResolvedValue({ status: "userOnly", user });
     const app = createAppWithAuth({ sub: "auth0|123" });
 
     const res = await app.request("/", { method: "GET" });
@@ -75,21 +89,10 @@ describe("User Me API", () => {
   });
 
   it("登録済みでartistが紐付いている場合はartist情報を返す", async () => {
-    mockUserRepository.findBySub.mockResolvedValue(
-      reconstructUser({
-        id: "user-1",
-        subId: "auth0|123",
-        email: "test@example.com",
-      }),
-    );
-    mockArtistRepository.findByUserId.mockResolvedValue(
-      reconstructArtist({
-        artistId: "artist-1",
-        accountId: "user_123",
-        ownerUserId: "user-1",
-        profile: { name: "Test" },
-      }),
-    );
+    mockResolveActorState.mockResolvedValue({
+      status: "complete",
+      actor: { user, artist },
+    });
     const app = createAppWithAuth({ sub: "auth0|123" });
 
     const res = await app.request("/", { method: "GET" });

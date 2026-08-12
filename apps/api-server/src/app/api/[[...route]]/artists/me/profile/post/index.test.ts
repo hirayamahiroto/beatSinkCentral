@@ -4,8 +4,6 @@ import { reconstructUser } from "../../../../../../../domain/users/factories";
 import { reconstructArtist } from "../../../../../../../domain/artists/factories";
 import { reconstructArtistProfile } from "../../../../../../../domain/artistProfiles/factories";
 import type { ArtistProfilePersistenceData } from "../../../../../../../domain/artistProfiles/entities";
-import { ok, err } from "../../../../../../../utils/result";
-import { createUserNotFoundError } from "../../../../../../../domain/users/errors/userNotFound";
 import saveMyProfileRoute from "./index";
 
 const actor = {
@@ -29,11 +27,11 @@ const mockArtistProfiles = {
   setPublished: vi.fn(),
 };
 
-const mockResolveActor = vi.fn();
+const mockResolveActorState = vi.fn();
 
 vi.mock("../../../../../../../infrastructure/capabilities", () => ({
   getCapabilityDeps: () => ({
-    resolveActor: (subId: string) => mockResolveActor(subId),
+    resolveActorState: (subId: string) => mockResolveActorState(subId),
     buildReadCapabilities: (a: unknown) => ({
       actor: a,
       artistProfiles: mockArtistProfiles,
@@ -65,7 +63,7 @@ const request = (body: unknown) =>
 describe("POST /artists/me/profile", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveActor.mockResolvedValue(ok(actor));
+    mockResolveActorState.mockResolvedValue({ status: "complete", actor });
     mockArtistProfiles.findByArtistId.mockResolvedValue(null);
     mockArtistProfiles.upsert.mockImplementation(
       async (data: ArtistProfilePersistenceData) =>
@@ -84,7 +82,7 @@ describe("POST /artists/me/profile", () => {
   });
 
   it("actor が解決できなければ 404 を返し、保存しない", async () => {
-    mockResolveActor.mockResolvedValue(err(createUserNotFoundError()));
+    mockResolveActorState.mockResolvedValue({ status: "unregistered" });
 
     const res = await request({ name: "Taro" });
 

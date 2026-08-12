@@ -3,8 +3,6 @@ import { Hono } from "hono";
 import { reconstructUser } from "../../../../../../../../domain/users/factories";
 import { reconstructArtist } from "../../../../../../../../domain/artists/factories";
 import { reconstructArtistProfile } from "../../../../../../../../domain/artistProfiles/factories";
-import { ok, err } from "../../../../../../../../utils/result";
-import { createUserNotFoundError } from "../../../../../../../../domain/users/errors/userNotFound";
 import publishMyProfile from "./index";
 
 const actor = {
@@ -28,11 +26,11 @@ const mockArtistProfiles = {
   setPublished: vi.fn(),
 };
 
-const mockResolveActor = vi.fn();
+const mockResolveActorState = vi.fn();
 
 vi.mock("../../../../../../../../infrastructure/capabilities", () => ({
   getCapabilityDeps: () => ({
-    resolveActor: (subId: string) => mockResolveActor(subId),
+    resolveActorState: (subId: string) => mockResolveActorState(subId),
     runWithWriteCapabilities: (
       a: unknown,
       work: (caps: unknown) => Promise<unknown>,
@@ -72,7 +70,7 @@ const publishableProfile = () =>
 describe("POST /artists/me/profile/publish", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveActor.mockResolvedValue(ok(actor));
+    mockResolveActorState.mockResolvedValue({ status: "complete", actor });
   });
 
   it("最小核が揃ったプロフィールを公開し published:true を返す", async () => {
@@ -116,7 +114,7 @@ describe("POST /artists/me/profile/publish", () => {
   });
 
   it("actor が解決できなければ 404 を返し、プロフィールを読まない", async () => {
-    mockResolveActor.mockResolvedValue(err(createUserNotFoundError()));
+    mockResolveActorState.mockResolvedValue({ status: "unregistered" });
 
     const res = await request({ published: true });
 

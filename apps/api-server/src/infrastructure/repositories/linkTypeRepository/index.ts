@@ -3,14 +3,15 @@ import {
   DatabaseClient,
   linkTypesTable,
 } from "../../../../../../packages/database/src/utils/createClient";
-import type { ILinkTypeRepository } from "../../../domain/linkTypes/repositories";
+import type { ILinkTypeReader } from "../../../domain/linkTypes/repositories";
 import type { LinkTypeView } from "../../../domain/linkTypes/entities";
+import type { TransactionContext } from "../../transaction";
 
-export const createLinkTypeRepository = (
-  db: DatabaseClient,
-): ILinkTypeRepository => ({
+type Executor = DatabaseClient | TransactionContext;
+
+export const createLinkTypeReader = (executor: Executor): ILinkTypeReader => ({
   async findAll(): Promise<LinkTypeView[]> {
-    return db
+    return executor
       .select({ type: linkTypesTable.code, label: linkTypesTable.label })
       .from(linkTypesTable)
       .orderBy(asc(linkTypesTable.id));

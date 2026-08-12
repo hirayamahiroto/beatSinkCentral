@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createUserRepository } from "./index";
+import {
+  createUserReader,
+  createUserRepository,
+  createUserWriter,
+} from "./index";
 import type { IUserRepository } from "../../../domain/users/repositories";
 
 const mockDb = {
@@ -79,5 +83,50 @@ describe("createUserRepository", () => {
       expect(mockDb.set).toHaveBeenCalledWith({ email: "new@example.com" });
       expect(result.toPersistence()).toStrictEqual(row);
     });
+  });
+});
+
+describe("createUserReader / createUserWriter", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("生成時に渡した executor で読み取る", async () => {
+    const row = {
+      id: "550e8400-e29b-41d4-a716-446655440000",
+      subId: "auth0|123456789",
+      email: "test@example.com",
+    };
+    const tx = {
+      select: vi.fn().mockReturnThis(),
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([row]),
+    };
+
+    const result = await createUserReader(tx as never).findBySub(row.subId);
+
+    expect(tx.select).toHaveBeenCalledTimes(1);
+    expect(mockDb.select).not.toHaveBeenCalled();
+    expect(result?.toPersistence()).toStrictEqual(row);
+  });
+
+  it("生成時に渡した executor で書き込む", async () => {
+    const row = {
+      id: "550e8400-e29b-41d4-a716-446655440000",
+      subId: "auth0|123456789",
+      email: "test@example.com",
+    };
+    const tx = {
+      insert: vi.fn().mockReturnThis(),
+      values: vi.fn().mockReturnThis(),
+      returning: vi.fn().mockResolvedValue([row]),
+    };
+
+    const result = await createUserWriter(tx as never).save(row);
+
+    expect(tx.insert).toHaveBeenCalledTimes(1);
+    expect(mockDb.insert).not.toHaveBeenCalled();
+    expect(result.toPersistence()).toStrictEqual(row);
   });
 });

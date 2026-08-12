@@ -5,37 +5,27 @@ import {
 } from "../../../../../../packages/database/src/utils/createClient";
 import { User } from "../../../domain/users/entities";
 import {
+  IUserReader,
   IUserRepository,
+  IUserWriter,
   UserSaveData,
   UserUpdateEmailData,
 } from "../../../domain/users/repositories";
 import { reconstructUser } from "../../../domain/users/factories";
 import type { TransactionContext } from "../../transaction";
 
-export const createUserRepository = (db: DatabaseClient): IUserRepository => ({
-  async save(data: UserSaveData, tx?: TransactionContext): Promise<User> {
-    const executor = tx ?? db;
-    const [result] = await executor.insert(usersTable).values(data).returning({
-      id: usersTable.id,
-      subId: usersTable.subId,
-      email: usersTable.email,
-    });
+type Executor = DatabaseClient | TransactionContext;
 
-    return reconstructUser({
-      id: result.id,
-      subId: result.subId,
-      email: result.email,
-    });
-  },
+const userColumns = {
+  id: usersTable.id,
+  subId: usersTable.subId,
+  email: usersTable.email,
+};
 
-  async findBySub(sub: string, tx?: TransactionContext): Promise<User | null> {
-    const executor = tx ?? db;
+export const createUserReader = (executor: Executor): IUserReader => ({
+  async findBySub(sub: string): Promise<User | null> {
     const results = await executor
-      .select({
-        id: usersTable.id,
-        subId: usersTable.subId,
-        email: usersTable.email,
-      })
+      .select(userColumns)
       .from(usersTable)
       .where(eq(usersTable.subId, sub))
       .limit(1);
@@ -51,21 +41,14 @@ export const createUserRepository = (db: DatabaseClient): IUserRepository => ({
       email: row.email,
     });
   },
+});
 
-  async updateEmail(
-    data: UserUpdateEmailData,
-    tx?: TransactionContext,
-  ): Promise<User> {
-    const executor = tx ?? db;
+export const createUserWriter = (executor: Executor): IUserWriter => ({
+  async save(data: UserSaveData): Promise<User> {
     const [result] = await executor
-      .update(usersTable)
-      .set({ email: data.email })
-      .where(eq(usersTable.id, data.id))
-      .returning({
-        id: usersTable.id,
-        subId: usersTable.subId,
-        email: usersTable.email,
-      });
+      .insert(usersTable)
+      .values(data)
+      .returning(userColumns);
 
     return reconstructUser({
       id: result.id,
@@ -73,4 +56,24 @@ export const createUserRepository = (db: DatabaseClient): IUserRepository => ({
       email: result.email,
     });
   },
+
+  async updateEmail(data: UserUpdateEmailData): Promise<User> {
+    const [result] = await executor
+      .update(usersTable)
+      .set({ email: data.email })
+      .where(eq(usersTable.id, data.id))
+      .returning(userColumns);
+
+    return reconstructUser({
+      id: result.id,
+      subId: result.subId,
+      email: result.email,
+    });
+  },
+});
+
+export const createUserRepository = (db: DatabaseClient): IUserRepository => ({
+  save: (data, tx) => createUserWriter(tx ?? db).save(data),
+  findBySub: (sub, tx) => createUserReader(tx ?? db).findBySub(sub),
+  updateEmail: (data, tx) => createUserWriter(tx ?? db).updateEmail(data),
 });

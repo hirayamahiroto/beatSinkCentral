@@ -62,13 +62,16 @@ apps/api-server/src/
 │   └── services/             # Domain Service（複数集約をまたぐロジック）
 │
 ├── usecases/                 # ユースケース層（アプリケーション層）
-│   └── users/                # CreateUserUseCase
+│   ├── capabilities/         # 権能型の定義（用途ごと）
+│   ├── authorization/        # 権能の受け渡しと Actor 解決の畳み込み
+│   └── users/                # createUser / getMe / updateMyEmail ...
 │
 ├── infrastructure/           # インフラストラクチャ層
 │   ├── auth0/                # Auth0 クライアント
-│   ├── container/            # Composition Root（依存関係の組み立て）
+│   ├── capabilities/         # 権能の組み立て（Composition Root）
+│   ├── container/            # 移行途上の残骸（#193 で廃止）
 │   ├── database/             # データベースクライアント
-│   └── repositories/         # リポジトリ実装
+│   └── repositories/         # リポジトリ実装（Reader / Writer）
 │
 ├── middlewares/              # ミドルウェア
 │   ├── auth0/                # Auth0 認証・メール検証
@@ -688,46 +691,45 @@ HTTPリクエスト/レスポンスの処理を担当。
 
 ビジネスロジックを実装。「集約を組み立てる → 永続化する」の2ステップに見える。ドメイン判定は一切書かず、fetch / call / save の配線だけを担当する。ドメインルールはDomain Service → Policyに押し込まれている。
 
+usecase は**権能（capabilities）を第1引数で受け取る**。トランザクション境界と Actor の解決は権能を組み立てる側（`usecases/authorization`）が持ち、usecase は渡された権能だけを使う。詳細は「認可と権能（capabilities）」を参照。
+
 ```typescript
 // usecases/users/createUser/index.ts
-export const createUserUseCase = async (
+type CreateUserCaps = Pick<RegistrationCapabilities, "users" | "artists">;
+
+export const createUser = async (
+  caps: CreateUserCaps,
   input: CreateUserInput,
-  deps: CreateUserDeps,
-): Promise<CreateUserOutput> => {
-  // 1. 集約を組み立てる（既登録チェックはDomain Service内のpolicyが行う）
-  const aggregate = await registerUser(input, deps.userRepository);
+): Promise<Result<CreateUserOutput, CreateUserError>> => {
+  const [userIfRegistered, artistIfAccountIdTaken] = await Promise.all([
+    caps.users.findBySub(input.subId),
+    caps.artists.findByAccountId(input.accountId),
+  ]);
 
-  // 2. トランザクション境界で永続化
-  return persistUserAggregate(aggregate, deps);
+  const registered = registerNewUser(
+    input,
+    userIfRegistered,
+    artistIfAccountIdTaken,
+  );
+  if (!registered.ok) return registered;
+
+  const { user, artist } = registered.value;
+  await caps.users.save(user.toPersistence());
+  await caps.artists.save(artist.toPersistence());
+
+  return ok({ userId: user.getId(), artistId: artist.getArtistId() });
 };
-
-const registerUser = async (
-  input: CreateUserInput,
-  userRepository: IUserRepository,
-): Promise<RegisterNewUserResult> => {
-  const userIfRegistered = await userRepository.findBySub(input.subId);
-  return registerNewUser(input, userIfRegistered); // Domain Serviceに委譲
-};
-
-const persistUserAggregate = async (
-  { user, artist }: RegisterNewUserResult,
-  deps: CreateUserDeps,
-): Promise<CreateUserOutput> =>
-  deps.txRunner.run(async (tx) => {
-    await deps.userRepository.save(user.toPersistence(), tx);
-    await deps.artistRepository.save(artist.toPersistence(), tx);
-    return { userId: user.getId(), artistId: artist.getArtistId() };
-  });
 ```
 
 **役割分担の明確化**:
 
-| 層             | このフローで担当していること                                          |
-| -------------- | --------------------------------------------------------------------- |
-| Policy         | 「二重登録できない」という**単一の不変条件判定**                      |
-| Domain Service | policy呼び出し + User / Artistの組み立て（関連付け含む）              |
-| Usecase        | 既存UserのFetch、Domain Service呼び出し、トランザクション境界、永続化 |
-| Repository     | 各Entityの個別永続化                                                  |
+| 層             | このフローで担当していること                               |
+| -------------- | ---------------------------------------------------------- |
+| Policy         | 「二重登録できない」という**単一の不変条件判定**           |
+| Domain Service | policy呼び出し + User / Artistの組み立て（関連付け含む）   |
+| 権能の組み立て | Actor の解決、トランザクション境界、権能へのリポジトリ束ね |
+| Usecase        | 既存UserのFetch、Domain Service呼び出し、永続化の呼び出し  |
+| Repository     | 各Entityの個別永続化                                       |
 
 ### リポジトリ層
 
@@ -735,35 +737,49 @@ const persistUserAggregate = async (
 
 #### インターフェース (`domain/{object}/repositories/`)
 
-```typescript
-export type UserSaveData = {
-  id: string;
-  subId: string;
-  email: string;
-};
+インターフェースは**読み取り（Reader）と書き込み（Writer）に分割**する。読み取りだけの usecase に書き込み手段を渡さないため。
 
-export interface IUserRepository {
-  save(data: UserSaveData): Promise<User>;
+```typescript
+export interface IUserReader {
   findBySub(sub: string): Promise<User | null>;
 }
+
+export interface IUserWriter {
+  save(data: UserSaveData): Promise<User>;
+  updateEmail(data: UserUpdateEmailData): Promise<User>;
+}
 ```
+
+メソッドに `tx?: TransactionContext` 引数は置かない。**executor（db / トランザクション）は生成時に注入する**。トランザクション内で動くかどうかは権能を組み立てる側の決定であり、usecase が引数で渡す情報ではない。
 
 #### 実装 (`infrastructure/repositories/{object}/`)
 
 Repository実装は常に`reconstructUser`（factory）を使ってDBレコードをEntityに変換する。
 
 ```typescript
-export const createUserRepository = (db: DatabaseClient): IUserRepository => ({
-  async save(data: UserSaveData): Promise<User> {
-    const [result] = await db.insert(usersTable).values(data).returning({ ... });
-    return reconstructUser(result);
-  },
+type Executor = DatabaseClient | TransactionContext;
 
+export const createUserReader = (executor: Executor): IUserReader => ({
   async findBySub(sub: string): Promise<User | null> {
-    const results = await db.select(...).from(usersTable).where(eq(usersTable.subId, sub)).limit(1);
+    const results = await executor
+      .select(userColumns)
+      .from(usersTable)
+      .where(eq(usersTable.subId, sub))
+      .limit(1);
     if (results.length === 0) return null;
     return reconstructUser(results[0]);
   },
+});
+
+export const createUserWriter = (executor: Executor): IUserWriter => ({
+  async save(data: UserSaveData): Promise<User> {
+    const [result] = await executor
+      .insert(usersTable)
+      .values(data)
+      .returning(userColumns);
+    return reconstructUser(result);
+  },
+  // ...
 });
 ```
 
@@ -772,6 +788,7 @@ export const createUserRepository = (db: DatabaseClient): IUserRepository => ({
 1. **依存関係の逆転（DIP）**: インフラ層がドメイン層に依存する
 2. **テスト容易性**: UseCaseテスト時にRepositoryをモック可能
 3. **交換可能性**: DB変更時もドメイン層は影響なし
+4. **権能の最小化**: 読み取りしかしない usecase に Writer が渡らない
 
 ### インフラストラクチャ層 (`infrastructure/`)
 
@@ -779,6 +796,72 @@ export const createUserRepository = (db: DatabaseClient): IUserRepository => ({
 
 - Auth0 クライアント設定
 - リポジトリ実装（データベースアクセス）
+- 権能（capabilities）の組み立てとトランザクション境界
+
+---
+
+## 認可と権能（capabilities）
+
+usecase にリポジトリ一式と `subId` を渡す形は取らない。**「誰として、何ができるか」を型で束ねた権能（capabilities）を渡す**。Actor の解決・認可・トランザクション境界は usecase の外側で完結させ、usecase は受け取った権能だけを使う。
+
+### 型の軸は用途、中身は集約ごとの Reader / Writer
+
+権能型は**用途（どの経路で呼ばれるか）ごとに 1 つ**定義する。中身は集約ごとの Reader / Writer を必要な分だけ持つ。
+
+| 権能型                     | Actor    | 境界             | 用途                                       |
+| -------------------------- | -------- | ---------------- | ------------------------------------------ |
+| `PublicReadCapabilities`   | 不要     | なし             | 未認証で読める公開データ                   |
+| `IdentityCapabilities`     | 解決結果 | なし             | 自分の登録状態そのものを返す               |
+| `ReadCapabilities`         | 必須     | なし             | 認証済みユーザー自身のデータの読み取り     |
+| `WriteCapabilities`        | 必須     | トランザクション | 認証済みユーザー自身のデータの更新         |
+| `RegistrationCapabilities` | 不在     | トランザクション | 登録（Actor が原理的に存在しない書き込み） |
+
+集約が増えたときは、対応する用途の権能型にその集約の Reader / Writer を足す。**usecase 側は `Pick` で自分が使う権能だけに絞る**。これにより「渡しすぎ」がシグネチャに現れる。
+
+```typescript
+type SaveMyProfileCaps = Pick<WriteCapabilities, "actor" | "artistProfiles">;
+type ListLinkTypesCaps = Pick<PublicReadCapabilities, "linkTypes">;
+```
+
+`defineUsecase` / `Exact` のような「余分な権能をコンパイルエラーにする」仕掛けは**採用しない**。`Pick` と明示的な `Caps` 型で意図は読み取れるため、型ユーティリティの追加コストに見合わない。
+
+### Actor の解決は状態ユニオンで表す
+
+`resolveActorState` は Actor 解決の結果を**状態ユニオン**で返す。「失敗」に畳むかどうかは呼ぶ側の用途が決める。
+
+```typescript
+export type ActorResolution =
+  | { status: "unregistered" }
+  | { status: "userOnly"; user: User }
+  | { status: "complete"; actor: Actor };
+```
+
+- 認可が必要な経路（`withReadCapabilities` / `withWriteCapabilities`）は `toActor` で `Result<Actor, ResolveActorError>` に畳み、`unregistered` を 404、`userOnly` を 404 として扱う
+- `GET /users/me` は**未登録が正常系**（オンボーディング動線）。`withIdentityCapabilities` で解決状態をそのまま受け取り、`registered: false` を 200 で返す
+
+「未登録を 404 にするか 200 で返すか」は用途ごとの判断であり、解決処理自体には持たせない。畳み込み（`toActor`）は純粋関数として `usecases/authorization` に置く。
+
+### 経路の入り口は 5 つ
+
+エントリポイントは権能を自分で組み立てず、`usecases/authorization` のヘルパを通す。
+
+```typescript
+getCapabilityDeps().buildPublicReadCapabilities(); // 公開読み取り
+withIdentityCapabilities(deps, subId, work); // 登録状態の照会
+withReadCapabilities(deps, subId, work); // 認証済み読み取り
+withWriteCapabilities(deps, subId, work); // 認証済み書き込み（トランザクション）
+withRegistrationCapabilities(deps, work); // 登録（トランザクション、Actor 不要）
+```
+
+`withRegistrationCapabilities` は、並行登録で `accountId` の一意制約違反が例外として出た場合に `AccountIdAlreadyTakenError` の `err` へ変換する（詳細は [並行更新ポリシー](./database/concurrency.md)）。
+
+### トランザクション境界
+
+`runWithWriteCapabilities` / `runWithRegistrationCapabilities` が境界を張り、権能に束ねる executor をトランザクションに差し替える。Drizzle のトランザクションは throw でしかロールバックしないため、業務エラー（`err`）は内部シグナルに載せて境界の外で復元する。
+
+### 移行途上の状態
+
+`getContainer`（リポジトリ一式 + `txRunner`）は `updateMyEmail` / `updateMyAccountId` のためだけに残っている**移行途上の残骸**であり、新規実装で参照してはならない。この 2 本の移行と `getContainer` / `IUserRepository` / `IArtistRepository` / `ITransactionRunner` の廃止は [#193](https://github.com/hirayamahiroto/beatSinkCentral/issues/193) で行う。
 
 ---
 

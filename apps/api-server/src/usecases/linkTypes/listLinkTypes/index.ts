@@ -1,17 +1,17 @@
-import type { ILinkTypeRepository } from "../../../domain/linkTypes/repositories";
 import type { LinkTypeView } from "../../../domain/linkTypes/entities";
+import type { PublicReadCapabilities } from "../../capabilities";
+import { type Result, ok } from "../../../utils/result";
 
 export type ListLinkTypesOutput = {
   linkTypes: LinkTypeView[];
 };
 
-export type ListLinkTypesDeps = {
-  linkTypeRepository: ILinkTypeRepository;
-};
+type ListLinkTypesCaps = Pick<PublicReadCapabilities, "linkTypes">;
 
-export const listLinkTypesUseCase = async (
-  deps: ListLinkTypesDeps,
-): Promise<ListLinkTypesOutput> => {
-  const linkTypes = await deps.linkTypeRepository.findAll();
-  return { linkTypes };
+export const listLinkTypes = async (
+  caps: ListLinkTypesCaps,
+): Promise<Result<ListLinkTypesOutput, never>> => {
+  const linkTypes = await caps.linkTypes.findAll();
+
+  return ok({ linkTypes });
 };

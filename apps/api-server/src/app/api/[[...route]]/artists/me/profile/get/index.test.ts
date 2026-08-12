@@ -3,8 +3,6 @@ import { Hono } from "hono";
 import { reconstructUser } from "../../../../../../../domain/users/factories";
 import { reconstructArtist } from "../../../../../../../domain/artists/factories";
 import { reconstructArtistProfile } from "../../../../../../../domain/artistProfiles/factories";
-import { ok, err } from "../../../../../../../utils/result";
-import { createUserNotFoundError } from "../../../../../../../domain/users/errors/userNotFound";
 import getMyProfile from "./index";
 
 const actor = {
@@ -26,11 +24,11 @@ const mockArtistProfiles = {
   findPublishedByAccountId: vi.fn(),
 };
 
-const mockResolveActor = vi.fn();
+const mockResolveActorState = vi.fn();
 
 vi.mock("../../../../../../../infrastructure/capabilities", () => ({
   getCapabilityDeps: () => ({
-    resolveActor: (subId: string) => mockResolveActor(subId),
+    resolveActorState: (subId: string) => mockResolveActorState(subId),
     buildReadCapabilities: (a: unknown) => ({
       actor: a,
       artistProfiles: mockArtistProfiles,
@@ -51,7 +49,7 @@ const createApp = (sub: string) => {
 describe("GET /artists/me/profile", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveActor.mockResolvedValue(ok(actor));
+    mockResolveActorState.mockResolvedValue({ status: "complete", actor });
   });
 
   it("プロフィール未作成なら profile:null を返す", async () => {
@@ -86,7 +84,7 @@ describe("GET /artists/me/profile", () => {
   });
 
   it("actor が解決できなければ 404 を返し、プロフィールを読まない", async () => {
-    mockResolveActor.mockResolvedValue(err(createUserNotFoundError()));
+    mockResolveActorState.mockResolvedValue({ status: "unregistered" });
 
     const res = await createApp("auth0|123").request("/", { method: "GET" });
 

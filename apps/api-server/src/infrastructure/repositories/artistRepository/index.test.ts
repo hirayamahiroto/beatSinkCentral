@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createArtistRepository } from "./index";
+import {
+  createArtistReader,
+  createArtistRepository,
+  createArtistWriter,
+} from "./index";
 import type { IArtistRepository } from "../../../domain/artists/repositories";
 
 const mockDb = {
@@ -212,5 +216,55 @@ describe("createArtistRepository", () => {
         accountId: "taken_handle",
       });
     });
+  });
+});
+
+describe("createArtistReader / createArtistWriter", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("生成時に渡した executor で読み取る", async () => {
+    const tx = {
+      select: vi.fn().mockReturnThis(),
+      from: vi.fn().mockReturnThis(),
+      innerJoin: vi.fn().mockReturnThis(),
+      leftJoin: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([
+        {
+          artistId: "artist-1",
+          accountId: "user_123",
+          ownerUserId: "user-1",
+          profileName: null,
+        },
+      ]),
+    };
+
+    const result = await createArtistReader(tx as never).findByUserId("user-1");
+
+    expect(tx.select).toHaveBeenCalledTimes(1);
+    expect(mockDb.select).not.toHaveBeenCalled();
+    expect(result?.getArtistId()).toBe("artist-1");
+  });
+
+  it("生成時に渡した executor で書き込む", async () => {
+    const tx = {
+      insert: vi.fn().mockReturnThis(),
+      values: vi.fn().mockReturnThis(),
+      returning: vi
+        .fn()
+        .mockResolvedValue([{ id: "artist-1", accountId: "user_123" }]),
+    };
+
+    const result = await createArtistWriter(tx as never).save({
+      id: "artist-1",
+      accountId: "user_123",
+      ownerUserId: "user-1",
+    });
+
+    expect(tx.insert).toHaveBeenCalledTimes(2);
+    expect(mockDb.insert).not.toHaveBeenCalled();
+    expect(result.getAccountId()).toBe("user_123");
   });
 });

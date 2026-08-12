@@ -1,7 +1,9 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { getContainer } from "../../../../../infrastructure/container";
-import { getMeUseCase } from "../../../../../usecases/users/getMe";
+import { getCapabilityDeps } from "../../../../../infrastructure/capabilities";
+import { withIdentityCapabilities } from "../../../../../usecases/authorization";
+import { getMe } from "../../../../../usecases/users/getMe";
 import { updateMyEmailUseCase } from "../../../../../usecases/users/updateMyEmail";
 import { validateRequest } from "../../validators/validateRequest";
 import { handleAppError } from "../../../../../errorMap";
@@ -20,13 +22,17 @@ const app = new Hono()
   .get("/", async (c) => {
     const auth0User = c.get("auth0User");
 
-    const { userRepository, artistRepository } = getContainer();
-    const result = await getMeUseCase(
-      { subId: auth0User.sub },
-      { userRepository, artistRepository },
+    const result = await withIdentityCapabilities(
+      getCapabilityDeps(),
+      auth0User.sub,
+      (caps) => getMe(caps),
     );
 
-    return c.json(result);
+    if (!result.ok) {
+      return handleAppError(result.error, c);
+    }
+
+    return c.json(result.value);
   })
   .post("/", validateRequest("json", updateMyEmailRequestSchema), async (c) => {
     const body = c.req.valid("json");

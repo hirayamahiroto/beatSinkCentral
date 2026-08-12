@@ -6,6 +6,16 @@ export type ArtistUpdateAccountIdData = {
   accountId: string;
 };
 
+export interface IArtistReader {
+  findByUserId(userId: string): Promise<Artist | null>;
+  findByAccountId(accountId: string): Promise<Artist | null>;
+}
+
+export interface IArtistWriter {
+  save(data: ArtistPersistenceData): Promise<Artist>;
+  updateAccountId(data: ArtistUpdateAccountIdData): Promise<Artist>;
+}
+
 export interface IArtistRepository {
   save(data: ArtistPersistenceData, tx?: TransactionContext): Promise<Artist>;
   findByUserId(userId: string): Promise<Artist | null>;

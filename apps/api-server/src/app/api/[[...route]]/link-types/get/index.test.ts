@@ -1,18 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import listLinkTypes from "./index";
+import listLinkTypesRoute from "./index";
 
-const mockLinkTypeRepository = { findAll: vi.fn() };
+const mockLinkTypes = { findAll: vi.fn() };
 
-vi.mock("../../../../../infrastructure/container", () => ({
-  getContainer: () => ({
-    linkTypeRepository: mockLinkTypeRepository,
+vi.mock("../../../../../infrastructure/capabilities", () => ({
+  getCapabilityDeps: () => ({
+    buildPublicReadCapabilities: () => ({ linkTypes: mockLinkTypes }),
   }),
 }));
 
 const createApp = () => {
   const app = new Hono();
-  app.route("/", listLinkTypes);
+  app.route("/", listLinkTypesRoute);
   return app;
 };
 
@@ -20,7 +20,7 @@ describe("GET /link-types", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("リンク種別マスタの一覧を返す", async () => {
-    mockLinkTypeRepository.findAll.mockResolvedValue([
+    mockLinkTypes.findAll.mockResolvedValue([
       { type: "youtube", label: "YouTube" },
       { type: "x", label: "X" },
     ]);

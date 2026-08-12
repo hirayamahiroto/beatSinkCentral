@@ -1,22 +1,29 @@
 import { getDb } from "../database";
-import { createUserRepository } from "../repositories/userRepository";
-import { createArtistRepository } from "../repositories/artistRepository";
+import {
+  createUserReader,
+  createUserWriter,
+} from "../repositories/userRepository";
+import {
+  createArtistReader,
+  createArtistWriter,
+} from "../repositories/artistRepository";
 import {
   createArtistProfileReader,
   createArtistProfileWriter,
 } from "../repositories/artistProfileRepository";
+import { createLinkTypeReader } from "../repositories/linkTypeRepository";
 import type { DatabaseClient } from "../../../../../packages/database/src/utils/createClient";
 import type { TransactionContext } from "../transaction";
 import type {
   Actor,
+  ActorResolution,
   CapabilityDeps,
   PublicReadCapabilities,
   ReadCapabilities,
+  RegistrationCapabilities,
   WriteCapabilities,
 } from "../../usecases/capabilities";
-import { createUserNotFoundError } from "../../domain/users/errors/userNotFound";
-import { createArtistNotFoundError } from "../../domain/artists/errors/artistNotFound";
-import { type Result, ok, err } from "../../utils/result";
+import type { Result } from "../../utils/result";
 
 type Executor = DatabaseClient | TransactionContext;
 
@@ -28,56 +35,83 @@ class RollbackSignal<T, E> extends Error {
   }
 }
 
+const runInTransaction = async <Caps, T, E>(
+  db: DatabaseClient,
+  buildCaps: (executor: Executor) => Caps,
+  work: (caps: Caps) => Promise<Result<T, E>>,
+): Promise<Result<T, E>> => {
+  try {
+    return await db.transaction(async (tx) => {
+      const result = await work(buildCaps(tx));
+      if (!result.ok) throw new RollbackSignal(result);
+      return result;
+    });
+  } catch (error) {
+    if (error instanceof RollbackSignal) return error.result;
+    throw error;
+  }
+};
+
 export const getCapabilityDeps = (() => {
   let deps: CapabilityDeps | null = null;
 
   return (): CapabilityDeps => {
     if (!deps) {
       const db = getDb();
-      const userRepository = createUserRepository(db);
-      const artistRepository = createArtistRepository(db);
 
-      const buildWriteScopedRepos = (executor: Executor) => ({
-        artistProfiles: {
-          ...createArtistProfileReader(executor),
-          ...createArtistProfileWriter(executor),
+      const buildWriteCapabilities =
+        (actor: Actor) =>
+        (executor: Executor): WriteCapabilities => ({
+          actor,
+          artistProfiles: {
+            ...createArtistProfileReader(executor),
+            ...createArtistProfileWriter(executor),
+          },
+        });
+
+      const buildRegistrationCapabilities = (
+        executor: Executor,
+      ): RegistrationCapabilities => ({
+        users: {
+          ...createUserReader(executor),
+          ...createUserWriter(executor),
+        },
+        artists: {
+          ...createArtistReader(executor),
+          ...createArtistWriter(executor),
         },
       });
 
       deps = {
-        async resolveActor(subId) {
-          const user = await userRepository.findBySub(subId);
-          if (!user) return err(createUserNotFoundError());
+        async resolveActorState(subId): Promise<ActorResolution> {
+          const user = await createUserReader(db).findBySub(subId);
+          if (!user) return { status: "unregistered" };
 
-          const artist = await artistRepository.findByUserId(user.getId());
-          if (!artist) return err(createArtistNotFoundError());
+          const artist = await createArtistReader(db).findByUserId(
+            user.getId(),
+          );
+          if (!artist) return { status: "userOnly", user };
 
-          return ok({ user, artist });
+          return { status: "complete", actor: { user, artist } };
         },
 
         buildPublicReadCapabilities(): PublicReadCapabilities {
-          return { artistProfiles: createArtistProfileReader(db) };
+          return {
+            artistProfiles: createArtistProfileReader(db),
+            linkTypes: createLinkTypeReader(db),
+          };
         },
 
         buildReadCapabilities(actor: Actor): ReadCapabilities {
           return { actor, artistProfiles: createArtistProfileReader(db) };
         },
 
-        async runWithWriteCapabilities(actor, work) {
-          try {
-            return await db.transaction(async (tx) => {
-              const caps: WriteCapabilities = {
-                actor,
-                ...buildWriteScopedRepos(tx),
-              };
-              const result = await work(caps);
-              if (!result.ok) throw new RollbackSignal(result);
-              return result;
-            });
-          } catch (error) {
-            if (error instanceof RollbackSignal) return error.result;
-            throw error;
-          }
+        runWithWriteCapabilities(actor, work) {
+          return runInTransaction(db, buildWriteCapabilities(actor), work);
+        },
+
+        runWithRegistrationCapabilities(work) {
+          return runInTransaction(db, buildRegistrationCapabilities, work);
         },
       };
     }
