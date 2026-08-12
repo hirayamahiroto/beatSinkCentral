@@ -98,6 +98,7 @@ const createDeps = (resolution: ActorResolution) => {
       calls.writeBoundaries += 1;
       return work({
         actor,
+        ...createRegistrationCapabilitiesStub(),
         artistProfiles: {
           ...createArtistProfileReaderStub(),
           ...createArtistProfileWriterStub(),
@@ -216,6 +217,36 @@ describe("withWriteCapabilities", () => {
 
     expect(result).toStrictEqual(ok("user-1"));
     expect(calls.writeBoundaries).toBe(1);
+  });
+
+  it("並行更新による一意制約違反は AccountIdAlreadyTakenError の err に変換する", async () => {
+    const { deps } = createDeps({
+      status: "complete",
+      actor: { user, artist },
+    });
+
+    const result = await withWriteCapabilities(deps, "auth0|123", async () => {
+      throw createAccountIdAlreadyTakenError("new_handle");
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(isAccountIdAlreadyTakenError(result.error)).toBe(true);
+    }
+  });
+
+  it("一意制約違反以外の例外はそのまま伝播する", async () => {
+    const { deps } = createDeps({
+      status: "complete",
+      actor: { user, artist },
+    });
+    const connectionError = new Error("connection terminated");
+
+    await expect(
+      withWriteCapabilities(deps, "auth0|123", async () => {
+        throw connectionError;
+      }),
+    ).rejects.toBe(connectionError);
   });
 });
 

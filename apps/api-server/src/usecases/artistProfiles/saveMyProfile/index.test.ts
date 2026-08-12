@@ -44,7 +44,7 @@ const createCaps = () =>
       upsert: vi.fn<IArtistProfileWriter["upsert"]>(echoUpsert),
       setPublished: vi.fn<IArtistProfileWriter["setPublished"]>(),
     },
-  }) satisfies WriteCapabilities;
+  }) satisfies Pick<WriteCapabilities, "actor" | "artistProfiles">;
 
 describe("saveMyProfile", () => {
   beforeEach(() => {

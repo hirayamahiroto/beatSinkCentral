@@ -53,7 +53,7 @@ const createCaps = () =>
       upsert: vi.fn<IArtistProfileWriter["upsert"]>(),
       setPublished: vi.fn<IArtistProfileWriter["setPublished"]>(),
     },
-  }) satisfies WriteCapabilities;
+  }) satisfies Pick<WriteCapabilities, "actor" | "artistProfiles">;
 
 describe("publishMyProfile", () => {
   beforeEach(() => vi.clearAllMocks());

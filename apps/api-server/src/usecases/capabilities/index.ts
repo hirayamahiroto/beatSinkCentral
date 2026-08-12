@@ -42,6 +42,8 @@ export type ReadCapabilities = {
 
 export type WriteCapabilities = {
   actor: Actor;
+  users: IUserReader & IUserWriter;
+  artists: IArtistReader & IArtistWriter;
   artistProfiles: IArtistProfileReader & IArtistProfileWriter;
 };
 

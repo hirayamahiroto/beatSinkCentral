@@ -59,19 +59,7 @@ export const getCapabilityDeps = (() => {
     if (!deps) {
       const db = getDb();
 
-      const buildWriteCapabilities =
-        (actor: Actor) =>
-        (executor: Executor): WriteCapabilities => ({
-          actor,
-          artistProfiles: {
-            ...createArtistProfileReader(executor),
-            ...createArtistProfileWriter(executor),
-          },
-        });
-
-      const buildRegistrationCapabilities = (
-        executor: Executor,
-      ): RegistrationCapabilities => ({
+      const buildAccountRepositories = (executor: Executor) => ({
         users: {
           ...createUserReader(executor),
           ...createUserWriter(executor),
@@ -81,6 +69,21 @@ export const getCapabilityDeps = (() => {
           ...createArtistWriter(executor),
         },
       });
+
+      const buildRegistrationCapabilities = (
+        executor: Executor,
+      ): RegistrationCapabilities => buildAccountRepositories(executor);
+
+      const buildWriteCapabilities =
+        (actor: Actor) =>
+        (executor: Executor): WriteCapabilities => ({
+          actor,
+          ...buildAccountRepositories(executor),
+          artistProfiles: {
+            ...createArtistProfileReader(executor),
+            ...createArtistProfileWriter(executor),
+          },
+        });
 
       deps = {
         async resolveActorState(subId): Promise<ActorResolution> {

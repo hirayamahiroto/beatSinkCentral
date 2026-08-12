@@ -52,7 +52,7 @@ apps/api-server/src/
 │   │   ├── entities/         # User エンティティ
 │   │   ├── behaviors/        # 振る舞いの実装
 │   │   ├── factories/        # Entityの生成
-│   │   ├── repositories/     # IUserRepository インターフェース
+│   │   ├── repositories/     # IUserReader / IUserWriter インターフェース
 │   │   ├── errors/           # ドメインエラーの型 + factory + 型ガード
 │   │   ├── policies/         # 不変条件の判定
 │   │   └── valueObjects/     # 値オブジェクト
@@ -69,7 +69,6 @@ apps/api-server/src/
 ├── infrastructure/           # インフラストラクチャ層
 │   ├── auth0/                # Auth0 クライアント
 │   ├── capabilities/         # 権能の組み立て（Composition Root）
-│   ├── container/            # 移行途上の残骸（#193 で廃止）
 │   ├── database/             # データベースクライアント
 │   └── repositories/         # リポジトリ実装（Reader / Writer）
 │
@@ -112,11 +111,12 @@ apps/api-server/src/
 ```
 API Handlers
   ├─→ Middlewares (Auth0, BasicAuth)
-  ├─→ CreateUserUseCase
-  │    └─→ IUserRepository (interface)
-  │         └─→ User Entity
-  │              └─→ Value Objects (Auth0UserId, Email, Username)
-  └─→ Infrastructure (Auth0 client)
+  ├─→ Authorization (権能の組み立て・Actor 解決・トランザクション境界)
+  │    └─→ Usecase (createUser 等)
+  │         └─→ IUserReader / IUserWriter (interface)
+  │              └─→ User Entity
+  │                   └─→ Value Objects (Sub, Email, Name)
+  └─→ Infrastructure (Auth0 client, capabilities)
 ```
 
 ---
@@ -853,15 +853,17 @@ withWriteCapabilities(deps, subId, work); // 認証済み書き込み（トラ�
 withRegistrationCapabilities(deps, work); // 登録（トランザクション、Actor 不要）
 ```
 
-`withRegistrationCapabilities` は、並行登録で `accountId` の一意制約違反が例外として出た場合に `AccountIdAlreadyTakenError` の `err` へ変換する（詳細は [並行更新ポリシー](./database/concurrency.md)）。
+トランザクション境界を張る `withWriteCapabilities` / `withRegistrationCapabilities` は、`accountId` の一意制約違反が例外として出た場合に `AccountIdAlreadyTakenError` の `err` へ変換する（詳細は [並行更新ポリシー](./database/concurrency.md)）。
 
 ### トランザクション境界
 
 `runWithWriteCapabilities` / `runWithRegistrationCapabilities` が境界を張り、権能に束ねる executor をトランザクションに差し替える。Drizzle のトランザクションは throw でしかロールバックしないため、業務エラー（`err`）は内部シグナルに載せて境界の外で復元する。
 
-### 移行途上の状態
+usecase が `tx` を受け取ることはない。**リポジトリの executor は権能の生成時に注入される**ため、「トランザクション内で動いているか」は usecase から見えない。
 
-`getContainer`（リポジトリ一式 + `txRunner`）は `updateMyEmail` / `updateMyAccountId` のためだけに残っている**移行途上の残骸**であり、新規実装で参照してはならない。この 2 本の移行と `getContainer` / `IUserRepository` / `IArtistRepository` / `ITransactionRunner` の廃止は [#193](https://github.com/hirayamahiroto/beatSinkCentral/issues/193) で行う。
+### 権能を経由しない依存取得は存在しない
+
+エントリポイントが参照できる依存の入口は `getCapabilityDeps()` だけである。リポジトリ一式をまとめて配る Composition Root（旧 `getContainer`）は廃止した。usecase は渡された権能以外に到達手段を持たない。
 
 ---
 
@@ -929,12 +931,12 @@ UserとArtistが別集約であっても、「新規登録時には原子的に�
 
 **適用例**:
 
-| 要求                         | インターフェース         | 実装                        |
-| ---------------------------- | ------------------------ | --------------------------- |
-| ユーザーを保存したい         | `IUserRepository.save`   | drizzle で INSERT           |
-| トランザクションでまとめたい | `ITransactionRunner.run` | drizzle の `db.transaction` |
-| メールを送りたい             | `IEmailSender.send`      | SendGrid / Resend / SES 等  |
-| 画像を保存したい             | `IFileStorage.upload`    | S3 / GCS / ローカル等       |
+| 要求                         | インターフェース           | 実装                        |
+| ---------------------------- | -------------------------- | --------------------------- |
+| ユーザーを保存したい         | `IUserWriter.save`         | drizzle で INSERT           |
+| トランザクションでまとめたい | `runWithWriteCapabilities` | drizzle の `db.transaction` |
+| メールを送りたい             | `IEmailSender.send`        | SendGrid / Resend / SES 等  |
+| 画像を保存したい             | `IFileStorage.upload`      | S3 / GCS / ローカル等       |
 
 ---
 

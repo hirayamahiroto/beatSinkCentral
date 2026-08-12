@@ -2,8 +2,9 @@ import { Hono } from "hono";
 import { handle } from "hono/vercel";
 import test from "./test";
 import usersCreate from "./users/create";
-import usersMe from "./users/me";
-import artistsMe from "./artists/me";
+import getMe from "./users/me/get";
+import updateMyEmail from "./users/me/post";
+import updateMyAccountId from "./artists/me/post";
 import getMyProfile from "./artists/me/profile/get";
 import saveMyProfile from "./artists/me/profile/post";
 import publishMyProfile from "./artists/me/profile/publish/post";
@@ -23,12 +24,13 @@ const app = new Hono()
   .use("/artists/me", requireAuthMiddleware)
   .use("/artists/me/*", requireAuthMiddleware)
   .route("/test", test)
-  .route("/users/me", usersMe)
+  .route("/users/me", getMe)
+  .route("/users/me", updateMyEmail)
   .route("/users", usersCreate)
   .route("/artists/me/profile", getMyProfile)
   .route("/artists/me/profile", saveMyProfile)
   .route("/artists/me/profile/publish", publishMyProfile)
-  .route("/artists/me", artistsMe)
+  .route("/artists/me", updateMyAccountId)
   .route("/artists", listPublicProfiles)
   .route("/artists", getPublicProfile)
   .route("/link-types", listLinkTypes)

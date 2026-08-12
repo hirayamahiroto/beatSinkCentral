@@ -77,18 +77,18 @@
 「事前に重複を SELECT で確認してから書く」形は、確認と書き込みの間に他リクエストが同じ値を確定させる余地が残る。一意制約は DB が最後の砦であり、**制約違反が上がってきた時に何が起きるか**まで決めておく。
 
 1. **Repository が翻訳する**: 制約名で一意制約違反（PostgreSQL の `23505`）を判別し、対応する型付きドメインエラー（例: `AccountIdAlreadyTakenError`）を throw する。PostgreSQL のエラーコードを知ってよいのは Infrastructure 層だけ
-2. **トランザクション境界の外で `err` に戻す**: Drizzle の `transaction` は throw でしかロールバックしないため、例外はトランザクションの外まで抜けさせる。capabilities 経路では境界を張るヘルパ（例: `withRegistrationCapabilities`）が、未移行の usecase では `txRunner.run` を包む `try/catch` が、型ガードで判別して `err` を返す
+2. **トランザクション境界の外で `err` に戻す**: Drizzle の `transaction` は throw でしかロールバックしないため、例外はトランザクションの外まで抜けさせる。境界を張るヘルパ（`withWriteCapabilities` / `withRegistrationCapabilities`）が型ガードで判別して `err` を返す。usecase 側に `try/catch` は置かない
 3. **usecase のエラー union は事前チェックと同じ型を使う**: 事前の SELECT で検出した場合も、制約違反で検出した場合も、クライアントから見た失敗は同じもの。同じ型に寄せることで HTTP 変換も自動的に揃う
 
 事前の SELECT は「競合していない通常経路で無駄な例外を出さないため」に残す。制約違反の変換はそれを置き換えるものではなく、取りこぼしの受け皿。
 
 ## 既存 usecase の方針記録
 
-| Usecase                    | 通常更新の方針 | `accountId` の一意性     | 備考                                                                                                                         |
-| -------------------------- | -------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
-| `createUser`               | LWW            | DB 一意制約で拒否（409） | 新規作成のみ。事前 SELECT は usecase、一意制約違反は `withRegistrationCapabilities` が `AccountIdAlreadyTakenError` へ寄せる |
-| `updateMyEmailUseCase`     | LWW            | 対象外                   | 自分の email を自分で変更。競合確率低                                                                                        |
-| `updateMyAccountIdUseCase` | LWW            | DB 一意制約で拒否（409） | 自分の accountId を自分で変更。事前 SELECT と一意制約違反の両方から `AccountIdAlreadyTakenError` へ寄せる                    |
+| Usecase             | 通常更新の方針 | `accountId` の一意性     | 備考                                                                                                                         |
+| ------------------- | -------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| `createUser`        | LWW            | DB 一意制約で拒否（409） | 新規作成のみ。事前 SELECT は usecase、一意制約違反は `withRegistrationCapabilities` が `AccountIdAlreadyTakenError` へ寄せる |
+| `updateMyEmail`     | LWW            | 対象外                   | 自分の email を自分で変更。競合確率低                                                                                        |
+| `updateMyAccountId` | LWW            | DB 一意制約で拒否（409） | 自分の accountId を自分で変更。事前 SELECT は usecase、一意制約違反は `withWriteCapabilities` が寄せる                       |
 
 LWW は競合を検出せず後の書き込みを採用する方式であり、`accountId` の重複はこれとは別経路で扱う。**重複を検出したら後勝ちにせず 409 で拒否する**（詳細は前節「一意制約違反の扱い」）。`accountId` を持つ usecase を追加する時は、通常更新の方針とは独立にこの拒否経路を実装する。
 

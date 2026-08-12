@@ -7,7 +7,6 @@ import {
 } from "../../../../../../packages/database/src/utils/createClient";
 import type {
   IArtistReader,
-  IArtistRepository,
   IArtistWriter,
   ArtistUpdateAccountIdData,
 } from "../../../domain/artists/repositories";
@@ -161,15 +160,4 @@ export const createArtistWriter = (executor: Executor): IArtistWriter => ({
       profile: profileRow?.name ? { name: profileRow.name } : null,
     });
   },
-});
-
-export const createArtistRepository = (
-  db: DatabaseClient,
-): IArtistRepository => ({
-  save: (data, tx) => createArtistWriter(tx ?? db).save(data),
-  findByUserId: (userId) => createArtistReader(db).findByUserId(userId),
-  findByAccountId: (accountId, tx) =>
-    createArtistReader(tx ?? db).findByAccountId(accountId),
-  updateAccountId: (data, tx) =>
-    createArtistWriter(tx ?? db).updateAccountId(data),
 });

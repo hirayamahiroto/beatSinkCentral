@@ -1,9 +1,10 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { getContainer } from "../../../../../infrastructure/container";
-import { updateMyAccountIdUseCase } from "../../../../../usecases/users/updateMyAccountId";
-import { validateRequest } from "../../validators/validateRequest";
-import { handleAppError } from "../../../../../errorMap";
+import { getCapabilityDeps } from "../../../../../../infrastructure/capabilities";
+import { withWriteCapabilities } from "../../../../../../usecases/authorization";
+import { updateMyAccountId } from "../../../../../../usecases/users/updateMyAccountId";
+import { validateRequest } from "../../../validators/validateRequest";
+import { handleAppError } from "../../../../../../errorMap";
 
 export const updateMyAccountIdRequestSchema = z.object({
   accountId: z
@@ -22,11 +23,10 @@ const app = new Hono().post(
     const body = c.req.valid("json");
     const auth0User = c.get("auth0User");
 
-    const { userRepository, artistRepository, txRunner } = getContainer();
-
-    const result = await updateMyAccountIdUseCase(
-      { subId: auth0User.sub, accountId: body.accountId },
-      { userRepository, artistRepository, txRunner },
+    const result = await withWriteCapabilities(
+      getCapabilityDeps(),
+      auth0User.sub,
+      (caps) => updateMyAccountId(caps, { accountId: body.accountId }),
     );
 
     if (!result.ok) {

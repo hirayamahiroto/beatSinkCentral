@@ -6,7 +6,6 @@ import {
 import { User } from "../../../domain/users/entities";
 import {
   IUserReader,
-  IUserRepository,
   IUserWriter,
   UserSaveData,
   UserUpdateEmailData,
@@ -70,10 +69,4 @@ export const createUserWriter = (executor: Executor): IUserWriter => ({
       email: result.email,
     });
   },
-});
-
-export const createUserRepository = (db: DatabaseClient): IUserRepository => ({
-  save: (data, tx) => createUserWriter(tx ?? db).save(data),
-  findBySub: (sub, tx) => createUserReader(tx ?? db).findBySub(sub),
-  updateEmail: (data, tx) => createUserWriter(tx ?? db).updateEmail(data),
 });
