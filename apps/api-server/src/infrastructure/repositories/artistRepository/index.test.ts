@@ -11,8 +11,16 @@ const mockDb = {
   limit: vi.fn(),
   update: vi.fn().mockReturnThis(),
   set: vi.fn().mockReturnThis(),
+  insert: vi.fn().mockReturnThis(),
+  values: vi.fn().mockReturnThis(),
   returning: vi.fn(),
 };
+
+const createUniqueViolation = (constraintName: string): Error =>
+  Object.assign(new Error("duplicate key value violates unique constraint"), {
+    code: "23505",
+    constraint_name: constraintName,
+  });
 
 describe("createArtistRepository", () => {
   let repository: IArtistRepository;
@@ -156,6 +164,53 @@ describe("createArtistRepository", () => {
 
       expect(result.hasProfile()).toBe(false);
       expect(result.getProfile()).toBeNull();
+    });
+
+    it("accountId の一意制約違反を AccountIdAlreadyTakenError に変換して throw する", async () => {
+      mockDb.returning.mockRejectedValue(
+        createUniqueViolation("artists_account_id_unique"),
+      );
+
+      await expect(
+        repository.updateAccountId({
+          artistId: "artist-1",
+          accountId: "taken_handle",
+        }),
+      ).rejects.toMatchObject({
+        type: "AccountIdAlreadyTakenError",
+        accountId: "taken_handle",
+      });
+    });
+
+    it("一意制約違反以外のエラーはそのまま伝播する", async () => {
+      const connectionError = new Error("connection terminated");
+      mockDb.returning.mockRejectedValue(connectionError);
+
+      await expect(
+        repository.updateAccountId({
+          artistId: "artist-1",
+          accountId: "new_handle",
+        }),
+      ).rejects.toBe(connectionError);
+    });
+  });
+
+  describe("save", () => {
+    it("accountId の一意制約違反を AccountIdAlreadyTakenError に変換して throw する", async () => {
+      mockDb.returning.mockRejectedValue(
+        createUniqueViolation("artists_account_id_unique"),
+      );
+
+      await expect(
+        repository.save({
+          id: "artist-1",
+          accountId: "taken_handle",
+          ownerUserId: "user-1",
+        }),
+      ).rejects.toMatchObject({
+        type: "AccountIdAlreadyTakenError",
+        accountId: "taken_handle",
+      });
     });
   });
 });

@@ -1,7 +1,14 @@
 import type { IUserRepository } from "../../../domain/users/repositories";
-import { assertRegistered } from "../../../domain/users/policies/assertRegistered";
-import { createEmail } from "../../../domain/users/valueObjects/email";
+import {
+  createUserNotFoundError,
+  type UserNotFoundError,
+} from "../../../domain/users/errors/userNotFound";
+import {
+  createEmail,
+  type InvalidEmailFormatError,
+} from "../../../domain/users/valueObjects/email";
 import type { ITransactionRunner } from "../../../infrastructure/transaction";
+import { type Result, ok, err } from "../../../utils/result";
 
 export type UpdateMyEmailInput = {
   subId: string;
@@ -13,6 +20,8 @@ export type UpdateMyEmailOutput = {
   email: string;
 };
 
+export type UpdateMyEmailError = InvalidEmailFormatError | UserNotFoundError;
+
 export type UpdateMyEmailDeps = {
   userRepository: IUserRepository;
   txRunner: ITransactionRunner;
@@ -21,22 +30,25 @@ export type UpdateMyEmailDeps = {
 export const updateMyEmailUseCase = async (
   input: UpdateMyEmailInput,
   deps: UpdateMyEmailDeps,
-): Promise<UpdateMyEmailOutput> => {
+): Promise<Result<UpdateMyEmailOutput, UpdateMyEmailError>> => {
   const newEmail = createEmail(input.email);
+  if (!newEmail.ok) return newEmail;
 
-  return deps.txRunner.run(async (tx) => {
-    const user = await deps.userRepository.findBySub(input.subId, tx);
-    assertRegistered(user);
+  return deps.txRunner.run(
+    async (tx): Promise<Result<UpdateMyEmailOutput, UpdateMyEmailError>> => {
+      const user = await deps.userRepository.findBySub(input.subId, tx);
+      if (!user) return err(createUserNotFoundError());
 
-    const updated = user.changeEmail(newEmail);
-    const saved = await deps.userRepository.updateEmail(
-      { id: updated.getId(), email: updated.getEmail() },
-      tx,
-    );
+      const updated = user.changeEmail(newEmail.value);
+      const saved = await deps.userRepository.updateEmail(
+        { id: updated.getId(), email: updated.getEmail() },
+        tx,
+      );
 
-    return {
-      userId: saved.getId(),
-      email: saved.getEmail(),
-    };
-  });
+      return ok({
+        userId: saved.getId(),
+        email: saved.getEmail(),
+      });
+    },
+  );
 };

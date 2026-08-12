@@ -1,4 +1,3 @@
-import type { User } from "../../entities";
 import { createTypedError } from "../../../../utils/errors/createTypedError";
 
 export type UserAlreadyRegisteredError = Error & {
@@ -17,10 +16,4 @@ export const isUserAlreadyRegisteredError = (
     (error as Partial<UserAlreadyRegisteredError>).type ===
       "UserAlreadyRegisteredError"
   );
-};
-
-export const assertNotRegistered = (userIfRegistered: User | null): void => {
-  if (userIfRegistered) {
-    throw createUserAlreadyRegisteredError();
-  }
 };

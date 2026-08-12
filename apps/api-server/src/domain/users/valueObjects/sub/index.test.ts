@@ -12,30 +12,39 @@ describe("Sub", () => {
       ];
 
       validIds.forEach((id) => {
-        const sub = createSub(id);
-        expect(sub.value).toBe(id);
+        const result = createSub(id);
+
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+          expect(result.value.value).toBe(id);
+        }
       });
     });
 
-    it("空文字列ではエラーをスローする", () => {
-      expect(() => createSub("")).toThrow("InvalidSubFormatError");
+    it("空文字列は err を返す", () => {
+      expect(createSub("").ok).toBe(false);
     });
 
-    it("空白のみの文字列ではエラーをスローする", () => {
+    it("空白のみの文字列は err を返す", () => {
       const whitespaceStrings = ["   ", "\t", "\n", "  \t\n  "];
 
       whitespaceStrings.forEach((str) => {
-        expect(() => createSub(str)).toThrow("InvalidSubFormatError");
+        expect(createSub(str).ok).toBe(false);
       });
     });
 
-    it("nullish値ではエラーをスローする", () => {
-      expect(() => createSub(null as unknown as string)).toThrow(
-        "InvalidSubFormatError",
-      );
-      expect(() => createSub(undefined as unknown as string)).toThrow(
-        "InvalidSubFormatError",
-      );
+    it("nullish値は err を返す", () => {
+      expect(createSub(null as unknown as string).ok).toBe(false);
+      expect(createSub(undefined as unknown as string).ok).toBe(false);
+    });
+
+    it("返るエラーは InvalidSubFormatError 型", () => {
+      const result = createSub("");
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe("InvalidSubFormatError");
+      }
     });
   });
 });

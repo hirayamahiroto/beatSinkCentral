@@ -14,8 +14,26 @@ import type {
   ArtistPersistenceData,
 } from "../../../domain/artists/entities";
 import { reconstructArtist } from "../../../domain/artists/factories";
-import { createArtistNotFoundError } from "../../../domain/artists/policies/assertArtistExists";
+import { createArtistNotFoundError } from "../../../domain/artists/errors/artistNotFound";
+import { createAccountIdAlreadyTakenError } from "../../../domain/artists/errors/accountIdAlreadyTaken";
+import { isUniqueViolation } from "../../database/uniqueViolation";
 import type { TransactionContext } from "../../transaction";
+
+const ACCOUNT_ID_UNIQUE_CONSTRAINT = "artists_account_id_unique";
+
+const rejectTakenAccountId = async <T>(
+  accountId: string,
+  write: () => Promise<T>,
+): Promise<T> => {
+  try {
+    return await write();
+  } catch (error) {
+    if (isUniqueViolation(error, ACCOUNT_ID_UNIQUE_CONSTRAINT)) {
+      throw createAccountIdAlreadyTakenError(accountId);
+    }
+    throw error;
+  }
+};
 
 export const createArtistRepository = (
   db: DatabaseClient,
@@ -25,13 +43,15 @@ export const createArtistRepository = (
     tx?: TransactionContext,
   ): Promise<Artist> {
     const executor = tx ?? db;
-    const [artistRow] = await executor
-      .insert(artistsTable)
-      .values({ id: data.id, accountId: data.accountId })
-      .returning({
-        id: artistsTable.id,
-        accountId: artistsTable.accountId,
-      });
+    const [artistRow] = await rejectTakenAccountId(data.accountId, () =>
+      executor
+        .insert(artistsTable)
+        .values({ id: data.id, accountId: data.accountId })
+        .returning({
+          id: artistsTable.id,
+          accountId: artistsTable.accountId,
+        }),
+    );
 
     await executor.insert(artistOwnersTable).values({
       userId: data.ownerUserId,
@@ -115,14 +135,16 @@ export const createArtistRepository = (
     tx?: TransactionContext,
   ): Promise<Artist> {
     const executor = tx ?? db;
-    const [artistRow] = await executor
-      .update(artistsTable)
-      .set({ accountId: data.accountId })
-      .where(eq(artistsTable.id, data.artistId))
-      .returning({
-        id: artistsTable.id,
-        accountId: artistsTable.accountId,
-      });
+    const [artistRow] = await rejectTakenAccountId(data.accountId, () =>
+      executor
+        .update(artistsTable)
+        .set({ accountId: data.accountId })
+        .where(eq(artistsTable.id, data.artistId))
+        .returning({
+          id: artistsTable.id,
+          accountId: artistsTable.accountId,
+        }),
+    );
     if (!artistRow) throw createArtistNotFoundError();
 
     const [ownerRow] = await executor

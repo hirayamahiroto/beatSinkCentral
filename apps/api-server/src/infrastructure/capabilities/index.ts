@@ -14,8 +14,8 @@ import type {
   ReadCapabilities,
   WriteCapabilities,
 } from "../../usecases/capabilities";
-import { createUserNotFoundError } from "../../domain/users/policies/assertRegistered";
-import { createArtistNotFoundError } from "../../domain/artists/policies/assertArtistExists";
+import { createUserNotFoundError } from "../../domain/users/errors/userNotFound";
+import { createArtistNotFoundError } from "../../domain/artists/errors/artistNotFound";
 import { type Result, ok, err } from "../../utils/result";
 
 type Executor = DatabaseClient | TransactionContext;

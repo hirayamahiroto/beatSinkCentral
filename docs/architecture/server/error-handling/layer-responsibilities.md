@@ -8,7 +8,7 @@
 
 ## レイヤー別の責務
 
-表内の「エラーの性質」は **各層の関数が自前で検知すべき事象** を意味する。他層のチェックに依存せず、自層の関数内で検知し throw する (汎用関数として呼び出し側を選ばないため)。
+表内の「エラーの性質」は **各層の関数が自前で検知すべき事象** を意味する。他層のチェックに依存せず、自層の関数内で検知し `err` で返す (汎用関数として呼び出し側を選ばないため)。
 
 | レイヤー                      | 責務                                               | エラーの性質             | 例                                        |
 | ----------------------------- | -------------------------------------------------- | ------------------------ | ----------------------------------------- |
@@ -21,8 +21,9 @@
 ### ドメイン層（Value Object / Entity）
 
 - **責務**: 値やエンティティそのものの正当性を保証する
-- Value Object のファクトリ関数内で不正値を検知したら即時 throw する
+- Value Object のファクトリ関数は `Result<T, InvalidXFormatError>` を返す。不正値を検知したら `err` で返し、`throw` はしない
 - ドメイン層のエラーは「値・状態が不正」という性質のみを扱い、ユースケース固有の事情（既に登録済み等）には関与しない
+- 例外は **DB からの復元**（`reconstruct{Entity}`）のみ。保存値が制約を破っているのはデータ破損であり、業務エラーではなく 500 として落とす（`unwrapOrThrow`）
 
 ### Usecase層
 
@@ -34,7 +35,8 @@
 ### Entrypoint層（APIハンドラ）
 
 - **責務**: 認証・認可・入力バリデーション・エラーのHTTPマッピング
-- Usecaseを呼び出し、`onError` で各レイヤーのエラーを捕捉する（ルートハンドラに try/catch は書かない）
+- Usecase の `Result` を判定し、`err` を `handleAppError` へ渡す（ルートハンドラに try/catch は書かない）
+- 形式検証エラーと想定外の例外は `onError` が受ける
 - エラー種別に応じてHTTPステータスコードへマッピングする（`errorMap` が担当）
 - ビジネスロジックやDB操作は書かない
 
@@ -48,15 +50,20 @@
 
 ## 配置ルール
 
-ルール判定そのもの（`assertXxx` / `ensureXxx`）とエラー型をセットで `policies/` 配下にまとめる。再利用しない純粋に1ユースケース固有のエラーは `usecases/.../errors.ts` に置く。
+**エラー定義とルール判定は分けて置く。**
+
+- エラー型（type + factory + 型ガード）は `{domain}/errors/{errorName}/`
+- 中身のあるドメインルール（判定に業務知識が要るもの）は `{domain}/policies/{ruleName}/` に `ensureXxx` として置き、`Result` を返す
+- 単なる null チェック（存在しない / 既に存在する）に `policies/` は作らない。ルールを知っている呼び出し元が `if (!x) return err(...)` を書く
 
 ```text
-domain/users/policies/assertNotRegistered/
-├── index.ts          # type / factory / assert関数
+domain/users/errors/userNotFound/
+├── index.ts          # type / factory / 型ガード
 └── index.test.ts
 
-domain/artists/
-└── errors.ts         # インフラ層などから直接 throw されるドメインエラー（assert関数を持たない）
+domain/artistProfiles/policies/publishability/
+├── index.ts          # 公開に必要な最小核の定義 + ensurePublishable(): Result
+└── index.test.ts
 
 usecases/users/createUser/
 ├── index.ts
@@ -66,17 +73,20 @@ usecases/users/createUser/
 
 配置の分岐:
 
-- **`policies/{assertXxx}/`** — ルール判定関数（`assertXxx` / `ensureXxx`）とそのエラーをセットで置く。ドメイン層の業務ルール違反を表すのが主用途
-- **`{domain}/errors.ts`** — assert関数を挟まず、リポジトリやインフラ層から直接 throw するドメインエラー。DBの一意制約違反をドメインエラーに変換する等
+- **`{domain}/errors/{errorName}/`** — エラー型と factory / 型ガード。判定ロジックは持たない
+- **`{domain}/policies/{ruleName}/`** — ドメインルールの本体を持つ判定（公開可否の最小核など）。`ensureXxx` が `Result<void, E>` を返す
 - **`usecases/{usecase}/errors.ts`** — そのユースケース専用で他から再利用しないエラー
+
+`assertXxx`（throw する判定関数）は使わない。関数名が「throw する」ことを示すのに実体は `Result` を返すため、名前と振る舞いが乖離する。
 
 ### co-location の原則
 
-- エラー型と、そのエラーを投げる判定ロジック（assert関数）は同じディレクトリに置く
+- エラー型と、その factory / 型ガードは同じディレクトリに置く。ディレクトリ名はエラー名に揃える
+- ルール判定は、そのルールを知っているモジュール（VO / policy / service / usecase）が持つ
 - HTTP のことを知ってはいけない（status コードはここには書かない）
 - 共通基底（`UseCaseError` 等）は **現時点では作らない**。複数ユースケースで同種の扱いが必要になった段階で導入を検討する
 
-実装テンプレート（type + factory + assert）は [implementation.md](./implementation.md) 参照。
+実装テンプレート（type + factory + `Result`）は [implementation.md](./implementation.md) 参照。
 
 ---
 
@@ -84,14 +94,15 @@ usecases/users/createUser/
 
 `errorMap` への登録要否と、想定する HTTP ステータスを層別にまとめる。
 
-| レイヤー         | 扱うエラー例                                 | errorMap 登録     | HTTP status |
-| ---------------- | -------------------------------------------- | ----------------- | ----------- |
-| Value Object     | `InvalidEmailFormatError` 等の値不正         | ○                 | 400 / 422   |
-| Entity           | 不変条件違反                                 | ○                 | 422         |
-| Usecase          | 前提条件違反（未登録 / 既に存在 / 対象なし） | ○                 | 404 / 409   |
-| Infrastructure   | DB接続失敗・外部APIタイムアウト              | ×（500化）        | 500         |
-| Zod (エントリ層) | リクエスト形式不正                           | ×（handler内）    | 400         |
-| 認証ミドルウェア | 未認証                                       | ×（middleware内） | 401         |
+| レイヤー         | 扱うエラー例                                 | 伝え方            | errorMap 登録 | HTTP status |
+| ---------------- | -------------------------------------------- | ----------------- | ------------- | ----------- |
+| Value Object     | `InvalidEmailFormatError` 等の値不正         | `err`             | ○             | 400 / 422   |
+| Entity           | 不変条件違反                                 | `err`             | ○             | 422         |
+| Usecase          | 前提条件違反（未登録 / 既に存在 / 対象なし） | `err`             | ○             | 404 / 409   |
+| DB 復元の破綻    | 保存値が VO の制約に反する                   | `throw`           | ×（500化）    | 500         |
+| Infrastructure   | DB接続失敗・外部APIタイムアウト              | `throw`           | ×（500化）    | 500         |
+| Zod (エントリ層) | リクエスト形式不正                           | `throw` → onError | ○             | 400         |
+| 認証ミドルウェア | 未認証                                       | `throw` → onError | ○             | 401         |
 
 - errorMap に登録するのは **クライアントに意味のあるフィードバックを返すべきエラー** のみ
 - Infrastructure 層のエラーを errorMap に足すと、内部事情（「DBが応答しません」）が漏れる。500 + ログが正解
@@ -157,7 +168,8 @@ BFF 側の実装は [`../../frontend/bff/design.md`](../../frontend/bff/design.m
    - 必須・型・最低限の長さ等、HTTPプロトコル上の制約に限定する
    - ドメインのルール（emailの形式、accountIdの命名規則等）までは踏み込まない
 2. **Usecaseは生の値（string等）を受け取り、内部でVOに変換する**
-   - VO変換時のバリデーションエラー = ドメインエラーとして上位に伝播
+   - VO変換時のバリデーションエラー = ドメインエラーとして `err` で上位へ返す
+   - VO 変換はトランザクション開始**前**に行う。不正入力で無駄に begin しない
    - これによりUsecaseが「ドメイン契約を守る最後の砦」になる
 3. **VOをHTTP層から直接呼ばない**
    - エントリポイント層がドメイン層を直接参照する形は避ける

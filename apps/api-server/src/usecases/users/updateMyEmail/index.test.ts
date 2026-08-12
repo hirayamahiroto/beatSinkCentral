@@ -4,7 +4,7 @@ import {
   type UpdateMyEmailDeps,
   type UpdateMyEmailInput,
 } from "./index";
-import { isUserNotFoundError } from "../../../domain/users/policies/assertRegistered";
+import { isUserNotFoundError } from "../../../domain/users/errors/userNotFound";
 import { reconstructUser } from "../../../domain/users/factories";
 
 const createMockDeps = () => {
@@ -49,10 +49,13 @@ describe("updateMyEmailUseCase", () => {
 
     const result = await updateMyEmailUseCase(validInput, deps);
 
-    expect(result).toStrictEqual({
-      userId: existingUser.getId(),
-      email: validInput.email,
-    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toStrictEqual({
+        userId: existingUser.getId(),
+        email: validInput.email,
+      });
+    }
     expect(deps.userRepository.updateEmail).toHaveBeenCalledWith(
       { id: existingUser.getId(), email: validInput.email },
       expect.anything(),
@@ -60,27 +63,31 @@ describe("updateMyEmailUseCase", () => {
     expect(deps.txRunner.run).toHaveBeenCalledTimes(1);
   });
 
-  it("ユーザーが存在しない場合はUserNotFoundErrorをスローする", async () => {
+  it("ユーザーが存在しない場合はUserNotFoundErrorをerrで返す", async () => {
     const deps = createMockDeps();
     deps.userRepository.findBySub.mockResolvedValue(null);
 
-    const promise = updateMyEmailUseCase(validInput, deps);
+    const result = await updateMyEmailUseCase(validInput, deps);
 
-    await expect(promise).rejects.toSatisfy(isUserNotFoundError);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(isUserNotFoundError(result.error)).toBe(true);
+    }
     expect(deps.userRepository.updateEmail).not.toHaveBeenCalled();
   });
 
-  it("emailが不正な形式の場合は、トランザクション開始前にInvalidEmailFormatErrorをスローする", async () => {
+  it("emailが不正な形式の場合は、トランザクションを開始せずInvalidEmailFormatErrorをerrで返す", async () => {
     const deps = createMockDeps();
 
-    const promise = updateMyEmailUseCase(
+    const result = await updateMyEmailUseCase(
       { ...validInput, email: "invalid" },
       deps,
     );
 
-    await expect(promise).rejects.toMatchObject({
-      type: "InvalidEmailFormatError",
-    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.type).toBe("InvalidEmailFormatError");
+    }
     expect(deps.txRunner.run).not.toHaveBeenCalled();
     expect(deps.userRepository.findBySub).not.toHaveBeenCalled();
     expect(deps.userRepository.updateEmail).not.toHaveBeenCalled();

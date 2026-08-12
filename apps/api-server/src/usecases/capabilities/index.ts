@@ -4,8 +4,8 @@ import type {
   IArtistProfileReader,
   IArtistProfileWriter,
 } from "../../domain/artistProfiles/repositories";
-import type { UserNotFoundError } from "../../domain/users/policies/assertRegistered";
-import type { ArtistNotFoundError } from "../../domain/artists/policies/assertArtistExists";
+import type { UserNotFoundError } from "../../domain/users/errors/userNotFound";
+import type { ArtistNotFoundError } from "../../domain/artists/errors/artistNotFound";
 import type { Result } from "../../utils/result";
 
 export type Actor = {
