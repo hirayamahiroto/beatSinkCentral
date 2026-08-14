@@ -43,9 +43,13 @@ DIで実装を外から注入することで、依存が常にDomainに向かう
 ```
 apps/api-server/src/
 ├── app/api/[[...route]]/     # Hono ルーティング（プレゼンテーション層）
-│   ├── route.ts              # メインルーター
-│   ├── test/                 # GET/POST /api/test
-│   └── users/create/         # POST /api/users/create
+│   ├── route.ts              # basePath + 全体ミドルウェア + onError + トップ mount
+│   ├── test/                 # /api/test
+│   ├── users/                # /api/users
+│   ├── artists/              # /api/artists
+│   ├── link-types/           # /api/link-types
+│   ├── validators/           # リクエストバリデータ
+│   └── errors/               # プレゼンテーション層のエラー型
 │
 ├── domain/                   # ドメイン層（オブジェクト単位のコンポジション構造）
 │   ├── users/                # ユーザードメイン
@@ -674,6 +678,48 @@ HTTPリクエスト/レスポンスの処理を担当。
 - リクエストバリデーション（Zod）
 - レスポンス整形
 
+#### ルーティングは階層ごとに合成する
+
+**ディレクトリ = URL セグメント**を 1:1 に対応させ、各階層の `index.ts` が配下を合成する。親は子ルーターだけを mount し、mount 文字列は 1 セグメント分に留める。
+
+```
+app/api/[[...route]]/
+├── route.ts                    # basePath + 全体ミドルウェア + onError + トップ mount のみ
+├── artists/
+│   ├── index.ts                # /artists の合成
+│   ├── get/                    # GET /artists
+│   ├── [accountId]/get/        # GET /artists/:accountId
+│   └── me/
+│       ├── index.ts            # requireAuthMiddleware を適用
+│       ├── post/               # POST /artists/me
+│       └── profile/
+│           ├── index.ts
+│           ├── get/            # GET  /artists/me/profile
+│           ├── post/           # POST /artists/me/profile
+│           └── publish/post/   # POST /artists/me/profile/publish
+├── users/
+│   ├── index.ts                # requireAuthMiddleware を適用
+│   ├── post/                   # POST /users
+│   └── me/
+│       ├── index.ts
+│       ├── get/                # GET  /users/me
+│       └── post/               # POST /users/me
+└── link-types/
+    ├── index.ts
+    └── get/                    # GET /link-types
+```
+
+階層 `index.ts` の責務は 2 つだけに限定する。
+
+1. 配下の子ルーター／エンドポイントの合成
+2. その階層に効くミドルウェアの適用
+
+リーフ（`get/` `post/`）は 1 ファイル 1 エンドポイントを維持する。動的セグメントは `[accountId]/` と表記する（`[[...route]]` 配下は Next.js のルート探索対象外なので、ルーティング解釈と衝突しない）。
+
+**認証は保護対象階層の `index.ts` で適用する。** トップでパス文字列を列挙しない。階層側で `.use("*", requireAuthMiddleware)` を一度書けば配下は構造的に保護されるため、リソース追加時の付け忘れが起きにくい（デフォルトが deny 側に倒れる）。
+
+`AppType`（Hono RPC）の型推論を保つため、各 `index.ts` は `.route()` のメソッドチェーンを維持する。
+
 ### ミドルウェア層 (`middlewares/`)
 
 横断的関心事を処理。
@@ -1034,7 +1080,16 @@ describe("reconstructUser", () => {
 
 ## API エンドポイント
 
-| メソッド | パス                | 説明           |
-| -------- | ------------------- | -------------- |
-| GET/POST | `/api/test`         | ヘルスチェック |
-| POST     | `/api/users/create` | ユーザー作成   |
+| メソッド | パス                              | 説明                     | 認証 |
+| -------- | --------------------------------- | ------------------------ | ---- |
+| GET      | `/api/test`                       | ヘルスチェック           | 要   |
+| POST     | `/api/users`                      | ユーザー作成             | 要   |
+| GET      | `/api/users/me`                   | 自分のユーザー情報取得   | 要   |
+| POST     | `/api/users/me`                   | 自分のメールアドレス更新 | 要   |
+| GET      | `/api/artists`                    | 公開プロフィール一覧     | 不要 |
+| GET      | `/api/artists/:accountId`         | 公開プロフィール詳細     | 不要 |
+| POST     | `/api/artists/me`                 | 自分の accountId 更新    | 要   |
+| GET      | `/api/artists/me/profile`         | 自分のプロフィール取得   | 要   |
+| POST     | `/api/artists/me/profile`         | 自分のプロフィール保存   | 要   |
+| POST     | `/api/artists/me/profile/publish` | 公開/非公開の切り替え    | 要   |
+| GET      | `/api/link-types`                 | リンク種別マスタ一覧     | 不要 |
