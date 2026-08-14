@@ -1,13 +1,18 @@
 import { Hono } from "hono";
-import { getContainer } from "../../../../../infrastructure/container";
-import { listLinkTypesUseCase } from "../../../../../usecases/linkTypes/listLinkTypes";
+import { getCapabilityDeps } from "../../../../../infrastructure/capabilities";
+import { listLinkTypes } from "../../../../../usecases/linkTypes/listLinkTypes";
+import { handleAppError } from "../../../../../errorMap";
 
 const app = new Hono().get("/", async (c) => {
-  const { linkTypeRepository } = getContainer();
+  const caps = getCapabilityDeps().buildPublicReadCapabilities();
 
-  const result = await listLinkTypesUseCase({ linkTypeRepository });
+  const result = await listLinkTypes(caps);
 
-  return c.json(result);
+  if (!result.ok) {
+    return handleAppError(result.error, c);
+  }
+
+  return c.json(result.value);
 });
 
 export default app;

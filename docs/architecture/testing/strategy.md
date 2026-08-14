@@ -492,14 +492,14 @@ expect(result.formattedName).toBe("Alice (admin)");
 ```typescript
 // ❌ Usecase のテストで email の形式を検証(VO の責務)
 it("usecase", async () => {
-  const result = await createUserUseCase({ email: "invalid" }, deps);
+  const result = await createUser(caps, { ...validInput, email: "invalid" });
   expect(result.ok).toBe(false);
   if (!result.ok) expect(result.error.message).toMatch(/email/);
 });
 
 // ✅ Usecase では VO の err がそのまま伝播することだけ確認(詳細は VO のテスト)
 it("usecase", async () => {
-  const result = await createUserUseCase({ email: "invalid" }, deps);
+  const result = await createUser(caps, { ...validInput, email: "invalid" });
   expect(result.ok).toBe(false);
   if (!result.ok) expect(result.error.type).toBe("InvalidEmailFormatError");
 });

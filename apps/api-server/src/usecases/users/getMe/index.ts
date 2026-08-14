@@ -1,15 +1,11 @@
-import type { IUserRepository } from "../../../domain/users/repositories";
-import type { IArtistRepository } from "../../../domain/artists/repositories";
+import type { IdentityCapabilities } from "../../capabilities";
+import { type Result, ok } from "../../../utils/result";
 
-export type GetMeInput = {
-  subId: string;
-};
-
-type GetMeResultNotRegistered = {
+type GetMeOutputNotRegistered = {
   registered: false;
 };
 
-type GetMeResultRegistered = {
+type GetMeOutputRegistered = {
   registered: true;
   userId: string;
   email: string;
@@ -20,35 +16,37 @@ type GetMeResultRegistered = {
   } | null;
 };
 
-export type GetMeResult = GetMeResultNotRegistered | GetMeResultRegistered;
+export type GetMeOutput = GetMeOutputNotRegistered | GetMeOutputRegistered;
 
-export type GetMeDeps = {
-  userRepository: IUserRepository;
-  artistRepository: IArtistRepository;
-};
+type GetMeCaps = Pick<IdentityCapabilities, "actorResolution">;
 
-export const getMeUseCase = async (
-  input: GetMeInput,
-  deps: GetMeDeps,
-): Promise<GetMeResult> => {
-  const user = await deps.userRepository.findBySub(input.subId);
+export const getMe = async (
+  caps: GetMeCaps,
+): Promise<Result<GetMeOutput, never>> => {
+  const resolution = caps.actorResolution;
 
-  if (!user) {
-    return { registered: false };
+  switch (resolution.status) {
+    case "unregistered":
+      return ok({ registered: false });
+
+    case "userOnly":
+      return ok({
+        registered: true,
+        userId: resolution.user.getId(),
+        email: resolution.user.getEmail(),
+        artist: null,
+      });
+
+    case "complete":
+      return ok({
+        registered: true,
+        userId: resolution.actor.user.getId(),
+        email: resolution.actor.user.getEmail(),
+        artist: {
+          artistId: resolution.actor.artist.getArtistId(),
+          accountId: resolution.actor.artist.getAccountId(),
+          hasProfile: resolution.actor.artist.hasProfile(),
+        },
+      });
   }
-
-  const artist = await deps.artistRepository.findByUserId(user.getId());
-
-  return {
-    registered: true,
-    userId: user.getId(),
-    email: user.getEmail(),
-    artist: artist
-      ? {
-          artistId: artist.getArtistId(),
-          accountId: artist.getAccountId(),
-          hasProfile: artist.hasProfile(),
-        }
-      : null,
-  };
 };

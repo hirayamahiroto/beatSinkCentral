@@ -2,11 +2,8 @@ import {
   registerNewUser,
   type RegisterNewUserError,
 } from "../../../domain/services/userRegistration";
-import { IUserRepository } from "../../../domain/users/repositories";
-import { IArtistRepository } from "../../../domain/artists/repositories";
-import { isAccountIdAlreadyTakenError } from "../../../domain/artists/errors/accountIdAlreadyTaken";
-import type { ITransactionRunner } from "../../../infrastructure/transaction";
-import { type Result, ok, err } from "../../../utils/result";
+import type { RegistrationCapabilities } from "../../capabilities";
+import { type Result, ok } from "../../../utils/result";
 
 export type CreateUserInput = {
   subId: string;
@@ -21,41 +18,30 @@ export type CreateUserOutput = {
 
 export type CreateUserError = RegisterNewUserError;
 
-export type CreateUserDeps = {
-  userRepository: IUserRepository;
-  artistRepository: IArtistRepository;
-  txRunner: ITransactionRunner;
-};
+type CreateUserCaps = Pick<RegistrationCapabilities, "users" | "artists">;
 
-export const createUserUseCase = async (
+export const createUser = async (
+  caps: CreateUserCaps,
   input: CreateUserInput,
-  deps: CreateUserDeps,
 ): Promise<Result<CreateUserOutput, CreateUserError>> => {
-  try {
-    return await deps.txRunner.run(async (tx) => {
-      const [userIfRegistered, artistIfAccountIdTaken] = await Promise.all([
-        deps.userRepository.findBySub(input.subId, tx),
-        deps.artistRepository.findByAccountId(input.accountId, tx),
-      ]);
+  const [userIfRegistered, artistIfAccountIdTaken] = await Promise.all([
+    caps.users.findBySub(input.subId),
+    caps.artists.findByAccountId(input.accountId),
+  ]);
 
-      const registered = registerNewUser(
-        input,
-        userIfRegistered,
-        artistIfAccountIdTaken,
-      );
-      if (!registered.ok) return registered;
+  const registered = registerNewUser(
+    input,
+    userIfRegistered,
+    artistIfAccountIdTaken,
+  );
+  if (!registered.ok) return registered;
 
-      const { user, artist } = registered.value;
-      await deps.userRepository.save(user.toPersistence(), tx);
-      await deps.artistRepository.save(artist.toPersistence(), tx);
+  const { user, artist } = registered.value;
+  await caps.users.save(user.toPersistence());
+  await caps.artists.save(artist.toPersistence());
 
-      return ok({
-        userId: user.getId(),
-        artistId: artist.getArtistId(),
-      });
-    });
-  } catch (error) {
-    if (isAccountIdAlreadyTakenError(error)) return err(error);
-    throw error;
-  }
+  return ok({
+    userId: user.getId(),
+    artistId: artist.getArtistId(),
+  });
 };

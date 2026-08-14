@@ -4,7 +4,7 @@ import { reconstructArtist } from "../../../domain/artists/factories";
 import { reconstructArtistProfile } from "../../../domain/artistProfiles/factories";
 import { getMyProfile } from "./index";
 import type { IArtistProfileReader } from "../../../domain/artistProfiles/repositories";
-import type { Actor, ReadCapabilities } from "../../capabilities";
+import type { Actor, ArtistReadCapabilities } from "../../capabilities";
 
 const actor: Actor = {
   user: reconstructUser({
@@ -34,7 +34,7 @@ const createCaps = () =>
         IArtistProfileReader["listPublishedSummaries"]
       >(async () => []),
     },
-  }) satisfies ReadCapabilities;
+  }) satisfies ArtistReadCapabilities;
 
 describe("getMyProfile", () => {
   beforeEach(() => vi.clearAllMocks());

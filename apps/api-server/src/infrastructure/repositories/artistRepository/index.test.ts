@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createArtistRepository } from "./index";
-import type { IArtistRepository } from "../../../domain/artists/repositories";
+import { createArtistReader, createArtistWriter } from "./index";
+import type {
+  IArtistReader,
+  IArtistWriter,
+} from "../../../domain/artists/repositories";
 
 const mockDb = {
   select: vi.fn().mockReturnThis(),
@@ -22,12 +25,14 @@ const createUniqueViolation = (constraintName: string): Error =>
     constraint_name: constraintName,
   });
 
-describe("createArtistRepository", () => {
-  let repository: IArtistRepository;
+describe("createArtistReader / createArtistWriter", () => {
+  let reader: IArtistReader;
+  let writer: IArtistWriter;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    repository = createArtistRepository(mockDb as never);
+    reader = createArtistReader(mockDb as never);
+    writer = createArtistWriter(mockDb as never);
   });
 
   describe("findByUserId", () => {
@@ -40,7 +45,7 @@ describe("createArtistRepository", () => {
         },
       ]);
 
-      const result = await repository.findByUserId("user-1");
+      const result = await reader.findByUserId("user-1");
 
       expect(result).not.toBeNull();
       expect(result?.getArtistId()).toBe("artist-1");
@@ -58,7 +63,7 @@ describe("createArtistRepository", () => {
         },
       ]);
 
-      const result = await repository.findByUserId("user-1");
+      const result = await reader.findByUserId("user-1");
 
       expect(result?.hasProfile()).toBe(false);
       expect(result?.getProfile()).toBeNull();
@@ -67,7 +72,7 @@ describe("createArtistRepository", () => {
     it("見つからない場合はnullを返す", async () => {
       mockDb.limit.mockResolvedValue([]);
 
-      const result = await repository.findByUserId("user-unknown");
+      const result = await reader.findByUserId("user-unknown");
 
       expect(result).toBeNull();
     });
@@ -75,7 +80,7 @@ describe("createArtistRepository", () => {
     it("artistOwners/artists/artistProfilesを結合してuserIdで1件取得する", async () => {
       mockDb.limit.mockResolvedValue([]);
 
-      await repository.findByUserId("user-1");
+      await reader.findByUserId("user-1");
 
       expect(mockDb.select).toHaveBeenCalledTimes(1);
       expect(mockDb.from).toHaveBeenCalledTimes(1);
@@ -97,7 +102,7 @@ describe("createArtistRepository", () => {
         },
       ]);
 
-      const result = await repository.findByAccountId("user_123");
+      const result = await reader.findByAccountId("user_123");
 
       expect(result).not.toBeNull();
       expect(result?.getArtistId()).toBe("artist-1");
@@ -109,7 +114,7 @@ describe("createArtistRepository", () => {
     it("見つからない場合はnullを返す", async () => {
       mockDb.limit.mockResolvedValue([]);
 
-      const result = await repository.findByAccountId("unknown_account");
+      const result = await reader.findByAccountId("unknown_account");
 
       expect(result).toBeNull();
     });
@@ -117,7 +122,7 @@ describe("createArtistRepository", () => {
     it("artistsを起点にartistOwners/artistProfilesを結合してaccountIdで1件取得する", async () => {
       mockDb.limit.mockResolvedValue([]);
 
-      await repository.findByAccountId("user_123");
+      await reader.findByAccountId("user_123");
 
       expect(mockDb.select).toHaveBeenCalledTimes(1);
       expect(mockDb.from).toHaveBeenCalledTimes(1);
@@ -137,7 +142,7 @@ describe("createArtistRepository", () => {
         .mockResolvedValueOnce([{ userId: "user-1" }])
         .mockResolvedValueOnce([{ name: "Test Artist" }]);
 
-      const result = await repository.updateAccountId({
+      const result = await writer.updateAccountId({
         artistId: "artist-1",
         accountId: "new_handle",
       });
@@ -157,7 +162,7 @@ describe("createArtistRepository", () => {
         .mockResolvedValueOnce([{ userId: "user-1" }])
         .mockResolvedValueOnce([]);
 
-      const result = await repository.updateAccountId({
+      const result = await writer.updateAccountId({
         artistId: "artist-1",
         accountId: "new_handle",
       });
@@ -172,7 +177,7 @@ describe("createArtistRepository", () => {
       );
 
       await expect(
-        repository.updateAccountId({
+        writer.updateAccountId({
           artistId: "artist-1",
           accountId: "taken_handle",
         }),
@@ -187,7 +192,7 @@ describe("createArtistRepository", () => {
       mockDb.returning.mockRejectedValue(connectionError);
 
       await expect(
-        repository.updateAccountId({
+        writer.updateAccountId({
           artistId: "artist-1",
           accountId: "new_handle",
         }),
@@ -202,7 +207,7 @@ describe("createArtistRepository", () => {
       );
 
       await expect(
-        repository.save({
+        writer.save({
           id: "artist-1",
           accountId: "taken_handle",
           ownerUserId: "user-1",
@@ -212,5 +217,55 @@ describe("createArtistRepository", () => {
         accountId: "taken_handle",
       });
     });
+  });
+});
+
+describe("artists の executor 束ね", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("生成時に渡した executor で読み取る", async () => {
+    const tx = {
+      select: vi.fn().mockReturnThis(),
+      from: vi.fn().mockReturnThis(),
+      innerJoin: vi.fn().mockReturnThis(),
+      leftJoin: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([
+        {
+          artistId: "artist-1",
+          accountId: "user_123",
+          ownerUserId: "user-1",
+          profileName: null,
+        },
+      ]),
+    };
+
+    const result = await createArtistReader(tx as never).findByUserId("user-1");
+
+    expect(tx.select).toHaveBeenCalledTimes(1);
+    expect(mockDb.select).not.toHaveBeenCalled();
+    expect(result?.getArtistId()).toBe("artist-1");
+  });
+
+  it("生成時に渡した executor で書き込む", async () => {
+    const tx = {
+      insert: vi.fn().mockReturnThis(),
+      values: vi.fn().mockReturnThis(),
+      returning: vi
+        .fn()
+        .mockResolvedValue([{ id: "artist-1", accountId: "user_123" }]),
+    };
+
+    const result = await createArtistWriter(tx as never).save({
+      id: "artist-1",
+      accountId: "user_123",
+      ownerUserId: "user-1",
+    });
+
+    expect(tx.insert).toHaveBeenCalledTimes(2);
+    expect(mockDb.insert).not.toHaveBeenCalled();
+    expect(result.getAccountId()).toBe("user_123");
   });
 });

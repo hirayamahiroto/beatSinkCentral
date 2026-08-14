@@ -9,7 +9,7 @@ import type {
   IArtistProfileReader,
   IArtistProfileWriter,
 } from "../../../domain/artistProfiles/repositories";
-import type { Actor, WriteCapabilities } from "../../capabilities";
+import type { Actor, ArtistWriteCapabilities } from "../../capabilities";
 
 const actor: Actor = {
   user: reconstructUser({
@@ -53,7 +53,7 @@ const createCaps = () =>
       upsert: vi.fn<IArtistProfileWriter["upsert"]>(),
       setPublished: vi.fn<IArtistProfileWriter["setPublished"]>(),
     },
-  }) satisfies WriteCapabilities;
+  }) satisfies Pick<ArtistWriteCapabilities, "actor" | "artistProfiles">;
 
 describe("publishMyProfile", () => {
   beforeEach(() => vi.clearAllMocks());

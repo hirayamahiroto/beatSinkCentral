@@ -1,1 +1,0 @@
-export { createUserRepository } from "./userRepository";
