@@ -1,17 +1,26 @@
-import { describe, it, expect } from "vitest";
-import app from "./index";
+import { describe, it, expect, vi } from "vitest";
+import { Hono } from "hono";
+import test from "./index";
+import { handleAppError } from "../../../../errorMap";
 
-describe("Test API endpoint", () => {
-  it("should return Hello World message", async () => {
-    const res = await app.request("/");
-    expect(res.status).toBe(200);
+vi.mock("../../../../infrastructure/auth0", () => ({
+  auth0: { getSession: vi.fn(async () => null) },
+}));
 
-    const json = await res.json();
-    expect(json).toEqual({ message: "Hello World" });
+const createApp = () => new Hono().route("/test", test).onError(handleAppError);
+
+const routeSurface = () => [
+  ...new Set(test.routes.map((route) => `${route.method} ${route.path}`)),
+];
+
+describe("/test ルーターの合成", () => {
+  it("配下のエンドポイントを実 URL として公開する", () => {
+    expect(routeSurface()).toEqual(["ALL /*", "GET /"]);
   });
 
-  it("should return JSON content type", async () => {
-    const res = await app.request("/");
-    expect(res.headers.get("content-type")).toContain("application/json");
+  it("認証を要求する", async () => {
+    const res = await createApp().request("/test", { method: "GET" });
+
+    expect(res.status).toBe(401);
   });
 });

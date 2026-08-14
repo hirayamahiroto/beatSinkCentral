@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import { reconstructUser } from "../../../../../domain/users/factories";
-import { reconstructArtist } from "../../../../../domain/artists/factories";
-import { handleAppError } from "../../../../../errorMap";
+import { reconstructUser } from "../../../../../../domain/users/factories";
+import { reconstructArtist } from "../../../../../../domain/artists/factories";
+import { handleAppError } from "../../../../../../errorMap";
 import artistsMe, { type UpdateMyAccountIdRequestBody } from "./index";
 
 const mockUserRepository = {
@@ -22,7 +22,7 @@ const mockTxRunner = {
   run: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn({})),
 };
 
-vi.mock("../../../../../infrastructure/container", () => ({
+vi.mock("../../../../../../infrastructure/container", () => ({
   getContainer: () => ({
     userRepository: mockUserRepository,
     artistRepository: mockArtistRepository,
