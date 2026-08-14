@@ -72,8 +72,12 @@ apps/api-server/src/
 │
 ├── infrastructure/           # インフラストラクチャ層
 │   ├── auth0/                # Auth0 クライアント
-│   ├── capabilities/         # 権能の組み立て（Composition Root）
+│   ├── capabilities/         # 権能の合成（Composition Root）
+│   │   ├── index.ts          # getCapabilityDeps（各部品の合成のみ）
+│   │   ├── builders/         # executor → 権能（用途ごとの build*Capabilities）
+│   │   └── resolveActorState/ # subId → ActorResolution
 │   ├── database/             # データベースクライアント
+│   ├── transaction/          # Executor 型とトランザクション境界（runInTransaction）
 │   └── repositories/         # リポジトリ実装（Reader / Writer）
 │
 ├── middlewares/              # ミドルウェア
@@ -912,6 +916,19 @@ withRegistrationCapabilities(deps, work); // 登録（トランザクション�
 `runWithUserWriteCapabilities` / `runWithWriteCapabilities` / `runWithRegistrationCapabilities` が境界を張り、権能に束ねる executor をトランザクションに差し替える。Drizzle のトランザクションは throw でしかロールバックしないため、業務エラー（`err`）は内部シグナルに載せて境界の外で復元する。
 
 usecase が `tx` を受け取ることはない。**リポジトリの executor は権能の生成時に注入される**ため、「トランザクション内で動いているか」は usecase から見えない。
+
+### Composition Root の分割
+
+`infrastructure/capabilities/index.ts` は**合成だけ**を持つ。中身は関心ごとに分かれており、それぞれ単体でテストできる。
+
+| モジュール                       | 責務                                                              |
+| -------------------------------- | ----------------------------------------------------------------- |
+| `infrastructure/transaction`     | `Executor` 型と `runInTransaction`（境界の張り方と `err` の復元） |
+| `capabilities/resolveActorState` | Reader を受け取り `subId` を `ActorResolution` に解決する         |
+| `capabilities/builders`          | `executor → 権能` の組み立て（用途ごとに 1 つの `build*`）        |
+| `capabilities/index.ts`          | `db` を確定させ、上記を `CapabilityDeps` に合成する               |
+
+`build*Capabilities` は主体を先に受け、`executor` を後で受ける形（`(subject) => (executor) => Caps`）に揃える。これにより `runInTransaction` にそのまま渡せて、境界の有無で組み立て方が変わらない。
 
 ### 権能を経由しない依存取得は存在しない
 

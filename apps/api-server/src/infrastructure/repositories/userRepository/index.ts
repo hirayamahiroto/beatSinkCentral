@@ -1,8 +1,5 @@
 import { eq } from "drizzle-orm";
-import {
-  DatabaseClient,
-  usersTable,
-} from "../../../../../../packages/database/src/utils/createClient";
+import { usersTable } from "../../../../../../packages/database/src/utils/createClient";
 import { User } from "../../../domain/users/entities";
 import {
   IUserReader,
@@ -11,9 +8,7 @@ import {
   UserUpdateEmailData,
 } from "../../../domain/users/repositories";
 import { reconstructUser } from "../../../domain/users/factories";
-import type { TransactionContext } from "../../transaction";
-
-type Executor = DatabaseClient | TransactionContext;
+import type { Executor } from "../../transaction";
 
 const userColumns = {
   id: usersTable.id,

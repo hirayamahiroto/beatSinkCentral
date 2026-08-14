@@ -1,6 +1,5 @@
 import { eq } from "drizzle-orm";
 import {
-  DatabaseClient,
   artistsTable,
   artistOwnersTable,
   artistProfilesTable,
@@ -18,9 +17,7 @@ import { reconstructArtist } from "../../../domain/artists/factories";
 import { createArtistNotFoundError } from "../../../domain/artists/errors/artistNotFound";
 import { createAccountIdAlreadyTakenError } from "../../../domain/artists/errors/accountIdAlreadyTaken";
 import { isUniqueViolation } from "../../database/uniqueViolation";
-import type { TransactionContext } from "../../transaction";
-
-type Executor = DatabaseClient | TransactionContext;
+import type { Executor } from "../../transaction";
 
 const ACCOUNT_ID_UNIQUE_CONSTRAINT = "artists_account_id_unique";
 
