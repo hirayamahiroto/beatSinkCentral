@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { getCapabilityDeps } from "../../../../../../infrastructure/capabilities";
-import { withUserWriteCapabilities } from "../../../../../../usecases/authorization";
+import { withUserWriteCapabilities } from "../../../../../../usecases/authorization/userWrite";
 import { updateMyEmail } from "../../../../../../usecases/users/updateMyEmail";
 import { validateRequest } from "../../../validators/validateRequest";
 import { handleAppError } from "../../../../../../errorMap";

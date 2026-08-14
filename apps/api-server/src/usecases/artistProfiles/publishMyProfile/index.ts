@@ -6,7 +6,7 @@ import {
   ensurePublishable,
   type ProfileNotPublishableError,
 } from "../../../domain/artistProfiles/policies/publishability";
-import type { WriteCapabilities } from "../../capabilities";
+import type { ArtistWriteCapabilities } from "../../capabilities";
 import { type Result, ok, err } from "../../../utils/result";
 
 export type PublishMyProfileInput = {
@@ -21,7 +21,10 @@ export type PublishMyProfileError =
   | ArtistProfileNotFoundError
   | ProfileNotPublishableError;
 
-type PublishMyProfileCaps = Pick<WriteCapabilities, "actor" | "artistProfiles">;
+type PublishMyProfileCaps = Pick<
+  ArtistWriteCapabilities,
+  "actor" | "artistProfiles"
+>;
 
 export const publishMyProfile = async (
   caps: PublishMyProfileCaps,

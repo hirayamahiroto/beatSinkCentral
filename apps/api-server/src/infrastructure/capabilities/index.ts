@@ -5,10 +5,10 @@ import { createArtistReader } from "../repositories/artistRepository";
 import { resolveActorState } from "./resolveActorState";
 import {
   buildPublicReadCapabilities,
-  buildReadCapabilities,
+  buildArtistReadCapabilities,
   buildRegistrationCapabilities,
   buildUserWriteCapabilities,
-  buildWriteCapabilities,
+  buildArtistWriteCapabilities,
 } from "./builders";
 import type { CapabilityDeps } from "../../usecases/capabilities";
 
@@ -30,13 +30,14 @@ export const getCapabilityDeps = (() => {
 
         buildPublicReadCapabilities: () => buildPublicReadCapabilities(db),
 
-        buildReadCapabilities: (actor) => buildReadCapabilities(actor)(db),
+        buildArtistReadCapabilities: (actor) =>
+          buildArtistReadCapabilities(actor)(db),
 
         runWithUserWriteCapabilities: (user, work) =>
           runInTransaction(db, buildUserWriteCapabilities(user), work),
 
-        runWithWriteCapabilities: (actor, work) =>
-          runInTransaction(db, buildWriteCapabilities(actor), work),
+        runWithArtistWriteCapabilities: (actor, work) =>
+          runInTransaction(db, buildArtistWriteCapabilities(actor), work),
 
         runWithRegistrationCapabilities: (work) =>
           runInTransaction(db, buildRegistrationCapabilities, work),

@@ -10,7 +10,7 @@ import type {
   IArtistReader,
   IArtistWriter,
 } from "../../../domain/artists/repositories";
-import type { WriteCapabilities } from "../../capabilities";
+import type { ArtistWriteCapabilities } from "../../capabilities";
 
 const user = reconstructUser({
   id: "550e8400-e29b-41d4-a716-446655440000",
@@ -36,7 +36,7 @@ const createCaps = () =>
       save: vi.fn<IArtistWriter["save"]>(),
       updateAccountId: vi.fn<IArtistWriter["updateAccountId"]>(),
     },
-  }) satisfies Pick<WriteCapabilities, "actor" | "artists">;
+  }) satisfies Pick<ArtistWriteCapabilities, "actor" | "artists">;
 
 const renamedArtist = reconstructArtist({
   artistId: artist.getArtistId(),

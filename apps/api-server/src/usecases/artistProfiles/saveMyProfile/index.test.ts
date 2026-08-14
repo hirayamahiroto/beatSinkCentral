@@ -8,7 +8,7 @@ import type {
   IArtistProfileReader,
   IArtistProfileWriter,
 } from "../../../domain/artistProfiles/repositories";
-import type { Actor, WriteCapabilities } from "../../capabilities";
+import type { Actor, ArtistWriteCapabilities } from "../../capabilities";
 
 const existingUser = reconstructUser({
   id: "550e8400-e29b-41d4-a716-446655440000",
@@ -44,7 +44,7 @@ const createCaps = () =>
       upsert: vi.fn<IArtistProfileWriter["upsert"]>(echoUpsert),
       setPublished: vi.fn<IArtistProfileWriter["setPublished"]>(),
     },
-  }) satisfies Pick<WriteCapabilities, "actor" | "artistProfiles">;
+  }) satisfies Pick<ArtistWriteCapabilities, "actor" | "artistProfiles">;
 
 describe("saveMyProfile", () => {
   beforeEach(() => {

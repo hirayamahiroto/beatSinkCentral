@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { getCapabilityDeps } from "../../../../../../infrastructure/capabilities";
-import { withIdentityCapabilities } from "../../../../../../usecases/authorization";
+import { withIdentityCapabilities } from "../../../../../../usecases/authorization/identity";
 import { getMe } from "../../../../../../usecases/users/getMe";
 import { handleAppError } from "../../../../../../errorMap";
 

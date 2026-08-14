@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   buildPublicReadCapabilities,
-  buildReadCapabilities,
+  buildArtistReadCapabilities,
   buildRegistrationCapabilities,
   buildUserWriteCapabilities,
-  buildWriteCapabilities,
+  buildArtistWriteCapabilities,
 } from "./index";
 import { createUserReader } from "../../repositories/userRepository";
 import { createArtistReader } from "../../repositories/artistRepository";
@@ -83,13 +83,13 @@ describe("buildPublicReadCapabilities", () => {
   });
 });
 
-describe("buildReadCapabilities", () => {
+describe("buildArtistReadCapabilities", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it("Actor と Reader だけを渡し、Writer は渡さない", () => {
-    const caps = buildReadCapabilities(actor)(executor);
+    const caps = buildArtistReadCapabilities(actor)(executor);
 
     expect(Object.keys(caps).sort()).toStrictEqual(["actor", "artistProfiles"]);
     expect(caps.actor).toBe(actor);
@@ -114,13 +114,13 @@ describe("buildUserWriteCapabilities", () => {
   });
 });
 
-describe("buildWriteCapabilities", () => {
+describe("buildArtistWriteCapabilities", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it("Actor と全集約の Reader / Writer を渡した executor で組み立てる", () => {
-    const caps = buildWriteCapabilities(actor)(executor);
+    const caps = buildArtistWriteCapabilities(actor)(executor);
 
     expect(Object.keys(caps).sort()).toStrictEqual([
       "actor",

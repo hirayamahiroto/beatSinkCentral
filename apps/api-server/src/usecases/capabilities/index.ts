@@ -37,7 +37,7 @@ export type PublicReadCapabilities = {
   linkTypes: ILinkTypeReader;
 };
 
-export type ReadCapabilities = {
+export type ArtistReadCapabilities = {
   actor: Actor;
   artistProfiles: IArtistProfileReader;
 };
@@ -47,7 +47,7 @@ export type UserWriteCapabilities = {
   users: IUserReader & IUserWriter;
 };
 
-export type WriteCapabilities = {
+export type ArtistWriteCapabilities = {
   actor: Actor;
   users: IUserReader & IUserWriter;
   artists: IArtistReader & IArtistWriter;
@@ -64,16 +64,16 @@ export type CapabilityDeps = {
 
   buildPublicReadCapabilities(): PublicReadCapabilities;
 
-  buildReadCapabilities(actor: Actor): ReadCapabilities;
+  buildArtistReadCapabilities(actor: Actor): ArtistReadCapabilities;
 
   runWithUserWriteCapabilities<T, E>(
     user: User,
     work: (caps: UserWriteCapabilities) => Promise<Result<T, E>>,
   ): Promise<Result<T, E>>;
 
-  runWithWriteCapabilities<T, E>(
+  runWithArtistWriteCapabilities<T, E>(
     actor: Actor,
-    work: (caps: WriteCapabilities) => Promise<Result<T, E>>,
+    work: (caps: ArtistWriteCapabilities) => Promise<Result<T, E>>,
   ): Promise<Result<T, E>>;
 
   runWithRegistrationCapabilities<T, E>(

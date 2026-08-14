@@ -16,10 +16,10 @@ import type { User } from "../../../domain/users/entities";
 import type {
   Actor,
   PublicReadCapabilities,
-  ReadCapabilities,
+  ArtistReadCapabilities,
   RegistrationCapabilities,
   UserWriteCapabilities,
-  WriteCapabilities,
+  ArtistWriteCapabilities,
 } from "../../../usecases/capabilities";
 
 const buildUserRepository = (executor: Executor) => ({
@@ -42,9 +42,9 @@ export const buildPublicReadCapabilities = (
   linkTypes: createLinkTypeReader(executor),
 });
 
-export const buildReadCapabilities =
+export const buildArtistReadCapabilities =
   (actor: Actor) =>
-  (executor: Executor): ReadCapabilities => ({
+  (executor: Executor): ArtistReadCapabilities => ({
     actor,
     artistProfiles: createArtistProfileReader(executor),
   });
@@ -56,9 +56,9 @@ export const buildUserWriteCapabilities =
     users: buildUserRepository(executor),
   });
 
-export const buildWriteCapabilities =
+export const buildArtistWriteCapabilities =
   (actor: Actor) =>
-  (executor: Executor): WriteCapabilities => ({
+  (executor: Executor): ArtistWriteCapabilities => ({
     actor,
     ...buildAccountRepositories(executor),
     artistProfiles: {

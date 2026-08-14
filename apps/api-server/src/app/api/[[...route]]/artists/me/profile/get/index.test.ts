@@ -29,7 +29,7 @@ const mockResolveActorState = vi.fn();
 vi.mock("../../../../../../../infrastructure/capabilities", () => ({
   getCapabilityDeps: () => ({
     resolveActorState: (subId: string) => mockResolveActorState(subId),
-    buildReadCapabilities: (a: unknown) => ({
+    buildArtistReadCapabilities: (a: unknown) => ({
       actor: a,
       artistProfiles: mockArtistProfiles,
     }),

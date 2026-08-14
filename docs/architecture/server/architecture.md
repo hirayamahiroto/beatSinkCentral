@@ -67,7 +67,14 @@ apps/api-server/src/
 │
 ├── usecases/                 # ユースケース層（アプリケーション層）
 │   ├── capabilities/         # 権能型の定義（用途ごと）
-│   ├── authorization/        # 権能の受け渡しと Actor 解決の畳み込み
+│   ├── authorization/        # 経路ごとの入り口（1 経路 = 1 モジュール）
+│   │   ├── resolution/       # toActor / toUser（畳み込み）
+│   │   ├── conflict/         # 一意制約違反を err に戻す
+│   │   ├── identity/         # withIdentityCapabilities
+│   │   ├── artistRead/       # withArtistReadCapabilities
+│   │   ├── userWrite/        # withUserWriteCapabilities
+│   │   ├── artistWrite/      # withArtistWriteCapabilities
+│   │   └── registration/     # withRegistrationCapabilities
 │   └── users/                # createUser / getMe / updateMyEmail ...
 │
 ├── infrastructure/           # インフラストラクチャ層
@@ -862,17 +869,22 @@ usecase にリポジトリ一式と `subId` を渡す形は取らない。**「�
 | -------------------------- | -------------------- | ---------------- | ---------------------------------------- |
 | `PublicReadCapabilities`   | 不要                 | なし             | 未認証で読める公開データ                 |
 | `IdentityCapabilities`     | 解決結果             | なし             | 自分の登録状態そのものを返す             |
-| `ReadCapabilities`         | Actor（User+Artist） | なし             | 認証済みユーザー自身のデータの読み取り   |
+| `ArtistReadCapabilities`   | Actor（User+Artist） | なし             | Artist を伴うデータの読み取り            |
 | `UserWriteCapabilities`    | User                 | トランザクション | User スコープで完結する更新（例: email） |
-| `WriteCapabilities`        | Actor（User+Artist） | トランザクション | Artist を伴うデータの更新                |
+| `ArtistWriteCapabilities`  | Actor（User+Artist） | トランザクション | Artist を伴うデータの更新                |
 | `RegistrationCapabilities` | 不在                 | トランザクション | 登録（主体が原理的に存在しない書き込み） |
 
 **主体のスコープは機能の要件で決める**。Artist の有無に依存しない機能は `UserWriteCapabilities` を使い、Artist 未作成（`userOnly`）を弾かない。「認証済みなら Actor が揃っている」という前提を全経路に敷かない。
 
+型名・ヘルパ名・モジュール名には**主体のスコープを含める**（`UserWrite` / `ArtistWrite` / `ArtistRead`）。`Write` だけでは「何が揃っていれば通るのか」が名前から読めず、Artist 未作成のユーザーを弾く経路に誤って載せてしまう。
+
 集約が増えたときは、対応する用途の権能型にその集約の Reader / Writer を足す。**usecase 側は `Pick` で自分が使う権能だけに絞る**。これにより「渡しすぎ」がシグネチャに現れる。
 
 ```typescript
-type SaveMyProfileCaps = Pick<WriteCapabilities, "actor" | "artistProfiles">;
+type SaveMyProfileCaps = Pick<
+  ArtistWriteCapabilities,
+  "actor" | "artistProfiles"
+>;
 type UpdateMyEmailCaps = Pick<UserWriteCapabilities, "user" | "users">;
 type ListLinkTypesCaps = Pick<PublicReadCapabilities, "linkTypes">;
 ```
@@ -890,36 +902,46 @@ export type ActorResolution =
   | { status: "complete"; actor: Actor };
 ```
 
-- Artist を伴う経路（`withReadCapabilities` / `withWriteCapabilities`）は `toActor` で `Result<Actor, ResolveActorError>` に畳み、`unregistered` を `UserNotFoundError`、`userOnly` を `ArtistNotFoundError` として 404 にする
+- Artist を伴う経路（`withArtistReadCapabilities` / `withArtistWriteCapabilities`）は `toActor` で `Result<Actor, ResolveActorError>` に畳み、`unregistered` を `UserNotFoundError`、`userOnly` を `ArtistNotFoundError` として 404 にする
 - User スコープで完結する経路（`withUserWriteCapabilities`）は `toUser` で `Result<User, ResolveUserError>` に畳み、`unregistered` だけを 404 にする。`userOnly` / `complete` はどちらも `User` として通す
 - `GET /users/me` は**未登録が正常系**（オンボーディング動線）。`withIdentityCapabilities` で解決状態をそのまま受け取り、`registered: false` を 200 で返す
 
-「どの状態を失敗に畳むか」は用途ごとの判断であり、解決処理自体には持たせない。畳み込み（`toActor` / `toUser`）は純粋関数として `usecases/authorization` に置く。
+「どの状態を失敗に畳むか」は用途ごとの判断であり、解決処理自体には持たせない。畳み込み（`toActor` / `toUser`）は純粋関数として `usecases/authorization/resolution` に置く。
 
 ### 経路の入り口は 6 つ
 
-エントリポイントは権能を自分で組み立てず、`usecases/authorization` のヘルパを通す。
+エントリポイントは権能を自分で組み立てず、`usecases/authorization` の**経路モジュール**を直接 import して通す。import パスにその route が乗る経路が現れる。
 
-```typescript
-getCapabilityDeps().buildPublicReadCapabilities(); // 公開読み取り
-withIdentityCapabilities(deps, subId, work); // 登録状態の照会
-withReadCapabilities(deps, subId, work); // 認証済み読み取り
-withUserWriteCapabilities(deps, subId, work); // User スコープの書き込み（トランザクション）
-withWriteCapabilities(deps, subId, work); // Artist を伴う書き込み（トランザクション）
-withRegistrationCapabilities(deps, work); // 登録（トランザクション、Actor 不要）
-```
+| 経路モジュール                           | 入り口                                              | 主体     |
+| ---------------------------------------- | --------------------------------------------------- | -------- |
+| （`infrastructure/capabilities` を直接） | `getCapabilityDeps().buildPublicReadCapabilities()` | 不要     |
+| `usecases/authorization/identity`        | `withIdentityCapabilities(deps, subId, work)`       | 解決結果 |
+| `usecases/authorization/artistRead`      | `withArtistReadCapabilities(deps, subId, work)`     | Actor    |
+| `usecases/authorization/userWrite`       | `withUserWriteCapabilities(deps, subId, work)`      | User     |
+| `usecases/authorization/artistWrite`     | `withArtistWriteCapabilities(deps, subId, work)`    | Actor    |
+| `usecases/authorization/registration`    | `withRegistrationCapabilities(deps, work)`          | 不在     |
+
+経路モジュールが共有する部品は 2 つに分けている。
+
+| モジュール                           | 責務                                                                                                                    |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| `usecases/authorization/resolution`  | `toActor` / `toUser`（`ActorResolution` の畳み込み。純粋関数）                                                          |
+| `usecases/authorization/conflict`    | `AlreadyTakenError` と `catchAlreadyTaken`（一意制約違反を `err` に戻す）                                               |
+| `usecases/authorization/testDoubles` | 各経路のテストが共有する `CapabilityDeps` のスタブと Entity フィクスチャ（テスト専用のため `index.test.ts` を持たない） |
+
+`index.ts` による再エクスポートは置かない。**どの経路に乗っているかを import パスで示す**ためで、`usecases/authorization` から何でも取れる形にすると経路の選択が見えなくなる。
 
 境界を張るヘルパは、一意制約違反として上がってきた型付きエラーを `err` へ変換する（詳細は [並行更新ポリシー](./database/concurrency.md)）。**変換する型は、その権能で書ける範囲に一致させる。**
 
 | ヘルパ                         | 変換する型                                              |
 | ------------------------------ | ------------------------------------------------------- |
 | `withUserWriteCapabilities`    | `EmailAlreadyTakenError`                                |
-| `withWriteCapabilities`        | `EmailAlreadyTakenError` / `AccountIdAlreadyTakenError` |
+| `withArtistWriteCapabilities`  | `EmailAlreadyTakenError` / `AccountIdAlreadyTakenError` |
 | `withRegistrationCapabilities` | `EmailAlreadyTakenError` / `AccountIdAlreadyTakenError` |
 
 ### トランザクション境界
 
-`runWithUserWriteCapabilities` / `runWithWriteCapabilities` / `runWithRegistrationCapabilities` が境界を張り、権能に束ねる executor をトランザクションに差し替える。Drizzle のトランザクションは throw でしかロールバックしないため、業務エラー（`err`）は内部シグナルに載せて境界の外で復元する。
+`runWithUserWriteCapabilities` / `runWithArtistWriteCapabilities` / `runWithRegistrationCapabilities` が境界を張り、権能に束ねる executor をトランザクションに差し替える。Drizzle のトランザクションは throw でしかロールバックしないため、業務エラー（`err`）は内部シグナルに載せて境界の外で復元する。
 
 usecase が `tx` を受け取ることはない。**リポジトリの executor は権能の生成時に注入される**ため、「トランザクション内で動いているか」は usecase から見えない。
 
@@ -1006,12 +1028,12 @@ UserとArtistが別集約であっても、「新規登録時には原子的に�
 
 **適用例**:
 
-| 要求                         | インターフェース           | 実装                        |
-| ---------------------------- | -------------------------- | --------------------------- |
-| ユーザーを保存したい         | `IUserWriter.save`         | drizzle で INSERT           |
-| トランザクションでまとめたい | `runWithWriteCapabilities` | drizzle の `db.transaction` |
-| メールを送りたい             | `IEmailSender.send`        | SendGrid / Resend / SES 等  |
-| 画像を保存したい             | `IFileStorage.upload`      | S3 / GCS / ローカル等       |
+| 要求                         | インターフェース                 | 実装                        |
+| ---------------------------- | -------------------------------- | --------------------------- |
+| ユーザーを保存したい         | `IUserWriter.save`               | drizzle で INSERT           |
+| トランザクションでまとめたい | `runWithArtistWriteCapabilities` | drizzle の `db.transaction` |
+| メールを送りたい             | `IEmailSender.send`              | SendGrid / Resend / SES 等  |
+| 画像を保存したい             | `IFileStorage.upload`            | S3 / GCS / ローカル等       |
 
 ---
 

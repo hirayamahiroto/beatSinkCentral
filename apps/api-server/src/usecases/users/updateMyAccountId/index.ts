@@ -6,7 +6,7 @@ import {
   createAccountId,
   type InvalidAccountIdFormatError,
 } from "../../../domain/artists/valueObjects/accountId";
-import type { WriteCapabilities } from "../../capabilities";
+import type { ArtistWriteCapabilities } from "../../capabilities";
 import { type Result, ok, err } from "../../../utils/result";
 
 export type UpdateMyAccountIdInput = {
@@ -22,7 +22,7 @@ export type UpdateMyAccountIdError =
   | InvalidAccountIdFormatError
   | AccountIdAlreadyTakenError;
 
-type UpdateMyAccountIdCaps = Pick<WriteCapabilities, "actor" | "artists">;
+type UpdateMyAccountIdCaps = Pick<ArtistWriteCapabilities, "actor" | "artists">;
 
 export const updateMyAccountId = async (
   caps: UpdateMyAccountIdCaps,
