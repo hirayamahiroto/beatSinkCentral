@@ -23,6 +23,10 @@ import {
   createAccountIdAlreadyTakenError,
   isAccountIdAlreadyTakenError,
 } from "../../domain/artists/errors/accountIdAlreadyTaken";
+import {
+  createEmailAlreadyTakenError,
+  isEmailAlreadyTakenError,
+} from "../../domain/users/errors/emailAlreadyTaken";
 import { reconstructUser } from "../../domain/users/factories";
 import { reconstructArtist } from "../../domain/artists/factories";
 import { ok } from "../../utils/result";
@@ -279,6 +283,34 @@ describe("withUserWriteCapabilities", () => {
     expect(result).toStrictEqual(ok("user-1"));
     expect(calls.userWriteBoundaries).toBe(1);
   });
+
+  it("並行更新による email の一意制約違反は EmailAlreadyTakenError の err に変換する", async () => {
+    const { deps } = createDeps({ status: "userOnly", user });
+
+    const result = await withUserWriteCapabilities(
+      deps,
+      "auth0|123",
+      async () => {
+        throw createEmailAlreadyTakenError();
+      },
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(isEmailAlreadyTakenError(result.error)).toBe(true);
+    }
+  });
+
+  it("一意制約違反以外の例外はそのまま伝播する", async () => {
+    const { deps } = createDeps({ status: "userOnly", user });
+    const connectionError = new Error("connection terminated");
+
+    await expect(
+      withUserWriteCapabilities(deps, "auth0|123", async () => {
+        throw connectionError;
+      }),
+    ).rejects.toBe(connectionError);
+  });
 });
 
 describe("withWriteCapabilities", () => {
@@ -325,6 +357,22 @@ describe("withWriteCapabilities", () => {
     }
   });
 
+  it("並行更新による email の一意制約違反も EmailAlreadyTakenError の err に変換する", async () => {
+    const { deps } = createDeps({
+      status: "complete",
+      actor: { user, artist },
+    });
+
+    const result = await withWriteCapabilities(deps, "auth0|123", async () => {
+      throw createEmailAlreadyTakenError();
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(isEmailAlreadyTakenError(result.error)).toBe(true);
+    }
+  });
+
   it("一意制約違反以外の例外はそのまま伝播する", async () => {
     const { deps } = createDeps({
       status: "complete",
@@ -363,6 +411,19 @@ describe("withRegistrationCapabilities", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(isAccountIdAlreadyTakenError(result.error)).toBe(true);
+    }
+  });
+
+  it("登録時の email 衝突は EmailAlreadyTakenError の err に変換する", async () => {
+    const { deps } = createDeps({ status: "unregistered" });
+
+    const result = await withRegistrationCapabilities(deps, async () => {
+      throw createEmailAlreadyTakenError();
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(isEmailAlreadyTakenError(result.error)).toBe(true);
     }
   });
 

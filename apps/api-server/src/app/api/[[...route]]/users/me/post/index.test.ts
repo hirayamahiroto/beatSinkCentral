@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { reconstructUser } from "../../../../../../domain/users/factories";
 import { reconstructArtist } from "../../../../../../domain/artists/factories";
+import { createEmailAlreadyTakenError } from "../../../../../../domain/users/errors/emailAlreadyTaken";
 import { handleAppError } from "../../../../../../errorMap";
 import updateMyEmailRoute from "./index";
 
@@ -108,6 +109,15 @@ describe("POST /users/me", () => {
     expect(res.status).toBe(404);
     expect(await res.json()).toStrictEqual({ error: "User not found" });
     expect(mockUsers.updateEmail).not.toHaveBeenCalled();
+  });
+
+  it("emailが他ユーザーに使われていたら409を返し、emailを露出しない", async () => {
+    mockUsers.updateEmail.mockRejectedValue(createEmailAlreadyTakenError());
+
+    const res = await postEmail("taken@example.com");
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toStrictEqual({ error: "Email already taken" });
   });
 
   it("emailの形式が不正なら422を返し、更新しない", async () => {

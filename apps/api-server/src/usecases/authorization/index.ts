@@ -17,6 +17,10 @@ import {
   isAccountIdAlreadyTakenError,
   type AccountIdAlreadyTakenError,
 } from "../../domain/artists/errors/accountIdAlreadyTaken";
+import {
+  isEmailAlreadyTakenError,
+  type EmailAlreadyTakenError,
+} from "../../domain/users/errors/emailAlreadyTaken";
 import { type Result, ok, err } from "../../utils/result";
 
 export const toActor = (
@@ -66,37 +70,47 @@ export const withReadCapabilities = async <T, E>(
   return work(deps.buildReadCapabilities(actor.value));
 };
 
+export type AlreadyTakenError =
+  | AccountIdAlreadyTakenError
+  | EmailAlreadyTakenError;
+
+const isAlreadyTakenError = (error: unknown): error is AlreadyTakenError =>
+  isAccountIdAlreadyTakenError(error) || isEmailAlreadyTakenError(error);
+
+const catchAlreadyTaken = async <T, E, Conflict>(
+  isConflict: (error: unknown) => error is Conflict,
+  run: () => Promise<Result<T, E>>,
+): Promise<Result<T, E | Conflict>> => {
+  try {
+    return await run();
+  } catch (error) {
+    if (isConflict(error)) return err(error);
+    throw error;
+  }
+};
+
 export const withUserWriteCapabilities = async <T, E>(
   deps: CapabilityDeps,
   subId: string,
   work: (caps: UserWriteCapabilities) => Promise<Result<T, E>>,
-): Promise<Result<T, E | ResolveUserError>> => {
+): Promise<Result<T, E | ResolveUserError | EmailAlreadyTakenError>> => {
   const user = toUser(await deps.resolveActorState(subId));
   if (!user.ok) return user;
 
-  return deps.runWithUserWriteCapabilities(user.value, work);
-};
-
-const catchTakenAccountId = async <T, E>(
-  run: () => Promise<Result<T, E>>,
-): Promise<Result<T, E | AccountIdAlreadyTakenError>> => {
-  try {
-    return await run();
-  } catch (error) {
-    if (isAccountIdAlreadyTakenError(error)) return err(error);
-    throw error;
-  }
+  return catchAlreadyTaken(isEmailAlreadyTakenError, () =>
+    deps.runWithUserWriteCapabilities(user.value, work),
+  );
 };
 
 export const withWriteCapabilities = async <T, E>(
   deps: CapabilityDeps,
   subId: string,
   work: (caps: WriteCapabilities) => Promise<Result<T, E>>,
-): Promise<Result<T, E | ResolveActorError | AccountIdAlreadyTakenError>> => {
+): Promise<Result<T, E | ResolveActorError | AlreadyTakenError>> => {
   const actor = toActor(await deps.resolveActorState(subId));
   if (!actor.ok) return actor;
 
-  return catchTakenAccountId(() =>
+  return catchAlreadyTaken(isAlreadyTakenError, () =>
     deps.runWithWriteCapabilities(actor.value, work),
   );
 };
@@ -104,5 +118,7 @@ export const withWriteCapabilities = async <T, E>(
 export const withRegistrationCapabilities = <T, E>(
   deps: CapabilityDeps,
   work: (caps: RegistrationCapabilities) => Promise<Result<T, E>>,
-): Promise<Result<T, E | AccountIdAlreadyTakenError>> =>
-  catchTakenAccountId(() => deps.runWithRegistrationCapabilities(work));
+): Promise<Result<T, E | AlreadyTakenError>> =>
+  catchAlreadyTaken(isAlreadyTakenError, () =>
+    deps.runWithRegistrationCapabilities(work),
+  );

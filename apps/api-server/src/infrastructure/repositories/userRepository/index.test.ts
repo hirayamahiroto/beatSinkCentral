@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createUserReader, createUserWriter } from "./index";
+import { isEmailAlreadyTakenError } from "../../../domain/users/errors/emailAlreadyTaken";
 
 const mockDb = {
   insert: vi.fn().mockReturnThis(),
@@ -18,6 +19,12 @@ const row = {
   subId: "auth0|123456789",
   email: "test@example.com",
 };
+
+const createUniqueViolation = (constraintName: string): Error =>
+  Object.assign(new Error("duplicate key value violates unique constraint"), {
+    code: "23505",
+    constraint_name: constraintName,
+  });
 
 describe("createUserWriter", () => {
   beforeEach(() => {
@@ -47,6 +54,40 @@ describe("createUserWriter", () => {
 
       expect(mockDb.set).toHaveBeenCalledWith({ email: "new@example.com" });
       expect(result.toPersistence()).toStrictEqual(updated);
+    });
+  });
+
+  describe("email の一意制約違反", () => {
+    it("save では EmailAlreadyTakenError を throw する", async () => {
+      mockDb.returning.mockRejectedValue(
+        createUniqueViolation("users_email_unique"),
+      );
+
+      await expect(
+        createUserWriter(mockDb as never).save(row),
+      ).rejects.toSatisfy(isEmailAlreadyTakenError);
+    });
+
+    it("updateEmail では EmailAlreadyTakenError を throw する", async () => {
+      mockDb.returning.mockRejectedValue(
+        createUniqueViolation("users_email_unique"),
+      );
+
+      await expect(
+        createUserWriter(mockDb as never).updateEmail({
+          id: row.id,
+          email: "taken@example.com",
+        }),
+      ).rejects.toSatisfy(isEmailAlreadyTakenError);
+    });
+
+    it("email 以外の制約違反はそのまま伝播する", async () => {
+      const subIdViolation = createUniqueViolation("users_sub_id_unique");
+      mockDb.returning.mockRejectedValue(subIdViolation);
+
+      await expect(createUserWriter(mockDb as never).save(row)).rejects.toBe(
+        subIdViolation,
+      );
     });
   });
 

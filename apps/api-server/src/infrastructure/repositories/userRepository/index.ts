@@ -8,12 +8,27 @@ import {
   UserUpdateEmailData,
 } from "../../../domain/users/repositories";
 import { reconstructUser } from "../../../domain/users/factories";
+import { createEmailAlreadyTakenError } from "../../../domain/users/errors/emailAlreadyTaken";
+import { isUniqueViolation } from "../../database/uniqueViolation";
 import type { Executor } from "../../transaction";
+
+const EMAIL_UNIQUE_CONSTRAINT = "users_email_unique";
 
 const userColumns = {
   id: usersTable.id,
   subId: usersTable.subId,
   email: usersTable.email,
+};
+
+const rejectTakenEmail = async <T>(write: () => Promise<T>): Promise<T> => {
+  try {
+    return await write();
+  } catch (error) {
+    if (isUniqueViolation(error, EMAIL_UNIQUE_CONSTRAINT)) {
+      throw createEmailAlreadyTakenError();
+    }
+    throw error;
+  }
 };
 
 export const createUserReader = (executor: Executor): IUserReader => ({
@@ -39,10 +54,9 @@ export const createUserReader = (executor: Executor): IUserReader => ({
 
 export const createUserWriter = (executor: Executor): IUserWriter => ({
   async save(data: UserSaveData): Promise<User> {
-    const [result] = await executor
-      .insert(usersTable)
-      .values(data)
-      .returning(userColumns);
+    const [result] = await rejectTakenEmail(() =>
+      executor.insert(usersTable).values(data).returning(userColumns),
+    );
 
     return reconstructUser({
       id: result.id,
@@ -52,11 +66,13 @@ export const createUserWriter = (executor: Executor): IUserWriter => ({
   },
 
   async updateEmail(data: UserUpdateEmailData): Promise<User> {
-    const [result] = await executor
-      .update(usersTable)
-      .set({ email: data.email })
-      .where(eq(usersTable.id, data.id))
-      .returning(userColumns);
+    const [result] = await rejectTakenEmail(() =>
+      executor
+        .update(usersTable)
+        .set({ email: data.email })
+        .where(eq(usersTable.id, data.id))
+        .returning(userColumns),
+    );
 
     return reconstructUser({
       id: result.id,

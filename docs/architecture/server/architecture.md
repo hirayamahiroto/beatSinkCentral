@@ -909,7 +909,13 @@ withWriteCapabilities(deps, subId, work); // Artist を伴う書き込み（ト�
 withRegistrationCapabilities(deps, work); // 登録（トランザクション、Actor 不要）
 ```
 
-`accountId` を書ける権能を渡す `withWriteCapabilities` / `withRegistrationCapabilities` は、`accountId` の一意制約違反が例外として出た場合に `AccountIdAlreadyTakenError` の `err` へ変換する（詳細は [並行更新ポリシー](./database/concurrency.md)）。`withUserWriteCapabilities` は Artist の Writer を渡さないため、この変換を持たない。
+境界を張るヘルパは、一意制約違反として上がってきた型付きエラーを `err` へ変換する（詳細は [並行更新ポリシー](./database/concurrency.md)）。**変換する型は、その権能で書ける範囲に一致させる。**
+
+| ヘルパ                         | 変換する型                                              |
+| ------------------------------ | ------------------------------------------------------- |
+| `withUserWriteCapabilities`    | `EmailAlreadyTakenError`                                |
+| `withWriteCapabilities`        | `EmailAlreadyTakenError` / `AccountIdAlreadyTakenError` |
+| `withRegistrationCapabilities` | `EmailAlreadyTakenError` / `AccountIdAlreadyTakenError` |
 
 ### トランザクション境界
 

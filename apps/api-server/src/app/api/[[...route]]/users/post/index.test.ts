@@ -4,6 +4,7 @@ import usersCreate, { type CreateUserRequestBody } from "./index";
 import { handleAppError } from "../../../../../errorMap";
 import { reconstructUser } from "../../../../../domain/users/factories";
 import { reconstructArtist } from "../../../../../domain/artists/factories";
+import { createEmailAlreadyTakenError } from "../../../../../domain/users/errors/emailAlreadyTaken";
 
 const mockUsers = {
   save: vi.fn(),
@@ -245,6 +246,16 @@ describe("User Create API", () => {
 
       expect(res.status).toBe(409);
       expect(body.error).toContain(validPayload.accountId);
+      expect(mockArtists.save).not.toHaveBeenCalled();
+    });
+
+    it("emailが他ユーザーに使われていたら409を返し、emailを露出しない", async () => {
+      mockUsers.save.mockRejectedValue(createEmailAlreadyTakenError());
+
+      const res = await postCreate(validPayload);
+
+      expect(res.status).toBe(409);
+      expect(await res.json()).toStrictEqual({ error: "Email already taken" });
       expect(mockArtists.save).not.toHaveBeenCalled();
     });
 
