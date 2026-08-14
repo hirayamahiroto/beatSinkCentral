@@ -1,12 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { updateMyEmail } from "./index";
 import { reconstructUser } from "../../../domain/users/factories";
-import { reconstructArtist } from "../../../domain/artists/factories";
 import type {
   IUserReader,
   IUserWriter,
 } from "../../../domain/users/repositories";
-import type { WriteCapabilities } from "../../capabilities";
+import type { UserWriteCapabilities } from "../../capabilities";
 
 const user = reconstructUser({
   id: "550e8400-e29b-41d4-a716-446655440000",
@@ -14,29 +13,22 @@ const user = reconstructUser({
   email: "old@example.com",
 });
 
-const artist = reconstructArtist({
-  artistId: "artist-1",
-  accountId: "old_handle",
-  ownerUserId: user.getId(),
-  profile: null,
-});
-
 const createCaps = () =>
   ({
-    actor: { user, artist },
+    user,
     users: {
       findBySub: vi.fn<IUserReader["findBySub"]>(async () => null),
       save: vi.fn<IUserWriter["save"]>(),
       updateEmail: vi.fn<IUserWriter["updateEmail"]>(),
     },
-  }) satisfies Pick<WriteCapabilities, "actor" | "users">;
+  }) satisfies Pick<UserWriteCapabilities, "user" | "users">;
 
 describe("updateMyEmail", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("Actor の email を更新し、新しい email を返す", async () => {
+  it("User の email を更新し、新しい email を返す", async () => {
     const caps = createCaps();
     caps.users.updateEmail.mockResolvedValue(
       reconstructUser({

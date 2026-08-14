@@ -6,8 +6,11 @@ import type {
   ReadCapabilities,
   RegistrationCapabilities,
   ResolveActorError,
+  ResolveUserError,
+  UserWriteCapabilities,
   WriteCapabilities,
 } from "../capabilities";
+import type { User } from "../../domain/users/entities";
 import { createUserNotFoundError } from "../../domain/users/errors/userNotFound";
 import { createArtistNotFoundError } from "../../domain/artists/errors/artistNotFound";
 import {
@@ -26,6 +29,19 @@ export const toActor = (
       return err(createArtistNotFoundError());
     case "complete":
       return ok(resolution.actor);
+  }
+};
+
+export const toUser = (
+  resolution: ActorResolution,
+): Result<User, ResolveUserError> => {
+  switch (resolution.status) {
+    case "unregistered":
+      return err(createUserNotFoundError());
+    case "userOnly":
+      return ok(resolution.user);
+    case "complete":
+      return ok(resolution.actor.user);
   }
 };
 
@@ -48,6 +64,17 @@ export const withReadCapabilities = async <T, E>(
   if (!actor.ok) return actor;
 
   return work(deps.buildReadCapabilities(actor.value));
+};
+
+export const withUserWriteCapabilities = async <T, E>(
+  deps: CapabilityDeps,
+  subId: string,
+  work: (caps: UserWriteCapabilities) => Promise<Result<T, E>>,
+): Promise<Result<T, E | ResolveUserError>> => {
+  const user = toUser(await deps.resolveActorState(subId));
+  if (!user.ok) return user;
+
+  return deps.runWithUserWriteCapabilities(user.value, work);
 };
 
 const catchTakenAccountId = async <T, E>(

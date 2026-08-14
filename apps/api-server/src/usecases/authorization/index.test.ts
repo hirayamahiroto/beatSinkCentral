@@ -1,9 +1,11 @@
 import { describe, it, expect } from "vitest";
 import {
   toActor,
+  toUser,
   withIdentityCapabilities,
   withReadCapabilities,
   withRegistrationCapabilities,
+  withUserWriteCapabilities,
   withWriteCapabilities,
 } from "./index";
 import type {
@@ -70,10 +72,12 @@ const createRegistrationCapabilitiesStub = (): RegistrationCapabilities => ({
 const createDeps = (resolution: ActorResolution) => {
   const calls: {
     resolvedSubIds: string[];
+    userWriteBoundaries: number;
     writeBoundaries: number;
     registrationBoundaries: number;
   } = {
     resolvedSubIds: [],
+    userWriteBoundaries: 0,
     writeBoundaries: 0,
     registrationBoundaries: 0,
   };
@@ -93,6 +97,11 @@ const createDeps = (resolution: ActorResolution) => {
       actor,
       artistProfiles: createArtistProfileReaderStub(),
     }),
+
+    async runWithUserWriteCapabilities(user, work) {
+      calls.userWriteBoundaries += 1;
+      return work({ user, users: createRegistrationCapabilitiesStub().users });
+    },
 
     async runWithWriteCapabilities(actor, work) {
       calls.writeBoundaries += 1;
@@ -145,6 +154,35 @@ describe("toActor", () => {
   });
 });
 
+describe("toUser", () => {
+  it("未登録は UserNotFoundError に畳み込む", () => {
+    const result = toUser({ status: "unregistered" });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(isUserNotFoundError(result.error)).toBe(true);
+    }
+  });
+
+  it("user のみでも ok で返す", () => {
+    const result = toUser({ status: "userOnly", user });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.getId()).toBe("user-1");
+    }
+  });
+
+  it("Actor が揃っていれば user を取り出して ok で返す", () => {
+    const result = toUser({ status: "complete", actor: { user, artist } });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.getId()).toBe("user-1");
+    }
+  });
+});
+
 describe("withIdentityCapabilities", () => {
   it("Actor が解決できなくても解決状態をそのまま渡す", async () => {
     const { deps, calls } = createDeps({ status: "unregistered" });
@@ -188,6 +226,58 @@ describe("withReadCapabilities", () => {
     );
 
     expect(result).toStrictEqual(ok("artist-1"));
+  });
+});
+
+describe("withUserWriteCapabilities", () => {
+  it("未登録ならトランザクション境界を張らず UserNotFoundError を返す", async () => {
+    const { deps, calls } = createDeps({ status: "unregistered" });
+    let workCalls = 0;
+
+    const result = await withUserWriteCapabilities(
+      deps,
+      "auth0|123",
+      async () => {
+        workCalls += 1;
+        return ok("called");
+      },
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(isUserNotFoundError(result.error)).toBe(true);
+    }
+    expect(workCalls).toBe(0);
+    expect(calls.userWriteBoundaries).toBe(0);
+  });
+
+  it("Artist が未作成でも user 権能で work を実行する", async () => {
+    const { deps, calls } = createDeps({ status: "userOnly", user });
+
+    const result = await withUserWriteCapabilities(
+      deps,
+      "auth0|123",
+      async (caps) => ok(caps.user.getId()),
+    );
+
+    expect(result).toStrictEqual(ok("user-1"));
+    expect(calls.userWriteBoundaries).toBe(1);
+  });
+
+  it("Actor が揃っている場合も user 権能で work を実行する", async () => {
+    const { deps, calls } = createDeps({
+      status: "complete",
+      actor: { user, artist },
+    });
+
+    const result = await withUserWriteCapabilities(
+      deps,
+      "auth0|123",
+      async (caps) => ok(caps.user.getId()),
+    );
+
+    expect(result).toStrictEqual(ok("user-1"));
+    expect(calls.userWriteBoundaries).toBe(1);
   });
 });
 

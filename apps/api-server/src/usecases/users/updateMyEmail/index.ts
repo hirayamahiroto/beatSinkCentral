@@ -2,7 +2,7 @@ import {
   createEmail,
   type InvalidEmailFormatError,
 } from "../../../domain/users/valueObjects/email";
-import type { WriteCapabilities } from "../../capabilities";
+import type { UserWriteCapabilities } from "../../capabilities";
 import { type Result, ok } from "../../../utils/result";
 
 export type UpdateMyEmailInput = {
@@ -16,7 +16,7 @@ export type UpdateMyEmailOutput = {
 
 export type UpdateMyEmailError = InvalidEmailFormatError;
 
-type UpdateMyEmailCaps = Pick<WriteCapabilities, "actor" | "users">;
+type UpdateMyEmailCaps = Pick<UserWriteCapabilities, "user" | "users">;
 
 export const updateMyEmail = async (
   caps: UpdateMyEmailCaps,
@@ -25,7 +25,7 @@ export const updateMyEmail = async (
   const newEmail = createEmail(input.email);
   if (!newEmail.ok) return newEmail;
 
-  const updated = caps.actor.user.changeEmail(newEmail.value);
+  const updated = caps.user.changeEmail(newEmail.value);
   const saved = await caps.users.updateEmail({
     id: updated.getId(),
     email: updated.getEmail(),

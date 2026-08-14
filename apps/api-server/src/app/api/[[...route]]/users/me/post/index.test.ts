@@ -16,10 +16,10 @@ const mockResolveActorState = vi.fn();
 vi.mock("../../../../../../infrastructure/capabilities", () => ({
   getCapabilityDeps: () => ({
     resolveActorState: (subId: string) => mockResolveActorState(subId),
-    runWithWriteCapabilities: (
-      actor: unknown,
+    runWithUserWriteCapabilities: (
+      user: unknown,
       work: (caps: unknown) => Promise<unknown>,
-    ) => work({ actor, users: mockUsers }),
+    ) => work({ user, users: mockUsers }),
   }),
 }));
 
@@ -64,6 +64,25 @@ describe("POST /users/me", () => {
   });
 
   it("emailを更新して200と更新後の値を返す", async () => {
+    mockUsers.updateEmail.mockResolvedValue(
+      reconstructUser({
+        id: "user-1",
+        subId: "auth0|123",
+        email: "new@example.com",
+      }),
+    );
+
+    const res = await postEmail("new@example.com");
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toStrictEqual({
+      userId: "user-1",
+      email: "new@example.com",
+    });
+  });
+
+  it("アーティストが未作成でもemailを更新して200を返す", async () => {
+    mockResolveActorState.mockResolvedValue({ status: "userOnly", user });
     mockUsers.updateEmail.mockResolvedValue(
       reconstructUser({
         id: "user-1",

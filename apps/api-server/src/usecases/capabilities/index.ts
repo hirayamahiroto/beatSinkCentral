@@ -26,6 +26,8 @@ export type ActorResolution =
 
 export type ResolveActorError = UserNotFoundError | ArtistNotFoundError;
 
+export type ResolveUserError = UserNotFoundError;
+
 export type IdentityCapabilities = {
   actorResolution: ActorResolution;
 };
@@ -38,6 +40,11 @@ export type PublicReadCapabilities = {
 export type ReadCapabilities = {
   actor: Actor;
   artistProfiles: IArtistProfileReader;
+};
+
+export type UserWriteCapabilities = {
+  user: User;
+  users: IUserReader & IUserWriter;
 };
 
 export type WriteCapabilities = {
@@ -58,6 +65,11 @@ export type CapabilityDeps = {
   buildPublicReadCapabilities(): PublicReadCapabilities;
 
   buildReadCapabilities(actor: Actor): ReadCapabilities;
+
+  runWithUserWriteCapabilities<T, E>(
+    user: User,
+    work: (caps: UserWriteCapabilities) => Promise<Result<T, E>>,
+  ): Promise<Result<T, E>>;
 
   runWithWriteCapabilities<T, E>(
     actor: Actor,

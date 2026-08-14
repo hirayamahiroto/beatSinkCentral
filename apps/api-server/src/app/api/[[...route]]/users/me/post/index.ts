@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { getCapabilityDeps } from "../../../../../../infrastructure/capabilities";
-import { withWriteCapabilities } from "../../../../../../usecases/authorization";
+import { withUserWriteCapabilities } from "../../../../../../usecases/authorization";
 import { updateMyEmail } from "../../../../../../usecases/users/updateMyEmail";
 import { validateRequest } from "../../../validators/validateRequest";
 import { handleAppError } from "../../../../../../errorMap";
@@ -23,7 +23,7 @@ const app = new Hono().post(
     const body = c.req.valid("json");
     const auth0User = c.get("auth0User");
 
-    const result = await withWriteCapabilities(
+    const result = await withUserWriteCapabilities(
       getCapabilityDeps(),
       auth0User.sub,
       (caps) => updateMyEmail(caps, { email: body.email }),

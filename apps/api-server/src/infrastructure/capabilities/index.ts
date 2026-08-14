@@ -21,8 +21,10 @@ import type {
   PublicReadCapabilities,
   ReadCapabilities,
   RegistrationCapabilities,
+  UserWriteCapabilities,
   WriteCapabilities,
 } from "../../usecases/capabilities";
+import type { User } from "../../domain/users/entities";
 import type { Result } from "../../utils/result";
 
 type Executor = DatabaseClient | TransactionContext;
@@ -74,6 +76,16 @@ export const getCapabilityDeps = (() => {
         executor: Executor,
       ): RegistrationCapabilities => buildAccountRepositories(executor);
 
+      const buildUserWriteCapabilities =
+        (user: User) =>
+        (executor: Executor): UserWriteCapabilities => ({
+          user,
+          users: {
+            ...createUserReader(executor),
+            ...createUserWriter(executor),
+          },
+        });
+
       const buildWriteCapabilities =
         (actor: Actor) =>
         (executor: Executor): WriteCapabilities => ({
@@ -107,6 +119,10 @@ export const getCapabilityDeps = (() => {
 
         buildReadCapabilities(actor: Actor): ReadCapabilities {
           return { actor, artistProfiles: createArtistProfileReader(db) };
+        },
+
+        runWithUserWriteCapabilities(user, work) {
+          return runInTransaction(db, buildUserWriteCapabilities(user), work);
         },
 
         runWithWriteCapabilities(actor, work) {
