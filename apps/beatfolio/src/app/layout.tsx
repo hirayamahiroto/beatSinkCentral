@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { Layout } from "@ui/design-system/components/templates/Layout";
+import { Toaster } from "@ui/design-system/components/atoms/Toaster";
 import { getSession } from "../libs/auth0";
 import {
   routes,
@@ -65,6 +66,7 @@ export default async function RootLayout({
         >
           {children}
         </Layout>
+        <Toaster />
       </body>
     </html>
   );
