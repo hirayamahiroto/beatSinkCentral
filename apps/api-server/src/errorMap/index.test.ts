@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { Hono } from "hono";
+import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
+import { validateRequest } from "../app/api/[[...route]]/validators/validateRequest";
 import { createAppErrorHandler, handleAppError } from "./index";
 import type { LogFields, LogLevel, Logger } from "../utils/logger";
 import { createUserAlreadyRegisteredError } from "../domain/users/errors/userAlreadyRegistered";
@@ -193,6 +195,24 @@ describe("createAppErrorHandler", () => {
         body: { error: "Internal Server Error" },
       });
     });
+
+    it("HTTPException(400) を形式エラーとして 400 に変換する", async () => {
+      expect(
+        await clientResponseOf(
+          new HTTPException(400, { message: "Malformed JSON in request body" }),
+        ),
+      ).toStrictEqual({
+        status: 400,
+        body: { error: "Malformed request body" },
+      });
+    });
+
+    it("400 以外の HTTPException は 500 のまま扱う", async () => {
+      expect(await clientResponseOf(new HTTPException(503))).toStrictEqual({
+        status: 500,
+        body: { error: "Internal Server Error" },
+      });
+    });
   });
 
   describe("内部向けログ", () => {
@@ -369,6 +389,51 @@ describe("createAppErrorHandler", () => {
 
       expect(log.fields).not.toHaveProperty("requestId");
       expect(log.fields).toMatchObject({ method: "GET", route: "/" });
+    });
+  });
+
+  describe("壊れたリクエストボディ", () => {
+    const postMalformedJson = async () => {
+      const { logger, logs } = createRecordingLogger();
+      const response = await new Hono()
+        .post(
+          "/",
+          validateRequest("json", z.object({ name: z.string() })),
+          (c) => c.json(c.req.valid("json")),
+        )
+        .onError(createAppErrorHandler(logger))
+        .request("/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: "{ not json",
+        });
+      return { response, logs };
+    };
+
+    it("パースできないボディをクライアント起因の 400 として返す", async () => {
+      const { response } = await postMalformedJson();
+
+      expect(response.status).toBe(400);
+      expect(await response.json()).toStrictEqual({
+        error: "Malformed request body",
+      });
+    });
+
+    it("パースできないボディを info で記録し error のログを出さない", async () => {
+      const { logs } = await postMalformedJson();
+
+      expect(logs).toStrictEqual([
+        {
+          level: "info",
+          event: "AppError",
+          fields: {
+            ...REQUEST_FIELDS,
+            method: "POST",
+            errorType: "MalformedRequestBodyError",
+            status: 400,
+          },
+        },
+      ]);
     });
   });
 });

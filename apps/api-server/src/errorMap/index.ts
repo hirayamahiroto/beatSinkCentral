@@ -1,4 +1,5 @@
 import type { Context } from "hono";
+import { HTTPException } from "hono/http-exception";
 import type {
   ClientErrorStatusCode,
   ServerErrorStatusCode,
@@ -24,6 +25,10 @@ import type { InvalidGenreFormatError } from "../domain/artistProfiles/valueObje
 import type { InvalidSnsUrlFormatError } from "../domain/artistProfiles/valueObjects/snsUrl";
 import type { InvalidProfileLinkFormatError } from "../domain/artistProfiles/valueObjects/profileLink";
 import type { InvalidRequestFormatError } from "../app/api/[[...route]]/errors/invalidRequestFormat";
+import {
+  createMalformedRequestBodyError,
+  type MalformedRequestBodyError,
+} from "../app/api/[[...route]]/errors/malformedRequestBody";
 import type { UnauthorizedError } from "../middlewares/auth0/errors/unauthorized";
 import type { LogFields, LogLevel, Logger } from "../utils/logger";
 import { createConsoleLogger } from "../utils/logger";
@@ -31,6 +36,7 @@ import { getRequestContext } from "../utils/requestContext";
 
 export type AppError =
   | InvalidRequestFormatError
+  | MalformedRequestBodyError
   | UnauthorizedError
   | UserAlreadyRegisteredError
   | UserNotFoundError
@@ -78,6 +84,11 @@ const errorMap: ErrorMap = {
     logFields: (error) => ({
       issuePaths: error.issues.map((issue) => issue.path.join(".")),
     }),
+  },
+  MalformedRequestBodyError: {
+    status: 400,
+    clientMessage: () => "Malformed request body",
+    logLevel: "info",
   },
   UnauthorizedError: {
     status: 401,
@@ -271,14 +282,22 @@ const emit = (
   });
 };
 
+// Hono の validator はボディのパース失敗を HTTPException(400) で throw するため、
+// AppError に載せ替えないと形式不正が想定外の例外（500 / level:error）に落ちる
+const normalizeError = (error: Error): Error =>
+  error instanceof HTTPException && error.status === 400
+    ? createMalformedRequestBodyError()
+    : error;
+
 export const createAppErrorHandler =
   (logger: Logger) => (error: Error, c: Context) => {
-    if (isAppError(error)) {
-      emit(logger, c, buildErrorLog(error));
-      const { body, status } = buildClientResponse(error);
+    const normalized = normalizeError(error);
+    if (isAppError(normalized)) {
+      emit(logger, c, buildErrorLog(normalized));
+      const { body, status } = buildClientResponse(normalized);
       return c.json(body, status);
     }
-    emit(logger, c, buildUnhandledErrorLog(error));
+    emit(logger, c, buildUnhandledErrorLog(normalized));
     return c.json({ error: "Internal Server Error" }, 500);
   };
 

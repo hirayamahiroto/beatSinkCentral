@@ -90,7 +90,20 @@ describe("GET /players/:accountId", () => {
     expect(res.status).toBe(404);
   });
 
-  it("api-server が 404 以外で失敗したら 502 を返す", async () => {
+  it("書式不正な accountId で api-server が 422 なら 404 を返す", async () => {
+    profileGet.mockResolvedValue(
+      jsonResponse(
+        { error: "Invalid accountId format" },
+        { ok: false, status: 422 },
+      ),
+    );
+
+    const res = await createApp().request("/not-an-id", { method: "GET" });
+
+    expect(res.status).toBe(404);
+  });
+
+  it("api-server が 5xx で失敗したら 502 を返す", async () => {
     profileGet.mockResolvedValue(
       jsonResponse({ error: "Internal" }, { ok: false, status: 500 }),
     );

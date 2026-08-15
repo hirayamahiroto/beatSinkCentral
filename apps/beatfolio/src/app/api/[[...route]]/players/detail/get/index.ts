@@ -11,7 +11,7 @@ const app = new Hono<RequestContextEnv>().get("/:accountId", async (c) => {
     apiClient.api["link-types"].$get(),
   ]);
 
-  if (profileRes.status === 404) {
+  if (profileRes.status === 404 || profileRes.status === 422) {
     return c.json({ error: "Player profile not found" }, 404);
   }
   if (!profileRes.ok || !linkTypesRes.ok) {

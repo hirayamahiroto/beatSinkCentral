@@ -2,10 +2,13 @@ import { zValidator } from "@hono/zod-validator";
 import type { ZodSchema } from "zod";
 import { createInvalidRequestFormatError } from "../../errors/invalidRequestFormat";
 
-type ValidationTarget = "json";
+type ValidationTarget = "json" | "param" | "query" | "header";
 
-export const validateRequest = <Schema extends ZodSchema>(
-  target: ValidationTarget,
+export const validateRequest = <
+  Target extends ValidationTarget,
+  Schema extends ZodSchema,
+>(
+  target: Target,
   schema: Schema,
 ) =>
   zValidator(target, schema, (result) => {
