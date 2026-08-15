@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { useUpdateMyEmail } from "./index";
+import { useUpdateMyEmail, type UpdateMyEmailResult } from "./index";
 
 const refreshMock = vi.fn();
 
@@ -18,39 +18,29 @@ vi.mock("../../../../../../utils/client", () => ({
   }),
 }));
 
-const buildJsonResponse = (
-  body: unknown,
-  init: { ok: boolean; status?: number },
-): Response =>
-  ({
-    ok: init.ok,
-    status: init.status ?? (init.ok ? 200 : 400),
-    json: async () => body,
-  }) as unknown as Response;
+const buildJsonResponse = (body: unknown, status = 200): Response =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json" },
+  });
 
-const buildNonJsonResponse = (init: {
-  ok: boolean;
-  status?: number;
-}): Response =>
-  ({
-    ok: init.ok,
-    status: init.status ?? (init.ok ? 200 : 500),
-    json: async () => {
-      throw new SyntaxError("Unexpected token < in JSON at position 0");
-    },
-  }) as unknown as Response;
+const buildNonJsonResponse = (status: number): Response =>
+  new Response("<html>error</html>", {
+    status,
+    headers: { "content-type": "text/html" },
+  });
 
 describe("useUpdateMyEmail", () => {
   afterEach(() => {
     vi.clearAllMocks();
   });
 
-  it("更新に成功すると true を返し、$post が json で呼ばれ、router.refresh が走る", async () => {
-    postMock.mockResolvedValueOnce(buildJsonResponse({}, { ok: true }));
+  it("更新に成功すると ok を返し、$post が json で呼ばれ、router.refresh が走る", async () => {
+    postMock.mockResolvedValueOnce(buildJsonResponse({}));
 
     const { result } = renderHook(() => useUpdateMyEmail());
 
-    let returned: boolean | undefined;
+    let returned: UpdateMyEmailResult | undefined;
     await act(async () => {
       returned = await result.current.update({ email: "new@example.com" });
     });
@@ -58,65 +48,104 @@ describe("useUpdateMyEmail", () => {
     expect(postMock).toHaveBeenCalledWith({
       json: { email: "new@example.com" },
     });
-    expect(returned).toBe(true);
+    expect(returned).toStrictEqual({ ok: true });
     expect(refreshMock).toHaveBeenCalledTimes(1);
-    expect(result.current.error).toBeNull();
     expect(result.current.isLoading).toBe(false);
   });
 
-  it("non-ok JSON が返ったら、サーバーのエラーメッセージを error にセットし false を返す", async () => {
+  it("4xx はサーバーのエラーメッセージを rejected として返す", async () => {
     postMock.mockResolvedValueOnce(
-      buildJsonResponse(
-        { error: "そのメールアドレスはすでに使用されています" },
-        { ok: false, status: 409 },
-      ),
+      buildJsonResponse({ error: "Email already taken" }, 409),
     );
 
     const { result } = renderHook(() => useUpdateMyEmail());
 
-    let returned: boolean | undefined;
+    let returned: UpdateMyEmailResult | undefined;
     await act(async () => {
       returned = await result.current.update({ email: "taken@example.com" });
     });
 
-    expect(returned).toBe(false);
-    expect(result.current.error).toBe(
-      "そのメールアドレスはすでに使用されています",
-    );
+    expect(returned).toStrictEqual({
+      ok: false,
+      kind: "rejected",
+      message: "Email already taken",
+    });
     expect(refreshMock).not.toHaveBeenCalled();
     expect(result.current.isLoading).toBe(false);
   });
 
-  it("non-ok でエラー本文が無ければ、フォールバックメッセージをセットする", async () => {
-    postMock.mockResolvedValueOnce(
-      buildJsonResponse({}, { ok: false, status: 400 }),
-    );
+  it("エラー本文が無ければフォールバックメッセージを返す", async () => {
+    postMock.mockResolvedValueOnce(buildJsonResponse({}, 400));
 
     const { result } = renderHook(() => useUpdateMyEmail());
 
-    await act(async () => {
-      await result.current.update({ email: "x@example.com" });
-    });
-
-    expect(result.current.error).toBe("メールアドレスの更新に失敗しました");
-    expect(refreshMock).not.toHaveBeenCalled();
-  });
-
-  it("non-JSON ボディが返っても、error が非nullになり refresh は呼ばれない", async () => {
-    postMock.mockResolvedValueOnce(buildNonJsonResponse({ ok: false }));
-
-    const { result } = renderHook(() => useUpdateMyEmail());
-
-    let returned: boolean | undefined;
+    let returned: UpdateMyEmailResult | undefined;
     await act(async () => {
       returned = await result.current.update({ email: "x@example.com" });
     });
 
-    expect(returned).toBe(false);
-    expect(result.current.error).not.toBeNull();
-    expect(result.current.error).not.toBe("");
+    expect(returned).toStrictEqual({
+      ok: false,
+      kind: "rejected",
+      message: "メールアドレスの更新に失敗しました",
+    });
+    expect(refreshMock).not.toHaveBeenCalled();
+  });
+
+  it("入力値に紐づかない 4xx（認証切れ等）は unexpected として返す", async () => {
+    postMock.mockResolvedValueOnce(
+      buildJsonResponse({ error: "Unauthorized" }, 401),
+    );
+
+    const { result } = renderHook(() => useUpdateMyEmail());
+
+    let returned: UpdateMyEmailResult | undefined;
+    await act(async () => {
+      returned = await result.current.update({ email: "x@example.com" });
+    });
+
+    expect(returned).toStrictEqual({
+      ok: false,
+      kind: "unexpected",
+      message: "Unauthorized",
+    });
+  });
+
+  it("5xx は unexpected として返す", async () => {
+    postMock.mockResolvedValueOnce(buildNonJsonResponse(500));
+
+    const { result } = renderHook(() => useUpdateMyEmail());
+
+    let returned: UpdateMyEmailResult | undefined;
+    await act(async () => {
+      returned = await result.current.update({ email: "x@example.com" });
+    });
+
+    expect(returned).toStrictEqual({
+      ok: false,
+      kind: "unexpected",
+      message: "メールアドレスの更新に失敗しました",
+    });
     expect(refreshMock).not.toHaveBeenCalled();
     expect(result.current.isLoading).toBe(false);
+  });
+
+  it("通信自体が失敗した場合も unexpected として返す", async () => {
+    postMock.mockRejectedValueOnce(new Error("Failed to fetch"));
+
+    const { result } = renderHook(() => useUpdateMyEmail());
+
+    let returned: UpdateMyEmailResult | undefined;
+    await act(async () => {
+      returned = await result.current.update({ email: "x@example.com" });
+    });
+
+    expect(returned).toStrictEqual({
+      ok: false,
+      kind: "unexpected",
+      message: "通信に失敗しました。時間をおいて再度お試しください",
+    });
+    expect(refreshMock).not.toHaveBeenCalled();
   });
 
   it("更新中は isLoading が true、完了後に false になる", async () => {
@@ -130,7 +159,7 @@ describe("useUpdateMyEmail", () => {
 
     const { result } = renderHook(() => useUpdateMyEmail());
 
-    let updatePromise: Promise<boolean>;
+    let updatePromise: Promise<UpdateMyEmailResult>;
     act(() => {
       updatePromise = result.current.update({ email: "new@example.com" });
     });
@@ -140,7 +169,7 @@ describe("useUpdateMyEmail", () => {
     });
 
     await act(async () => {
-      resolvePost?.(buildJsonResponse({}, { ok: true }));
+      resolvePost?.(buildJsonResponse({}));
       await updatePromise;
     });
 
