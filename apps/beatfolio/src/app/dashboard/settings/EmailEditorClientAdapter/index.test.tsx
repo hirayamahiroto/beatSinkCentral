@@ -49,7 +49,7 @@ describe("EmailEditorClientAdapter", () => {
   });
 
   it("値を編集して保存すると、新しい email で update が呼ばれる", async () => {
-    updateMock.mockResolvedValueOnce({ ok: true });
+    updateMock.mockResolvedValueOnce({ ok: true, value: undefined });
     render(<EmailEditorClientAdapter email="user@example.com" />);
 
     saveNewEmail("new@example.com");
@@ -60,7 +60,7 @@ describe("EmailEditorClientAdapter", () => {
   });
 
   it("成功したら成功トーストを出す", async () => {
-    updateMock.mockResolvedValueOnce({ ok: true });
+    updateMock.mockResolvedValueOnce({ ok: true, value: undefined });
     render(<EmailEditorClientAdapter email="user@example.com" />);
 
     saveNewEmail("new@example.com");
@@ -76,8 +76,7 @@ describe("EmailEditorClientAdapter", () => {
   it("入力値が拒否されたら、トーストではなく入力欄にエラーを出す", async () => {
     updateMock.mockResolvedValueOnce({
       ok: false,
-      kind: "rejected",
-      message: "Email already taken",
+      error: { kind: "rejected", message: "Email already taken" },
     });
     render(<EmailEditorClientAdapter email="user@example.com" />);
 
@@ -93,8 +92,10 @@ describe("EmailEditorClientAdapter", () => {
   it("入力値に紐づかない失敗はトーストで出す", async () => {
     updateMock.mockResolvedValueOnce({
       ok: false,
-      kind: "unexpected",
-      message: "通信に失敗しました。時間をおいて再度お試しください",
+      error: {
+        kind: "unexpected",
+        message: "通信に失敗しました。時間をおいて再度お試しください",
+      },
     });
     render(<EmailEditorClientAdapter email="user@example.com" />);
 
@@ -114,10 +115,9 @@ describe("EmailEditorClientAdapter", () => {
     updateMock
       .mockResolvedValueOnce({
         ok: false,
-        kind: "rejected",
-        message: "Email already taken",
+        error: { kind: "rejected", message: "Email already taken" },
       })
-      .mockResolvedValueOnce({ ok: true });
+      .mockResolvedValueOnce({ ok: true, value: undefined });
     render(<EmailEditorClientAdapter email="user@example.com" />);
 
     saveNewEmail("taken@example.com");

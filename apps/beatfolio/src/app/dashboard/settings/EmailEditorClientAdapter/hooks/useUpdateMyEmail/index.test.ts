@@ -48,7 +48,7 @@ describe("useUpdateMyEmail", () => {
     expect(postMock).toHaveBeenCalledWith({
       json: { email: "new@example.com" },
     });
-    expect(returned).toStrictEqual({ ok: true });
+    expect(returned).toStrictEqual({ ok: true, value: undefined });
     expect(refreshMock).toHaveBeenCalledTimes(1);
     expect(result.current.isLoading).toBe(false);
   });
@@ -67,8 +67,7 @@ describe("useUpdateMyEmail", () => {
 
     expect(returned).toStrictEqual({
       ok: false,
-      kind: "rejected",
-      message: "Email already taken",
+      error: { kind: "rejected", message: "Email already taken" },
     });
     expect(refreshMock).not.toHaveBeenCalled();
     expect(result.current.isLoading).toBe(false);
@@ -86,8 +85,10 @@ describe("useUpdateMyEmail", () => {
 
     expect(returned).toStrictEqual({
       ok: false,
-      kind: "rejected",
-      message: "メールアドレスの更新に失敗しました",
+      error: {
+        kind: "rejected",
+        message: "メールアドレスの更新に失敗しました",
+      },
     });
     expect(refreshMock).not.toHaveBeenCalled();
   });
@@ -106,8 +107,7 @@ describe("useUpdateMyEmail", () => {
 
     expect(returned).toStrictEqual({
       ok: false,
-      kind: "unexpected",
-      message: "Unauthorized",
+      error: { kind: "unexpected", message: "Unauthorized" },
     });
   });
 
@@ -123,8 +123,10 @@ describe("useUpdateMyEmail", () => {
 
     expect(returned).toStrictEqual({
       ok: false,
-      kind: "unexpected",
-      message: "メールアドレスの更新に失敗しました",
+      error: {
+        kind: "unexpected",
+        message: "メールアドレスの更新に失敗しました",
+      },
     });
     expect(refreshMock).not.toHaveBeenCalled();
     expect(result.current.isLoading).toBe(false);
@@ -142,8 +144,10 @@ describe("useUpdateMyEmail", () => {
 
     expect(returned).toStrictEqual({
       ok: false,
-      kind: "unexpected",
-      message: "通信に失敗しました。時間をおいて再度お試しください",
+      error: {
+        kind: "unexpected",
+        message: "通信に失敗しました。時間をおいて再度お試しください",
+      },
     });
     expect(refreshMock).not.toHaveBeenCalled();
   });

@@ -22,10 +22,10 @@ export const EmailEditorClientAdapter = ({ email }: Props) => {
       return true;
     }
 
-    if (result.kind === "rejected") {
-      setFieldError(result.message);
+    if (result.error.kind === "rejected") {
+      setFieldError(result.error.message);
     } else {
-      toast.error(result.message);
+      toast.error(result.error.message);
     }
     return false;
   };

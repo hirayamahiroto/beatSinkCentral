@@ -2,16 +2,22 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { createBeatfolioBffClient } from "../../../../../../utils/client";
+import { type Result, ok, err } from "../../../../../../utils/result";
 
 type UpdateData = {
   email: string;
 };
 
-export type UpdateMyEmailResult =
-  | { ok: true }
-  | { ok: false; kind: "rejected" | "unexpected"; message: string };
+export type UpdateMyEmailError = {
+  kind: "rejected" | "unexpected";
+  message: string;
+};
+
+export type UpdateMyEmailResult = Result<void, UpdateMyEmailError>;
 
 const FALLBACK_MESSAGE = "メールアドレスの更新に失敗しました";
+
+const NETWORK_MESSAGE = "通信に失敗しました。時間をおいて再度お試しください";
 
 const REJECTED_STATUSES = [400, 409, 422];
 
@@ -42,23 +48,18 @@ export const useUpdateMyEmail = () => {
       const res = await client.api.users.me.$post({ json: { email } });
 
       if (!res.ok) {
-        return {
-          ok: false,
+        return err({
           kind: REJECTED_STATUSES.includes(res.status)
             ? "rejected"
             : "unexpected",
           message: await readErrorMessage(res),
-        };
+        });
       }
 
       router.refresh();
-      return { ok: true };
+      return ok(undefined);
     } catch {
-      return {
-        ok: false,
-        kind: "unexpected",
-        message: "通信に失敗しました。時間をおいて再度お試しください",
-      };
+      return err({ kind: "unexpected", message: NETWORK_MESSAGE });
     } finally {
       setIsLoading(false);
     }
