@@ -1,38 +1,40 @@
 import { eq } from "drizzle-orm";
-import { DatabaseClient, usersTable } from "database";
+import { usersTable } from "database";
 import { User } from "../../../domain/users/entities";
 import {
-  IUserRepository,
+  IUserReader,
+  IUserWriter,
   UserSaveData,
   UserUpdateEmailData,
 } from "../../../domain/users/repositories";
 import { reconstructUser } from "../../../domain/users/factories";
-import type { TransactionContext } from "../../transaction";
+import { createEmailAlreadyTakenError } from "../../../domain/users/errors/emailAlreadyTaken";
+import { isUniqueViolation } from "../../database/uniqueViolation";
+import type { Executor } from "../../transaction";
 
-export const createUserRepository = (db: DatabaseClient): IUserRepository => ({
-  async save(data: UserSaveData, tx?: TransactionContext): Promise<User> {
-    const executor = tx ?? db;
-    const [result] = await executor.insert(usersTable).values(data).returning({
-      id: usersTable.id,
-      subId: usersTable.subId,
-      email: usersTable.email,
-    });
+const EMAIL_UNIQUE_CONSTRAINT = "users_email_unique";
 
-    return reconstructUser({
-      id: result.id,
-      subId: result.subId,
-      email: result.email,
-    });
-  },
+const userColumns = {
+  id: usersTable.id,
+  subId: usersTable.subId,
+  email: usersTable.email,
+};
 
-  async findBySub(sub: string, tx?: TransactionContext): Promise<User | null> {
-    const executor = tx ?? db;
+const rejectTakenEmail = async <T>(write: () => Promise<T>): Promise<T> => {
+  try {
+    return await write();
+  } catch (error) {
+    if (isUniqueViolation(error, EMAIL_UNIQUE_CONSTRAINT)) {
+      throw createEmailAlreadyTakenError();
+    }
+    throw error;
+  }
+};
+
+export const createUserReader = (executor: Executor): IUserReader => ({
+  async findBySub(sub: string): Promise<User | null> {
     const results = await executor
-      .select({
-        id: usersTable.id,
-        subId: usersTable.subId,
-        email: usersTable.email,
-      })
+      .select(userColumns)
       .from(usersTable)
       .where(eq(usersTable.subId, sub))
       .limit(1);
@@ -48,21 +50,29 @@ export const createUserRepository = (db: DatabaseClient): IUserRepository => ({
       email: row.email,
     });
   },
+});
 
-  async updateEmail(
-    data: UserUpdateEmailData,
-    tx?: TransactionContext,
-  ): Promise<User> {
-    const executor = tx ?? db;
-    const [result] = await executor
-      .update(usersTable)
-      .set({ email: data.email })
-      .where(eq(usersTable.id, data.id))
-      .returning({
-        id: usersTable.id,
-        subId: usersTable.subId,
-        email: usersTable.email,
-      });
+export const createUserWriter = (executor: Executor): IUserWriter => ({
+  async save(data: UserSaveData): Promise<User> {
+    const [result] = await rejectTakenEmail(() =>
+      executor.insert(usersTable).values(data).returning(userColumns),
+    );
+
+    return reconstructUser({
+      id: result.id,
+      subId: result.subId,
+      email: result.email,
+    });
+  },
+
+  async updateEmail(data: UserUpdateEmailData): Promise<User> {
+    const [result] = await rejectTakenEmail(() =>
+      executor
+        .update(usersTable)
+        .set({ email: data.email })
+        .where(eq(usersTable.id, data.id))
+        .returning(userColumns),
+    );
 
     return reconstructUser({
       id: result.id,

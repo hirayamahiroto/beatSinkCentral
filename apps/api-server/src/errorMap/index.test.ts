@@ -11,6 +11,7 @@ import {
 import type { LogFields, LogLevel, Logger } from "../utils/logger";
 import { createUserAlreadyRegisteredError } from "../domain/users/errors/userAlreadyRegistered";
 import { createAccountIdAlreadyTakenError } from "../domain/artists/errors/accountIdAlreadyTaken";
+import { createEmailAlreadyTakenError } from "../domain/users/errors/emailAlreadyTaken";
 import { createInvalidEmailFormatError } from "../domain/users/valueObjects/email";
 import { createInvalidSubFormatError } from "../domain/users/valueObjects/sub";
 import { createInvalidNameFormatError } from "../domain/users/valueObjects/name";
@@ -98,6 +99,15 @@ describe("createAppErrorHandler", () => {
       ).toStrictEqual({
         status: 409,
         body: { error: "Account ID already taken: taken_id" },
+      });
+    });
+
+    it("EmailAlreadyTakenErrorを409に変換し、emailを露出しない", async () => {
+      expect(
+        await clientResponseOf(createEmailAlreadyTakenError()),
+      ).toStrictEqual({
+        status: 409,
+        body: { error: "Email already taken" },
       });
     });
 

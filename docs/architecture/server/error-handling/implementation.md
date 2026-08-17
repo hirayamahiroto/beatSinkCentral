@@ -32,17 +32,20 @@ TypeScript は戻り値を捨てる呼び出し自体は防げないため、「
 
 1つ目は 500 に落ちるべき事象であり、クライアントに返す業務エラーではない。2つ目は Hono のミドルウェア層で起きるため戻り値を持てず、`onError` で受ける。
 
-3つ目は Drizzle の `transaction` が **throw でしかロールバックしない**という外部制約による。書き込みが制約で弾かれた事実を `err` で返すとトランザクションが中途半端に確定してしまうため、例外として境界の外まで抜けさせ、usecase が `try/catch` で受けて `err` に戻す。**業務エラーを throw のまま外に流すのではなく、usecase の `Result` の中に必ず畳み込む**（詳細は [database/concurrency.md](../database/concurrency.md#一意制約違反の扱い) 参照）。
+3つ目は Drizzle の `transaction` が **throw でしかロールバックしない**という外部制約による。書き込みが制約で弾かれた事実を `err` で返すとトランザクションが中途半端に確定してしまうため、例外として境界の外まで抜けさせ、**境界を張っているヘルパ**（`withArtistWriteCapabilities` / `withRegistrationCapabilities`）が受けて `err` に戻す。**業務エラーを throw のまま外に流すのではなく、境界の外側で `Result` の中に必ず畳み込む**（詳細は [database/concurrency.md](../database/concurrency.md#一意制約違反の扱い) 参照）。usecase 側に `try/catch` は置かない。
 
 ```typescript
-try {
-  return await deps.txRunner.run(async (tx) => {
-    /* ... */
-  });
-} catch (error) {
-  if (isAccountIdAlreadyTakenError(error)) return err(error);
-  throw error;
-}
+// usecases/authorization
+const catchTakenAccountId = async <T, E>(
+  run: () => Promise<Result<T, E>>,
+): Promise<Result<T, E | AccountIdAlreadyTakenError>> => {
+  try {
+    return await run();
+  } catch (error) {
+    if (isAccountIdAlreadyTakenError(error)) return err(error);
+    throw error;
+  }
+};
 ```
 
 ### `Result` の道具
@@ -330,7 +333,11 @@ export const handleAppError = createAppErrorHandler(createConsoleLogger());
 usecase の `Result` を判定し、`err` なら `handleAppError` に渡す。`try/catch` は書かない。
 
 ```typescript
-const result = await updateMyAccountIdUseCase(input, deps);
+const result = await withArtistWriteCapabilities(
+  getCapabilityDeps(),
+  auth0User.sub,
+  (caps) => updateMyAccountId(caps, { accountId: body.accountId }),
+);
 
 if (!result.ok) {
   return handleAppError(result.error, c);
@@ -402,7 +409,9 @@ export const validateRequest = <Schema extends ZodSchema>(
 // src/routes/users/create/index.ts
 import { Hono } from "hono";
 import { z } from "zod";
-import { createUserUseCase } from "...";
+import { getCapabilityDeps } from "../../../../../infrastructure/capabilities";
+import { withRegistrationCapabilities } from "../../../../../usecases/authorization";
+import { createUser } from "../../../../../usecases/users/createUser";
 import { validateRequest } from "../../validators/validateRequest";
 import { handleAppError } from "../../../../../errorMap";
 
@@ -421,9 +430,14 @@ const app = new Hono().post(
     const body = c.req.valid("json");
     const auth0User = c.get("auth0User");
 
-    const result = await createUserUseCase(
-      { subId: auth0User.sub, email: body.email, accountId: body.accountId },
-      getContainer(),
+    const result = await withRegistrationCapabilities(
+      getCapabilityDeps(),
+      (caps) =>
+        createUser(caps, {
+          subId: auth0User.sub,
+          email: body.email,
+          accountId: body.accountId,
+        }),
     );
 
     if (!result.ok) {

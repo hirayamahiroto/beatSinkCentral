@@ -1,6 +1,5 @@
 import { and, eq, isNull, isNotNull, asc, desc, inArray } from "drizzle-orm";
 import {
-  DatabaseClient,
   artistsTable,
   artistProfilesTable,
   artistProfileGenresTable,
@@ -22,9 +21,7 @@ import type {
 import { reconstructArtistProfile } from "../../../domain/artistProfiles/factories";
 import { createArtistProfileNotFoundError } from "../../../domain/artistProfiles/errors/artistProfileNotFound";
 import { createInvalidProfileLinkFormatError } from "../../../domain/artistProfiles/valueObjects/profileLink";
-import type { TransactionContext } from "../../transaction";
-
-type Executor = DatabaseClient | TransactionContext;
+import type { Executor } from "../../transaction";
 
 type ProfileRow = {
   id: string;

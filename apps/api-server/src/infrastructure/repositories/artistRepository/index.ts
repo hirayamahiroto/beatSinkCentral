@@ -1,12 +1,8 @@
 import { eq } from "drizzle-orm";
-import {
-  DatabaseClient,
-  artistsTable,
-  artistOwnersTable,
-  artistProfilesTable,
-} from "database";
+import { artistsTable, artistOwnersTable, artistProfilesTable } from "database";
 import type {
-  IArtistRepository,
+  IArtistReader,
+  IArtistWriter,
   ArtistUpdateAccountIdData,
 } from "../../../domain/artists/repositories";
 import type {
@@ -17,9 +13,16 @@ import { reconstructArtist } from "../../../domain/artists/factories";
 import { createArtistNotFoundError } from "../../../domain/artists/errors/artistNotFound";
 import { createAccountIdAlreadyTakenError } from "../../../domain/artists/errors/accountIdAlreadyTaken";
 import { isUniqueViolation } from "../../database/uniqueViolation";
-import type { TransactionContext } from "../../transaction";
+import type { Executor } from "../../transaction";
 
 const ACCOUNT_ID_UNIQUE_CONSTRAINT = "artists_account_id_unique";
+
+const artistColumns = {
+  artistId: artistsTable.id,
+  accountId: artistsTable.accountId,
+  ownerUserId: artistOwnersTable.userId,
+  profileName: artistProfilesTable.name,
+};
 
 const rejectTakenAccountId = async <T>(
   accountId: string,
@@ -35,45 +38,10 @@ const rejectTakenAccountId = async <T>(
   }
 };
 
-export const createArtistRepository = (
-  db: DatabaseClient,
-): IArtistRepository => ({
-  async save(
-    data: ArtistPersistenceData,
-    tx?: TransactionContext,
-  ): Promise<Artist> {
-    const executor = tx ?? db;
-    const [artistRow] = await rejectTakenAccountId(data.accountId, () =>
-      executor
-        .insert(artistsTable)
-        .values({ id: data.id, accountId: data.accountId })
-        .returning({
-          id: artistsTable.id,
-          accountId: artistsTable.accountId,
-        }),
-    );
-
-    await executor.insert(artistOwnersTable).values({
-      userId: data.ownerUserId,
-      artistId: artistRow.id,
-    });
-
-    return reconstructArtist({
-      artistId: artistRow.id,
-      accountId: artistRow.accountId,
-      ownerUserId: data.ownerUserId,
-      profile: null,
-    });
-  },
-
+export const createArtistReader = (executor: Executor): IArtistReader => ({
   async findByUserId(userId: string) {
-    const results = await db
-      .select({
-        artistId: artistsTable.id,
-        accountId: artistsTable.accountId,
-        ownerUserId: artistOwnersTable.userId,
-        profileName: artistProfilesTable.name,
-      })
+    const results = await executor
+      .select(artistColumns)
       .from(artistOwnersTable)
       .innerJoin(artistsTable, eq(artistOwnersTable.artistId, artistsTable.id))
       .leftJoin(
@@ -96,15 +64,9 @@ export const createArtistRepository = (
     });
   },
 
-  async findByAccountId(accountId: string, tx?: TransactionContext) {
-    const executor = tx ?? db;
+  async findByAccountId(accountId: string) {
     const results = await executor
-      .select({
-        artistId: artistsTable.id,
-        accountId: artistsTable.accountId,
-        ownerUserId: artistOwnersTable.userId,
-        profileName: artistProfilesTable.name,
-      })
+      .select(artistColumns)
       .from(artistsTable)
       .innerJoin(
         artistOwnersTable,
@@ -129,12 +91,34 @@ export const createArtistRepository = (
       profile: row.profileName ? { name: row.profileName } : null,
     });
   },
+});
 
-  async updateAccountId(
-    data: ArtistUpdateAccountIdData,
-    tx?: TransactionContext,
-  ): Promise<Artist> {
-    const executor = tx ?? db;
+export const createArtistWriter = (executor: Executor): IArtistWriter => ({
+  async save(data: ArtistPersistenceData): Promise<Artist> {
+    const [artistRow] = await rejectTakenAccountId(data.accountId, () =>
+      executor
+        .insert(artistsTable)
+        .values({ id: data.id, accountId: data.accountId })
+        .returning({
+          id: artistsTable.id,
+          accountId: artistsTable.accountId,
+        }),
+    );
+
+    await executor.insert(artistOwnersTable).values({
+      userId: data.ownerUserId,
+      artistId: artistRow.id,
+    });
+
+    return reconstructArtist({
+      artistId: artistRow.id,
+      accountId: artistRow.accountId,
+      ownerUserId: data.ownerUserId,
+      profile: null,
+    });
+  },
+
+  async updateAccountId(data: ArtistUpdateAccountIdData): Promise<Artist> {
     const [artistRow] = await rejectTakenAccountId(data.accountId, () =>
       executor
         .update(artistsTable)

@@ -1,7 +1,8 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { getContainer } from "../../../infrastructure/container";
-import { createUserUseCase } from "../../../usecases/users/createUser";
+import { getCapabilityDeps } from "../../../infrastructure/capabilities";
+import { withRegistrationCapabilities } from "../../../usecases/authorization/registration";
+import { createUser } from "../../../usecases/users/createUser";
 import { validateRequest } from "../../validators/validateRequest";
 import { handleAppError } from "../../../errorMap";
 
@@ -25,19 +26,14 @@ const app = new Hono().post(
     const body = c.req.valid("json");
     const auth0User = c.get("auth0User");
 
-    const { userRepository, artistRepository, txRunner } = getContainer();
-
-    const result = await createUserUseCase(
-      {
-        subId: auth0User.sub,
-        email: body.email,
-        accountId: body.accountId,
-      },
-      {
-        userRepository,
-        artistRepository,
-        txRunner,
-      },
+    const result = await withRegistrationCapabilities(
+      getCapabilityDeps(),
+      (caps) =>
+        createUser(caps, {
+          subId: auth0User.sub,
+          email: body.email,
+          accountId: body.accountId,
+        }),
     );
 
     if (!result.ok) {

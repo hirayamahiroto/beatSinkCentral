@@ -1,32 +1,28 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import { reconstructUser } from "../../../domain/users/factories";
-import { reconstructArtist } from "../../../domain/artists/factories";
-import { handleAppError } from "../../../errorMap";
-import artistsMe, { type UpdateMyAccountIdRequestBody } from "./index";
+import { reconstructUser } from "../../../../domain/users/factories";
+import { reconstructArtist } from "../../../../domain/artists/factories";
+import { handleAppError } from "../../../../errorMap";
+import updateMyAccountIdRoute, {
+  type UpdateMyAccountIdRequestBody,
+} from "./index";
 
-const mockUserRepository = {
-  save: vi.fn(),
-  findBySub: vi.fn(),
-  updateEmail: vi.fn(),
-};
-
-const mockArtistRepository = {
+const mockArtists = {
   save: vi.fn(),
   findByUserId: vi.fn(),
   findByAccountId: vi.fn(),
   updateAccountId: vi.fn(),
 };
 
-const mockTxRunner = {
-  run: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn({})),
-};
+const mockResolveActorState = vi.fn();
 
-vi.mock("../../../infrastructure/container", () => ({
-  getContainer: () => ({
-    userRepository: mockUserRepository,
-    artistRepository: mockArtistRepository,
-    txRunner: mockTxRunner,
+vi.mock("../../../../infrastructure/capabilities", () => ({
+  getCapabilityDeps: () => ({
+    resolveActorState: (subId: string) => mockResolveActorState(subId),
+    runWithArtistWriteCapabilities: (
+      actor: unknown,
+      work: (caps: unknown) => Promise<unknown>,
+    ) => work({ actor, artists: mockArtists }),
   }),
 }));
 
@@ -49,7 +45,7 @@ const createAppWithAuth = () => {
     c.set("auth0User", { sub: "auth0|123" });
     await next();
   });
-  app.route("/", artistsMe);
+  app.route("/", updateMyAccountIdRoute);
   app.onError(handleAppError);
   return app;
 };
@@ -64,13 +60,15 @@ const postAccountId = (body: UpdateMyAccountIdRequestBody) =>
 describe("POST /artists/me", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUserRepository.findBySub.mockResolvedValue(owner);
-    mockArtistRepository.findByUserId.mockResolvedValue(ownedArtist);
-    mockArtistRepository.findByAccountId.mockResolvedValue(null);
+    mockResolveActorState.mockResolvedValue({
+      status: "complete",
+      actor: { user: owner, artist: ownedArtist },
+    });
+    mockArtists.findByAccountId.mockResolvedValue(null);
   });
 
   it("accountIdを更新して200と更新後の値を返す", async () => {
-    mockArtistRepository.updateAccountId.mockResolvedValue(
+    mockArtists.updateAccountId.mockResolvedValue(
       reconstructArtist({
         artistId: ownedArtist.getArtistId(),
         accountId: "new_handle",
@@ -92,41 +90,44 @@ describe("POST /artists/me", () => {
     const res = await postAccountId({ accountId: "" });
 
     expect(res.status).toBe(400);
-    expect(mockTxRunner.run).not.toHaveBeenCalled();
+    expect(mockArtists.updateAccountId).not.toHaveBeenCalled();
   });
 
-  it("accountIdがVOの形式に反する場合は422を返し、トランザクションを開始しない", async () => {
+  it("accountIdがVOの形式に反する場合は422を返し、更新しない", async () => {
     const res = await postAccountId({ accountId: "invalid handle" });
 
     expect(res.status).toBe(422);
     expect(await res.json()).toStrictEqual({
       error: "Invalid accountId format",
     });
-    expect(mockTxRunner.run).not.toHaveBeenCalled();
+    expect(mockArtists.updateAccountId).not.toHaveBeenCalled();
   });
 
   it("ユーザーが未登録なら404を返し、更新しない", async () => {
-    mockUserRepository.findBySub.mockResolvedValue(null);
+    mockResolveActorState.mockResolvedValue({ status: "unregistered" });
 
     const res = await postAccountId({ accountId: "new_handle" });
 
     expect(res.status).toBe(404);
     expect(await res.json()).toStrictEqual({ error: "User not found" });
-    expect(mockArtistRepository.updateAccountId).not.toHaveBeenCalled();
+    expect(mockArtists.updateAccountId).not.toHaveBeenCalled();
   });
 
   it("artistが紐付いていなければ404を返し、更新しない", async () => {
-    mockArtistRepository.findByUserId.mockResolvedValue(null);
+    mockResolveActorState.mockResolvedValue({
+      status: "userOnly",
+      user: owner,
+    });
 
     const res = await postAccountId({ accountId: "new_handle" });
 
     expect(res.status).toBe(404);
     expect(await res.json()).toStrictEqual({ error: "Artist not found" });
-    expect(mockArtistRepository.updateAccountId).not.toHaveBeenCalled();
+    expect(mockArtists.updateAccountId).not.toHaveBeenCalled();
   });
 
   it("他のartistが使用中のaccountIdなら409と衝突した値を含むメッセージを返す", async () => {
-    mockArtistRepository.findByAccountId.mockResolvedValue(
+    mockArtists.findByAccountId.mockResolvedValue(
       reconstructArtist({
         artistId: "artist-2",
         accountId: "new_handle",
@@ -140,6 +141,6 @@ describe("POST /artists/me", () => {
 
     expect(res.status).toBe(409);
     expect(body.error).toContain("new_handle");
-    expect(mockArtistRepository.updateAccountId).not.toHaveBeenCalled();
+    expect(mockArtists.updateAccountId).not.toHaveBeenCalled();
   });
 });

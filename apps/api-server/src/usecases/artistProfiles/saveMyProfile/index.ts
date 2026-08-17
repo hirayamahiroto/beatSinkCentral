@@ -5,7 +5,7 @@ import {
   type ArtistProfileContent,
   type ArtistProfileContentError,
 } from "../../../domain/artistProfiles/factories";
-import type { WriteCapabilities } from "../../capabilities";
+import type { ArtistWriteCapabilities } from "../../capabilities";
 import { type Result, ok, err } from "../../../utils/result";
 
 export type SaveMyProfileInput = ArtistProfileContent;
@@ -17,7 +17,10 @@ export type SaveMyProfileOutput = {
 
 export type SaveMyProfileError = ArtistProfileContentError;
 
-type SaveMyProfileCaps = Pick<WriteCapabilities, "actor" | "artistProfiles">;
+type SaveMyProfileCaps = Pick<
+  ArtistWriteCapabilities,
+  "actor" | "artistProfiles"
+>;
 
 export const saveMyProfile = async (
   caps: SaveMyProfileCaps,
