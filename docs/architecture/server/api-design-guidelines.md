@@ -137,7 +137,7 @@ POST /orders/:id/cancel     → キャンセル
 - アクションは「使用例」の `POST /users/:id/delete` と同じく **POST + パス接尾辞**で表し、`<接尾辞>/post/index.ts` に置く。
 - 各 `index.ts` は単一メソッドの Hono app を `default export` し、`src/index.ts` が import して該当パスにマウントする（同一パスに GET/POST がある場合は同じ base path に複数回 `.route()`）。
 
-```
+```text
 src/routes/
   artists/
     detail/

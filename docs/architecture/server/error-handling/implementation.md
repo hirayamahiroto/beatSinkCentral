@@ -406,14 +406,14 @@ export const validateRequest = <Schema extends ZodSchema>(
 ### ルート実装例
 
 ```typescript
-// src/routes/users/create/index.ts
+// src/routes/users/post/index.ts
 import { Hono } from "hono";
 import { z } from "zod";
-import { getCapabilityDeps } from "../../../../../infrastructure/capabilities";
-import { withRegistrationCapabilities } from "../../../../../usecases/authorization";
-import { createUser } from "../../../../../usecases/users/createUser";
+import { getCapabilityDeps } from "../../../infrastructure/capabilities";
+import { withRegistrationCapabilities } from "../../../usecases/authorization/registration";
+import { createUser } from "../../../usecases/users/createUser";
 import { validateRequest } from "../../validators/validateRequest";
-import { handleAppError } from "../../../../../errorMap";
+import { handleAppError } from "../../../errorMap";
 
 const requestSchema = z.object({
   email: z.string().min(1, "email is required").email("Invalid email format"),

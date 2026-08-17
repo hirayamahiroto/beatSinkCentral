@@ -1,3 +1,5 @@
 {
-  "framework": "hono"
+  "framework": "hono",
+  "installCommand": "cd ../.. && npm install",
+  "buildCommand": "cd ../.. && npx turbo run build --filter=api-server"
 }

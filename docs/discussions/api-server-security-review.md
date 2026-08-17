@@ -21,7 +21,7 @@ Issue #158（api-server の Next.js 剥がし）に着手する前に、現在�
 
 ## 現在の認証構成（実態）
 
-```
+```text
 ブラウザ
   │  Cookie: __session（Auth0 SDK が発行した JWE。beatfolio のドメインに紐づく）
   ▼
@@ -71,8 +71,8 @@ api-server（Next.js + Auth0 SDK）
 
 `POST /api/users`（ユーザー作成）と `POST /api/users/me`（メール更新）が、**リクエストボディの `email` をそのまま保存**している。
 
-- `apps/api-server/src/routes/users/create/index.ts:32` — `email: body.email`
-- `apps/api-server/src/routes/users/me/index.ts:37` — `{ subId: auth0User.sub, email: body.email }`
+- `apps/api-server/src/routes/users/post/index.ts:34` — `email: body.email`
+- `apps/api-server/src/routes/users/me/post/index.ts:29` — `updateMyEmail(caps, { email: body.email })`
 
 `subId` はセッション由来（`auth0User.sub`）で正しく扱われているが、`email` だけボディ由来になっている。
 
@@ -113,7 +113,7 @@ Issue #158 のスコープ（エントリポイントと infrastructure）とは
 
 zod v3 の `.url()` は `new URL()` が成功すれば通すため、scheme を制限しない。実行確認:
 
-```
+```text
 javascript:alert(1)                    → true
 data:text/html,<script>1</script>      → true
 vbscript:x                             → true
@@ -154,7 +154,9 @@ const ALLOWED_PROTOCOLS = ["http:", "https:"];
 
 ```typescript
 const authValue = basicAuth.split(" ")[1]; // :31
-const [username, password] = Buffer.from(authValue, "base64"); // :32
+const [username, password] = Buffer.from(authValue, "base64") // :32
+  .toString()
+  .split(":");
 ```
 
 `Authorization: Basic`（スペース・値なし）を送ると `split(" ")[1]` が `undefined` になり、`Buffer.from(undefined, "base64")` が `TypeError` を投げる（実行確認済み）。Next.js の middleware 内の未捕捉例外なので **認証を通過していない任意のクライアントが 500 を発生させられる**。情報漏洩は無いが、認証前に到達できる例外パスは残すべきでない。
@@ -223,7 +225,7 @@ api-server の未処理例外の主な発生源は DB 層。`postgres.js` / Driz
 | パッケージ            | 現在    | 影響範囲          | 修正          | 本 PR での扱い                                   |
 | --------------------- | ------- | ----------------- | ------------- | ------------------------------------------------ |
 | `hono`                | 4.12.10 | `<= 4.12.33`      | 4.13.x        | **上げる**（`^4.13.1`。beatfolio も同時に）      |
-| `uuid`                | 11.1.0  | `< 11.1.1`        | 11.1.1        | **依存自体を削除**（リポジトリ内で未使用だった） |
+| `uuid`                | 11.1.0  | `< 11.1.1`        | 削除          | **依存自体を削除**（リポジトリ内で未使用だった） |
 | `@auth0/nextjs-auth0` | 4.14.0  | `4.12.0 - 4.17.0` | 4.18+         | **依存自体を削除**（#158 §1）                    |
 | `next`                | 15.5.14 | 多数              | 要 major 追従 | api-server からは**削除**。beatfolio は別途      |
 
@@ -261,7 +263,7 @@ api-server は独立した Vercel プロジェクトとして公開 URL を持�
 
 ## S-7 ⚪ 使われていない `/api/test` が残置
 
-`apps/api-server/src/routes/test/index.ts` は `{ message: "Hello World" }` を返すだけの要認証エンドポイント。情報漏洩は無いが、意味のない攻撃面と運用ノイズ。Issue #158 §8 の動作確認リストにも入っており、**削除するなら本 PR が機会**（ただし Issue が「11 本の確認」を前提にしているため、削除は別途合意したい）。
+`apps/api-server/src/routes/test/get/index.ts` は `{ message: "Hello World" }` を返すだけの要認証エンドポイント。情報漏洩は無いが、意味のない攻撃面と運用ノイズ。Issue #158 §8 の動作確認リストにも入っており、**削除するなら本 PR が機会**（ただし Issue が「11 本の確認」を前提にしているため、削除は別途合意したい）。
 
 ---
 
@@ -336,7 +338,7 @@ Auth0 SDK は `secure` を `AUTH0_COOKIE_SECURE === "true"` で決めるが、`A
 ### 本 PR（#158）で対応する
 
 - S-3 — Basic 認証を `hono/basic-auth` で置き換え（§2 の作業そのもの）
-- S-5 の一部 — `hono` を `^4.13.1` へ、`uuid` を `^11.1.1` へ。`next` / `@auth0/nextjs-auth0` は削除
+- S-5 の一部 — `hono` を `^4.13.1` へ。`uuid` / `next` / `@auth0/nextjs-auth0` は削除（`uuid` はリポジトリ内で未使用だったため上げずに落とす）
 - S-9 の緩和準備 — セッション取得を `SessionProvider` インターフェースに閉じ込め、Bearer 実装へ差し替え可能にする
 
 ### 別 Issue として起票を推奨する

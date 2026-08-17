@@ -115,7 +115,7 @@ if (!user) {
 
 beatfolio と api-server は**別デプロイ**だが、セッションの実体は Auth0 SDK が発行する暗号化 Cookie 1 つで、それを BFF がサーバー間で転送する。
 
-```
+```text
 ブラウザ
   │  Cookie: __session（beatfolio のドメインに紐づく）
   ▼

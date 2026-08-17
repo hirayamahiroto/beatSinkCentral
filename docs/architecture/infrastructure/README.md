@@ -14,7 +14,7 @@ Vercel の設定は 2 箇所に分かれる。**どちらが持つかを取り�
 
 `vercel.json` は Dashboard / project 設定を**上書きする**（宣言したキーのみ）。ビルド設定をここに置くことで、ランタイムやフレームワークを変える PR が **`terraform apply` を待たずに preview で検証できる**。逆に env やプロジェクト自体を `vercel.json` に書くことはしない（シークレットが平文でリポジトリに入る／資源の生成が二重管理になる）。
 
-`vercel.tf` にも `framework` / `build_command` を書いているが、これは import 済みの project 設定を HCL 上で表現しておくためのもので、**実際に効くのは `vercel.json` 側**。両者が食い違ったまま放置しない。
+`vercel.tf` にも `framework` / `build_command` / `install_command` を書いているが、これは import 済みの project 設定を HCL 上で表現しておくためのもので、**実際に効くのは `vercel.json` 側**。両者が食い違ったまま放置しない（ビルド設定を変えるときは `vercel.json` と `vercel.tf` を同じコミットで同値に更新する）。
 
 ## ディレクトリ構成
 

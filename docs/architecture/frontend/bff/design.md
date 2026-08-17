@@ -255,11 +255,11 @@ BFF が依拠するルールは **「api-server は応答する」「契約ど�
 
 `fetch` の失敗モードは2つあり、**`!res.ok` は前者しか捕捉しない**ことに注意する。
 
-| 失敗モード                                     | Promise                | 検知する層                                                     | HTTP                     |
-| ---------------------------------------------- | ---------------------- | -------------------------------------------------------------- | ------------------------ |
-| 上流に到達できない（DNS / 接続拒否 / timeout） | **reject**             | `createApiServerClient`（`UpstreamUnavailableError` を throw） | 502                      |
-| 上流がエラーステータスを返した                 | resolve（`ok: false`） | 各 route（`!res.ok`）                                          | read: 502 ／ write: 透過 |
-| 応答が解析できない                             | reject                 | 未対応（`.onError()` が 500 化）                               | 500                      |
+| 失敗モード                                     | Promise                | 検知する層                                                     | HTTP                     | 応答ボディ                                |
+| ---------------------------------------------- | ---------------------- | -------------------------------------------------------------- | ------------------------ | ----------------------------------------- |
+| 上流に到達できない（DNS / 接続拒否 / timeout） | **reject**             | `createApiServerClient`（`UpstreamUnavailableError` を throw） | 502                      | `{ "error": "Upstream request failed" }`  |
+| 上流がエラーステータスを返した                 | resolve（`ok: false`） | 各 route（`!res.ok`）                                          | read: 502 ／ write: 透過 | read: route が定める ／ write: 上流のまま |
+| 応答が解析できない                             | reject                 | 未対応（`.onError()` が 500 化）                               | 500                      | `{ "error": "Internal Server Error" }`    |
 
 - **到達不能の検知は route ではなく client 層**が担う。route ごとに `try/catch` を重ねない。client が型付きエラーを throw し、`route.ts` の `.onError(handleBffError)` が `errorMap` で HTTP へ変換する。
 - **`errorMap` は BFF 側にも置く**（`apps/beatfolio/src/errorMap/`）。api-server の `errorMap` と同じ形で、HTTP への翻訳をここだけが行う。
