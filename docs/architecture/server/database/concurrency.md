@@ -89,6 +89,8 @@
 | `createUser`        | LWW            | `accountId` / `email` を DB 一意制約で拒否（409） | 新規作成のみ。`accountId` は事前 SELECT あり、`email` は事前 SELECT なし（制約のみ）。いずれも `withRegistrationCapabilities` が `err` へ寄せる       |
 | `updateMyEmail`     | LWW            | `email` を DB 一意制約で拒否（409）               | 自分の email を自分で変更。事前 SELECT は置かず、`users_email_unique` 違反を `EmailAlreadyTakenError` に翻訳して `withUserWriteCapabilities` が寄せる |
 | `updateMyAccountId` | LWW            | `accountId` を DB 一意制約で拒否（409）           | 自分の accountId を自分で変更。事前 SELECT は usecase、一意制約違反は `withArtistWriteCapabilities` が寄せる                                          |
+| `saveMyProfile`     | LWW            | なし（一意な値を持たない）                        | 本人が自分のプロフィールを保存。単一主体の単発操作                                                                                                    |
+| `publishMyProfile`  | LWW            | なし（一意な値を持たない）                        | 本人が公開状態を切り替える。公開可否は `ensurePublishable` で判定                                                                                     |
 
 LWW は競合を検出せず後の書き込みを採用する方式であり、一意な値（`accountId` / `email`）の重複はこれとは別経路で扱う。**重複を検出したら後勝ちにせず 409 で拒否する**（詳細は前節「一意制約違反の扱い」）。一意な値を書く usecase を追加する時は、通常更新の方針とは独立にこの拒否経路を実装する。
 
