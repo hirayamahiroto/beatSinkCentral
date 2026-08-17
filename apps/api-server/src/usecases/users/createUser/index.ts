@@ -1,7 +1,9 @@
-import { registerNewUser } from "../../../domain/services/userRegistration";
-import { IUserRepository } from "../../../domain/users/repositories";
-import { IArtistRepository } from "../../../domain/artists/repositories";
-import type { ITransactionRunner } from "../../../infrastructure/transaction";
+import {
+  registerNewUser,
+  type RegisterNewUserError,
+} from "../../../domain/services/userRegistration";
+import type { RegistrationCapabilities } from "../../capabilities";
+import { type Result, ok } from "../../../utils/result";
 
 export type CreateUserInput = {
   subId: string;
@@ -14,30 +16,32 @@ export type CreateUserOutput = {
   artistId: string;
 };
 
-export type CreateUserDeps = {
-  userRepository: IUserRepository;
-  artistRepository: IArtistRepository;
-  txRunner: ITransactionRunner;
-};
+export type CreateUserError = RegisterNewUserError;
 
-export const createUserUseCase = async (
+type CreateUserCaps = Pick<RegistrationCapabilities, "users" | "artists">;
+
+export const createUser = async (
+  caps: CreateUserCaps,
   input: CreateUserInput,
-  deps: CreateUserDeps,
-): Promise<CreateUserOutput> =>
-  deps.txRunner.run(async (tx) => {
-    const [userIfRegistered, artistIfAccountIdTaken] = await Promise.all([
-      deps.userRepository.findBySub(input.subId, tx),
-      deps.artistRepository.findByAccountId(input.accountId, tx),
-    ]);
-    const { user, artist } = registerNewUser(
-      input,
-      userIfRegistered,
-      artistIfAccountIdTaken,
-    );
-    await deps.userRepository.save(user.toPersistence(), tx);
-    await deps.artistRepository.save(artist.toPersistence(), tx);
-    return {
-      userId: user.getId(),
-      artistId: artist.getArtistId(),
-    };
+): Promise<Result<CreateUserOutput, CreateUserError>> => {
+  const [userIfRegistered, artistIfAccountIdTaken] = await Promise.all([
+    caps.users.findBySub(input.subId),
+    caps.artists.findByAccountId(input.accountId),
+  ]);
+
+  const registered = registerNewUser(
+    input,
+    userIfRegistered,
+    artistIfAccountIdTaken,
+  );
+  if (!registered.ok) return registered;
+
+  const { user, artist } = registered.value;
+  await caps.users.save(user.toPersistence());
+  await caps.artists.save(artist.toPersistence());
+
+  return ok({
+    userId: user.getId(),
+    artistId: artist.getArtistId(),
   });
+};

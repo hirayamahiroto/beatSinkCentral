@@ -58,7 +58,7 @@ npm run build
 | 領域                                                 | ドキュメント                                                      | いつ読むか                                             |
 | ---------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------ |
 | 全体アーキテクチャ・ディレクトリ構造・実装パターン   | `docs/architecture/server/architecture.md`                        | 新規実装・レイヤー追加時                               |
-| 権能（capabilities）モデル・トランザクション境界     | `docs/architecture/server/architecture.md#権能capabilitiesモデル` | usecase の依存を決める時・新しい集約を足す時           |
+| 認可と権能（capabilities）・トランザクション境界     | `docs/architecture/server/architecture.md#認可と権能capabilities` | usecase の依存を決める時・新しい集約を足す時           |
 | API 設計（HTTPメソッド・URL）                        | `docs/architecture/server/api-design-guidelines.md`               | API ルート追加・変更時                                 |
 | エラーハンドリング（Result 境界を含む）              | `docs/architecture/server/error-handling/README.md`               | エラー追加・失敗の伝え方・errorMap 変更時              |
 | 並行更新ポリシー                                     | `docs/architecture/server/database/concurrency.md`                | 新規 usecase の更新フロー設計時・競合挙動の判断時      |

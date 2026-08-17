@@ -53,7 +53,7 @@
 | 領域               | ドキュメント                                                               | いつ読むか                              |
 | ------------------ | -------------------------------------------------------------------------- | --------------------------------------- |
 | 全体構造           | [architecture.md](./architecture/server/architecture.md)                   | 新規実装・レイヤー追加時                |
-| 権能モデル         | [architecture.md](./architecture/server/architecture.md#権能capabilitiesモデル) | usecase の依存を決める時・新しい集約を足す時 |
+| 認可と権能         | [architecture.md](./architecture/server/architecture.md#認可と権能capabilities) | usecase の依存を決める時・新しい集約を足す時 |
 | API 設計           | [api-design-guidelines.md](./architecture/server/api-design-guidelines.md) | API ルート追加・変更時                  |
 | エラーハンドリング | [error-handling/](./architecture/server/error-handling/README.md)          | エラー追加・失敗の伝え方・errorMap 変更時 |
 | 外部クライアント   | [external-clients.md](./architecture/server/external-clients.md)           | Database / Auth0 / Redis 等の追加時     |

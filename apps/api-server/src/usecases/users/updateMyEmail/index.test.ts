@@ -1,88 +1,67 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import {
-  updateMyEmailUseCase,
-  type UpdateMyEmailDeps,
-  type UpdateMyEmailInput,
-} from "./index";
-import { isUserNotFoundError } from "../../../domain/users/policies/assertRegistered";
+import { updateMyEmail } from "./index";
 import { reconstructUser } from "../../../domain/users/factories";
+import type {
+  IUserReader,
+  IUserWriter,
+} from "../../../domain/users/repositories";
+import type { UserWriteCapabilities } from "../../capabilities";
 
-const createMockDeps = () => {
-  const deps = {
-    userRepository: {
-      save: vi.fn(),
-      findBySub: vi.fn(),
-      updateEmail: vi.fn(),
-    },
-    txRunner: {
-      run: vi.fn(async (fn) => fn({} as Parameters<typeof fn>[0])),
-    },
-  } satisfies UpdateMyEmailDeps;
-  return deps;
-};
-
-const validInput = {
+const user = reconstructUser({
+  id: "550e8400-e29b-41d4-a716-446655440000",
   subId: "auth0|123456789",
-  email: "new@example.com",
-} satisfies UpdateMyEmailInput;
+  email: "old@example.com",
+});
 
-describe("updateMyEmailUseCase", () => {
+const createCaps = () =>
+  ({
+    user,
+    users: {
+      findBySub: vi.fn<IUserReader["findBySub"]>(async () => null),
+      save: vi.fn<IUserWriter["save"]>(),
+      updateEmail: vi.fn<IUserWriter["updateEmail"]>(),
+    },
+  }) satisfies Pick<UserWriteCapabilities, "user" | "users">;
+
+describe("updateMyEmail", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("既存ユーザーのemailを更新し、新しいemailを返す", async () => {
-    const deps = createMockDeps();
-    const existingUser = reconstructUser({
-      id: "550e8400-e29b-41d4-a716-446655440000",
-      subId: validInput.subId,
-      email: "old@example.com",
-    });
-    deps.userRepository.findBySub.mockResolvedValue(existingUser);
-    deps.userRepository.updateEmail.mockResolvedValue(
+  it("User の email を更新し、新しい email を返す", async () => {
+    const caps = createCaps();
+    caps.users.updateEmail.mockResolvedValue(
       reconstructUser({
-        id: existingUser.getId(),
-        subId: existingUser.getSub(),
-        email: validInput.email,
+        id: user.getId(),
+        subId: user.getSub(),
+        email: "new@example.com",
       }),
     );
 
-    const result = await updateMyEmailUseCase(validInput, deps);
+    const result = await updateMyEmail(caps, { email: "new@example.com" });
 
-    expect(result).toStrictEqual({
-      userId: existingUser.getId(),
-      email: validInput.email,
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toStrictEqual({
+        userId: user.getId(),
+        email: "new@example.com",
+      });
+    }
+    expect(caps.users.updateEmail).toHaveBeenCalledWith({
+      id: user.getId(),
+      email: "new@example.com",
     });
-    expect(deps.userRepository.updateEmail).toHaveBeenCalledWith(
-      { id: existingUser.getId(), email: validInput.email },
-      expect.anything(),
-    );
-    expect(deps.txRunner.run).toHaveBeenCalledTimes(1);
   });
 
-  it("ユーザーが存在しない場合はUserNotFoundErrorをスローする", async () => {
-    const deps = createMockDeps();
-    deps.userRepository.findBySub.mockResolvedValue(null);
+  it("email が不正な形式の場合は保存せず InvalidEmailFormatError を err で返す", async () => {
+    const caps = createCaps();
 
-    const promise = updateMyEmailUseCase(validInput, deps);
+    const result = await updateMyEmail(caps, { email: "invalid" });
 
-    await expect(promise).rejects.toSatisfy(isUserNotFoundError);
-    expect(deps.userRepository.updateEmail).not.toHaveBeenCalled();
-  });
-
-  it("emailが不正な形式の場合は、トランザクション開始前にInvalidEmailFormatErrorをスローする", async () => {
-    const deps = createMockDeps();
-
-    const promise = updateMyEmailUseCase(
-      { ...validInput, email: "invalid" },
-      deps,
-    );
-
-    await expect(promise).rejects.toMatchObject({
-      type: "InvalidEmailFormatError",
-    });
-    expect(deps.txRunner.run).not.toHaveBeenCalled();
-    expect(deps.userRepository.findBySub).not.toHaveBeenCalled();
-    expect(deps.userRepository.updateEmail).not.toHaveBeenCalled();
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.type).toBe("InvalidEmailFormatError");
+    }
+    expect(caps.users.updateEmail).not.toHaveBeenCalled();
   });
 });

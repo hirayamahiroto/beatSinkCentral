@@ -1,150 +1,129 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { updateMyAccountId } from "./index";
 import {
-  updateMyAccountIdUseCase,
-  type UpdateMyAccountIdDeps,
-  type UpdateMyAccountIdInput,
-} from "./index";
-import { isUserNotFoundError } from "../../../domain/users/policies/assertRegistered";
-import { isArtistNotFoundError } from "../../../domain/artists/policies/assertArtistExists";
-import { isAccountIdAlreadyTakenError } from "../../../domain/artists/policies/assertAccountIdAvailable";
+  createAccountIdAlreadyTakenError,
+  isAccountIdAlreadyTakenError,
+} from "../../../domain/artists/errors/accountIdAlreadyTaken";
 import { reconstructUser } from "../../../domain/users/factories";
 import { reconstructArtist } from "../../../domain/artists/factories";
+import type {
+  IArtistReader,
+  IArtistWriter,
+} from "../../../domain/artists/repositories";
+import type { ArtistWriteCapabilities } from "../../capabilities";
 
-const createMockDeps = () => {
-  const deps = {
-    userRepository: {
-      save: vi.fn(),
-      findBySub: vi.fn(),
-      updateEmail: vi.fn(),
-    },
-    artistRepository: {
-      save: vi.fn(),
-      findByUserId: vi.fn(),
-      findByAccountId: vi.fn(),
-      updateAccountId: vi.fn(),
-    },
-    txRunner: {
-      run: vi.fn(async (fn) => fn({} as Parameters<typeof fn>[0])),
-    },
-  } satisfies UpdateMyAccountIdDeps;
-  return deps;
-};
-
-const validInput = {
-  subId: "auth0|123456789",
-  accountId: "new_handle",
-} satisfies UpdateMyAccountIdInput;
-
-const existingUser = reconstructUser({
+const user = reconstructUser({
   id: "550e8400-e29b-41d4-a716-446655440000",
-  subId: validInput.subId,
+  subId: "auth0|123456789",
   email: "test@example.com",
 });
 
-const existingArtist = reconstructArtist({
+const artist = reconstructArtist({
   artistId: "artist-1",
   accountId: "old_handle",
-  ownerUserId: existingUser.getId(),
+  ownerUserId: user.getId(),
   profile: null,
 });
 
-describe("updateMyAccountIdUseCase", () => {
+const createCaps = () =>
+  ({
+    actor: { user, artist },
+    artists: {
+      findByUserId: vi.fn<IArtistReader["findByUserId"]>(async () => null),
+      findByAccountId: vi.fn<IArtistReader["findByAccountId"]>(
+        async () => null,
+      ),
+      save: vi.fn<IArtistWriter["save"]>(),
+      updateAccountId: vi.fn<IArtistWriter["updateAccountId"]>(),
+    },
+  }) satisfies Pick<ArtistWriteCapabilities, "actor" | "artists">;
+
+const renamedArtist = reconstructArtist({
+  artistId: artist.getArtistId(),
+  accountId: "new_handle",
+  ownerUserId: artist.getOwnerUserId(),
+  profile: null,
+});
+
+describe("updateMyAccountId", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("既存ユーザーのaccountIdを更新し、新しいaccountIdを返す", async () => {
-    const deps = createMockDeps();
-    deps.userRepository.findBySub.mockResolvedValue(existingUser);
-    deps.artistRepository.findByUserId.mockResolvedValue(existingArtist);
-    deps.artistRepository.findByAccountId.mockResolvedValue(null);
-    deps.artistRepository.updateAccountId.mockResolvedValue(
+  it("Actor の accountId を更新し、新しい accountId を返す", async () => {
+    const caps = createCaps();
+    caps.artists.updateAccountId.mockResolvedValue(renamedArtist);
+
+    const result = await updateMyAccountId(caps, { accountId: "new_handle" });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toStrictEqual({
+        artistId: artist.getArtistId(),
+        accountId: "new_handle",
+      });
+    }
+    expect(caps.artists.updateAccountId).toHaveBeenCalledTimes(1);
+  });
+
+  it("現在の accountId と同じ値の場合は更新せず early return する", async () => {
+    const caps = createCaps();
+
+    const result = await updateMyAccountId(caps, { accountId: "old_handle" });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toStrictEqual({
+        artistId: artist.getArtistId(),
+        accountId: "old_handle",
+      });
+    }
+    expect(caps.artists.findByAccountId).not.toHaveBeenCalled();
+    expect(caps.artists.updateAccountId).not.toHaveBeenCalled();
+  });
+
+  it("他の artist が同じ accountId を使用している場合は AccountIdAlreadyTakenError を err で返す", async () => {
+    const caps = createCaps();
+    caps.artists.findByAccountId.mockResolvedValue(
       reconstructArtist({
-        artistId: existingArtist.getArtistId(),
-        accountId: validInput.accountId,
-        ownerUserId: existingArtist.getOwnerUserId(),
+        artistId: "artist-2",
+        accountId: "new_handle",
+        ownerUserId: "other-user",
         profile: null,
       }),
     );
 
-    const result = await updateMyAccountIdUseCase(validInput, deps);
+    const result = await updateMyAccountId(caps, { accountId: "new_handle" });
 
-    expect(result).toStrictEqual({
-      artistId: existingArtist.getArtistId(),
-      accountId: validInput.accountId,
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(isAccountIdAlreadyTakenError(result.error)).toBe(true);
+    }
+    expect(caps.artists.updateAccountId).not.toHaveBeenCalled();
+  });
+
+  it("accountId が不正な形式の場合は参照せず InvalidAccountIdFormatError を err で返す", async () => {
+    const caps = createCaps();
+
+    const result = await updateMyAccountId(caps, {
+      accountId: "invalid handle",
     });
-    expect(deps.artistRepository.updateAccountId).toHaveBeenCalledTimes(1);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.type).toBe("InvalidAccountIdFormatError");
+    }
+    expect(caps.artists.findByAccountId).not.toHaveBeenCalled();
+    expect(caps.artists.updateAccountId).not.toHaveBeenCalled();
   });
 
-  it("現在のaccountIdと同じ値の場合は更新せず early return する", async () => {
-    const deps = createMockDeps();
-    deps.userRepository.findBySub.mockResolvedValue(existingUser);
-    deps.artistRepository.findByUserId.mockResolvedValue(existingArtist);
+  it("更新時の一意制約違反はそのまま伝播する", async () => {
+    const caps = createCaps();
+    const takenError = createAccountIdAlreadyTakenError("new_handle");
+    caps.artists.updateAccountId.mockRejectedValue(takenError);
 
-    const result = await updateMyAccountIdUseCase(
-      { ...validInput, accountId: "old_handle" },
-      deps,
-    );
-
-    expect(result).toStrictEqual({
-      artistId: existingArtist.getArtistId(),
-      accountId: "old_handle",
-    });
-    expect(deps.artistRepository.findByAccountId).not.toHaveBeenCalled();
-    expect(deps.artistRepository.updateAccountId).not.toHaveBeenCalled();
-  });
-
-  it("他のartistが同じaccountIdを使用している場合はAccountIdAlreadyTakenErrorをスローする", async () => {
-    const deps = createMockDeps();
-    deps.userRepository.findBySub.mockResolvedValue(existingUser);
-    deps.artistRepository.findByUserId.mockResolvedValue(existingArtist);
-    const otherArtist = reconstructArtist({
-      artistId: "artist-2",
-      accountId: validInput.accountId,
-      ownerUserId: "other-user",
-      profile: null,
-    });
-    deps.artistRepository.findByAccountId.mockResolvedValue(otherArtist);
-
-    const promise = updateMyAccountIdUseCase(validInput, deps);
-
-    await expect(promise).rejects.toSatisfy(isAccountIdAlreadyTakenError);
-    expect(deps.artistRepository.updateAccountId).not.toHaveBeenCalled();
-  });
-
-  it("ユーザーが存在しない場合はUserNotFoundErrorをスローする", async () => {
-    const deps = createMockDeps();
-    deps.userRepository.findBySub.mockResolvedValue(null);
-
-    const promise = updateMyAccountIdUseCase(validInput, deps);
-
-    await expect(promise).rejects.toSatisfy(isUserNotFoundError);
-    expect(deps.artistRepository.updateAccountId).not.toHaveBeenCalled();
-  });
-
-  it("artistが存在しない場合はArtistNotFoundErrorをスローする", async () => {
-    const deps = createMockDeps();
-    deps.userRepository.findBySub.mockResolvedValue(existingUser);
-    deps.artistRepository.findByUserId.mockResolvedValue(null);
-
-    const promise = updateMyAccountIdUseCase(validInput, deps);
-
-    await expect(promise).rejects.toSatisfy(isArtistNotFoundError);
-    expect(deps.artistRepository.updateAccountId).not.toHaveBeenCalled();
-  });
-
-  it("accountIdが不正な形式の場合は、トランザクション開始前にInvalidAccountIdFormatErrorをスローする", async () => {
-    const deps = createMockDeps();
-
-    const promise = updateMyAccountIdUseCase(
-      { ...validInput, accountId: "invalid handle" },
-      deps,
-    );
-
-    await expect(promise).rejects.toMatchObject({
-      type: "InvalidAccountIdFormatError",
-    });
-    expect(deps.txRunner.run).not.toHaveBeenCalled();
-    expect(deps.userRepository.findBySub).not.toHaveBeenCalled();
+    await expect(
+      updateMyAccountId(caps, { accountId: "new_handle" }),
+    ).rejects.toBe(takenError);
   });
 });

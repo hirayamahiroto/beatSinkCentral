@@ -1,5 +1,5 @@
 import type { ArtistProfileView } from "../../../domain/artistProfiles/entities";
-import type { ReadCapabilities } from "../../capabilities";
+import type { ArtistReadCapabilities } from "../../capabilities";
 import { type Result, ok } from "../../../utils/result";
 
 export type GetMyProfileOutput = {
@@ -7,7 +7,10 @@ export type GetMyProfileOutput = {
   profile: ArtistProfileView | null;
 };
 
-type GetMyProfileCaps = Pick<ReadCapabilities, "actor" | "artistProfiles">;
+type GetMyProfileCaps = Pick<
+  ArtistReadCapabilities,
+  "actor" | "artistProfiles"
+>;
 
 export const getMyProfile = async (
   caps: GetMyProfileCaps,

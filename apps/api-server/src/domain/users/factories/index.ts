@@ -1,35 +1,44 @@
-import { createSub } from "../valueObjects/sub";
-import { createEmail } from "../valueObjects/email";
+import { createSub, type InvalidSubFormatError } from "../valueObjects/sub";
+import {
+  createEmail,
+  type InvalidEmailFormatError,
+} from "../valueObjects/email";
 import { createUserBehaviors } from "../behaviors";
-import type { User } from "../entities";
+import type { User, UserState } from "../entities";
+import { type Result, map, all, unwrapOrThrow } from "../../../utils/result";
 
-export type CreateUserParams = {
+export type UserFieldError = InvalidSubFormatError | InvalidEmailFormatError;
+
+type UserFields = {
   subId: string;
   email: string;
 };
 
-export const createUser = (params: CreateUserParams): User => {
-  const state = {
-    id: crypto.randomUUID(),
-    subId: createSub(params.subId),
-    email: createEmail(params.email),
-  };
+const buildState = (
+  id: string,
+  fields: UserFields,
+): Result<UserState, UserFieldError> =>
+  map(
+    all({
+      subId: createSub(fields.subId),
+      email: createEmail(fields.email),
+    }),
+    (values) => ({ id, ...values }),
+  );
 
-  return createUserBehaviors(state);
-};
+export type CreateUserParams = UserFields;
 
-export type ReconstructUserParams = {
+export const createUser = (
+  params: CreateUserParams,
+): Result<User, UserFieldError> =>
+  map(buildState(crypto.randomUUID(), params), createUserBehaviors);
+
+export type ReconstructUserParams = UserFields & {
   id: string;
-  subId: string;
-  email: string;
 };
 
-export const reconstructUser = (params: ReconstructUserParams): User => {
-  const state = {
-    id: params.id,
-    subId: createSub(params.subId),
-    email: createEmail(params.email),
-  };
-
-  return createUserBehaviors(state);
-};
+export const reconstructUser = (params: ReconstructUserParams): User =>
+  unwrapOrThrow(
+    map(buildState(params.id, params), createUserBehaviors),
+    "reconstructUser: stored user has invalid field values",
+  );

@@ -1,13 +1,15 @@
-import type { IUserRepository } from "../../../domain/users/repositories";
-import type { IArtistRepository } from "../../../domain/artists/repositories";
-import { assertRegistered } from "../../../domain/users/policies/assertRegistered";
-import { assertArtistExists } from "../../../domain/artists/policies/assertArtistExists";
-import { assertAccountIdAvailable } from "../../../domain/artists/policies/assertAccountIdAvailable";
-import { createAccountId } from "../../../domain/artists/valueObjects/accountId";
-import type { ITransactionRunner } from "../../../infrastructure/transaction";
+import {
+  createAccountIdAlreadyTakenError,
+  type AccountIdAlreadyTakenError,
+} from "../../../domain/artists/errors/accountIdAlreadyTaken";
+import {
+  createAccountId,
+  type InvalidAccountIdFormatError,
+} from "../../../domain/artists/valueObjects/accountId";
+import type { ArtistWriteCapabilities } from "../../capabilities";
+import { type Result, ok, err } from "../../../utils/result";
 
 export type UpdateMyAccountIdInput = {
-  subId: string;
   accountId: string;
 };
 
@@ -16,47 +18,42 @@ export type UpdateMyAccountIdOutput = {
   accountId: string;
 };
 
-export type UpdateMyAccountIdDeps = {
-  userRepository: IUserRepository;
-  artistRepository: IArtistRepository;
-  txRunner: ITransactionRunner;
-};
+export type UpdateMyAccountIdError =
+  | InvalidAccountIdFormatError
+  | AccountIdAlreadyTakenError;
 
-export const updateMyAccountIdUseCase = async (
+type UpdateMyAccountIdCaps = Pick<ArtistWriteCapabilities, "actor" | "artists">;
+
+export const updateMyAccountId = async (
+  caps: UpdateMyAccountIdCaps,
   input: UpdateMyAccountIdInput,
-  deps: UpdateMyAccountIdDeps,
-): Promise<UpdateMyAccountIdOutput> => {
-  const newAccountId = createAccountId(input.accountId);
+): Promise<Result<UpdateMyAccountIdOutput, UpdateMyAccountIdError>> => {
+  const parsed = createAccountId(input.accountId);
+  if (!parsed.ok) return parsed;
+  const newAccountId = parsed.value;
 
-  return deps.txRunner.run(async (tx) => {
-    const user = await deps.userRepository.findBySub(input.subId, tx);
-    assertRegistered(user);
+  const artist = caps.actor.artist;
 
-    const artist = await deps.artistRepository.findByUserId(user.getId());
-    assertArtistExists(artist);
+  if (artist.hasAccountId(newAccountId)) {
+    return ok({
+      artistId: artist.getArtistId(),
+      accountId: artist.getAccountId(),
+    });
+  }
 
-    if (artist.hasAccountId(newAccountId)) {
-      return {
-        artistId: artist.getArtistId(),
-        accountId: artist.getAccountId(),
-      };
-    }
+  const taken = await caps.artists.findByAccountId(newAccountId.value);
+  if (taken) {
+    return err(createAccountIdAlreadyTakenError(taken.getAccountId()));
+  }
 
-    const taken = await deps.artistRepository.findByAccountId(
-      newAccountId.value,
-      tx,
-    );
-    assertAccountIdAvailable(taken);
+  const updated = artist.changeAccountId(newAccountId);
+  const saved = await caps.artists.updateAccountId({
+    artistId: updated.getArtistId(),
+    accountId: updated.getAccountId(),
+  });
 
-    const updated = artist.changeAccountId(newAccountId);
-    const saved = await deps.artistRepository.updateAccountId(
-      { artistId: updated.getArtistId(), accountId: updated.getAccountId() },
-      tx,
-    );
-
-    return {
-      artistId: saved.getArtistId(),
-      accountId: saved.getAccountId(),
-    };
+  return ok({
+    artistId: saved.getArtistId(),
+    accountId: saved.getAccountId(),
   });
 };

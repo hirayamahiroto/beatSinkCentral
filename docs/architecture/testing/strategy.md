@@ -173,13 +173,14 @@
 
 | レイヤー                   | 検証する振る舞い                        | 典型的なテスト対象                                                                      |
 | -------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------- |
-| **Value Object**           | 値の正当性                              | 有効な値で生成できる / 無効な値で正しく型付きエラーを投げる / 境界値                    |
-| **Entity**                 | 生成時の IO + 状態の整合性              | 有効な入力で Entity が構築される / 不変条件違反でエラー / ID などの自動生成が期待通り   |
-| **Aggregate (集約ルート)** | 集約内の不変条件 + ドメインイベント発火 | 集約ルート経由での状態変更 / 不変条件違反でエラー / 期待したドメインイベントの発火      |
-| **Factory**                | 生成の契約                              | 入力から期待する Entity/VO が作られる                                                   |
-| **Domain Service**         | 複数オブジェクトの協調                  | 組み合わせロジックが正しく動く / 前提条件違反で型付きエラー                             |
-| **Policy (assertXxx)**     | ルール判定                              | 正常時は通過 / ルール違反時は期待する型のエラーを throw                                 |
-| **Usecase**                | 業務フロー・分岐                        | 前提を満たすと業務が完了する / 前提違反で型付きエラー / 例外時のリソースロールバック    |
+| **Value Object**           | 値の正当性                              | 有効な値で生成できる / 無効な値で期待する型の `err` を返す / 境界値                     |
+| **Entity**                 | 生成時の IO + 状態の整合性              | 有効な入力で Entity が構築される / 不変条件違反で `err` / ID などの自動生成が期待通り   |
+| **Aggregate (集約ルート)** | 集約内の不変条件 + ドメインイベント発火 | 集約ルート経由での状態変更 / 不変条件違反で `err` / 期待したドメインイベントの発火      |
+| **Factory**                | 生成の契約                              | `create` は入力不正で `err` / `reconstruct` は保存値不正で throw（500 相当）            |
+| **Error 定義**             | エラーの語彙                            | `type` を持つ Error を生成する / 型ガードが自他を判別する / コンテキストを保持する      |
+| **Domain Service**         | 複数オブジェクトの協調                  | 組み合わせロジックが正しく動く / 前提条件違反で期待する型の `err`                       |
+| **Policy (ensureXxx)**     | ルール判定                              | 正常時は `ok` / ルール違反時は期待する型の `err`                                        |
+| **Usecase**                | 業務フロー・分岐                        | 前提を満たすと業務が完了する / 前提違反で型付き `err` / 例外時のリソースロールバック    |
 | **Repository**             | 永続化境界の契約                        | 保存・取得・更新・削除の I/O / DB エラーの伝播(**実装は Integration Test で検証**)      |
 | **Entrypoint (API)**       | プロトコル変換                          | リクエスト → Usecase 呼び出し → レスポンス / 認証・認可 / errorMap を通じた HTTP 変換   |
 | **UI / Component**         | ユーザー操作に対する表示・反応          | 初期描画 / ユーザー操作での状態変化 / ローディング・エラー状態の表示 / アクセシビリティ |
@@ -189,6 +190,13 @@
 - **各レイヤーでそのレイヤーが持つ振る舞いだけを検証する**
 - 下層の詳細を上層で再検証しない(例: Usecase のテストで email の形式を検証しない。それは VO 側で済ませる)
 - 上層の都合で下層のテストを変えない(Usecase で使われ方が変わっても、VO のテストは影響を受けない)
+
+**「形式ルールの検証」と「`err` の伝播の検証」は別の設問**。Usecase のテストが不正な入力値を使うのは、形式ルールを再検証するためではなく、**下層が返した `err` がそのまま呼び出し元まで届き、その手前で副作用が起きないこと**を確かめるため。
+
+- VO のテストが答える問い: 「この値は不正か」 — 境界値・エラー型の網羅はここ
+- Usecase のテストが答える問い: 「下層が `err` を返した時、この業務フローは何をしないか」 — トランザクション未開始・保存未実行
+
+例: `updateMyEmail` の不正 email のテストは、email 形式ルールの正しさではなく、`err` の伝播とトランザクションが開始されないことを検証する。したがって不正値は 1 ケースあれば足り、形式のバリエーションを並べる必要はない。
 
 ### 集約ルート / ドメインイベントの扱い
 
@@ -360,12 +368,15 @@ Integration / E2E を書くかどうかは、以下の観点で判断する:
 
 ### 層ごとの検証
 
-| 層          | 検証                                                                             |
-| ----------- | -------------------------------------------------------------------------------- |
-| Domain / VO | 正しい条件で **期待した typed error が throw される** こと(`.toThrow(typeName)`) |
-| errorMap    | 各エラー型が **正しい HTTP status / message に変換される** こと                  |
-| Usecase     | 前提違反で **typed error が伝播する** こと(HTTP には言及しない)                  |
-| Entrypoint  | HTTP レスポンスの最終形(errorMap を通じた結果)                                   |
+| 層          | 検証                                                                                              |
+| ----------- | ------------------------------------------------------------------------------------------------- |
+| Domain / VO | 正しい条件で **期待した typed error が `err` で返る** こと(`result.ok === false` と `error.type`) |
+| Factory     | `create` は入力不正で `err` / `reconstruct` は保存値の破損で throw（500 相当）                    |
+| errorMap    | 各エラー型が **正しい HTTP status / message に変換される** こと                                   |
+| Usecase     | 前提違反で **typed error が `err` として伝播する** こと(HTTP には言及しない)                      |
+| Entrypoint  | HTTP レスポンスの最終形(errorMap を通じた結果)                                                    |
+
+`throw` を検証するのは `reconstruct` の破綻・Infrastructure 障害・エントリ層の形式検証だけ。業務上の失敗は戻り値なので `toThrow` / `rejects` ではなく `result.ok` で判定する。
 
 ### 原則: 二重に書かない
 
@@ -480,15 +491,17 @@ expect(result.formattedName).toBe("Alice (admin)");
 
 ```typescript
 // ❌ Usecase のテストで email の形式を検証(VO の責務)
-it("usecase", () => {
-  expect(() => createUserUseCase({ email: "invalid" })).toThrow(/email/);
+it("usecase", async () => {
+  const result = await createUser(caps, { ...validInput, email: "invalid" });
+  expect(result.ok).toBe(false);
+  if (!result.ok) expect(result.error.message).toMatch(/email/);
 });
 
-// ✅ Usecase では VO でエラーになることだけ確認(詳細は VO のテスト)
-it("usecase", () => {
-  expect(() => createUserUseCase({ email: "invalid" })).toThrow(
-    InvalidEmailFormatError,
-  );
+// ✅ Usecase では VO の err がそのまま伝播することだけ確認(詳細は VO のテスト)
+it("usecase", async () => {
+  const result = await createUser(caps, { ...validInput, email: "invalid" });
+  expect(result.ok).toBe(false);
+  if (!result.ok) expect(result.error.type).toBe("InvalidEmailFormatError");
 });
 ```
 
@@ -551,7 +564,7 @@ it("getter", () => {
 | Integration        | Repository の実 DB 検証は Phase 2 で必須。モック戦略の正当化のため       |
 | E2E                | 原則整備しない。Entrypoint Sociable Unit + Repository Integration で代替 |
 | 判断軸             | 「コアか」ではなく「Unit で検出できないリスクがあるか」で判断            |
-| エラーハンドリング | typed error の throw 検証 / HTTP 変換は errorMap 側に閉じる              |
+| エラーハンドリング | typed error の `err` 検証 / HTTP 変換は errorMap 側に閉じる              |
 | ドメインイベント   | 集約ルートのテストで発火内容を契約として検証                             |
 | テスト命名・配置   | `{FuncName}/index.test.ts` / 日本語 describe・it                         |
 | 書くタイミング     | 下層から積み上げ。TDD 強制はしないが、PR 時点で揃っていること            |

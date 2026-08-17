@@ -4,8 +4,14 @@ import type {
   IArtistProfileReader,
   IArtistProfileWriter,
 } from "../../domain/artistProfiles/repositories";
-import type { UserNotFoundError } from "../../domain/users/policies/assertRegistered";
-import type { ArtistNotFoundError } from "../../domain/artists/policies/assertArtistExists";
+import type { IUserReader, IUserWriter } from "../../domain/users/repositories";
+import type {
+  IArtistReader,
+  IArtistWriter,
+} from "../../domain/artists/repositories";
+import type { ILinkTypeReader } from "../../domain/linkTypes/repositories";
+import type { UserNotFoundError } from "../../domain/users/errors/userNotFound";
+import type { ArtistNotFoundError } from "../../domain/artists/errors/artistNotFound";
 import type { Result } from "../../utils/result";
 
 export type Actor = {
@@ -13,31 +19,64 @@ export type Actor = {
   readonly artist: Artist;
 };
 
+export type ActorResolution =
+  | { status: "unregistered" }
+  | { status: "userOnly"; user: User }
+  | { status: "complete"; actor: Actor };
+
 export type ResolveActorError = UserNotFoundError | ArtistNotFoundError;
+
+export type ResolveUserError = UserNotFoundError;
+
+export type IdentityCapabilities = {
+  actorResolution: ActorResolution;
+};
 
 export type PublicReadCapabilities = {
   artistProfiles: IArtistProfileReader;
+  linkTypes: ILinkTypeReader;
 };
 
-export type ReadCapabilities = {
+export type ArtistReadCapabilities = {
   actor: Actor;
   artistProfiles: IArtistProfileReader;
 };
 
-export type WriteCapabilities = {
+export type UserWriteCapabilities = {
+  user: User;
+  users: IUserReader & IUserWriter;
+};
+
+export type ArtistWriteCapabilities = {
   actor: Actor;
+  users: IUserReader & IUserWriter;
+  artists: IArtistReader & IArtistWriter;
   artistProfiles: IArtistProfileReader & IArtistProfileWriter;
 };
 
+export type RegistrationCapabilities = {
+  users: IUserReader & IUserWriter;
+  artists: IArtistReader & IArtistWriter;
+};
+
 export type CapabilityDeps = {
-  resolveActor(subId: string): Promise<Result<Actor, ResolveActorError>>;
+  resolveActorState(subId: string): Promise<ActorResolution>;
 
   buildPublicReadCapabilities(): PublicReadCapabilities;
 
-  buildReadCapabilities(actor: Actor): ReadCapabilities;
+  buildArtistReadCapabilities(actor: Actor): ArtistReadCapabilities;
 
-  runWithWriteCapabilities<T, E>(
+  runWithUserWriteCapabilities<T, E>(
+    user: User,
+    work: (caps: UserWriteCapabilities) => Promise<Result<T, E>>,
+  ): Promise<Result<T, E>>;
+
+  runWithArtistWriteCapabilities<T, E>(
     actor: Actor,
-    work: (caps: WriteCapabilities) => Promise<Result<T, E>>,
+    work: (caps: ArtistWriteCapabilities) => Promise<Result<T, E>>,
+  ): Promise<Result<T, E>>;
+
+  runWithRegistrationCapabilities<T, E>(
+    work: (caps: RegistrationCapabilities) => Promise<Result<T, E>>,
   ): Promise<Result<T, E>>;
 };

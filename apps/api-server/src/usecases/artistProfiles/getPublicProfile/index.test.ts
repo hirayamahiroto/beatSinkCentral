@@ -18,7 +18,7 @@ const createCaps = () =>
         IArtistProfileReader["listPublishedSummaries"]
       >(async () => []),
     },
-  }) satisfies PublicReadCapabilities;
+  }) satisfies Pick<PublicReadCapabilities, "artistProfiles">;
 
 describe("getPublicProfile", () => {
   beforeEach(() => vi.clearAllMocks());

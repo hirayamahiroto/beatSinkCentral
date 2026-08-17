@@ -3,10 +3,11 @@ import type {
   ClientErrorStatusCode,
   ServerErrorStatusCode,
 } from "hono/utils/http-status";
-import type { UserAlreadyRegisteredError } from "../domain/users/policies/assertNotRegistered";
-import type { UserNotFoundError } from "../domain/users/policies/assertRegistered";
-import type { AccountIdAlreadyTakenError } from "../domain/artists/policies/assertAccountIdAvailable";
-import type { ArtistNotFoundError } from "../domain/artists/policies/assertArtistExists";
+import type { UserAlreadyRegisteredError } from "../domain/users/errors/userAlreadyRegistered";
+import type { UserNotFoundError } from "../domain/users/errors/userNotFound";
+import type { EmailAlreadyTakenError } from "../domain/users/errors/emailAlreadyTaken";
+import type { AccountIdAlreadyTakenError } from "../domain/artists/errors/accountIdAlreadyTaken";
+import type { ArtistNotFoundError } from "../domain/artists/errors/artistNotFound";
 import type { InvalidEmailFormatError } from "../domain/users/valueObjects/email";
 import type { InvalidSubFormatError } from "../domain/users/valueObjects/sub";
 import type { InvalidNameFormatError } from "../domain/users/valueObjects/name";
@@ -33,6 +34,7 @@ export type AppError =
   | UnauthorizedError
   | UserAlreadyRegisteredError
   | UserNotFoundError
+  | EmailAlreadyTakenError
   | AccountIdAlreadyTakenError
   | ArtistNotFoundError
   | ArtistProfileNotFoundError
@@ -90,6 +92,11 @@ const errorMap: ErrorMap = {
   UserNotFoundError: {
     status: 404,
     clientMessage: () => "User not found",
+    logLevel: "info",
+  },
+  EmailAlreadyTakenError: {
+    status: 409,
+    clientMessage: () => "Email already taken",
     logLevel: "info",
   },
   AccountIdAlreadyTakenError: {

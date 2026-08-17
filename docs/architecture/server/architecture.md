@@ -43,16 +43,21 @@ DIで実装を外から注入することで、依存が常にDomainに向かう
 ```
 apps/api-server/src/
 ├── app/api/[[...route]]/     # Hono ルーティング（プレゼンテーション層）
-│   ├── route.ts              # メインルーター
-│   ├── test/                 # GET/POST /api/test
-│   └── users/create/         # POST /api/users/create
+│   ├── route.ts              # basePath + 全体ミドルウェア + onError + トップ mount
+│   ├── test/                 # /api/test
+│   ├── users/                # /api/users
+│   ├── artists/              # /api/artists
+│   ├── link-types/           # /api/link-types
+│   ├── validators/           # リクエストバリデータ
+│   └── errors/               # プレゼンテーション層のエラー型
 │
 ├── domain/                   # ドメイン層（オブジェクト単位のコンポジション構造）
 │   ├── users/                # ユーザードメイン
 │   │   ├── entities/         # User エンティティ
 │   │   ├── behaviors/        # 振る舞いの実装
 │   │   ├── factories/        # Entityの生成
-│   │   ├── repositories/     # IUserRepository インターフェース
+│   │   ├── repositories/     # IUserReader / IUserWriter インターフェース
+│   │   ├── errors/           # ドメインエラーの型 + factory + 型ガード
 │   │   ├── policies/         # 不変条件の判定
 │   │   └── valueObjects/     # 値オブジェクト
 │   │       ├── Auth0UserId/
@@ -61,20 +66,30 @@ apps/api-server/src/
 │   └── services/             # Domain Service（複数集約をまたぐロジック）
 │
 ├── usecases/                 # ユースケース層（アプリケーション層）
-│   ├── capabilities/         # 権能型の定義（Actor / PublicRead / Read / Write）
-│   ├── authorization/        # subId → Actor 解決の集約点
-│   ├── users/                # CreateUserUseCase
-│   └── artistProfiles/       # プロフィールの取得・保存・公開
+│   ├── capabilities/         # 権能型の定義（用途ごと）
+│   ├── authorization/        # 経路ごとの入り口（1 経路 = 1 モジュール）
+│   │   ├── resolution/       # toActor / toUser（畳み込み）
+│   │   ├── conflict/         # 一意制約違反を err に戻す
+│   │   ├── identity/         # withIdentityCapabilities
+│   │   ├── artistRead/       # withArtistReadCapabilities
+│   │   ├── userWrite/        # withUserWriteCapabilities
+│   │   ├── artistWrite/      # withArtistWriteCapabilities
+│   │   └── registration/     # withRegistrationCapabilities
+│   ├── users/                # createUser / getMe / updateMyEmail ...
+│   ├── artistProfiles/       # プロフィールの取得・保存・公開
+│   └── linkTypes/            # リンク種別マスタの参照
 │
 ├── errorMap/                 # AppError → HTTP / ログへの変換
 │
 ├── infrastructure/           # インフラストラクチャ層
 │   ├── auth0/                # Auth0 クライアント
-│   ├── capabilities/         # 権能の組み立てとトランザクション境界
-│   ├── container/            # Composition Root（移行前の旧経路）
+│   ├── capabilities/         # 権能の合成（Composition Root）
+│   │   ├── index.ts          # getCapabilityDeps（各部品の合成のみ）
+│   │   ├── builders/         # executor → 権能（用途ごとの build*Capabilities）
+│   │   └── resolveActorState/ # subId → ActorResolution
 │   ├── database/             # データベースクライアント
-│   ├── repositories/         # リポジトリ実装
-│   └── transaction/          # トランザクションランナー（移行前の旧経路）
+│   ├── transaction/          # Executor 型とトランザクション境界（runInTransaction）
+│   └── repositories/         # リポジトリ実装（Reader / Writer）
 │
 ├── middlewares/              # ミドルウェア
 │   ├── auth0/                # Auth0 認証・メール検証
@@ -117,11 +132,12 @@ apps/api-server/src/
 ```
 API Handlers
   ├─→ Middlewares (Auth0, BasicAuth)
-  ├─→ CreateUserUseCase
-  │    └─→ IUserRepository (interface)
-  │         └─→ User Entity
-  │              └─→ Value Objects (Auth0UserId, Email, Username)
-  └─→ Infrastructure (Auth0 client)
+  ├─→ Authorization (権能の組み立て・Actor 解決・トランザクション境界)
+  │    └─→ Usecase (createUser 等)
+  │         └─→ IUserReader / IUserWriter (interface)
+  │              └─→ User Entity
+  │                   └─→ Value Objects (Sub, Email, Name)
+  └─→ Infrastructure (Auth0 client, capabilities)
 ```
 
 ---
@@ -158,189 +174,6 @@ return { userId: user.id, email: user.email };
 const user = await userRepository.findBySub(sub); // User Entity
 return { userId: user.getId(), email: user.getEmail() };
 ```
-
----
-
-## 権能（capabilities）モデル
-
-Usecase が受け取る依存を「**権能（capability）**」として型で表現し、**その usecase に必要な操作だけが型として届く**状態を作る。リポジトリ一式をまとめて渡す方式（`getContainer`）に代わる、新規実装の規範。
-
-### なぜ権能で渡すか
-
-| 課題（リポジトリ一式を渡す場合）                               | 権能モデルでの解決                                            |
-| -------------------------------------------------------------- | ------------------------------------------------------------- |
-| 読み取り専用の usecase からも `save` / `upsert` が呼べてしまう | Writer を型として届かせない（呼ぼうとするとコンパイルエラー） |
-| 認可（誰の操作か）の解決が usecase ごとに散らばる              | `subId → Actor` の解決を 1 箇所に集約する                     |
-| トランザクション境界の張り忘れ・`tx` の渡し忘れが静かに通る    | 境界を usecase の外に出し、渡し忘れ自体を発生させない         |
-
-「渡していないものは呼べない」をコンパイラに強制させることが目的である。
-
-### 層構造
-
-| モジュール                    | 責務                                                        | 知っていること      |
-| ----------------------------- | ----------------------------------------------------------- | ------------------- |
-| `usecases/capabilities`       | 権能型の定義（`Actor` / `PublicRead` / `Read` / `Write`）   | Domain のみ         |
-| `usecases/authorization`      | `subId → Actor` 解決の集約点（`withRead` / `withWrite`）    | `capabilities` のみ |
-| `infrastructure/capabilities` | 権能の組み立てとトランザクション境界（`getCapabilityDeps`） | DB・リポジトリ実装  |
-
-`usecases/capabilities` は型定義だけを持ち、DB を知らない。実体の組み立ては `infrastructure/capabilities` が担う（依存は常に内向き）。
-
-```typescript
-// usecases/capabilities — 権能型の定義
-export type Actor = {
-  readonly user: User;
-  readonly artist: Artist;
-};
-
-export type PublicReadCapabilities = {
-  artistProfiles: IArtistProfileReader;
-};
-
-export type ReadCapabilities = {
-  actor: Actor;
-  artistProfiles: IArtistProfileReader;
-};
-
-export type WriteCapabilities = {
-  actor: Actor;
-  artistProfiles: IArtistProfileReader & IArtistProfileWriter;
-};
-```
-
-```typescript
-// usecases/authorization — Actor 解決を通してから work を実行する
-export const withWriteCapabilities = async <T, E>(
-  deps: CapabilityDeps,
-  subId: string,
-  work: (caps: WriteCapabilities) => Promise<Result<T, E>>,
-): Promise<Result<T, E | ResolveActorError>> => {
-  const actor = await deps.resolveActor(subId);
-  if (!actor.ok) return actor;
-
-  return deps.runWithWriteCapabilities(actor.value, work);
-};
-```
-
-### 読み取り / 書き込みの権能をどう分けるか
-
-| 権能型                   | Actor | リポジトリ      | 使う場面                                       | 呼び出し方                                          |
-| ------------------------ | ----- | --------------- | ---------------------------------------------- | --------------------------------------------------- |
-| `PublicReadCapabilities` | なし  | Reader          | 認証不要の公開読み取り（公開プロフィール一覧） | `getCapabilityDeps().buildPublicReadCapabilities()` |
-| `ReadCapabilities`       | あり  | Reader          | 認証済み本人の読み取り                         | `withReadCapabilities(deps, subId, work)`           |
-| `WriteCapabilities`      | あり  | Reader & Writer | 認証済み本人の更新                             | `withWriteCapabilities(deps, subId, work)`          |
-
-**Reader / Writer をインターフェースレベルで分割する理由**は、読み取り専用 usecase に Writer を型として届かせないため。1 つの `IArtistProfileRepository` に読み書きを同居させると、「読むだけの usecase」でも書き込みメソッドが補完に出て呼べてしまい、レビューでしか防げない。分割しておけば、`ReadCapabilities` を受け取る usecase が `upsert` を呼んだ時点でコンパイルエラーになる。
-
-Actor の有無で型を分ける理由も同じで、`PublicReadCapabilities` には `actor` が無いため、公開エンドポイントの usecase が「本人だけが見られる情報」に手を伸ばせない。
-
-### usecase は必要な権能だけを受け取る
-
-usecase は権能型をそのまま受けず、`Pick` で自分が使う分だけに絞った型を宣言する。何に触るかがシグネチャだけで読める。
-
-```typescript
-// usecases/artistProfiles/getMyProfile
-type GetMyProfileCaps = Pick<ReadCapabilities, "actor" | "artistProfiles">;
-
-export const getMyProfile = async (
-  caps: GetMyProfileCaps,
-): Promise<Result<GetMyProfileOutput, never>> => {
-  const profile = await caps.artistProfiles.findByArtistId(
-    caps.actor.artist.getArtistId(),
-  );
-
-  return ok({
-    accountId: caps.actor.artist.getAccountId(),
-    profile: profile ? profile.toView() : null,
-  });
-};
-```
-
-`Pick` は「足りないもの」を防ぐが、「余分に渡されたもの」は構造的部分型のため素通りする。渡しすぎ自体をコンパイルエラーにする `defineUsecase` + `Exact` は**未導入**（後述の「移行中の状態」を参照）。現時点の規範は `Pick` による絞り込みである。
-
-### 新しい集約を足すとき
-
-1. `domain/{aggregate}/repositories` に `I{X}Reader` と `I{X}Writer` を**分けて**定義する
-2. その集約をどの権能で扱うかを決め、`usecases/capabilities` の該当型にフィールドを追加する
-   - 認証不要で読める → `PublicReadCapabilities` に Reader
-   - 本人だけが読める → `ReadCapabilities` に Reader
-   - 本人が更新する → `WriteCapabilities` に `Reader & Writer`
-3. `infrastructure/capabilities` の `buildPublicReadCapabilities` / `buildReadCapabilities` / 書き込み用リポジトリ組み立てに実体を追加する
-4. usecase 側は `Pick` で必要なフィールドだけを受け取る
-
-権能型に足さない限り usecase からは触れないため、「どの集約がどの経路で参照されるか」は `usecases/capabilities` を読めば把握できる。
-
-### トランザクション境界の置き場所
-
-> **境界は `runWithWriteCapabilities` が持ち、usecase は境界を意識しない。**
-
-`WriteCapabilities` のリポジトリは、権能を組み立てる時点でトランザクションにバインド済みである。usecase から見ると「ただのリポジトリ」で、`tx` を引き回す記述は一切現れない。
-
-```typescript
-// infrastructure/capabilities
-async runWithWriteCapabilities(actor, work) {
-  try {
-    return await db.transaction(async (tx) => {
-      const caps: WriteCapabilities = { actor, ...buildWriteScopedRepos(tx) };
-      const result = await work(caps);
-      if (!result.ok) throw new RollbackSignal(result);
-      return result;
-    });
-  } catch (error) {
-    if (error instanceof RollbackSignal) return error.result;
-    throw error;
-  }
-}
-```
-
-**業務エラーでもロールバックする**。usecase が `err` を返した場合、Drizzle の `transaction` は throw でしかロールバックしないため、`RollbackSignal` に結果を載せて境界の外で復元する。これにより「バリデーションで弾かれたのに途中まで書き込まれている」状態が構造上作れない。
-
-**リポジトリが `tx?` を引数で受け取る旧方式を廃止した理由**は、渡し忘れが静かに db 直参照になるため。`save(data, tx)` の `tx` を書き忘れてもコンパイルは通り、テストも通り、本番で「トランザクション外の書き込み」だけが残る。権能側でバインドしてしまえば、渡し忘れという操作自体が存在しない。
-
-並行更新（LWW / 楽観的ロック）の方針は [database/concurrency.md](./database/concurrency.md) を参照。
-
-### 失敗の表現（Result 境界）
-
-Value Object と usecase は **throw せず `Result<T, E>` を返す**。エントリポイントが `ok` を判別して分岐する。
-
-```typescript
-const result = await withWriteCapabilities(
-  getCapabilityDeps(),
-  auth0User.sub,
-  (caps) => saveMyProfile(caps, body),
-);
-
-if (!result.ok) {
-  return handleAppError(result.error, c);
-}
-
-return c.json(result.value);
-```
-
-`Result` を採るのは、**失敗の種類がシグネチャに現れる**ためである。`Promise<Result<Output, ArtistProfileContentError>>` を見れば、何で失敗しうるかが呼び出し側に伝わり、errorMap への追加漏れが型で検出できる。
-
-throw が残るのは次の 3 経路で、いずれも `.onError(handleAppError)` が受ける。
-
-| 経路                                    | 理由                                                 |
-| --------------------------------------- | ---------------------------------------------------- |
-| ミドルウェア（`requireAuthMiddleware`） | usecase に到達する前の遮断で、返り値の経路を持たない |
-| `validateRequest`（zod フック）         | Hono のバリデータフックの契約が throw                |
-| 未知の例外（DB 接続断など）             | 想定外の失敗は握りつぶさず 500 として観測する        |
-
-`handleAppError` は直接呼び出し（Result 経路）と `onError`（throw 経路）の両方で同じ実体を使うため、どちらを通ってもログとレスポンスの形は揃う。詳細は [error-handling/README.md](./error-handling/README.md)。
-
-### 移行中の状態
-
-capabilities は **artistProfiles 集約にのみ**適用済みで、`getContainer` + `txRunner` の旧経路が並存している。
-
-| 対象                                                                             | 現在           | 方針     |
-| -------------------------------------------------------------------------------- | -------------- | -------- |
-| `artistProfiles` の usecase（get / save / publish / 公開一覧）                   | 権能モデル     | 規範     |
-| `getMe` / `createUser` / `updateMyEmail` / `updateMyAccountId` / `listLinkTypes` | `getContainer` | 移行対象 |
-| `defineUsecase` + `Exact`（権能の渡しすぎを型で防ぐファクトリ）                  | 未導入         | 導入予定 |
-
-**新規実装は権能モデルで書く。** `getContainer` は移行が完了するまで残る互換経路であり、新しい usecase の参照先にはしない。
-
-`getMe` は「Actor が解決できないこと（未登録）が正常系」で、`withReadCapabilities` に載せると 404 に化ける。`createUser` は「Actor がまだ存在しない」状態から始まる。この 2 本を権能モデルの内側に入れるか、明示的な例外として外に置くかは設計判断が未確定であり、確定後にこの節へ「なぜ例外なのか」を追記する。
 
 ---
 
@@ -408,13 +241,14 @@ const user = createUser("secret123");
 
 ### ドメイン層のディレクトリ構造と責務分離
 
-各ドメインオブジェクトは以下の4つに責務を分離しています。
+各ドメインオブジェクトは以下に責務を分離しています。
 
 ```
 domain/users/
 ├── entities/      ← 型（振る舞いの契約）+ 内部状態の型
 ├── behaviors/     ← 振る舞いの実装
 ├── factories/     ← Entityの生成
+├── errors/        ← ドメインエラーの型 + factory + 型ガード
 ├── policies/      ← 外部状態に依存する不変条件の判定
 └── valueObjects/  ← 値オブジェクト
 ```
@@ -424,8 +258,11 @@ domain/users/
 | entities     | 「何であるか」を定義         | User型、UserState型         |
 | behaviors    | 「何ができるか」を実装       | 振る舞いの具体的な実装      |
 | factories    | 「どう作るか」を実装         | createUser、reconstructUser |
-| policies     | 「不変条件を判定する」を実装 | assertNotRegistered 等      |
+| errors       | 「何が破られたか」を定義     | UserNotFoundError 等        |
+| policies     | 「不変条件を判定する」を実装 | ensurePublishable 等        |
 | valueObjects | 値の制約と正規化             | Email, Sub, Username 等     |
+
+`errors/` と `policies/` は分ける。エラー型は「何が破られたか」の語彙であり判定ロジックを持たない。判定に業務知識が必要なもの（公開可否の最小核など）だけを `policies/` に置き、単なる存在チェックはルールを知っている呼び出し元が行う。詳細は [error-handling/layer-responsibilities.md](./error-handling/layer-responsibilities.md) を参照。
 
 振る舞いをfactoriesに直接書くと、**振る舞いが増えるたびにファクトリが肥大化**します。
 
@@ -656,44 +493,30 @@ user.state; // ❌ エラー: プロパティが存在しない
 
 ---
 
-#### Policy（外部状態に依存する不変条件）
+#### Error（ドメインエラーの語彙）
 
-Entity / VO だけでは判定できない不変条件 — 典型的には**他のリソースの存在有無に依存するルール** — はPolicyとして切り出す。
+「何のルールが破られたか」を表す型を `errors/{errorName}/` に置く。**判定ロジックは持たない**。
 
 ```
-domain/users/policies/
-└── {policyName}/
-    ├── index.ts         # 純粋関数として assert / check を実装
+domain/users/errors/
+└── {errorName}/
+    ├── index.ts         # type + factory + 型ガード
     └── index.test.ts
 ```
-
-Policyが担う判定の例:
-
-- 「この User はすでに登録されているか」
-- 「この accountId はすでに使われているか」
-- 「この集約は削除可能な状態か（子リソースが存在しないか）」
-
-**重要**: Policy自身はRepositoryに直接触れない。呼び出し元（Usecase）が値をfetchしてPolicyに渡す形にすることで、Policyは純粋関数のままにできる。
 
 **実装例**:
 
 ```typescript
-// domain/users/policies/assertNotRegistered/index.ts
-import type { User } from "../../entities";
+// domain/users/errors/userAlreadyRegistered/index.ts
+import { createTypedError } from "../../../../utils/errors/createTypedError";
 
 export type UserAlreadyRegisteredError = Error & {
   readonly type: "UserAlreadyRegisteredError";
 };
 
 export const createUserAlreadyRegisteredError =
-  (): UserAlreadyRegisteredError => {
-    const error = new Error(
-      "User already registered",
-    ) as UserAlreadyRegisteredError;
-    return Object.assign(error, {
-      type: "UserAlreadyRegisteredError" as const,
-    });
-  };
+  (): UserAlreadyRegisteredError =>
+    createTypedError("UserAlreadyRegisteredError");
 
 export const isUserAlreadyRegisteredError = (
   error: unknown,
@@ -701,26 +524,66 @@ export const isUserAlreadyRegisteredError = (
   error instanceof Error &&
   (error as Partial<UserAlreadyRegisteredError>).type ===
     "UserAlreadyRegisteredError";
+```
 
-export const assertNotRegistered = (userIfRegistered: User | null): void => {
-  if (userIfRegistered) throw createUserAlreadyRegisteredError();
+ポイント:
+
+- **投げない**: エラーは `Result` の `err` に載せる値。`throw` する `assertXxx` は置かない
+- **HTTPを知らない**: status コードもクライアント向け文言もここには書かない
+- **PIIを含めない**: メッセージに Auth0 sub 等の識別子を含めると、ログ経由で漏れる
+
+#### Policy（外部状態に依存する不変条件）
+
+Entity / VO だけでは判定できない不変条件のうち、**判定そのものに業務知識があるもの**をPolicyとして切り出す。
+
+```
+domain/artistProfiles/policies/
+└── {ruleName}/
+    ├── index.ts         # ルールの定義 + ensureXxx(): Result<void, E>
+    └── index.test.ts
+```
+
+Policyが担う判定の例:
+
+- 「このプロフィールは公開できる状態か（公開に必要な最小核は何か）」
+- 「この集約は削除可能な状態か（子リソースが存在しないか）」
+
+**単なる存在チェックにPolicyを作らない**: 「User が存在するか」「accountId が既に使われているか」は判定に業務知識がない。ルールを知っている呼び出し元が `if (!user) return err(createUserNotFoundError())` と書けば足り、間に関数を挟むと呼び出し箇所から条件が見えなくなる。
+
+**重要**: Policy自身はRepositoryに直接触れない。呼び出し元（Usecase）が値をfetchしてPolicyに渡す形にすることで、Policyは純粋関数のままにできる。
+
+**実装例**:
+
+```typescript
+// domain/artistProfiles/policies/publishability/index.ts
+export const collectMissingPublishFields = (
+  profile: ArtistProfile,
+): PublishRequiredField[] => {
+  const missing: PublishRequiredField[] = [];
+  if (!profile.getName()) missing.push("name");
+  if (!profile.getImageUrl()) missing.push("imageUrl");
+  // ...
+  return missing;
+};
+
+export const ensurePublishable = (
+  profile: ArtistProfile,
+): Result<void, ProfileNotPublishableError> => {
+  const missingFields = collectMissingPublishFields(profile);
+  if (missingFields.length > 0) {
+    return err(createProfileNotPublishableError(missingFields));
+  }
+  return ok(undefined);
 };
 ```
 
 ポイント:
 
-- **純粋関数**: 入力（`User | null`）だけで結果が決まる
-- **エラー型をco-locate**: ポリシー違反時に投げる型・factory・型ガードを同じファイルに置く
-- **PIIを含めない**: メッセージに Auth0 sub 等の識別子を含めると、ログ経由で漏れる
+- **純粋関数**: 入力だけで結果が決まる
+- **`Result` を返す**: `ensureXxx` は `Result<void, E>`。`throw` しない
+- **ルール本体を持つ**: 「公開に必要な最小核」のような業務知識がここに一元化される
 
 **Policyのディレクトリは先回りでグルーピングしない**: Policyが増えて意味のある軸（registration / profile / security等）が見えた段階で初めてサブディレクトリに束ねる。
-
-```
-domain/users/policies/
-├── assertNotRegistered/
-├── assertProfilePublishable/     # 将来追加
-└── canChangeEmail/               # 将来追加
-```
 
 ---
 
@@ -738,30 +601,38 @@ domain/
 **配置の条件**:
 
 - 複数のEntity/VOを組み合わせる業務ルールである
-- 状態を持たない（呼び出すたびに同じ結果）
-- **副作用を持たない**（DB・外部APIに触れない）
-- 入力として生の値を受け取り、出力としてEntity群を返す
+- 状態を持たない（インスタンス変数・モジュールスコープの可変状態を持たない）
+- **I/O を持たない**（DB・外部API・時刻取得に触れない）
+- 入力として生の値を受け取り、出力として `Result<Entity群, E>` を返す
+
+**ここでいう「純粋」は I/O を持たないことを指し、完全な決定性までは要求しない**。`create{Entity}` は内部で `crypto.randomUUID()` により ID を採番するため、同じ入力でも生成される ID は毎回異なる。ID は Entity の同一性そのもので、外部から渡すと呼び出し側が採番責務を負ってしまうため、生成器を注入せず Entity ファクトリに閉じている。テストで ID を固定したい場合は `crypto.randomUUID` をスタブする。
 
 **実装例**:
 
 ```typescript
 // domain/services/userRegistration/index.ts
-import { assertNotRegistered } from "../../users/policies/assertNotRegistered";
-
 export const registerNewUser = (
   input: RegisterNewUserInput,
   userIfRegistered: User | null,
-): RegisterNewUserResult => {
-  // ポリシーで不変条件を判定（違反なら throw）
-  assertNotRegistered(userIfRegistered);
+  artistIfAccountIdTaken: Artist | null,
+): Result<RegisterNewUserResult, RegisterNewUserError> => {
+  if (userIfRegistered) return err(createUserAlreadyRegisteredError());
+  if (artistIfAccountIdTaken) {
+    return err(
+      createAccountIdAlreadyTakenError(artistIfAccountIdTaken.getAccountId()),
+    );
+  }
 
-  // 不変条件を通ったらEntityを組み立てる
   const user = createUser({ subId: input.subId, email: input.email });
-  const artist = createArtist({
-    accountId: input.accountId,
-    ownerUserId: user.getId(),
-  });
-  return { user, artist };
+  if (!user.ok) return user;
+
+  return map(
+    createArtist({
+      accountId: input.accountId,
+      ownerUserId: user.value.getId(),
+    }),
+    (artist) => ({ user: user.value, artist }),
+  );
 };
 ```
 
@@ -770,17 +641,17 @@ export const registerNewUser = (
 ポイント:
 
 - **I/OはUsecase層に押し出す**: Domain ServiceはRepositoryを呼ばず、**すでに取得済みの値**を引数で受け取る
-- **不変条件はpolicyに押し出す**: ルール判定はpolicyが担当し、Domain Serviceはpolicyを呼ぶだけ
+- **失敗は `err` で返す**: エラー union（`RegisterNewUserError`）に、自身が判定する違反と VO 由来の違反の両方が現れる
 - **組み立てはDomain Service自身が行う**: 複数Entityの関連付け（`ownerUserId = user.getId()`）はここに置く
 
 **Domain ServiceとPolicyの使い分け**:
 
-| 層             | 役割                                               |
-| -------------- | -------------------------------------------------- |
-| Policy         | **単一のルール判定**。違反時はthrow                |
-| Domain Service | 複数Entityの組み立て。必要に応じてPolicyを呼び出す |
+| 層             | 役割                                                                 |
+| -------------- | -------------------------------------------------------------------- |
+| Policy         | **単一のルール判定**。`ensureXxx` が `Result<void, E>` を返す        |
+| Domain Service | 複数Entityの組み立て。必要に応じてPolicyを呼び出し、`err` を伝播する |
 
-1つのルールだけならPolicyで完結させる。複数のルールや組み立てが絡む場合はDomain ServiceがPolicyを順番に呼び出す。
+1つのルールだけならPolicyで完結させる。複数のルールや組み立てが絡む場合はDomain ServiceがPolicyを順番に呼び出し、最初の `err` をそのまま返す。
 
 > **ブラックボックス化ではなく名前付け**
 >
@@ -824,6 +695,48 @@ HTTPリクエスト/レスポンスの処理を担当。
 - リクエストバリデーション（Zod）
 - レスポンス整形
 
+#### ルーティングは階層ごとに合成する
+
+**ディレクトリ = URL セグメント**を 1:1 に対応させ、各階層の `index.ts` が配下を合成する。親は子ルーターだけを mount し、mount 文字列は 1 セグメント分に留める。
+
+```
+app/api/[[...route]]/
+├── route.ts                    # basePath + 全体ミドルウェア + onError + トップ mount のみ
+├── artists/
+│   ├── index.ts                # /artists の合成
+│   ├── get/                    # GET /artists
+│   ├── [accountId]/get/        # GET /artists/:accountId
+│   └── me/
+│       ├── index.ts            # requireAuthMiddleware を適用
+│       ├── post/               # POST /artists/me
+│       └── profile/
+│           ├── index.ts
+│           ├── get/            # GET  /artists/me/profile
+│           ├── post/           # POST /artists/me/profile
+│           └── publish/post/   # POST /artists/me/profile/publish
+├── users/
+│   ├── index.ts                # requireAuthMiddleware を適用
+│   ├── post/                   # POST /users
+│   └── me/
+│       ├── index.ts
+│       ├── get/                # GET  /users/me
+│       └── post/               # POST /users/me
+└── link-types/
+    ├── index.ts
+    └── get/                    # GET /link-types
+```
+
+階層 `index.ts` の責務は 2 つだけに限定する。
+
+1. 配下の子ルーター／エンドポイントの合成
+2. その階層に効くミドルウェアの適用
+
+リーフ（`get/` `post/`）は 1 ファイル 1 エンドポイントを維持する。動的セグメントは `[accountId]/` と表記する（`[[...route]]` 配下は Next.js のルート探索対象外なので、ルーティング解釈と衝突しない）。
+
+**認証は保護対象階層の `index.ts` で適用する。** トップでパス文字列を列挙しない。階層側で `.use("*", requireAuthMiddleware)` を一度書けば配下は構造的に保護されるため、リソース追加時の付け忘れが起きにくい（デフォルトが deny 側に倒れる）。
+
+`AppType`（Hono RPC）の型推論を保つため、各 `index.ts` は `.route()` のメソッドチェーンを維持する。
+
 ### ミドルウェア層 (`middlewares/`)
 
 横断的関心事を処理。
@@ -841,80 +754,45 @@ HTTPリクエスト/レスポンスの処理を担当。
 
 ビジネスロジックを実装。「集約を組み立てる → 永続化する」の2ステップに見える。ドメイン判定は一切書かず、fetch / call / save の配線だけを担当する。ドメインルールはDomain Service → Policyに押し込まれている。
 
-Usecase が受け取る依存は[権能（capabilities）モデル](#権能capabilitiesモデル)で型付けし、失敗は `Result<T, E>` で返す。トランザクション境界は権能の組み立て側が持つため、usecase には `tx` の引き回しも `txRunner.run` も現れない。
+usecase は**権能（capabilities）を第1引数で受け取る**。トランザクション境界と Actor の解決は権能を組み立てる側（`usecases/authorization`）が持ち、usecase は渡された権能だけを使う。詳細は「認可と権能（capabilities）」を参照。
 
 ```typescript
-// usecases/artistProfiles/saveMyProfile/index.ts
-type SaveMyProfileCaps = Pick<WriteCapabilities, "actor" | "artistProfiles">;
+// usecases/users/createUser/index.ts
+type CreateUserCaps = Pick<RegistrationCapabilities, "users" | "artists">;
 
-export const saveMyProfile = async (
-  caps: SaveMyProfileCaps,
-  content: SaveMyProfileInput,
-): Promise<Result<SaveMyProfileOutput, SaveMyProfileError>> => {
-  const artistId = caps.actor.artist.getArtistId();
-  const existing = await caps.artistProfiles.findByArtistId(artistId);
-
-  const profile = existing
-    ? reviseArtistProfile({
-        id: existing.getId(),
-        artistId,
-        published: existing.isPublished(),
-        ...content,
-      })
-    : createArtistProfile({ artistId, ...content }); // 生成の可否判定は Factory → VO に委譲
-  if (!profile.ok) return err(profile.error);
-
-  const saved = await caps.artistProfiles.upsert(profile.value.toPersistence());
-
-  return ok({
-    accountId: caps.actor.artist.getAccountId(),
-    profile: saved.toView(),
-  });
-};
-```
-
-次は移行前の旧経路（`getContainer` + `txRunner`）の形。usecase 自身がトランザクション境界を張り、失敗は throw で表す。**新規実装ではこの形を使わない。**
-
-```typescript
-// usecases/users/createUser/index.ts（移行対象）
-export const createUserUseCase = async (
+export const createUser = async (
+  caps: CreateUserCaps,
   input: CreateUserInput,
-  deps: CreateUserDeps,
-): Promise<CreateUserOutput> => {
-  // 1. 集約を組み立てる（既登録チェックはDomain Service内のpolicyが行う）
-  const aggregate = await registerUser(input, deps.userRepository);
+): Promise<Result<CreateUserOutput, CreateUserError>> => {
+  const [userIfRegistered, artistIfAccountIdTaken] = await Promise.all([
+    caps.users.findBySub(input.subId),
+    caps.artists.findByAccountId(input.accountId),
+  ]);
 
-  // 2. トランザクション境界で永続化
-  return persistUserAggregate(aggregate, deps);
+  const registered = registerNewUser(
+    input,
+    userIfRegistered,
+    artistIfAccountIdTaken,
+  );
+  if (!registered.ok) return registered;
+
+  const { user, artist } = registered.value;
+  await caps.users.save(user.toPersistence());
+  await caps.artists.save(artist.toPersistence());
+
+  return ok({ userId: user.getId(), artistId: artist.getArtistId() });
 };
-
-const registerUser = async (
-  input: CreateUserInput,
-  userRepository: IUserRepository,
-): Promise<RegisterNewUserResult> => {
-  const userIfRegistered = await userRepository.findBySub(input.subId);
-  return registerNewUser(input, userIfRegistered); // Domain Serviceに委譲
-};
-
-const persistUserAggregate = async (
-  { user, artist }: RegisterNewUserResult,
-  deps: CreateUserDeps,
-): Promise<CreateUserOutput> =>
-  deps.txRunner.run(async (tx) => {
-    await deps.userRepository.save(user.toPersistence(), tx);
-    await deps.artistRepository.save(artist.toPersistence(), tx);
-    return { userId: user.getId(), artistId: artist.getArtistId() };
-  });
 ```
 
 **役割分担の明確化**:
 
-| 層             | このフローで担当していること                                          |
-| -------------- | --------------------------------------------------------------------- |
-| Policy         | 「二重登録できない」という**単一の不変条件判定**                      |
-| Domain Service | policy呼び出し + User / Artistの組み立て（関連付け含む）              |
-| Usecase        | 既存UserのFetch、Domain Service呼び出し、トランザクション境界、永続化 |
-| Repository     | 各Entityの個別永続化                                                  |
+| 層             | このフローで担当していること                               |
+| -------------- | ---------------------------------------------------------- |
+| Policy         | 「二重登録できない」という**単一の不変条件判定**           |
+| Domain Service | policy呼び出し + User / Artistの組み立て（関連付け含む）   |
+| 権能の組み立て | Actor の解決、トランザクション境界、権能へのリポジトリ束ね |
+| Usecase        | 既存UserのFetch、Domain Service呼び出し、永続化の呼び出し  |
+| Repository     | 各Entityの個別永続化                                       |
 
 ### リポジトリ層
 
@@ -922,35 +800,51 @@ const persistUserAggregate = async (
 
 #### インターフェース (`domain/{object}/repositories/`)
 
-```typescript
-export type UserSaveData = {
-  id: string;
-  subId: string;
-  email: string;
-};
+インターフェースは**読み取り（Reader）と書き込み（Writer）に分割**する。読み取りだけの usecase に書き込み手段を渡さないため。
 
-export interface IUserRepository {
-  save(data: UserSaveData): Promise<User>;
+```typescript
+export interface IUserReader {
   findBySub(sub: string): Promise<User | null>;
 }
+
+export interface IUserWriter {
+  save(data: UserSaveData): Promise<User>;
+  updateEmail(data: UserUpdateEmailData): Promise<User>;
+}
 ```
+
+メソッドに `tx?: TransactionContext` 引数は置かない。**executor（db / トランザクション）は生成時に注入する**。トランザクション内で動くかどうかは権能を組み立てる側の決定であり、usecase が引数で渡す情報ではない。
+
+`tx?` を引数で受ける旧方式を廃止したのは、渡し忘れが静かに db 直参照になるため。`save(data, tx)` の `tx` を書き忘れてもコンパイルは通り、テストも通り、本番で「トランザクション外の書き込み」だけが残る。権能の生成時にバインドしてしまえば、渡し忘れという操作自体が存在しない。
 
 #### 実装 (`infrastructure/repositories/{object}/`)
 
 Repository実装は常に`reconstructUser`（factory）を使ってDBレコードをEntityに変換する。
 
 ```typescript
-export const createUserRepository = (db: DatabaseClient): IUserRepository => ({
-  async save(data: UserSaveData): Promise<User> {
-    const [result] = await db.insert(usersTable).values(data).returning({ ... });
-    return reconstructUser(result);
-  },
+type Executor = DatabaseClient | TransactionContext;
 
+export const createUserReader = (executor: Executor): IUserReader => ({
   async findBySub(sub: string): Promise<User | null> {
-    const results = await db.select(...).from(usersTable).where(eq(usersTable.subId, sub)).limit(1);
+    const results = await executor
+      .select(userColumns)
+      .from(usersTable)
+      .where(eq(usersTable.subId, sub))
+      .limit(1);
     if (results.length === 0) return null;
     return reconstructUser(results[0]);
   },
+});
+
+export const createUserWriter = (executor: Executor): IUserWriter => ({
+  async save(data: UserSaveData): Promise<User> {
+    const [result] = await executor
+      .insert(usersTable)
+      .values(data)
+      .returning(userColumns);
+    return reconstructUser(result);
+  },
+  // ...
 });
 ```
 
@@ -959,6 +853,7 @@ export const createUserRepository = (db: DatabaseClient): IUserRepository => ({
 1. **依存関係の逆転（DIP）**: インフラ層がドメイン層に依存する
 2. **テスト容易性**: UseCaseテスト時にRepositoryをモック可能
 3. **交換可能性**: DB変更時もドメイン層は影響なし
+4. **権能の最小化**: 読み取りしかしない usecase に Writer が渡らない
 
 ### インフラストラクチャ層 (`infrastructure/`)
 
@@ -966,6 +861,134 @@ export const createUserRepository = (db: DatabaseClient): IUserRepository => ({
 
 - Auth0 クライアント設定
 - リポジトリ実装（データベースアクセス）
+- 権能（capabilities）の組み立てとトランザクション境界
+
+---
+
+## 認可と権能（capabilities）
+
+usecase にリポジトリ一式と `subId` を渡す形は取らない。**「誰として、何ができるか」を型で束ねた権能（capabilities）を渡す**。Actor の解決・認可・トランザクション境界は usecase の外側で完結させ、usecase は受け取った権能だけを使う。
+
+### なぜ権能で渡すか
+
+| 課題（リポジトリ一式を渡す場合）                               | 権能モデルでの解決                                            |
+| -------------------------------------------------------------- | ------------------------------------------------------------- |
+| 読み取り専用の usecase からも `save` / `upsert` が呼べてしまう | Writer を型として届かせない（呼ぼうとするとコンパイルエラー） |
+| 認可（誰の操作か）の解決が usecase ごとに散らばる              | `subId → Actor` の解決を経路モジュールに集約する              |
+| トランザクション境界の張り忘れ・`tx` の渡し忘れが静かに通る    | 境界を usecase の外に出し、渡し忘れ自体を発生させない         |
+
+「渡していないものは呼べない」をコンパイラに強制させることが目的である。
+
+### 層構造
+
+| モジュール                    | 責務                                        | 知っていること      |
+| ----------------------------- | ------------------------------------------- | ------------------- |
+| `usecases/capabilities`       | 権能型の定義（用途ごと）                    | Domain のみ         |
+| `usecases/authorization`      | 経路ごとの入り口（Actor 解決 + 境界の適用） | `capabilities` のみ |
+| `infrastructure/capabilities` | 権能の組み立てと `CapabilityDeps` の合成    | DB・リポジトリ実装  |
+
+`usecases/capabilities` は型定義だけを持ち、DB を知らない。実体の組み立ては `infrastructure/capabilities` が担う（依存は常に内向き）。
+
+### 型の軸は用途、中身は集約ごとの Reader / Writer
+
+権能型は**用途（どの経路で呼ばれるか）ごとに 1 つ**定義する。中身は集約ごとの Reader / Writer を必要な分だけ持つ。
+
+| 権能型                     | 主体                 | 境界             | 用途                                     |
+| -------------------------- | -------------------- | ---------------- | ---------------------------------------- |
+| `PublicReadCapabilities`   | 不要                 | なし             | 未認証で読める公開データ                 |
+| `IdentityCapabilities`     | 解決結果             | なし             | 自分の登録状態そのものを返す             |
+| `ArtistReadCapabilities`   | Actor（User+Artist） | なし             | Artist を伴うデータの読み取り            |
+| `UserWriteCapabilities`    | User                 | トランザクション | User スコープで完結する更新（例: email） |
+| `ArtistWriteCapabilities`  | Actor（User+Artist） | トランザクション | Artist を伴うデータの更新                |
+| `RegistrationCapabilities` | 不在                 | トランザクション | 登録（主体が原理的に存在しない書き込み） |
+
+**主体のスコープは機能の要件で決める**。Artist の有無に依存しない機能は `UserWriteCapabilities` を使い、Artist 未作成（`userOnly`）を弾かない。「認証済みなら Actor が揃っている」という前提を全経路に敷かない。
+
+型名・ヘルパ名・モジュール名には**主体のスコープを含める**（`UserWrite` / `ArtistWrite` / `ArtistRead`）。`Write` だけでは「何が揃っていれば通るのか」が名前から読めず、Artist 未作成のユーザーを弾く経路に誤って載せてしまう。
+
+集約が増えたときは、対応する用途の権能型にその集約の Reader / Writer を足す。**usecase 側は `Pick` で自分が使う権能だけに絞る**。これにより「渡しすぎ」がシグネチャに現れる。
+
+```typescript
+type SaveMyProfileCaps = Pick<
+  ArtistWriteCapabilities,
+  "actor" | "artistProfiles"
+>;
+type UpdateMyEmailCaps = Pick<UserWriteCapabilities, "user" | "users">;
+type ListLinkTypesCaps = Pick<PublicReadCapabilities, "linkTypes">;
+```
+
+`defineUsecase` / `Exact` のような「余分な権能をコンパイルエラーにする」仕掛けは**採用しない**。`Pick` と明示的な `Caps` 型で意図は読み取れるため、型ユーティリティの追加コストに見合わない。
+
+### Actor の解決は状態ユニオンで表す
+
+`resolveActorState` は Actor 解決の結果を**状態ユニオン**で返す。「失敗」に畳むかどうかは呼ぶ側の用途が決める。
+
+```typescript
+export type ActorResolution =
+  | { status: "unregistered" }
+  | { status: "userOnly"; user: User }
+  | { status: "complete"; actor: Actor };
+```
+
+- Artist を伴う経路（`withArtistReadCapabilities` / `withArtistWriteCapabilities`）は `toActor` で `Result<Actor, ResolveActorError>` に畳み、`unregistered` を `UserNotFoundError`、`userOnly` を `ArtistNotFoundError` として 404 にする
+- User スコープで完結する経路（`withUserWriteCapabilities`）は `toUser` で `Result<User, ResolveUserError>` に畳み、`unregistered` だけを 404 にする。`userOnly` / `complete` はどちらも `User` として通す
+- `GET /users/me` は**未登録が正常系**（オンボーディング動線）。`withIdentityCapabilities` で解決状態をそのまま受け取り、`registered: false` を 200 で返す
+
+「どの状態を失敗に畳むか」は用途ごとの判断であり、解決処理自体には持たせない。畳み込み（`toActor` / `toUser`）は純粋関数として `usecases/authorization/resolution` に置く。
+
+### 経路の入り口は 6 つ
+
+エントリポイントは権能を自分で組み立てず、`usecases/authorization` の**経路モジュール**を直接 import して通す。import パスにその route が乗る経路が現れる。
+
+| 経路モジュール                           | 入り口                                              | 主体     |
+| ---------------------------------------- | --------------------------------------------------- | -------- |
+| （`infrastructure/capabilities` を直接） | `getCapabilityDeps().buildPublicReadCapabilities()` | 不要     |
+| `usecases/authorization/identity`        | `withIdentityCapabilities(deps, subId, work)`       | 解決結果 |
+| `usecases/authorization/artistRead`      | `withArtistReadCapabilities(deps, subId, work)`     | Actor    |
+| `usecases/authorization/userWrite`       | `withUserWriteCapabilities(deps, subId, work)`      | User     |
+| `usecases/authorization/artistWrite`     | `withArtistWriteCapabilities(deps, subId, work)`    | Actor    |
+| `usecases/authorization/registration`    | `withRegistrationCapabilities(deps, work)`          | 不在     |
+
+経路モジュールが共有する部品は 2 つに分けている。
+
+| モジュール                           | 責務                                                                                                                    |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| `usecases/authorization/resolution`  | `toActor` / `toUser`（`ActorResolution` の畳み込み。純粋関数）                                                          |
+| `usecases/authorization/conflict`    | `AlreadyTakenError` と `catchAlreadyTaken`（一意制約違反を `err` に戻す）                                               |
+| `usecases/authorization/testDoubles` | 各経路のテストが共有する `CapabilityDeps` のスタブと Entity フィクスチャ（テスト専用のため `index.test.ts` を持たない） |
+
+`index.ts` による再エクスポートは置かない。**どの経路に乗っているかを import パスで示す**ためで、`usecases/authorization` から何でも取れる形にすると経路の選択が見えなくなる。
+
+境界を張るヘルパは、一意制約違反として上がってきた型付きエラーを `err` へ変換する（詳細は [並行更新ポリシー](./database/concurrency.md)）。**変換する型は、その権能で書ける範囲に一致させる。**
+
+| ヘルパ                         | 変換する型                                              |
+| ------------------------------ | ------------------------------------------------------- |
+| `withUserWriteCapabilities`    | `EmailAlreadyTakenError`                                |
+| `withArtistWriteCapabilities`  | `EmailAlreadyTakenError` / `AccountIdAlreadyTakenError` |
+| `withRegistrationCapabilities` | `EmailAlreadyTakenError` / `AccountIdAlreadyTakenError` |
+
+### トランザクション境界
+
+`runWithUserWriteCapabilities` / `runWithArtistWriteCapabilities` / `runWithRegistrationCapabilities` が境界を張り、権能に束ねる executor をトランザクションに差し替える。Drizzle のトランザクションは throw でしかロールバックしないため、業務エラー（`err`）は内部シグナルに載せて境界の外で復元する。
+
+usecase が `tx` を受け取ることはない。**リポジトリの executor は権能の生成時に注入される**ため、「トランザクション内で動いているか」は usecase から見えない。
+
+### Composition Root の分割
+
+`infrastructure/capabilities/index.ts` は**合成だけ**を持つ。中身は関心ごとに分かれており、それぞれ単体でテストできる。
+
+| モジュール                       | 責務                                                              |
+| -------------------------------- | ----------------------------------------------------------------- |
+| `infrastructure/transaction`     | `Executor` 型と `runInTransaction`（境界の張り方と `err` の復元） |
+| `capabilities/resolveActorState` | Reader を受け取り `subId` を `ActorResolution` に解決する         |
+| `capabilities/builders`          | `executor → 権能` の組み立て（用途ごとに 1 つの `build*`）        |
+| `capabilities/index.ts`          | `db` を確定させ、上記を `CapabilityDeps` に合成する               |
+
+`build*Capabilities` は主体を先に受け、`executor` を後で受ける形（`(subject) => (executor) => Caps`）に揃える。これにより `runInTransaction` にそのまま渡せて、境界の有無で組み立て方が変わらない。
+
+### 権能を経由しない依存取得は存在しない
+
+エントリポイントが参照できる依存の入口は `getCapabilityDeps()` だけである。リポジトリ一式をまとめて配る Composition Root（旧 `getContainer`）は廃止した。usecase は渡された権能以外に到達手段を持たない。
 
 ---
 
@@ -1000,7 +1023,7 @@ return { userId: saved.getId() }; // 出力
 
 UserとArtistが別集約であっても、「新規登録時には原子的に作られなければならない」という業務要件があれば、両者にまたがるトランザクションを張ることは正当である。
 
-境界を**どこに置くか**は権能モデルで確定している。`runWithWriteCapabilities` が境界を持ち、そこで組み立てられた `WriteCapabilities` のリポジトリはすべて同じトランザクションにバインドされる。usecase は「原子的に書かれること」を前提にしてよく、境界を張る責務は負わない。
+境界を**どこに置くか**は権能モデルで確定している。`runWithRegistrationCapabilities` のような `run*` ヘルパが境界を持ち、そこで組み立てられた権能のリポジトリはすべて同じトランザクションにバインドされる。usecase は「原子的に書かれること」を前提にしてよく、境界を張る責務は負わない。
 
 ### Atomic Designとの類似
 
@@ -1035,12 +1058,12 @@ UserとArtistが別集約であっても、「新規登録時には原子的に�
 
 **適用例**:
 
-| 要求                         | インターフェース         | 実装                        |
-| ---------------------------- | ------------------------ | --------------------------- |
-| ユーザーを保存したい         | `IUserRepository.save`   | drizzle で INSERT           |
-| トランザクションでまとめたい | `ITransactionRunner.run` | drizzle の `db.transaction` |
-| メールを送りたい             | `IEmailSender.send`      | SendGrid / Resend / SES 等  |
-| 画像を保存したい             | `IFileStorage.upload`    | S3 / GCS / ローカル等       |
+| 要求                         | インターフェース                 | 実装                        |
+| ---------------------------- | -------------------------------- | --------------------------- |
+| ユーザーを保存したい         | `IUserWriter.save`               | drizzle で INSERT           |
+| トランザクションでまとめたい | `runWithArtistWriteCapabilities` | drizzle の `db.transaction` |
+| メールを送りたい             | `IEmailSender.send`              | SendGrid / Resend / SES 等  |
+| 画像を保存したい             | `IFileStorage.upload`            | S3 / GCS / ローカル等       |
 
 ---
 
@@ -1067,32 +1090,43 @@ UserとArtistが別集約であっても、「新規登録時には原子的に�
 ```typescript
 describe("createUser", () => {
   it("有効なパラメータでUserを作成し、振る舞いで正しい値を返す", () => {
-    const user = createUser({
+    const result = createUser({
       subId: "auth0|123456789",
       email: "test@example.com",
     });
 
-    expect(user.getId()).toBeTruthy();
-    expect(user.getSub()).toBe("auth0|123456789");
-    expect(user.getEmail()).toBe("test@example.com");
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.getId()).toBeTruthy();
+    expect(result.value.getSub()).toBe("auth0|123456789");
+    expect(result.value.getEmail()).toBe("test@example.com");
   });
 
   it("toPersistenceで永続化用データを返す", () => {
-    const user = createUser({
+    const result = createUser({
       subId: "auth0|123456789",
       email: "test@example.com",
     });
-    const data = user.toPersistence();
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const data = result.value.toPersistence();
 
     expect(data.id).toBeTruthy();
     expect(data.subId).toBe("auth0|123456789");
     expect(data.email).toBe("test@example.com");
   });
 
-  it("無効なemailでエラーをスローする", () => {
-    expect(() =>
-      createUser({ subId: "auth0|123456789", email: "invalid-email" }),
-    ).toThrow();
+  it("無効なemailでInvalidEmailFormatErrorをerrで返す", () => {
+    const result = createUser({
+      subId: "auth0|123456789",
+      email: "invalid-email",
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.type).toBe("InvalidEmailFormatError");
+    }
   });
 });
 
@@ -1127,7 +1161,16 @@ describe("reconstructUser", () => {
 
 ## API エンドポイント
 
-| メソッド | パス                | 説明           |
-| -------- | ------------------- | -------------- |
-| GET/POST | `/api/test`         | ヘルスチェック |
-| POST     | `/api/users/create` | ユーザー作成   |
+| メソッド | パス                              | 説明                     | 認証 |
+| -------- | --------------------------------- | ------------------------ | ---- |
+| GET      | `/api/test`                       | ヘルスチェック           | 要   |
+| POST     | `/api/users`                      | ユーザー作成             | 要   |
+| GET      | `/api/users/me`                   | 自分のユーザー情報取得   | 要   |
+| POST     | `/api/users/me`                   | 自分のメールアドレス更新 | 要   |
+| GET      | `/api/artists`                    | 公開プロフィール一覧     | 不要 |
+| GET      | `/api/artists/:accountId`         | 公開プロフィール詳細     | 不要 |
+| POST     | `/api/artists/me`                 | 自分の accountId 更新    | 要   |
+| GET      | `/api/artists/me/profile`         | 自分のプロフィール取得   | 要   |
+| POST     | `/api/artists/me/profile`         | 自分のプロフィール保存   | 要   |
+| POST     | `/api/artists/me/profile/publish` | 公開/非公開の切り替え    | 要   |
+| GET      | `/api/link-types`                 | リンク種別マスタ一覧     | 不要 |

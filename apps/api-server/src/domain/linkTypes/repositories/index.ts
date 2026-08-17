@@ -1,5 +1,5 @@
 import type { LinkTypeView } from "../entities";
 
-export interface ILinkTypeRepository {
+export interface ILinkTypeReader {
   findAll(): Promise<LinkTypeView[]>;
 }

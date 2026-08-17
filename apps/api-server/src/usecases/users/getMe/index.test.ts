@@ -1,90 +1,64 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { getMeUseCase, type GetMeDeps, type GetMeInput } from "./index";
+import { describe, it, expect } from "vitest";
+import { getMe } from "./index";
 import { reconstructUser } from "../../../domain/users/factories";
 import { reconstructArtist } from "../../../domain/artists/factories";
 
-const createMockDeps = () => {
-  const deps = {
-    userRepository: {
-      save: vi.fn(),
-      findBySub: vi.fn(),
-      updateEmail: vi.fn(),
-    },
-    artistRepository: {
-      save: vi.fn(),
-      findByUserId: vi.fn(),
-      findByAccountId: vi.fn(),
-      updateAccountId: vi.fn(),
-    },
-  } satisfies GetMeDeps;
-  return deps;
-};
+const user = reconstructUser({
+  id: "user-1",
+  subId: "auth0|123",
+  email: "test@example.com",
+});
 
-describe("getMeUseCase", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+const artist = reconstructArtist({
+  artistId: "artist-1",
+  accountId: "user_123",
+  ownerUserId: "user-1",
+  profile: { name: "Test" },
+});
+
+describe("getMe", () => {
+  it("Actor が未登録の場合は registered:false を返す", async () => {
+    const result = await getMe({ actorResolution: { status: "unregistered" } });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toStrictEqual({ registered: false });
+    }
   });
 
-  it("ユーザーが未登録の場合はregistered:falseを返す", async () => {
-    const deps = createMockDeps();
-    deps.userRepository.findBySub.mockResolvedValue(null);
+  it("user のみ解決できた場合は artist:null を返す", async () => {
+    const result = await getMe({
+      actorResolution: { status: "userOnly", user },
+    });
 
-    const input = { subId: "auth0|unknown" } satisfies GetMeInput;
-    const result = await getMeUseCase(input, deps);
-
-    expect(result).toStrictEqual({ registered: false });
-    expect(deps.artistRepository.findByUserId).not.toHaveBeenCalled();
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toStrictEqual({
+        registered: true,
+        userId: "user-1",
+        email: "test@example.com",
+        artist: null,
+      });
+    }
   });
 
-  it("ユーザーが登録済みでartist未紐付けの場合はartist:nullを返す", async () => {
-    const deps = createMockDeps();
-    const user = reconstructUser({
-      id: "user-1",
-      subId: "auth0|123",
-      email: "test@example.com",
+  it("Actor が揃っている場合は artist 情報を返す", async () => {
+    const result = await getMe({
+      actorResolution: { status: "complete", actor: { user, artist } },
     });
-    deps.userRepository.findBySub.mockResolvedValue(user);
-    deps.artistRepository.findByUserId.mockResolvedValue(null);
 
-    const input = { subId: "auth0|123" } satisfies GetMeInput;
-    const result = await getMeUseCase(input, deps);
-
-    expect(result).toStrictEqual({
-      registered: true,
-      userId: "user-1",
-      email: "test@example.com",
-      artist: null,
-    });
-  });
-
-  it("ユーザーとartistが揃っている場合はartist情報を返す", async () => {
-    const deps = createMockDeps();
-    const user = reconstructUser({
-      id: "user-1",
-      subId: "auth0|123",
-      email: "test@example.com",
-    });
-    const artist = reconstructArtist({
-      artistId: "artist-1",
-      accountId: "user_123",
-      ownerUserId: "user-1",
-      profile: { name: "Test" },
-    });
-    deps.userRepository.findBySub.mockResolvedValue(user);
-    deps.artistRepository.findByUserId.mockResolvedValue(artist);
-
-    const input = { subId: "auth0|123" } satisfies GetMeInput;
-    const result = await getMeUseCase(input, deps);
-
-    expect(result).toStrictEqual({
-      registered: true,
-      userId: "user-1",
-      email: "test@example.com",
-      artist: {
-        artistId: "artist-1",
-        accountId: "user_123",
-        hasProfile: true,
-      },
-    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toStrictEqual({
+        registered: true,
+        userId: "user-1",
+        email: "test@example.com",
+        artist: {
+          artistId: "artist-1",
+          accountId: "user_123",
+          hasProfile: true,
+        },
+      });
+    }
   });
 });
