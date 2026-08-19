@@ -55,22 +55,23 @@ npm run build
 
 ### 次に読む — 技術規範（どう作るか）
 
-| 領域                                                 | ドキュメント                                        | いつ読むか                                             |
-| ---------------------------------------------------- | --------------------------------------------------- | ------------------------------------------------------ |
-| 全体アーキテクチャ・ディレクトリ構造・実装パターン   | `docs/architecture/server/architecture.md`          | 新規実装・レイヤー追加時                               |
-| API 設計（HTTPメソッド・URL）                        | `docs/architecture/server/api-design-guidelines.md` | API ルート追加・変更時                                 |
-| エラーハンドリング                                   | `docs/architecture/server/error-handling/README.md` | エラー追加・throw 位置・errorMap 変更時                |
-| 並行更新ポリシー                                     | `docs/architecture/server/database/concurrency.md`  | 新規 usecase の更新フロー設計時・競合挙動の判断時      |
-| DB 設計思想（マスタ参照・DB 由来の表示語彙）         | `docs/architecture/server/database/design.md`       | 種別/媒体/分類のモデリング・表示語彙の出所を判断する時 |
-| DB マイグレーション                                  | `docs/architecture/server/database/migration.md`    | スキーマ変更時                                         |
-| DB 接続パターン（Supabase Pooler / Direct 使い分け） | `docs/architecture/server/database/connection.md`   | 新環境の DB セットアップ・CI/CD の DB エラー調査時     |
-| 外部クライアント実装（Next.js 遅延初期化）           | `docs/architecture/server/external-clients.md`      | Database / Auth0 / Redis 等の追加・初期化変更時        |
-| 認証                                                 | `docs/architecture/authentication.md`               | 認証・認可フローの追加・変更時                         |
-| フロントエンド全般                                   | `docs/architecture/frontend/README.md`              | UI 実装時                                              |
-| 画面 URL 設計（遷移・階層・BFF ルート対応）          | `docs/architecture/frontend/routing.md`             | 画面追加・URL 変更時                                   |
-| BFF 設計（read/write の経路・整形責務）              | `docs/architecture/frontend/bff/design.md`          | データ取得・更新の経路を設計する時                     |
-| インフラ管理（Terraform / IaC）                      | `docs/architecture/infrastructure/README.md`        | Vercel env / GHA Secrets / プラットフォーム設定変更時  |
-| テスト戦略                                           | `docs/architecture/testing/strategy.md`             | テスト追加・テスト方針判断時                           |
+| 領域                                                 | ドキュメント                                                      | いつ読むか                                             |
+| ---------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------ |
+| 全体アーキテクチャ・ディレクトリ構造・実装パターン   | `docs/architecture/server/architecture.md`                        | 新規実装・レイヤー追加時                               |
+| 認可と権能（capabilities）・トランザクション境界     | `docs/architecture/server/architecture.md#認可と権能capabilities` | usecase の依存を決める時・新しい集約を足す時           |
+| API 設計（HTTPメソッド・URL）                        | `docs/architecture/server/api-design-guidelines.md`               | API ルート追加・変更時                                 |
+| エラーハンドリング（Result 境界を含む）              | `docs/architecture/server/error-handling/README.md`               | エラー追加・失敗の伝え方・errorMap 変更時              |
+| 並行更新ポリシー                                     | `docs/architecture/server/database/concurrency.md`                | 新規 usecase の更新フロー設計時・競合挙動の判断時      |
+| DB 設計思想（マスタ参照・DB 由来の表示語彙）         | `docs/architecture/server/database/design.md`                     | 種別/媒体/分類のモデリング・表示語彙の出所を判断する時 |
+| DB マイグレーション                                  | `docs/architecture/server/database/migration.md`                  | スキーマ変更時                                         |
+| DB 接続パターン（Supabase Pooler / Direct 使い分け） | `docs/architecture/server/database/connection.md`                 | 新環境の DB セットアップ・CI/CD の DB エラー調査時     |
+| 外部クライアント実装（Next.js 遅延初期化）           | `docs/architecture/server/external-clients.md`                    | Database / Auth0 / Redis 等の追加・初期化変更時        |
+| 認証                                                 | `docs/architecture/authentication.md`                             | 認証・認可フローの追加・変更時                         |
+| フロントエンド全般                                   | `docs/architecture/frontend/README.md`                            | UI 実装時                                              |
+| 画面 URL 設計（遷移・階層・BFF ルート対応）          | `docs/architecture/frontend/routing.md`                           | 画面追加・URL 変更時                                   |
+| BFF 設計（read/write の経路・整形責務）              | `docs/architecture/frontend/bff/design.md`                        | データ取得・更新の経路を設計する時                     |
+| インフラ管理（Terraform / IaC）                      | `docs/architecture/infrastructure/README.md`                      | Vercel env / GHA Secrets / プラットフォーム設定変更時  |
+| テスト戦略                                           | `docs/architecture/testing/strategy.md`                           | テスト追加・テスト方針判断時                           |
 
 各ドキュメントの読み順や粒度は、それぞれの README / 目次に従う。
 

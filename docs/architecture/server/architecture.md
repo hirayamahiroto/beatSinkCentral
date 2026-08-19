@@ -75,7 +75,11 @@ apps/api-server/src/
 │   │   ├── userWrite/        # withUserWriteCapabilities
 │   │   ├── artistWrite/      # withArtistWriteCapabilities
 │   │   └── registration/     # withRegistrationCapabilities
-│   └── users/                # createUser / getMe / updateMyEmail ...
+│   ├── users/                # createUser / getMe / updateMyEmail ...
+│   ├── artistProfiles/       # プロフィールの取得・保存・公開
+│   └── linkTypes/            # リンク種別マスタの参照
+│
+├── errorMap/                 # AppError → HTTP / ログへの変換
 │
 ├── infrastructure/           # インフラストラクチャ層
 │   ├── auth0/                # Auth0 クライアント
@@ -95,8 +99,10 @@ apps/api-server/src/
 └── utils/                    # ユーティリティ
     ├── client/               # Hono クライアント生成
     ├── config/               # 設定管理
+    ├── errors/               # 型付きエラーの生成
     ├── logger/               # ログ出力先の抽象
-    └── requestContext/       # リクエストスコープの相関情報保持
+    ├── requestContext/       # リクエストスコープの相関情報保持
+    └── result/               # Result<T, E>（失敗を返り値で表す）
 ```
 
 ---
@@ -809,6 +815,8 @@ export interface IUserWriter {
 
 メソッドに `tx?: TransactionContext` 引数は置かない。**executor（db / トランザクション）は生成時に注入する**。トランザクション内で動くかどうかは権能を組み立てる側の決定であり、usecase が引数で渡す情報ではない。
 
+`tx?` を引数で受ける旧方式を廃止したのは、渡し忘れが静かに db 直参照になるため。`save(data, tx)` の `tx` を書き忘れてもコンパイルは通り、テストも通り、本番で「トランザクション外の書き込み」だけが残る。権能の生成時にバインドしてしまえば、渡し忘れという操作自体が存在しない。
+
 #### 実装 (`infrastructure/repositories/{object}/`)
 
 Repository実装は常に`reconstructUser`（factory）を使ってDBレコードをEntityに変換する。
@@ -860,6 +868,26 @@ export const createUserWriter = (executor: Executor): IUserWriter => ({
 ## 認可と権能（capabilities）
 
 usecase にリポジトリ一式と `subId` を渡す形は取らない。**「誰として、何ができるか」を型で束ねた権能（capabilities）を渡す**。Actor の解決・認可・トランザクション境界は usecase の外側で完結させ、usecase は受け取った権能だけを使う。
+
+### なぜ権能で渡すか
+
+| 課題（リポジトリ一式を渡す場合）                               | 権能モデルでの解決                                            |
+| -------------------------------------------------------------- | ------------------------------------------------------------- |
+| 読み取り専用の usecase からも `save` / `upsert` が呼べてしまう | Writer を型として届かせない（呼ぼうとするとコンパイルエラー） |
+| 認可（誰の操作か）の解決が usecase ごとに散らばる              | `subId → Actor` の解決を経路モジュールに集約する              |
+| トランザクション境界の張り忘れ・`tx` の渡し忘れが静かに通る    | 境界を usecase の外に出し、渡し忘れ自体を発生させない         |
+
+「渡していないものは呼べない」をコンパイラに強制させることが目的である。
+
+### 層構造
+
+| モジュール                    | 責務                                        | 知っていること      |
+| ----------------------------- | ------------------------------------------- | ------------------- |
+| `usecases/capabilities`       | 権能型の定義（用途ごと）                    | Domain のみ         |
+| `usecases/authorization`      | 経路ごとの入り口（Actor 解決 + 境界の適用） | `capabilities` のみ |
+| `infrastructure/capabilities` | 権能の組み立てと `CapabilityDeps` の合成    | DB・リポジトリ実装  |
+
+`usecases/capabilities` は型定義だけを持ち、DB を知らない。実体の組み立ては `infrastructure/capabilities` が担う（依存は常に内向き）。
 
 ### 型の軸は用途、中身は集約ごとの Reader / Writer
 
@@ -991,9 +1019,11 @@ return { userId: saved.getId() }; // 出力
 > **集約境界 ≠ トランザクション境界**
 
 - **集約境界**: ドメインモデル上の不変条件の境界（Entity/VOの世界）
-- **トランザクション境界**: 永続化の原子性の境界（Usecase/Repositoryの世界）
+- **トランザクション境界**: 永続化の原子性の境界（権能の組み立て側の世界）
 
-UserとArtistが別集約であっても、「新規登録時には原子的に作られなければならない」という業務要件があれば、Usecase層が両者にまたがるトランザクションを張ることは正当である。
+UserとArtistが別集約であっても、「新規登録時には原子的に作られなければならない」という業務要件があれば、両者にまたがるトランザクションを張ることは正当である。
+
+境界を**どこに置くか**は権能モデルで確定している。`runWithRegistrationCapabilities` のような `run*` ヘルパが境界を持ち、そこで組み立てられた権能のリポジトリはすべて同じトランザクションにバインドされる。usecase は「原子的に書かれること」を前提にしてよく、境界を張る責務は負わない。
 
 ### Atomic Designとの類似
 
