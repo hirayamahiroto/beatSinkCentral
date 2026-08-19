@@ -3,13 +3,16 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import type { RequestContextEnv } from "../../../../../../../middlewares/requestContext";
 
+const MAX_GENRES = 20;
+const MAX_LINKS = 20;
+
 const saveProfileRequestSchema = z.object({
   name: z.string().nullable().optional(),
   tagline: z.string().nullable().optional(),
   imageUrl: z.string().nullable().optional(),
   story: z.string().nullable().optional(),
   activityInfo: z.string().nullable().optional(),
-  genres: z.array(z.string()).optional(),
+  genres: z.array(z.string()).max(MAX_GENRES).optional(),
   links: z
     .array(
       z.object({
@@ -18,6 +21,7 @@ const saveProfileRequestSchema = z.object({
         label: z.string().nullable().optional(),
       }),
     )
+    .max(MAX_LINKS)
     .optional(),
 });
 

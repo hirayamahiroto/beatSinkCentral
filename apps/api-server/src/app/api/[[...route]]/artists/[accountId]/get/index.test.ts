@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { reconstructArtistProfile } from "../../../../../../domain/artistProfiles/factories";
+import { handleAppError } from "../../../../../../errorMap";
 import getPublicProfile from "./index";
 
 const mockArtistProfiles = {
@@ -19,6 +20,7 @@ vi.mock("../../../../../../infrastructure/capabilities", () => ({
 const createApp = () => {
   const app = new Hono();
   app.route("/", getPublicProfile);
+  app.onError(handleAppError);
   return app;
 };
 
@@ -56,5 +58,24 @@ describe("GET /artists/:accountId", () => {
     const res = await createApp().request("/beatboxer_taro", { method: "GET" });
 
     expect(res.status).toBe(404);
+  });
+
+  it("書式不正な accountId は DB へ到達せず 422 を返す", async () => {
+    const res = await createApp().request("/not%20an%20id", { method: "GET" });
+
+    expect(res.status).toBe(422);
+    expect(await res.json()).toStrictEqual({
+      error: "Invalid accountId format",
+    });
+    expect(mockArtistProfiles.findPublishedByAccountId).not.toHaveBeenCalled();
+  });
+
+  it("255 文字を超える accountId は param 検証で 400 を返す", async () => {
+    const res = await createApp().request(`/${"a".repeat(256)}`, {
+      method: "GET",
+    });
+
+    expect(res.status).toBe(400);
+    expect(mockArtistProfiles.findPublishedByAccountId).not.toHaveBeenCalled();
   });
 });

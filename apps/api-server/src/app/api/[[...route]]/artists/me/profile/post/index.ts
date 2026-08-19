@@ -6,13 +6,16 @@ import { saveMyProfile } from "../../../../../../../usecases/artistProfiles/save
 import { validateRequest } from "../../../../validators/validateRequest";
 import { handleAppError } from "../../../../../../../errorMap";
 
+const MAX_GENRES = 20;
+const MAX_LINKS = 20;
+
 export const saveProfileRequestSchema = z.object({
   name: z.string().nullable().optional(),
   tagline: z.string().nullable().optional(),
   imageUrl: z.string().nullable().optional(),
   story: z.string().nullable().optional(),
   activityInfo: z.string().nullable().optional(),
-  genres: z.array(z.string()).optional(),
+  genres: z.array(z.string()).max(MAX_GENRES).optional(),
   links: z
     .array(
       z.object({
@@ -21,6 +24,7 @@ export const saveProfileRequestSchema = z.object({
         label: z.string().nullable().optional(),
       }),
     )
+    .max(MAX_LINKS)
     .optional(),
 });
 

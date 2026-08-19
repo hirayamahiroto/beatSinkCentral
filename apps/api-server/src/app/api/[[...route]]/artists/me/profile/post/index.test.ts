@@ -4,6 +4,7 @@ import { reconstructUser } from "../../../../../../../domain/users/factories";
 import { reconstructArtist } from "../../../../../../../domain/artists/factories";
 import { reconstructArtistProfile } from "../../../../../../../domain/artistProfiles/factories";
 import type { ArtistProfilePersistenceData } from "../../../../../../../domain/artistProfiles/entities";
+import { handleAppError } from "../../../../../../../errorMap";
 import saveMyProfileRoute from "./index";
 
 const actor = {
@@ -50,6 +51,7 @@ const createApp = (sub: string) => {
     await next();
   });
   app.route("/", saveMyProfileRoute);
+  app.onError(handleAppError);
   return app;
 };
 
@@ -94,6 +96,43 @@ describe("POST /artists/me/profile", () => {
     const res = await request({ imageUrl: "not-a-url" });
 
     expect(res.status).toBe(422);
+    expect(mockArtistProfiles.upsert).not.toHaveBeenCalled();
+  });
+
+  it("genres が上限を超えたら 400 を返し、保存しない", async () => {
+    const res = await request({ genres: Array(21).fill("bass") });
+
+    expect(res.status).toBe(400);
+    expect(mockArtistProfiles.upsert).not.toHaveBeenCalled();
+  });
+
+  it("links が上限を超えたら 400 を返し、保存しない", async () => {
+    const res = await request({
+      links: Array(21).fill({ type: "x", url: "https://x.com/taro" }),
+    });
+
+    expect(res.status).toBe(400);
+    expect(mockArtistProfiles.upsert).not.toHaveBeenCalled();
+  });
+
+  it("上限ちょうどの genres / links は保存する", async () => {
+    const res = await request({
+      genres: Array(20).fill("bass"),
+      links: Array(20).fill({ type: "x", url: "https://x.com/taro" }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(mockArtistProfiles.upsert).toHaveBeenCalledTimes(1);
+  });
+
+  it("パースできないボディは 400 を返し、保存しない", async () => {
+    const res = await createApp("auth0|123").request("/", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{ not json",
+    });
+
+    expect(res.status).toBe(400);
     expect(mockArtistProfiles.upsert).not.toHaveBeenCalled();
   });
 });

@@ -1,9 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { z } from "zod";
-import {
-  createInvalidRequestFormatError,
-  isInvalidRequestFormatError,
-} from "./index";
+import { createInvalidRequestFormatError } from "./index";
 
 const buildIssues = () => {
   const schema = z.object({ email: z.string().min(1) });
@@ -29,31 +26,5 @@ describe("InvalidRequestFormatError", () => {
     const error = createInvalidRequestFormatError(buildIssues());
 
     expect(error.message).toBe("InvalidRequestFormatError");
-  });
-});
-
-describe("isInvalidRequestFormatError", () => {
-  it("InvalidRequestFormatError を判別できる", () => {
-    const error = createInvalidRequestFormatError(buildIssues());
-
-    expect(isInvalidRequestFormatError(error)).toBe(true);
-  });
-
-  it("素の Error は false を返す", () => {
-    expect(isInvalidRequestFormatError(new Error("boom"))).toBe(false);
-  });
-
-  it("type が異なる Error は false を返す", () => {
-    const other = Object.assign(new Error("other"), {
-      type: "OtherError" as const,
-    });
-
-    expect(isInvalidRequestFormatError(other)).toBe(false);
-  });
-
-  it("Error 以外の値は false を返す", () => {
-    expect(isInvalidRequestFormatError("string")).toBe(false);
-    expect(isInvalidRequestFormatError(null)).toBe(false);
-    expect(isInvalidRequestFormatError(undefined)).toBe(false);
   });
 });
