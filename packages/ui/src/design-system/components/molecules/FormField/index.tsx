@@ -2,12 +2,18 @@ import React from "react";
 import { Label } from "@ui/design-system/components/atoms/Label";
 import { Typography } from "@ui/design-system/components/atoms/Typography";
 
+type FormFieldChildProps = {
+  id?: string;
+  "aria-invalid"?: React.AriaAttributes["aria-invalid"];
+  "aria-describedby"?: string;
+};
+
 type FormFieldProps = {
   label: string;
   htmlFor: string;
   hint?: string;
   error?: string;
-  children: React.ReactElement;
+  children: React.ReactElement<FormFieldChildProps>;
 };
 
 export type { FormFieldProps };
@@ -26,14 +32,11 @@ export const FormField = ({
       ? `${htmlFor}-hint`
       : undefined;
 
-  const inputElement = React.cloneElement(
-    children as React.ReactElement<Record<string, unknown>>,
-    {
-      id: htmlFor,
-      "aria-invalid": hasError || undefined,
-      "aria-describedby": messageId,
-    },
-  );
+  const inputElement = React.cloneElement(children, {
+    id: htmlFor,
+    "aria-invalid": hasError || undefined,
+    "aria-describedby": messageId,
+  });
 
   return (
     <div className="flex flex-col gap-2">

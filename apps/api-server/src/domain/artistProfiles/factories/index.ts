@@ -61,21 +61,23 @@ const optional = <T, E>(
 
 const toGenres = (
   values: string[] | undefined,
-): Result<Genre[], InvalidGenreFormatError> =>
-  traverse(
-    (values ?? [])
-      .map((value) => value.trim())
-      .filter((value) => value.length > 0),
+): Result<Genre[], InvalidGenreFormatError> => {
+  if (values === undefined) return ok([]);
+  return traverse(
+    values.map((value) => value.trim()).filter((value) => value.length > 0),
     createGenre,
   );
+};
 
 const toLinks = (
   values: ProfileLinkInput[] | undefined,
-): Result<ProfileLink[], CreateProfileLinkError> =>
-  traverse(
-    (values ?? []).filter((value) => value.url.trim().length > 0),
+): Result<ProfileLink[], CreateProfileLinkError> => {
+  if (values === undefined) return ok([]);
+  return traverse(
+    values.filter((value) => value.url.trim().length > 0),
     createProfileLink,
   );
+};
 
 export type ArtistProfileContent = {
   name?: string | null;

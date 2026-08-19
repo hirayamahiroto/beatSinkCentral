@@ -6,7 +6,7 @@ type BasicAuthConfig = {
 };
 
 export const createBasicAuthMiddleware = (config?: BasicAuthConfig) => {
-  const excludePaths = config?.excludePaths ?? [];
+  const { excludePaths = [] } = config ?? {};
 
   return (request: NextRequest): NextResponse | null => {
     // 除外パスはスキップ

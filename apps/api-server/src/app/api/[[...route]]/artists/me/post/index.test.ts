@@ -137,10 +137,11 @@ describe("POST /artists/me", () => {
     );
 
     const res = await postAccountId({ accountId: "new_handle" });
-    const body = (await res.json()) as { error: string };
 
     expect(res.status).toBe(409);
-    expect(body.error).toContain("new_handle");
+    expect(await res.json()).toMatchObject({
+      error: expect.stringContaining("new_handle"),
+    });
     expect(mockArtists.updateAccountId).not.toHaveBeenCalled();
   });
 });

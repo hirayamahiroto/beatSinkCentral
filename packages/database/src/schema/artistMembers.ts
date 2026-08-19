@@ -1,10 +1,4 @@
-import {
-  pgTable,
-  uuid,
-  varchar,
-  timestamp,
-  uniqueIndex,
-} from "drizzle-orm/pg-core";
+import { pgTable, uuid, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import {
   createInsertSchema,
   createSelectSchema,

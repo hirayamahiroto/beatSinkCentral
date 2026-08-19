@@ -5,12 +5,10 @@ export const isUniqueViolation = (
   constraintName: string,
 ): boolean => {
   if (!(error instanceof Error)) return false;
-  const { code, constraint_name } = error as Partial<{
-    code: string;
-    constraint_name: string;
-  }>;
   return (
-    code === POSTGRES_UNIQUE_VIOLATION_CODE &&
-    constraint_name === constraintName
+    "code" in error &&
+    error.code === POSTGRES_UNIQUE_VIOLATION_CODE &&
+    "constraint_name" in error &&
+    error.constraint_name === constraintName
   );
 };

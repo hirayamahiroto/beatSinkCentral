@@ -9,9 +9,7 @@ export const createArtistNotFoundError = (): ArtistNotFoundError =>
 
 export const isArtistNotFoundError = (
   error: unknown,
-): error is ArtistNotFoundError => {
-  return (
-    error instanceof Error &&
-    (error as Partial<ArtistNotFoundError>).type === "ArtistNotFoundError"
-  );
-};
+): error is ArtistNotFoundError =>
+  error instanceof Error &&
+  "type" in error &&
+  error.type === "ArtistNotFoundError";

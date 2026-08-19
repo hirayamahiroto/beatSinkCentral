@@ -45,12 +45,17 @@ const profileColumns = {
   published: artistProfilesTable.published,
 };
 
-// Drizzle の isNotNull は取得行の型を絞らないため、述語で narrow して契約の name: string を満たす
-const hasName = (row: {
-  accountId: string;
-  name: string | null;
-  imageUrl: string | null;
-}): row is PublishedProfileSummary => row.name !== null;
+// Drizzle の isNotNull は取得行の型を絞らないため、null を落として契約の name: string を満たす
+const toPublishedSummaries = (
+  rows: {
+    accountId: string;
+    name: string | null;
+    imageUrl: string | null;
+  }[],
+): PublishedProfileSummary[] =>
+  rows.flatMap((row) =>
+    row.name === null ? [] : [{ ...row, name: row.name }],
+  );
 
 const loadChildren = async (executor: Executor, profileId: string) => {
   const [genreRows, linkRows] = await Promise.all([
@@ -225,7 +230,7 @@ export const createArtistProfileReader = (
       )
       .limit(limit);
 
-    return rows.filter(hasName);
+    return toPublishedSummaries(rows);
   },
 });
 

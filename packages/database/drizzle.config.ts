@@ -5,7 +5,7 @@ dotenv.config();
 
 try {
   dotenv.config({ path: "./.dev.vars" });
-} catch (error) {
+} catch {
   console.log("No .dev.vars file found");
 }
 

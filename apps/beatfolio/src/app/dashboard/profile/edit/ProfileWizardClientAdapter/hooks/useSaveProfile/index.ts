@@ -4,6 +4,15 @@ import type { WizardValues } from "@ui/design-system/components/organisms/Artist
 import { createBeatfolioBffClient } from "../../../../../../../utils/client";
 import { toSaveProfileRequest } from "../../toSaveProfileRequest";
 
+const readErrorMessage = (body: unknown): string | null =>
+  typeof body === "object" &&
+  body !== null &&
+  "error" in body &&
+  typeof body.error === "string" &&
+  body.error !== ""
+    ? body.error
+    : null;
+
 const run = async (
   values: WizardValues,
   options: { publish: boolean },
@@ -14,8 +23,10 @@ const run = async (
     json: toSaveProfileRequest(values),
   });
   if (!saveRes.ok) {
-    const data = (await saveRes.json()) as { error?: string };
-    throw new Error(data.error || "プロフィールの保存に失敗しました");
+    const body: unknown = await saveRes.json();
+    throw new Error(
+      readErrorMessage(body) ?? "プロフィールの保存に失敗しました",
+    );
   }
 
   if (!options.publish) return;
@@ -24,8 +35,10 @@ const run = async (
     json: { published: true },
   });
   if (!publishRes.ok) {
-    const data = (await publishRes.json()) as { error?: string };
-    throw new Error(data.error || "プロフィールの公開に失敗しました");
+    const body: unknown = await publishRes.json();
+    throw new Error(
+      readErrorMessage(body) ?? "プロフィールの公開に失敗しました",
+    );
   }
 };
 

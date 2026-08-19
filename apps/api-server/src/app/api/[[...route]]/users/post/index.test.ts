@@ -126,18 +126,15 @@ describe("User Create API", () => {
       });
 
       expect(res.status).toBe(400);
-      const body = (await res.json()) as {
-        error: string;
-        details: Array<{ path: Array<string>; message: string }>;
-      };
-      expect(body.error).toBe("Invalid request");
-      expect(
-        body.details.some(
-          (issue) =>
-            issue.path[0] === "email" &&
-            issue.message === "Invalid email format",
-        ),
-      ).toBe(true);
+      expect(await res.json()).toMatchObject({
+        error: "Invalid request",
+        details: expect.arrayContaining([
+          expect.objectContaining({
+            path: ["email"],
+            message: "Invalid email format",
+          }),
+        ]),
+      });
     });
 
     it("accountIdが256文字以上の場合は400と長さ超過メッセージを返す", async () => {
@@ -153,16 +150,14 @@ describe("User Create API", () => {
       });
 
       expect(res.status).toBe(400);
-      const body = (await res.json()) as {
-        details: Array<{ path: Array<string>; message: string }>;
-      };
-      expect(
-        body.details.some(
-          (issue) =>
-            issue.path[0] === "accountId" &&
-            issue.message === "accountId must be 255 characters or less",
-        ),
-      ).toBe(true);
+      expect(await res.json()).toMatchObject({
+        details: expect.arrayContaining([
+          expect.objectContaining({
+            path: ["accountId"],
+            message: "accountId must be 255 characters or less",
+          }),
+        ]),
+      });
     });
 
     it("emailが空文字列の場合は email is required メッセージを返す", async () => {
@@ -177,16 +172,15 @@ describe("User Create API", () => {
         body: JSON.stringify(invalidPayload),
       });
 
-      const body = (await res.json()) as {
-        details: Array<{ path: Array<string>; message: string }>;
-      };
       expect(res.status).toBe(400);
-      expect(
-        body.details.some(
-          (issue) =>
-            issue.path[0] === "email" && issue.message === "email is required",
-        ),
-      ).toBe(true);
+      expect(await res.json()).toMatchObject({
+        details: expect.arrayContaining([
+          expect.objectContaining({
+            path: ["email"],
+            message: "email is required",
+          }),
+        ]),
+      });
     });
   });
 
@@ -206,11 +200,12 @@ describe("User Create API", () => {
 
     it("新規登録に成功すると201とuserId/artistIdを返す", async () => {
       const res = await postCreate(validPayload);
-      const body = (await res.json()) as { userId: string; artistId: string };
 
       expect(res.status).toBe(201);
-      expect(typeof body.userId).toBe("string");
-      expect(typeof body.artistId).toBe("string");
+      expect(await res.json()).toMatchObject({
+        userId: expect.any(String),
+        artistId: expect.any(String),
+      });
     });
 
     it("既に登録済みなら409を返し、保存しない", async () => {
@@ -242,10 +237,11 @@ describe("User Create API", () => {
       );
 
       const res = await postCreate(validPayload);
-      const body = (await res.json()) as { error: string };
 
       expect(res.status).toBe(409);
-      expect(body.error).toContain(validPayload.accountId);
+      expect(await res.json()).toMatchObject({
+        error: expect.stringContaining(validPayload.accountId),
+      });
       expect(mockArtists.save).not.toHaveBeenCalled();
     });
 

@@ -10,10 +10,7 @@ export const createUserAlreadyRegisteredError =
 
 export const isUserAlreadyRegisteredError = (
   error: unknown,
-): error is UserAlreadyRegisteredError => {
-  return (
-    error instanceof Error &&
-    (error as Partial<UserAlreadyRegisteredError>).type ===
-      "UserAlreadyRegisteredError"
-  );
-};
+): error is UserAlreadyRegisteredError =>
+  error instanceof Error &&
+  "type" in error &&
+  error.type === "UserAlreadyRegisteredError";

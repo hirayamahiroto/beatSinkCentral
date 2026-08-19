@@ -29,15 +29,11 @@ vi.mock("../../../../../../../utils/client", () => ({
   }),
 }));
 
-const buildJsonResponse = (
-  body: unknown,
-  init: { ok: boolean; status?: number },
-): Response =>
-  ({
-    ok: init.ok,
-    status: init.status ?? (init.ok ? 200 : 400),
-    json: async () => body,
-  }) as unknown as Response;
+const buildJsonResponse = (body: unknown, init: { status: number }): Response =>
+  new Response(JSON.stringify(body), {
+    status: init.status,
+    headers: { "Content-Type": "application/json" },
+  });
 
 const values: WizardValues = {
   name: "SAKU",
@@ -60,7 +56,7 @@ describe("useSaveProfile", () => {
   });
 
   it("submit(published=false) は保存だけ呼び、合成済みの json を送り refresh する", async () => {
-    saveMock.mockResolvedValueOnce(buildJsonResponse({}, { ok: true }));
+    saveMock.mockResolvedValueOnce(buildJsonResponse({}, { status: 200 }));
 
     const { result } = renderHook(() => useSaveProfile());
 
@@ -87,8 +83,8 @@ describe("useSaveProfile", () => {
   });
 
   it("submit(published=true) は保存後に publish を published=true で呼ぶ", async () => {
-    saveMock.mockResolvedValueOnce(buildJsonResponse({}, { ok: true }));
-    publishMock.mockResolvedValueOnce(buildJsonResponse({}, { ok: true }));
+    saveMock.mockResolvedValueOnce(buildJsonResponse({}, { status: 200 }));
+    publishMock.mockResolvedValueOnce(buildJsonResponse({}, { status: 200 }));
 
     const { result } = renderHook(() => useSaveProfile());
 
@@ -104,7 +100,7 @@ describe("useSaveProfile", () => {
   });
 
   it("saveDraft は published=true でも publish を呼ばない", async () => {
-    saveMock.mockResolvedValueOnce(buildJsonResponse({}, { ok: true }));
+    saveMock.mockResolvedValueOnce(buildJsonResponse({}, { status: 200 }));
 
     const { result } = renderHook(() => useSaveProfile());
 
@@ -118,7 +114,7 @@ describe("useSaveProfile", () => {
 
   it("保存が non-ok ならサーバーのエラーを error にセットし publish は呼ばない", async () => {
     saveMock.mockResolvedValueOnce(
-      buildJsonResponse({ error: "保存に失敗" }, { ok: false, status: 400 }),
+      buildJsonResponse({ error: "保存に失敗" }, { status: 400 }),
     );
 
     const { result } = renderHook(() => useSaveProfile());
@@ -135,12 +131,9 @@ describe("useSaveProfile", () => {
   });
 
   it("公開が non-ok なら publish のエラーを error にセットし refresh しない", async () => {
-    saveMock.mockResolvedValueOnce(buildJsonResponse({}, { ok: true }));
+    saveMock.mockResolvedValueOnce(buildJsonResponse({}, { status: 200 }));
     publishMock.mockResolvedValueOnce(
-      buildJsonResponse(
-        { error: "必須項目が揃っていません" },
-        { ok: false, status: 422 },
-      ),
+      buildJsonResponse({ error: "必須項目が揃っていません" }, { status: 422 }),
     );
 
     const { result } = renderHook(() => useSaveProfile());
