@@ -23,8 +23,8 @@ export const isProfileNotPublishableError = (
   error: unknown,
 ): error is ProfileNotPublishableError =>
   error instanceof Error &&
-  (error as Partial<ProfileNotPublishableError>).type ===
-    "ProfileNotPublishableError";
+  "type" in error &&
+  error.type === "ProfileNotPublishableError";
 
 export const collectMissingPublishFields = (
   profile: ArtistProfile,

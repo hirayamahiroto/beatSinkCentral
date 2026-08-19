@@ -86,7 +86,7 @@ export const InlineEditableField = ({
                 </div>
               ) : (
                 <Typography variant="p" id={htmlFor}>
-                  {prefix ?? ""}
+                  {prefix}
                   {value}
                 </Typography>
               )}

@@ -11,10 +11,7 @@ export const createUpstreamUnavailableError = (
 
 export const isUpstreamUnavailableError = (
   error: unknown,
-): error is UpstreamUnavailableError => {
-  return (
-    error instanceof Error &&
-    (error as Partial<UpstreamUnavailableError>).type ===
-      "UpstreamUnavailableError"
-  );
-};
+): error is UpstreamUnavailableError =>
+  error instanceof Error &&
+  "type" in error &&
+  error.type === "UpstreamUnavailableError";

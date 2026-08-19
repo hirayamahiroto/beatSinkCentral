@@ -9,9 +9,7 @@ export const createEmailAlreadyTakenError = (): EmailAlreadyTakenError =>
 
 export const isEmailAlreadyTakenError = (
   error: unknown,
-): error is EmailAlreadyTakenError => {
-  return (
-    error instanceof Error &&
-    (error as Partial<EmailAlreadyTakenError>).type === "EmailAlreadyTakenError"
-  );
-};
+): error is EmailAlreadyTakenError =>
+  error instanceof Error &&
+  "type" in error &&
+  error.type === "EmailAlreadyTakenError";

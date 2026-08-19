@@ -27,7 +27,7 @@ describe("createApiServerClient", () => {
       .catch((e: unknown) => e);
 
     expect(isUpstreamUnavailableError(error)).toBe(true);
-    expect((error as Error).cause).toBe(cause);
+    expect(error).toMatchObject({ cause });
   });
 
   it("エラーステータスは throw せず Response のまま返す", async () => {

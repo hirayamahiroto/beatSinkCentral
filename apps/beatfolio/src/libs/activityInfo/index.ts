@@ -27,18 +27,15 @@ const AFFILIATION_PREFIX = "所属: ";
 const FORM_SEP = `${SEPARATOR}${FORM_PREFIX}`;
 const AFFILIATION_SEP = `${SEPARATOR}${AFFILIATION_PREFIX}`;
 
-export const composeActivityInfo = (fields: ActivityFields): string =>
-  [
-    fields.location?.trim()
-      ? `${LOCATION_PREFIX}${fields.location.trim()}`
-      : null,
-    `${FORM_PREFIX}${FORM_LABEL[fields.activityForm]}`,
-    fields.affiliation?.trim()
-      ? `${AFFILIATION_PREFIX}${fields.affiliation.trim()}`
-      : null,
-  ]
-    .filter((part): part is string => Boolean(part))
-    .join(SEPARATOR);
+export const composeActivityInfo = (fields: ActivityFields): string => {
+  const parts: string[] = [];
+  const location = fields.location?.trim();
+  if (location) parts.push(`${LOCATION_PREFIX}${location}`);
+  parts.push(`${FORM_PREFIX}${FORM_LABEL[fields.activityForm]}`);
+  const affiliation = fields.affiliation?.trim();
+  if (affiliation) parts.push(`${AFFILIATION_PREFIX}${affiliation}`);
+  return parts.join(SEPARATOR);
+};
 
 export const parseActivityInfo = (
   activityInfo: string | null,

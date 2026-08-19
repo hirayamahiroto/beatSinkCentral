@@ -3,6 +3,7 @@ import { createArtistProfileReader, createArtistProfileWriter } from "./index";
 
 const createDbMock = () => {
   const queue: unknown[] = [];
+  const spies: Record<string, ReturnType<typeof vi.fn>> = {};
   const builder: Record<string, unknown> = {};
   const chain = () => builder;
   for (const method of [
@@ -20,7 +21,9 @@ const createDbMock = () => {
     "set",
     "delete",
   ]) {
-    builder[method] = vi.fn(chain);
+    const spy = vi.fn(chain);
+    spies[method] = spy;
+    builder[method] = spy;
   }
   builder.then = (
     resolve: (v: unknown) => unknown,
@@ -30,7 +33,7 @@ const createDbMock = () => {
   return {
     db: builder,
     enqueue: (...values: unknown[]) => queue.push(...values),
-    spy: (name: string) => builder[name] as ReturnType<typeof vi.fn>,
+    spy: (name: string) => spies[name],
   };
 };
 

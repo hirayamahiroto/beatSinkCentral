@@ -13,8 +13,10 @@ export type SaveProfileRequest = {
 
 const joinStory = (values: WizardValues): string =>
   [values.storyOrigin, values.storyTurning, values.storyNow]
-    .map((part) => part?.trim())
-    .filter((part): part is string => Boolean(part))
+    .flatMap((part) => {
+      const trimmed = part?.trim();
+      return trimmed ? [trimmed] : [];
+    })
     .join("\n\n");
 
 export const toSaveProfileRequest = (

@@ -15,11 +15,8 @@ describe("createTypedError", () => {
       try {
         throw createTypedError("SampleError");
       } catch (caught) {
-        if (caught instanceof Error) {
-          expect((caught as { type?: unknown }).type).toBe("SampleError");
-        } else {
-          throw new Error("caught is not an Error instance");
-        }
+        expect(caught).toBeInstanceOf(Error);
+        expect(caught).toMatchObject({ type: "SampleError" });
       }
     });
   });
