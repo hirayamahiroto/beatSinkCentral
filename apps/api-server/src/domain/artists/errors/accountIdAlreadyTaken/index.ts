@@ -12,10 +12,7 @@ export const createAccountIdAlreadyTakenError = (
 
 export const isAccountIdAlreadyTakenError = (
   error: unknown,
-): error is AccountIdAlreadyTakenError => {
-  return (
-    error instanceof Error &&
-    (error as Partial<AccountIdAlreadyTakenError>).type ===
-      "AccountIdAlreadyTakenError"
-  );
-};
+): error is AccountIdAlreadyTakenError =>
+  error instanceof Error &&
+  "type" in error &&
+  error.type === "AccountIdAlreadyTakenError";

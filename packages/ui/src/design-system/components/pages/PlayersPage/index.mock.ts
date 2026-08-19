@@ -1,23 +1,26 @@
-import image1 from "../../../../../.storybook/assets/images/image1.jpeg";
-import image2 from "../../../../../.storybook/assets/images/image2.jpeg";
-import image3 from "../../../../../.storybook/assets/images/image3.jpeg";
 import type { Player } from "./index";
+
+const imageUrl = (fileName: string): string =>
+  new URL(
+    `../../../../../.storybook/assets/images/${fileName}`,
+    import.meta.url,
+  ).href;
 
 export const players: Player[] = [
   {
     accountId: "hiroto",
     name: "HIROTO",
-    imageUrl: image1 as unknown as string,
+    imageUrl: imageUrl("image1.jpeg"),
   },
   {
     accountId: "kazuki",
     name: "Kazuki",
-    imageUrl: image2 as unknown as string,
+    imageUrl: imageUrl("image2.jpeg"),
   },
   {
     accountId: "yuto",
     name: "Yuto",
-    imageUrl: image3 as unknown as string,
+    imageUrl: imageUrl("image3.jpeg"),
   },
   {
     accountId: "no_image",
@@ -25,5 +28,3 @@ export const players: Player[] = [
     imageUrl: null,
   },
 ];
-
-export { image1, image2, image3 };

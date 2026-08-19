@@ -9,9 +9,7 @@ export const createUserNotFoundError = (): UserNotFoundError =>
 
 export const isUserNotFoundError = (
   error: unknown,
-): error is UserNotFoundError => {
-  return (
-    error instanceof Error &&
-    (error as Partial<UserNotFoundError>).type === "UserNotFoundError"
-  );
-};
+): error is UserNotFoundError =>
+  error instanceof Error &&
+  "type" in error &&
+  error.type === "UserNotFoundError";

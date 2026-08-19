@@ -202,9 +202,8 @@ const errorMap: ErrorMap = {
 };
 
 const isAppError = (error: unknown): error is AppError => {
-  if (!(error instanceof Error)) return false;
-  const type = (error as { type?: unknown }).type;
-  return typeof type === "string" && type in errorMap;
+  if (!(error instanceof Error) || !("type" in error)) return false;
+  return typeof error.type === "string" && error.type in errorMap;
 };
 
 type ClientResponse = {

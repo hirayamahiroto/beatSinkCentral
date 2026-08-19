@@ -9,9 +9,7 @@ export const createUnauthorizedError = (): UnauthorizedError =>
 
 export const isUnauthorizedError = (
   error: unknown,
-): error is UnauthorizedError => {
-  return (
-    error instanceof Error &&
-    (error as Partial<UnauthorizedError>).type === "UnauthorizedError"
-  );
-};
+): error is UnauthorizedError =>
+  error instanceof Error &&
+  "type" in error &&
+  error.type === "UnauthorizedError";

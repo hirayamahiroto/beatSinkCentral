@@ -12,27 +12,14 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
-const buildJsonResponse = (
-  body: unknown,
-  init: { ok: boolean; status?: number },
-): Response =>
-  ({
-    ok: init.ok,
-    status: init.status ?? (init.ok ? 200 : 400),
-    json: async () => body,
-  }) as unknown as Response;
+const buildJsonResponse = (body: unknown, init: { status: number }): Response =>
+  new Response(JSON.stringify(body), {
+    status: init.status,
+    headers: { "Content-Type": "application/json" },
+  });
 
-const buildNonJsonResponse = (init: {
-  ok: boolean;
-  status?: number;
-}): Response =>
-  ({
-    ok: init.ok,
-    status: init.status ?? (init.ok ? 200 : 500),
-    json: async () => {
-      throw new SyntaxError("Unexpected token < in JSON at position 0");
-    },
-  }) as unknown as Response;
+const buildNonJsonResponse = (init: { status: number }): Response =>
+  new Response("<html></html>", { status: init.status });
 
 describe("useCreateUser", () => {
   const fetchMock = vi.fn();
@@ -47,7 +34,7 @@ describe("useCreateUser", () => {
   });
 
   it("POST /api/users が成功すると /dashboard に遷移し、router.refresh が呼ばれる", async () => {
-    fetchMock.mockResolvedValueOnce(buildJsonResponse({}, { ok: true }));
+    fetchMock.mockResolvedValueOnce(buildJsonResponse({}, { status: 200 }));
 
     const { result } = renderHook(() =>
       useCreateUser({ email: "user@example.com" }),
@@ -72,7 +59,7 @@ describe("useCreateUser", () => {
     fetchMock.mockResolvedValueOnce(
       buildJsonResponse(
         { error: "そのアカウントIDはすでに使用されています" },
-        { ok: false, status: 409 },
+        { status: 409 },
       ),
     );
 
@@ -93,9 +80,7 @@ describe("useCreateUser", () => {
   });
 
   it("POST が non-JSON ボディを返したら、フォールバックのエラーメッセージがセットされる", async () => {
-    fetchMock.mockResolvedValueOnce(
-      buildNonJsonResponse({ ok: false, status: 502 }),
-    );
+    fetchMock.mockResolvedValueOnce(buildNonJsonResponse({ status: 502 }));
 
     const { result } = renderHook(() =>
       useCreateUser({ email: "user@example.com" }),
@@ -134,7 +119,7 @@ describe("useCreateUser", () => {
     });
 
     await act(async () => {
-      resolveFetch?.(buildJsonResponse({}, { ok: true }));
+      resolveFetch?.(buildJsonResponse({}, { status: 200 }));
       await submitPromise;
     });
 

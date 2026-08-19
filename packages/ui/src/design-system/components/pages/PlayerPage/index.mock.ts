@@ -1,9 +1,13 @@
-import image1 from "../../../../../.storybook/assets/images/image1.jpeg";
 import { PlayerDetailProps } from "./index";
+
+const image1 = new URL(
+  "../../../../../.storybook/assets/images/image1.jpeg",
+  import.meta.url,
+).href;
 
 const samplePlayerData: PlayerDetailProps = {
   playerData: {
-    image: image1 as unknown as string,
+    image: image1,
     name: "HIROTO",
     tagline: "ビートボクサー・エンジニア・クリエイター",
     signatureSound: {

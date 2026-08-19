@@ -94,7 +94,7 @@ describe("unwrapOrThrow", () => {
       unwrapOrThrow(positive(-1), "broken data");
       expect.unreachable();
     } catch (error) {
-      expect((error as Error).cause).toEqual({ type: "Negative", input: -1 });
+      expect(error).toMatchObject({ cause: { type: "Negative", input: -1 } });
     }
   });
 });

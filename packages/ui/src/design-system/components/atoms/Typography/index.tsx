@@ -30,14 +30,24 @@ const typographyVariants = cva("", {
 
 type Variant = NonNullable<VariantProps<typeof typographyVariants>["variant"]>;
 
-const variantElementMap: Record<Variant, "h1" | "h2" | "h3" | "h4" | "p"> = {
-  h1: "h1",
-  h2: "h2",
-  h3: "h3",
-  h4: "h4",
-  lead: "p",
-  p: "p",
-  small: "p",
+type VariantElementProps = Omit<
+  React.HTMLAttributes<HTMLElement>,
+  "className"
+> & {
+  className: string;
+};
+
+const variantElementMap: Record<
+  Variant,
+  (props: VariantElementProps) => React.JSX.Element
+> = {
+  h1: (props) => <h1 {...props} />,
+  h2: (props) => <h2 {...props} />,
+  h3: (props) => <h3 {...props} />,
+  h4: (props) => <h4 {...props} />,
+  lead: (props) => <p {...props} />,
+  p: (props) => <p {...props} />,
+  small: (props) => <p {...props} />,
 };
 
 export type TypographyProps = Omit<
@@ -48,18 +58,14 @@ export type TypographyProps = Omit<
   tone?: NonNullable<VariantProps<typeof typographyVariants>["tone"]>;
 };
 
-export const Typography = React.forwardRef<HTMLElement, TypographyProps>(
-  ({ variant, tone, ...props }, ref) => {
-    const Component = variantElementMap[variant];
-    return (
-      <Component
-        ref={ref as React.Ref<HTMLHeadingElement & HTMLParagraphElement>}
-        className={cn(typographyVariants({ variant, tone }))}
-        {...props}
-      />
-    );
-  },
-);
-Typography.displayName = "Typography";
+export const Typography = ({ variant, tone, ...props }: TypographyProps) => {
+  const Component = variantElementMap[variant];
+  return (
+    <Component
+      className={cn(typographyVariants({ variant, tone }))}
+      {...props}
+    />
+  );
+};
 
 export { typographyVariants };
