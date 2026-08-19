@@ -144,7 +144,7 @@ api-server は **Auth0 SDK に依存しない**。Cookie の暗号方式は SDK 
 
 ## ミドルウェア構成
 
-```
+```text
 requireAuthMiddleware
 ├── Auth0セッションCookieの復号・検証
 └── auth0Userをコンテキストに設定
