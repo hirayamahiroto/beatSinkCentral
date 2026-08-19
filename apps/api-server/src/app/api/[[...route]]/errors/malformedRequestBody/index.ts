@@ -6,13 +6,3 @@ export type MalformedRequestBodyError = Error & {
 
 export const createMalformedRequestBodyError = (): MalformedRequestBodyError =>
   createTypedError("MalformedRequestBodyError");
-
-export const isMalformedRequestBodyError = (
-  error: unknown,
-): error is MalformedRequestBodyError => {
-  return (
-    error instanceof Error &&
-    (error as Partial<MalformedRequestBodyError>).type ===
-      "MalformedRequestBodyError"
-  );
-};

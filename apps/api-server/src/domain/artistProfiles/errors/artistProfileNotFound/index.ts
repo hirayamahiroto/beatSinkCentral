@@ -7,10 +7,3 @@ export type ArtistProfileNotFoundError = Error & {
 export const createArtistProfileNotFoundError =
   (): ArtistProfileNotFoundError =>
     createTypedError("ArtistProfileNotFoundError");
-
-export const isArtistProfileNotFoundError = (
-  error: unknown,
-): error is ArtistProfileNotFoundError =>
-  error instanceof Error &&
-  (error as Partial<ArtistProfileNotFoundError>).type ===
-    "ArtistProfileNotFoundError";
