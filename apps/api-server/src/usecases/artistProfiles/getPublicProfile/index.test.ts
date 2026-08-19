@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { reconstructArtistProfile } from "../../../domain/artistProfiles/factories";
 import { getPublicProfile } from "./index";
-import { isArtistProfileNotFoundError } from "../../../domain/artistProfiles/errors/artistProfileNotFound";
 import type { IArtistProfileReader } from "../../../domain/artistProfiles/repositories";
 import type { PublicReadCapabilities } from "../../capabilities";
 
@@ -56,7 +55,7 @@ describe("getPublicProfile", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(isArtistProfileNotFoundError(result.error)).toBe(true);
+      expect(result.error.type).toBe("ArtistProfileNotFoundError");
     }
   });
 

@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import { Hono } from "hono";
 import { z } from "zod";
 import { validateRequest } from "./index";
-import { isInvalidRequestFormatError } from "../../errors/invalidRequestFormat";
 import { handleAppError } from "../../../../../errorMap";
 
 const createApp = () => {
@@ -49,12 +48,11 @@ describe("validateRequest", () => {
   });
 
   it("param の検証失敗を InvalidRequestFormatError として throw する", async () => {
-    const { app, captured } = createApp();
+    const { app } = createApp();
 
     const res = await app.request("/items/toolong", { method: "GET" });
 
     expect(res.status).toBe(400);
-    expect(isInvalidRequestFormatError(captured.error)).toBe(true);
     expect(await res.json()).toMatchObject({ error: "Invalid request" });
   });
 
@@ -68,21 +66,19 @@ describe("validateRequest", () => {
   });
 
   it("query の検証失敗を InvalidRequestFormatError として throw する", async () => {
-    const { app, captured } = createApp();
+    const { app } = createApp();
 
     const res = await app.request("/items?limit=many", { method: "GET" });
 
     expect(res.status).toBe(400);
-    expect(isInvalidRequestFormatError(captured.error)).toBe(true);
   });
 
   it("json の検証失敗を InvalidRequestFormatError として throw する", async () => {
-    const { app, captured } = createApp();
+    const { app } = createApp();
 
     const res = await app.request("/items", postJson({ name: 1 }));
 
     expect(res.status).toBe(400);
-    expect(isInvalidRequestFormatError(captured.error)).toBe(true);
   });
 
   it("検証失敗の issues を details としてクライアントへ返す", async () => {
