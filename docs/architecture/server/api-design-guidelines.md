@@ -101,6 +101,20 @@ POST /users/:id/delete
 
 この明確な役割分担により、シンプルで予測可能なAPI設計を維持できます。
 
+## リソースアドレッシング（パスキーの選び方）
+
+エンドポイントの URL は**ドメインモデルの現状（例: 1 ユーザー = 1 アーティスト）に依存させず、リソース指向で設計する**。URL は外部契約でありモデルより寿命が長いため、モデルの都合を URL に焼き込むと、モデル変更が URL の破壊的変更に波及する。
+
+| 原則                 | 内容                                                                                                                                                                                                                                   |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 対象はパスで指定する | 操作対象のリソースは `/artists/:artistId/...` のようにパスでアドレスする。`me` のような「セッションの主体に暗黙で紐づく」パスは新設しない                                                                                              |
+| パスキーは不変 ID    | 書き込み・認証済み参照のパスキーは**不変なリソース ID**（`artistId` = UUID）を使う。`accountId` のような**可変ハンドルは公開 read 専用**（SEO・シェア URL 向け）とし、書き込みの宛先に使わない（リネームと古いハンドルの問題を避ける） |
+| 主体はセッションから | 「誰が」はパスやボディでなくセッション（`sub`）から解決する。パスの対象リソースに対してその主体が操作できるかは authorization 層が照合する（対象の選択 = パス、本人性 = セッション、可否 = 認可、の分離）                              |
+| 不一致は 404         | パスのリソースに主体がアクセスできない場合は 404 を返す（リソースの存在を秘匿する）                                                                                                                                                    |
+
+- クライアントは自分の `artistId` を `GET /users/me` から取得する。
+- **既存の `me` 系ルート（`/artists/me/*`）は廃止予定**。expand（`/:artistId` 系を追加）→ migrate（クライアント切り替え）→ contract（`me` 削除）の順で移行中であり、新規エンドポイントを `me` 配下に足さない。
+
 ## リソース命名規則
 
 ### 複数形を使用
@@ -140,22 +154,22 @@ POST /orders/:id/cancel     → キャンセル
 ```
 app/api/[[...route]]/
   artists/
-    detail/
-      get/index.ts             → GET  /artists/:accountId
-    me/
+    [accountId]/
+      get/index.ts             → GET  /artists/:accountId（公開詳細）
+    [artistId]/
       profile/
-        get/index.ts           → GET  /artists/me/profile
-        post/index.ts          → POST /artists/me/profile
+        get/index.ts           → GET  /artists/:artistId/profile
+        post/index.ts          → POST /artists/:artistId/profile
         publish/
-          post/index.ts        → POST /artists/me/profile/publish
+          post/index.ts        → POST /artists/:artistId/profile/publish
 ```
 
 ```typescript
 // route.ts（同一パスにメソッド別ユニットをそれぞれマウント）
-.route("/artists/me/profile", getMyProfile) // get/index.ts  → GET /
-.route("/artists/me/profile", saveMyProfile) // post/index.ts → POST /
-.route("/artists/me/profile/publish", publishMyProfile) // publish/post/index.ts → POST /
-.route("/artists", getPublicProfile) // detail/get/index.ts → GET /:accountId
+.route("/artists/:artistId/profile", getProfile) // get/index.ts  → GET /
+.route("/artists/:artistId/profile", saveProfile) // post/index.ts → POST /
+.route("/artists/:artistId/profile/publish", publishProfile) // publish/post/index.ts → POST /
+.route("/artists", getPublicProfile) // [accountId]/get/index.ts → GET /:accountId
 ```
 
 **理由**: エンドポイント単位で責務・変更差分・レビュー範囲が閉じる。1 ユニットに GET/POST/サブアクションが混在すると変更影響が追いにくくなる。各メソッドディレクトリにもテストを置く。
@@ -176,18 +190,21 @@ app/api/[[...route]]/
 
 ### アーティストプロフィール操作
 
-本人のプロフィールは「1 ユーザー = 1 アーティスト」のため `me` スコープ。取得と保存は同一エンドポイントをメソッドで切り替える。
+対象アーティストは不変 ID（`artistId`）でアドレスし、操作可否は authorization 層が「セッションの主体がその artistId に書けるか」を照合する。取得と保存は同一エンドポイントをメソッドで切り替える。
 
-| 操作                     | メソッド | エンドポイント                |
-| ------------------------ | -------- | ----------------------------- |
-| 取得（本人・下書き含む） | GET      | `/artists/me/profile`         |
-| 保存（作成・更新）       | POST     | `/artists/me/profile`         |
-| 公開 / 非公開            | POST     | `/artists/me/profile/publish` |
-| 公開詳細（誰でも）       | GET      | `/artists/:accountId`         |
+| 操作                     | メソッド | エンドポイント                       |
+| ------------------------ | -------- | ------------------------------------ |
+| 取得（本人・下書き含む） | GET      | `/artists/:artistId/profile`         |
+| 保存（作成・更新）       | POST     | `/artists/:artistId/profile`         |
+| 公開 / 非公開            | POST     | `/artists/:artistId/profile/publish` |
+| 画像アップロード         | POST     | `/artists/:artistId/profile/image`   |
+| accountId 変更           | POST     | `/artists/:artistId`                 |
+| 公開詳細（誰でも）       | GET      | `/artists/:accountId`                |
 
-- 取得 (GET) と保存 (POST) は **同じ `/artists/me/profile`**。`users` の `GET /users/:id` ⇔ `POST /users/:id` と同じ関係。
-- 公開切り替えは `POST /users/:id/delete` と同じくアクションを接尾辞で表す（`/publish`）。
-- 公開詳細は `GET /users/:id` と同じく ID（ここでは accountId ハンドル）で引く。
+- 取得 (GET) と保存 (POST) は **同じ `/artists/:artistId/profile`**。`users` の `GET /users/:id` ⇔ `POST /users/:id` と同じ関係。
+- 公開切り替え・画像アップロードは `POST /users/:id/delete` と同じくアクションを接尾辞で表す（`/publish` / `/image`）。
+- 公開詳細のみ可変ハンドル（accountId）で引く。認証済み操作のパスキーは不変 ID（artistId）。
+- **移行中の例外**: 旧 `me` 系ルート（`/artists/me/*`）はクライアント移行が完了するまで併存させ、その後削除する。
 
 ### レスポンス形式
 
