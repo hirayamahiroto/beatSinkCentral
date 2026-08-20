@@ -25,13 +25,14 @@ export default async function ProfileEditPage() {
     redirect("/onboarding");
   }
 
-  const { email, linkTypeOptions, defaultValues } = screen;
+  const { email, artistId, linkTypeOptions, defaultValues } = screen;
 
   return (
     <div className="min-h-screen bg-background text-foreground px-4 pt-12 pb-16">
       <div className="container mx-auto max-w-2xl">
         <ProfileWizardClientAdapter
           email={email}
+          artistId={artistId}
           linkTypeOptions={linkTypeOptions}
           defaultValues={defaultValues ?? undefined}
         />
