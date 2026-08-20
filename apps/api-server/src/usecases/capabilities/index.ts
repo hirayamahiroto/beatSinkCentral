@@ -3,6 +3,7 @@ import type { Artist } from "../../domain/artists/entities";
 import type {
   IArtistProfileReader,
   IArtistProfileWriter,
+  IProfileImageStorage,
 } from "../../domain/artistProfiles/repositories";
 import type { IUserReader, IUserWriter } from "../../domain/users/repositories";
 import type {
@@ -59,12 +60,21 @@ export type RegistrationCapabilities = {
   artists: IArtistReader & IArtistWriter;
 };
 
+export type ArtistStorageWriteCapabilities = {
+  actor: Actor;
+  profileImages: IProfileImageStorage;
+};
+
 export type CapabilityDeps = {
   resolveActorState(subId: string): Promise<ActorResolution>;
 
   buildPublicReadCapabilities(): PublicReadCapabilities;
 
   buildArtistReadCapabilities(actor: Actor): ArtistReadCapabilities;
+
+  buildArtistStorageWriteCapabilities(
+    actor: Actor,
+  ): ArtistStorageWriteCapabilities;
 
   runWithUserWriteCapabilities<T, E>(
     user: User,

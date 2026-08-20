@@ -6,6 +6,7 @@ import type {
 import type {
   IArtistProfileReader,
   IArtistProfileWriter,
+  IProfileImageStorage,
 } from "../../../domain/artistProfiles/repositories";
 import { reconstructUser } from "../../../domain/users/factories";
 import { reconstructArtist } from "../../../domain/artists/factories";
@@ -43,6 +44,10 @@ const createArtistProfileReaderStub = (): IArtistProfileReader => ({
 const createArtistProfileWriterStub = (): IArtistProfileWriter => ({
   upsert: unusedInAuthorizationTests,
   setPublished: unusedInAuthorizationTests,
+});
+
+const createProfileImageStorageStub = (): IProfileImageStorage => ({
+  upload: unusedInAuthorizationTests,
 });
 
 const createRegistrationCapabilitiesStub = (): RegistrationCapabilities => ({
@@ -83,6 +88,11 @@ export const createCapabilityDepsStub = (
     buildArtistReadCapabilities: (actor) => ({
       actor,
       artistProfiles: createArtistProfileReaderStub(),
+    }),
+
+    buildArtistStorageWriteCapabilities: (actor) => ({
+      actor,
+      profileImages: createProfileImageStorageStub(),
     }),
 
     async runWithUserWriteCapabilities(user, work) {

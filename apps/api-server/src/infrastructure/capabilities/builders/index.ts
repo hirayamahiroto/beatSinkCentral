@@ -13,6 +13,7 @@ import {
 import { createLinkTypeReader } from "../../repositories/linkTypeRepository";
 import type { Executor } from "../../transaction";
 import type { User } from "../../../domain/users/entities";
+import type { IProfileImageStorage } from "../../../domain/artistProfiles/repositories";
 import type {
   Actor,
   PublicReadCapabilities,
@@ -20,6 +21,7 @@ import type {
   RegistrationCapabilities,
   UserWriteCapabilities,
   ArtistWriteCapabilities,
+  ArtistStorageWriteCapabilities,
 } from "../../../usecases/capabilities";
 
 const buildUserRepository = (executor: Executor) => ({
@@ -70,3 +72,10 @@ export const buildArtistWriteCapabilities =
 export const buildRegistrationCapabilities = (
   executor: Executor,
 ): RegistrationCapabilities => buildAccountRepositories(executor);
+
+export const buildArtistStorageWriteCapabilities =
+  (actor: Actor) =>
+  (profileImages: IProfileImageStorage): ArtistStorageWriteCapabilities => ({
+    actor,
+    profileImages,
+  });
