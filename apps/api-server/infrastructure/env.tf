@@ -4,23 +4,27 @@
 
 locals {
   production_env = {
-    APP_BASE_URL        = var.production_app_base_url
-    API_SERVER_BASE_URL = var.production_api_server_base_url
-    DATABASE_URL        = var.production_database_url
-    AUTH0_DOMAIN        = var.production_auth0_domain
-    AUTH0_CLIENT_ID     = var.production_auth0_client_id
-    AUTH0_CLIENT_SECRET = var.production_auth0_client_secret
-    AUTH0_SECRET        = var.production_auth0_secret
+    APP_BASE_URL              = var.production_app_base_url
+    API_SERVER_BASE_URL       = var.production_api_server_base_url
+    DATABASE_URL              = var.production_database_url
+    AUTH0_DOMAIN              = var.production_auth0_domain
+    AUTH0_CLIENT_ID           = var.production_auth0_client_id
+    AUTH0_CLIENT_SECRET       = var.production_auth0_client_secret
+    AUTH0_SECRET              = var.production_auth0_secret
+    SUPABASE_URL              = var.production_supabase_url
+    SUPABASE_SERVICE_ROLE_KEY = var.production_supabase_service_role_key
   }
 
   preview_env = {
-    APP_BASE_URL        = var.preview_app_base_url
-    API_SERVER_BASE_URL = var.preview_api_server_base_url
-    DATABASE_URL        = var.preview_database_url
-    AUTH0_DOMAIN        = var.preview_auth0_domain
-    AUTH0_CLIENT_ID     = var.preview_auth0_client_id
-    AUTH0_CLIENT_SECRET = var.preview_auth0_client_secret
-    AUTH0_SECRET        = var.preview_auth0_secret
+    APP_BASE_URL              = var.preview_app_base_url
+    API_SERVER_BASE_URL       = var.preview_api_server_base_url
+    DATABASE_URL              = var.preview_database_url
+    AUTH0_DOMAIN              = var.preview_auth0_domain
+    AUTH0_CLIENT_ID           = var.preview_auth0_client_id
+    AUTH0_CLIENT_SECRET       = var.preview_auth0_client_secret
+    AUTH0_SECRET              = var.preview_auth0_secret
+    SUPABASE_URL              = var.preview_supabase_url
+    SUPABASE_SERVICE_ROLE_KEY = var.preview_supabase_service_role_key
   }
 
   # production / preview の両方に同値を配る env(機密値あり)。
@@ -38,6 +42,7 @@ locals {
     "AUTH0_SECRET",
     "BASIC_AUTH_USERNAME",
     "BASIC_AUTH_PASSWORD",
+    "SUPABASE_SERVICE_ROLE_KEY",
   ])
 }
 
