@@ -7,7 +7,7 @@ const TYPE_PREDICATE_MESSAGE =
 const OPTIONAL_FALLBACK_MESSAGE =
   "optional な値を既定値で埋めない。欠落は throw / redirect で明示的に落とすか、正しく型付けされた契約から取得する。";
 
-const typeSafetySelectors = [
+export const typeSafetySelectors = [
   {
     selector: 'TSAsExpression:not([typeAnnotation.typeName.name="const"])',
     message: TYPE_ASSERTION_MESSAGE,
@@ -57,5 +57,43 @@ export const typeSafetyPendingWarn = (files) => ({
   files,
   rules: {
     "no-restricted-syntax": ["warn", ...typeSafetySelectors],
+  },
+});
+
+const RESPONSE_VALIDATION_MESSAGE =
+  "c.json() に渡す値は返却直前にレスポンススキーマで検証する（例: c.json(responseSchema.parse(value))）。Usecase の戻り値をそのまま返さない。";
+
+const VALIDATED_RESPONSE_ARG =
+  '*.arguments:first-child:matches(' +
+  'CallExpression[callee.property.name=/^(parse|safeParse)$/], ' +
+  'MemberExpression[property.name="data"][object.callee.property.name="safeParse"]' +
+  ")";
+
+export const responseValidationSelectors = [
+  {
+    selector: `ReturnStatement > CallExpression[callee.object.name="c"][callee.property.name="json"][arguments.length>0]:not(:has(> ${VALIDATED_RESPONSE_ARG}))`,
+    message: RESPONSE_VALIDATION_MESSAGE,
+  },
+];
+
+export const responseValidationRules = (files) => ({
+  files,
+  rules: {
+    "no-restricted-syntax": [
+      "error",
+      ...typeSafetySelectors,
+      ...responseValidationSelectors,
+    ],
+  },
+});
+
+export const responseValidationPendingWarn = (files) => ({
+  files,
+  rules: {
+    "no-restricted-syntax": [
+      "warn",
+      ...typeSafetySelectors,
+      ...responseValidationSelectors,
+    ],
   },
 });
