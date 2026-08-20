@@ -129,14 +129,12 @@ const EventDetailModal = ({
               閉じる
             </button>
             {event.type === "own" && (
-              <button
-                onClick={() =>
-                  (window.location.href = `/admin/detail?id=${event.id}`)
-                }
+              <a
+                href={`/admin/detail?id=${event.id}`}
                 className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-white rounded-lg transition-colors"
               >
                 詳細を見る
-              </button>
+              </a>
             )}
           </div>
         </div>
