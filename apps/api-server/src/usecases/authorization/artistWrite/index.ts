@@ -3,7 +3,7 @@ import type {
   ResolveActorError,
   ArtistWriteCapabilities,
 } from "../../capabilities";
-import { toActor } from "../resolution";
+import { toActor, toAddressedActor } from "../resolution";
 import {
   catchAlreadyTaken,
   isAlreadyTakenError,
@@ -17,6 +17,20 @@ export const withArtistWriteCapabilities = async <T, E>(
   work: (caps: ArtistWriteCapabilities) => Promise<Result<T, E>>,
 ): Promise<Result<T, E | ResolveActorError | AlreadyTakenError>> => {
   const actor = toActor(await deps.resolveActorState(subId));
+  if (!actor.ok) return actor;
+
+  return catchAlreadyTaken(isAlreadyTakenError, () =>
+    deps.runWithArtistWriteCapabilities(actor.value, work),
+  );
+};
+
+export const withArtistWriteCapabilitiesById = async <T, E>(
+  deps: CapabilityDeps,
+  subId: string,
+  artistId: string,
+  work: (caps: ArtistWriteCapabilities) => Promise<Result<T, E>>,
+): Promise<Result<T, E | ResolveActorError | AlreadyTakenError>> => {
+  const actor = toAddressedActor(await deps.resolveActorState(subId), artistId);
   if (!actor.ok) return actor;
 
   return catchAlreadyTaken(isAlreadyTakenError, () =>

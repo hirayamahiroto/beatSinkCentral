@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { withArtistStorageWriteCapabilities } from "./index";
+import {
+  withArtistStorageWriteCapabilities,
+  withArtistStorageWriteCapabilitiesById,
+} from "./index";
 import {
   createCapabilityDepsStub,
   testUser as user,
@@ -63,5 +66,47 @@ describe("withArtistStorageWriteCapabilities", () => {
     );
 
     expect(result).toStrictEqual(ok("artist-1"));
+  });
+});
+
+describe("withArtistStorageWriteCapabilitiesById", () => {
+  it("パスの artistId が Actor と一致すれば work を実行する", async () => {
+    const { deps } = createCapabilityDepsStub({
+      status: "complete",
+      actor: { user, artist },
+    });
+
+    const result = await withArtistStorageWriteCapabilitiesById(
+      deps,
+      "auth0|123",
+      "artist-1",
+      async (caps) => ok(caps.actor.artist.getArtistId()),
+    );
+
+    expect(result).toStrictEqual(ok("artist-1"));
+  });
+
+  it("パスの artistId が一致しなければ work を呼ばず ArtistNotFoundError を返す", async () => {
+    const { deps } = createCapabilityDepsStub({
+      status: "complete",
+      actor: { user, artist },
+    });
+    let workCalls = 0;
+
+    const result = await withArtistStorageWriteCapabilitiesById(
+      deps,
+      "auth0|123",
+      "other-artist",
+      async () => {
+        workCalls += 1;
+        return ok("called");
+      },
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(isArtistNotFoundError(result.error)).toBe(true);
+    }
+    expect(workCalls).toBe(0);
   });
 });
