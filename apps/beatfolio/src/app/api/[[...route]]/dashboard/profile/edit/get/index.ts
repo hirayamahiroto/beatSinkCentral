@@ -17,7 +17,7 @@ const app = new Hono<RequestContextEnv>().get("/", async (c) => {
 
   const me = await meRes.json();
 
-  if (!me.registered) {
+  if (!me.registered || me.artist === null) {
     return c.json({ registered: false as const });
   }
 
@@ -27,6 +27,7 @@ const app = new Hono<RequestContextEnv>().get("/", async (c) => {
   return c.json({
     registered: true as const,
     email: me.email,
+    artistId: me.artist.artistId,
     linkTypeOptions: linkTypes,
     defaultValues: profile ? toWizardValues(profile) : null,
   });

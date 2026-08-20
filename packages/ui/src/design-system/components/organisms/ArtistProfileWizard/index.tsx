@@ -9,12 +9,16 @@ import { Textarea } from "@ui/design-system/components/atoms/Textarea";
 import { Switch } from "@ui/design-system/components/atoms/Switch";
 import { Typography } from "@ui/design-system/components/atoms/Typography";
 import { FormField } from "@ui/design-system/components/molecules/FormField";
+import { ImageFileInput } from "@ui/design-system/components/molecules/ImageFileInput";
 import { Stepper } from "@ui/design-system/components/molecules/Stepper";
 import { TagInput } from "@ui/design-system/components/molecules/TagInput";
 
+const IMAGE_MAX_SIZE_BYTES = 5 * 1024 * 1024;
+const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
 const wizardSchema = z.object({
   name: z.string().trim().min(1, "活動名を入力してください").max(255),
-  imageUrl: z.string().trim().url("画像URLを入力してください"),
+  imageUrl: z.string().trim().url("画像をアップロードしてください"),
   tagline: z
     .string()
     .trim()
@@ -54,6 +58,7 @@ type ArtistProfileWizardProps = {
   linkTypeOptions: LinkTypeOption[];
   defaultValues?: Partial<WizardValues>;
   onSubmit: (data: WizardValues) => Promise<void> | void;
+  onUploadImage: (file: File) => Promise<string>;
   onSaveDraft?: (data: WizardValues) => void;
   isLoading?: boolean;
   error?: string | null;
@@ -78,11 +83,16 @@ export const ArtistProfileWizard = ({
   linkTypeOptions,
   defaultValues,
   onSubmit,
+  onUploadImage,
   onSaveDraft,
   isLoading = false,
   error = null,
 }: ArtistProfileWizardProps) => {
   const [step, setStep] = React.useState(1);
+  const [isUploadingImage, setIsUploadingImage] = React.useState(false);
+  const [imageUploadError, setImageUploadError] = React.useState<string | null>(
+    null,
+  );
   const [defaultLinkType] = linkTypeOptions;
 
   const {
@@ -91,6 +101,7 @@ export const ArtistProfileWizard = ({
     handleSubmit,
     trigger,
     getValues,
+    setValue,
     formState: { errors },
   } = useForm<WizardValues>({
     resolver: zodResolver(wizardSchema),
@@ -120,6 +131,35 @@ export const ArtistProfileWizard = ({
     if (step < TOTAL) {
       onSaveDraft?.(getValues());
       setStep(step + 1);
+    }
+  };
+
+  const handleImageSelect = async (file: File) => {
+    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+      setImageUploadError("JPEG / PNG / WebP の画像を選択してください");
+      return;
+    }
+    if (file.size > IMAGE_MAX_SIZE_BYTES) {
+      setImageUploadError("5MB以下の画像を選択してください");
+      return;
+    }
+
+    setIsUploadingImage(true);
+    setImageUploadError(null);
+    try {
+      const imageUrl = await onUploadImage(file);
+      setValue("imageUrl", imageUrl, {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
+    } catch (uploadError) {
+      setImageUploadError(
+        uploadError instanceof Error
+          ? uploadError.message
+          : "画像のアップロードに失敗しました",
+      );
+    } finally {
+      setIsUploadingImage(false);
     }
   };
 
@@ -166,14 +206,25 @@ export const ArtistProfileWizard = ({
                 <Input placeholder="例: SAKU" {...register("name")} />
               </FormField>
 
-              <FormField
-                label="アーティスト写真（URL）"
-                htmlFor="imageUrl"
-                hint="画像URLを貼り付け（アップロードは後日対応）"
-                error={errors.imageUrl?.message}
-              >
-                <Input placeholder="https://..." {...register("imageUrl")} />
-              </FormField>
+              <Controller
+                control={control}
+                name="imageUrl"
+                render={({ field }) => (
+                  <FormField
+                    label="アーティスト写真"
+                    htmlFor="imageUrl"
+                    hint="JPEG / PNG / WebP、5MBまで"
+                    error={imageUploadError ?? errors.imageUrl?.message}
+                  >
+                    <ImageFileInput
+                      value={field.value === "" ? null : field.value}
+                      onFileSelect={handleImageSelect}
+                      isUploading={isUploadingImage}
+                      accept={ACCEPTED_IMAGE_TYPES.join(",")}
+                    />
+                  </FormField>
+                )}
+              />
 
               <FormField
                 label="タグライン"

@@ -77,6 +77,7 @@ describe("GET /dashboard/profile/edit", () => {
     expect(await res.json()).toStrictEqual({
       registered: true,
       email: "saku@example.com",
+      artistId: "artist-1",
       linkTypeOptions: linkTypes,
       defaultValues: {
         name: "SAKU",
@@ -100,6 +101,7 @@ describe("GET /dashboard/profile/edit", () => {
     expect(await res.json()).toStrictEqual({
       registered: true,
       email: "saku@example.com",
+      artistId: "artist-1",
       linkTypeOptions: linkTypes,
       defaultValues: null,
     });
