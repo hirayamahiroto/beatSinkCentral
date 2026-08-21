@@ -1161,16 +1161,18 @@ describe("reconstructUser", () => {
 
 ## API エンドポイント
 
-| メソッド | パス                              | 説明                     | 認証 |
-| -------- | --------------------------------- | ------------------------ | ---- |
-| GET      | `/api/test`                       | ヘルスチェック           | 要   |
-| POST     | `/api/users`                      | ユーザー作成             | 要   |
-| GET      | `/api/users/me`                   | 自分のユーザー情報取得   | 要   |
-| POST     | `/api/users/me`                   | 自分のメールアドレス更新 | 要   |
-| GET      | `/api/artists`                    | 公開プロフィール一覧     | 不要 |
-| GET      | `/api/artists/:accountId`         | 公開プロフィール詳細     | 不要 |
-| POST     | `/api/artists/me`                 | 自分の accountId 更新    | 要   |
-| GET      | `/api/artists/me/profile`         | 自分のプロフィール取得   | 要   |
-| POST     | `/api/artists/me/profile`         | 自分のプロフィール保存   | 要   |
-| POST     | `/api/artists/me/profile/publish` | 公開/非公開の切り替え    | 要   |
-| GET      | `/api/link-types`                 | リンク種別マスタ一覧     | 不要 |
+| メソッド | パス                                     | 説明                           | 認証 |
+| -------- | ---------------------------------------- | ------------------------------ | ---- |
+| GET      | `/api/test`                              | ヘルスチェック                 | 要   |
+| POST     | `/api/users`                             | ユーザー作成                   | 要   |
+| GET      | `/api/users/me`                          | 自分のユーザー情報取得         | 要   |
+| POST     | `/api/users/me`                          | 自分のメールアドレス更新       | 要   |
+| GET      | `/api/artists`                           | 公開プロフィール一覧           | 不要 |
+| GET      | `/api/artists/:accountId`                | 公開プロフィール詳細           | 不要 |
+| POST     | `/api/artists/:artistId`                 | accountId 更新                 | 要   |
+| GET      | `/api/artists/:artistId/profile`         | プロフィール取得（下書き含む） | 要   |
+| POST     | `/api/artists/:artistId/profile`         | プロフィール保存               | 要   |
+| POST     | `/api/artists/:artistId/profile/publish` | 公開/非公開の切り替え          | 要   |
+| GET      | `/api/link-types`                        | リンク種別マスタ一覧           | 不要 |
+
+> 旧 `me` 系（`POST /api/artists/me`・`GET|POST /api/artists/me/profile`・`POST /api/artists/me/profile/publish`）はクライアント移行が完了するまで併存させ、その後削除する（[api-design-guidelines.md](./api-design-guidelines.md) のリソースアドレッシング参照）。

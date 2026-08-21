@@ -29,6 +29,7 @@ import {
   createMalformedRequestBodyError,
   type MalformedRequestBodyError,
 } from "../app/api/[[...route]]/errors/malformedRequestBody";
+import type { ResponseContractViolationError } from "../app/api/[[...route]]/errors/responseContractViolation";
 import type { UnauthorizedError } from "../middlewares/auth0/errors/unauthorized";
 import type { LogFields, LogLevel, Logger } from "../utils/logger";
 import { createConsoleLogger } from "../utils/logger";
@@ -37,6 +38,7 @@ import { getRequestContext } from "../utils/requestContext";
 export type AppError =
   | InvalidRequestFormatError
   | MalformedRequestBodyError
+  | ResponseContractViolationError
   | UnauthorizedError
   | UserAlreadyRegisteredError
   | UserNotFoundError
@@ -89,6 +91,14 @@ const errorMap: ErrorMap = {
     status: 400,
     clientMessage: () => "Malformed request body",
     logLevel: "info",
+  },
+  ResponseContractViolationError: {
+    status: 500,
+    clientMessage: () => "Internal Server Error",
+    logLevel: "error",
+    logFields: (error) => ({
+      issuePaths: error.issues.map((issue) => issue.path.join(".")),
+    }),
   },
   UnauthorizedError: {
     status: 401,

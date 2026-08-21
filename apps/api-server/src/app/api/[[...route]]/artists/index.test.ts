@@ -39,6 +39,10 @@ describe("/artists ルーターの合成", () => {
       "GET /me/profile",
       "POST /me/profile",
       "POST /me/profile/publish",
+      "POST /:artistId",
+      "GET /:artistId/profile",
+      "POST /:artistId/profile",
+      "POST /:artistId/profile/publish",
       "GET /:accountId",
     ]);
   });
@@ -64,6 +68,10 @@ describe("/artists ルーターの合成", () => {
     ["GET", "/artists/me/profile"],
     ["POST", "/artists/me/profile"],
     ["POST", "/artists/me/profile/publish"],
+    ["POST", "/artists/artist-1"],
+    ["GET", "/artists/artist-1/profile"],
+    ["POST", "/artists/artist-1/profile"],
+    ["POST", "/artists/artist-1/profile/publish"],
   ])("%s %s は認証を要求する", async (method, path) => {
     const res = await createApp().request(path, {
       method,

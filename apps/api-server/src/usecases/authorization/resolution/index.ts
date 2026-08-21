@@ -22,6 +22,18 @@ export const toActor = (
   }
 };
 
+export const toAddressedActor = (
+  resolution: ActorResolution,
+  artistId: string,
+): Result<Actor, ResolveActorError> => {
+  const actor = toActor(resolution);
+  if (!actor.ok) return actor;
+  if (actor.value.artist.getArtistId() !== artistId) {
+    return err(createArtistNotFoundError());
+  }
+  return actor;
+};
+
 export const toUser = (
   resolution: ActorResolution,
 ): Result<User, ResolveUserError> => {
