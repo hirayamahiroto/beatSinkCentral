@@ -130,6 +130,33 @@ variable "preview_database_url" {
 }
 
 # ===========================
+# Supabase Storage (プロフィール画像アップロード)
+# service role key は api-server のみが保持する（beatfolio には配らない）
+# ===========================
+
+variable "production_supabase_url" {
+  description = "Production の SUPABASE_URL(Supabase プロジェクトの API URL)。"
+  type        = string
+}
+
+variable "production_supabase_service_role_key" {
+  description = "Production の SUPABASE_SERVICE_ROLE_KEY。Storage への書き込みに使用。"
+  type        = string
+  sensitive   = true
+}
+
+variable "preview_supabase_url" {
+  description = "Preview の SUPABASE_URL。"
+  type        = string
+}
+
+variable "preview_supabase_service_role_key" {
+  description = "Preview の SUPABASE_SERVICE_ROLE_KEY。"
+  type        = string
+  sensitive   = true
+}
+
+# ===========================
 # Basic Auth (全環境共通)
 # ===========================
 

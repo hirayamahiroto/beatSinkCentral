@@ -66,6 +66,7 @@ DB まわり — [`architecture/server/database/`](./architecture/server/databas
 | マイグレーション    | [migration.md](./architecture/server/database/migration.md)              | スキーマ変更時                    |
 | 接続                | [connection.md](./architecture/server/database/connection.md)            | 環境セットアップ・DB エラー調査時 |
 | 並行更新            | [concurrency.md](./architecture/server/database/concurrency.md)          | usecase の更新フロー設計時        |
+| Storage（バケット） | [storage.md](./architecture/server/database/storage.md)                  | ファイルアップロード・バケット追加/変更時 |
 
 #### テスト・インフラ
 

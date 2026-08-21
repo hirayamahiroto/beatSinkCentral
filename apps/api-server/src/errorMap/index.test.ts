@@ -16,6 +16,12 @@ import { createInvalidArtistIdFormatError } from "../domain/artists/valueObjects
 import { createInvalidRequestFormatError } from "../app/api/[[...route]]/errors/invalidRequestFormat";
 import { createUnauthorizedError } from "../middlewares/auth0/errors/unauthorized";
 import { createProfileNotPublishableError } from "../domain/artistProfiles/policies/publishability";
+import {
+  createUnsupportedImageTypeError,
+  createImageTooLargeError,
+  createEmptyImageFileError,
+} from "../domain/artistProfiles/valueObjects/profileImage";
+import { createProfileImageUploadFailedError } from "../domain/artistProfiles/errors/profileImageUploadFailed";
 import { requestContextMiddleware } from "../middlewares/requestContext";
 
 type RecordedLog = {
@@ -176,6 +182,40 @@ describe("createAppErrorHandler", () => {
       },
     );
 
+    it("UnsupportedImageTypeErrorを422に変換する", async () => {
+      expect(
+        await clientResponseOf(createUnsupportedImageTypeError()),
+      ).toStrictEqual({
+        status: 422,
+        body: { error: "Unsupported image type" },
+      });
+    });
+
+    it("ImageTooLargeErrorを413に変換する", async () => {
+      expect(await clientResponseOf(createImageTooLargeError())).toStrictEqual({
+        status: 413,
+        body: { error: "Image file is too large" },
+      });
+    });
+
+    it("EmptyImageFileErrorを422に変換する", async () => {
+      expect(await clientResponseOf(createEmptyImageFileError())).toStrictEqual(
+        {
+          status: 422,
+          body: { error: "Image file is empty" },
+        },
+      );
+    });
+
+    it("ProfileImageUploadFailedErrorを502に変換する", async () => {
+      expect(
+        await clientResponseOf(createProfileImageUploadFailedError()),
+      ).toStrictEqual({
+        status: 502,
+        body: { error: "Failed to upload image" },
+      });
+    });
+
     it("未知のエラーは内部事情を伏せて500を返す", async () => {
       expect(
         await clientResponseOf(new Error("connect ECONNREFUSED 10.0.0.1:5432")),
@@ -248,6 +288,18 @@ describe("createAppErrorHandler", () => {
           ...REQUEST_FIELDS,
           errorType: "InvalidSubFormatError",
           status: 422,
+        },
+      });
+    });
+
+    it("ストレージ書き込み失敗は error で記録する", async () => {
+      expect(await logOf(createProfileImageUploadFailedError())).toStrictEqual({
+        level: "error",
+        event: "AppError",
+        fields: {
+          ...REQUEST_FIELDS,
+          errorType: "ProfileImageUploadFailedError",
+          status: 502,
         },
       });
     });

@@ -19,6 +19,12 @@ import type { ProfileNotPublishableError } from "../domain/artistProfiles/polici
 import type { InvalidProfileNameFormatError } from "../domain/artistProfiles/valueObjects/profileName";
 import type { InvalidTaglineFormatError } from "../domain/artistProfiles/valueObjects/tagline";
 import type { InvalidImageUrlFormatError } from "../domain/artistProfiles/valueObjects/imageUrl";
+import type {
+  UnsupportedImageTypeError,
+  ImageTooLargeError,
+  EmptyImageFileError,
+} from "../domain/artistProfiles/valueObjects/profileImage";
+import type { ProfileImageUploadFailedError } from "../domain/artistProfiles/errors/profileImageUploadFailed";
 import type { InvalidStoryFormatError } from "../domain/artistProfiles/valueObjects/story";
 import type { InvalidActivityInfoFormatError } from "../domain/artistProfiles/valueObjects/activityInfo";
 import type { InvalidGenreFormatError } from "../domain/artistProfiles/valueObjects/genre";
@@ -57,7 +63,11 @@ export type AppError =
   | InvalidActivityInfoFormatError
   | InvalidGenreFormatError
   | InvalidSnsUrlFormatError
-  | InvalidProfileLinkFormatError;
+  | InvalidProfileLinkFormatError
+  | UnsupportedImageTypeError
+  | ImageTooLargeError
+  | EmptyImageFileError
+  | ProfileImageUploadFailedError;
 
 type ErrorStatusCode = ClientErrorStatusCode | ServerErrorStatusCode;
 
@@ -198,6 +208,26 @@ const errorMap: ErrorMap = {
     status: 422,
     clientMessage: () => "Invalid profile link format",
     logLevel: "info",
+  },
+  UnsupportedImageTypeError: {
+    status: 422,
+    clientMessage: () => "Unsupported image type",
+    logLevel: "info",
+  },
+  ImageTooLargeError: {
+    status: 413,
+    clientMessage: () => "Image file is too large",
+    logLevel: "info",
+  },
+  EmptyImageFileError: {
+    status: 422,
+    clientMessage: () => "Image file is empty",
+    logLevel: "info",
+  },
+  ProfileImageUploadFailedError: {
+    status: 502,
+    clientMessage: () => "Failed to upload image",
+    logLevel: "error",
   },
 };
 

@@ -30,6 +30,12 @@ preview_api_server_base_url    = "https://api-beatfolio-preview.example.com"
 production_database_url = "postgresql://postgres.<prod-ref>:<PASSWORD>@<region>.pooler.supabase.com:6543/postgres"
 preview_database_url    = "postgresql://postgres.<preview-ref>:<PASSWORD>@<region>.pooler.supabase.com:6543/postgres"
 
+# ===== Supabase Storage (プロフィール画像アップロード) =====
+production_supabase_url              = "https://<prod-ref>.supabase.co"
+production_supabase_service_role_key = "REPLACE_ME"
+preview_supabase_url                 = "https://<preview-ref>.supabase.co"
+preview_supabase_service_role_key    = "REPLACE_ME"
+
 # ===== Basic Auth (全環境共通) =====
 enable_basic_auth   = "true"
 basic_auth_username = "REPLACE_ME"
