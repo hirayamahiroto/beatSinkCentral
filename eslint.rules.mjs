@@ -60,6 +60,15 @@ export const typeSafetyPendingWarn = (files) => ({
   },
 });
 
+// なぜ safeParse を主形として認めるか: schema.parse() は失敗時に ZodError を
+// 投げるだけで、errorMap の AppError 型（type フィールドによる errorType 分類）
+// を持たない。そのため parse() の例外は常に UnhandledError という未分類バケツに
+// 落ち、他の予期しない 500 と見分けがつかない。safeParse() で明示的に分岐すれば、
+// 失敗時に issuePaths 等を積んだ型付きエラー（例: ResponseContractViolationError）
+// を組み立ててから throw できるため、内部ログを errorType で分離して追跡できる
+// （docs/architecture/server/error-handling/operations.md の errorType 次元化）。
+// schema.parse() の直書きも許可しているのは、型付きエラーへの変換が不要な
+// 単純なケース向けの最小構成として残している。
 const RESPONSE_VALIDATION_MESSAGE =
   "c.json() に渡す値は返却直前に検証する。許可されるのは (1) schema.parse(value) の直書き、" +
   "(2) const result = schema.safeParse(value) の直後に if (!result.success) return ...; で早期リターンし " +
