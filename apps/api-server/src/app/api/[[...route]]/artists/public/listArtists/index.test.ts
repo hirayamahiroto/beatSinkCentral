@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import listPublicProfiles from "./index";
+import listArtistsRoute from "./index";
 
 const mockArtistProfiles = {
   findByArtistId: vi.fn(),
@@ -8,7 +8,7 @@ const mockArtistProfiles = {
   listPublishedSummaries: vi.fn(),
 };
 
-vi.mock("../../../../../infrastructure/capabilities", () => ({
+vi.mock("../../../../../../infrastructure/capabilities", () => ({
   getCapabilityDeps: () => ({
     buildPublicReadCapabilities: () => ({
       artistProfiles: mockArtistProfiles,
@@ -18,7 +18,7 @@ vi.mock("../../../../../infrastructure/capabilities", () => ({
 
 const createApp = () => {
   const app = new Hono();
-  app.route("/", listPublicProfiles);
+  app.route("/", listArtistsRoute);
   return app;
 };
 

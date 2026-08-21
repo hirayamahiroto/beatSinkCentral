@@ -703,10 +703,12 @@ HTTPリクエスト/レスポンスの処理を担当。
 app/api/[[...route]]/
 ├── route.ts                    # basePath + 全体ミドルウェア + onError + トップ mount のみ
 ├── artists/
-│   ├── index.ts                # /artists の合成（公開/認証が混在するためミドルウェアなし）
-│   ├── get/                    # GET /artists（公開・一覧）
-│   ├── [accountId]/get/        # GET /artists/:accountId（公開・詳細）
-│   └── [artistId]/             # ← ここが認証境界（リソース先頭ではない点に注意）
+│   ├── index.ts                # 公開 / 認証済み / 移行中の3区画を合成するだけ（ミドルウェアなし）
+│   ├── public/                 # 公開（認証なし・可変ハンドル accountId）
+│   │   ├── index.ts            # マウントテーブル
+│   │   ├── listArtists/        # GET /artists
+│   │   └── getArtist/          # GET /artists/:accountId
+│   └── [artistId]/             # ← ここが認証境界（不変 ID artistId。accountId とは別の鍵）
 │       ├── index.ts            # requireAuthMiddleware + マウントテーブル
 │       ├── updateAccountId/    # POST /:artistId
 │       ├── getProfile/         # GET  /:artistId/profile
@@ -716,6 +718,8 @@ app/api/[[...route]]/
     ├── index.ts                # 認証不要 → 集約のみ
     └── get/                    # GET /link-types
 ```
+
+公開（認証なし・可変ハンドル `accountId`）と認証済み（不変 ID `artistId`）は同じ artist を指すが鍵も認可も別物なので、`artists/public/` と `artists/[artistId]/` に分けて並べる。こうしておくと、`artists/index.ts` の3行（`public` / `[artistId]` / 移行中の `me`）がそのまま「公開・認証・移行中」の3区画になり、境界の `index.ts` を見れば全体像が分かる。将来公開ルートの名前空間を分離する場合も、`artists/public/` をディレクトリごと移してマウント先を変えるだけで済む。
 
 階層 `index.ts` の責務は 2 つだけに限定する。
 
@@ -727,10 +731,12 @@ app/api/[[...route]]/
 **認証はミドルウェアが変わる境界の `index.ts` で適用する。** トップでパス文字列を列挙しない。境界側で `.use("*", requireAuthMiddleware)` を一度書けば配下は構造的に保護されるため、リソース追加時の付け忘れが起きにくい（デフォルトが deny 側に倒れる）。境界はリソースの先頭に限らない。`artists/` は公開/認証が混在するため無防備なままで、認証境界は1階層下の `[artistId]/` にある。
 
 > **注意（`.use("*")` と同形の公開ルートが衝突する場合）**: `.use("*", mw)` は「ALL メソッド」に一致するため、境界の**裸のパス**（サブパスなしの `/`）で別リソースの公開ルートと**パス形状が重なる**場合、意図せずその公開ルートまで認証で弾いてしまう。例: `/artists/:artistId`（裸・POST・認証必須）と `/artists/:accountId`（裸・GET・公開）は同じ「1セグメントの動的パス」を共有するため、`[artistId]/index.ts` で `.use("*", requireAuthMiddleware)` にすると `GET /artists/:accountId` まで 401 になる。この場合は `.use("/profile/*", requireAuthMiddleware)` のように**衝突しないサブパスだけ**に絞り、裸パスを使うユニット（`updateAccountId`）は自分の `.post("/", requireAuthMiddleware, ...)` で個別に適用する。
+>
+> **既知の制約（Hono ルーターのフォールバック）**: 同じ親パス配下に「リテラル segment + ワイルドカード」（例: `/artists/me/*`）と「動的パラメータ」（例: `/artists/:accountId`）が共存すると、Hono の `RegExpRouter` が `UnsupportedPathError` を投げ、`SmartRouter` が警告なしに `TrieRouter`（低速だが動作は正しい）へフォールバックする。`.route()` は子ルートを親の router へ完全にマージするため、この事象はアプリ全体の router に影響する。本プロジェクトでは `me/*` と `:accountId` の組み合わせで既に発生しており（本規約制定前から存在）、動作の正しさはテストで担保されている。パフォーマンス上の懸念があれば認識しておくこと。
 
 `AppType`（Hono RPC）の型推論を保つため、各 `index.ts` は `.route()` または `.get()`/`.post()` のメソッドチェーンを維持する。
 
-> **既存の例外**: `users/`, `link-types/`, `artists/me/`, `artists/get`, `artists/[accountId]/get` は旧規約（HTTP メソッド名ディレクトリ）のまま。新規実装・変更時にこの規約へ順次移行する。
+> **既存の例外**: `users/`, `link-types/`, `artists/me/` は旧規約（HTTP メソッド名ディレクトリ）のまま。新規実装・変更時にこの規約へ順次移行する。
 
 ### ミドルウェア層 (`middlewares/`)
 

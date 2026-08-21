@@ -153,9 +153,11 @@ POST /orders/:id/cancel     → キャンセル
 ```
 app/api/[[...route]]/
   artists/
-    [accountId]/
-      get/index.ts                → GET  /artists/:accountId（公開詳細。境界外なので旧規約のまま）
-    [artistId]/                   ← 認証境界
+    public/                        ← 公開（認証なし・可変ハンドル accountId）
+      index.ts                     → マウントテーブル
+      listArtists/index.ts         → GET /artists
+      getArtist/index.ts           → GET /artists/:accountId
+    [artistId]/                   ← 認証境界（不変 ID artistId）
       index.ts                    → requireAuthMiddleware + マウントテーブル
       updateAccountId/index.ts    → POST /:artistId
       getProfile/index.ts         → GET  /:artistId/profile
@@ -204,7 +206,7 @@ export default app;
 
 **理由**: エンドポイント単位で責務・変更差分・レビュー範囲を閉じつつ（1 ユニット1エンドポイントを維持）、URL セグメントをすべてディレクトリに写すと階層が深くなりすぎる問題を避ける。マウントテーブルを境界の `index.ts` に集約することで、その境界配下に何が生えているかを1箇所で見渡せる。各ユニットにもテストを置く（`index.test.ts`）。
 
-> **既存の例外**: 規約制定以前のルート（`users/`, `link-types/`, `artists/me/`, `artists/get`, `artists/[accountId]/get` 等）には HTTP メソッド名ディレクトリが残っている。これらは新規実装・変更時にこの規約へ順次移行する。
+> **既存の例外**: 規約制定以前のルート（`users/`, `link-types/`, `artists/me/` 等）には HTTP メソッド名ディレクトリが残っている。これらは新規実装・変更時にこの規約へ順次移行する。
 
 ## 使用例
 

@@ -34,6 +34,7 @@ describe("/artists ルーターの合成", () => {
   it("配下のエンドポイントを実 URL として公開する", () => {
     expect(routeSurface()).toEqual([
       "GET /",
+      "GET /:accountId",
       "ALL /me/*",
       "POST /me",
       "GET /me/profile",
@@ -44,7 +45,6 @@ describe("/artists ルーターの合成", () => {
       "GET /:artistId/profile",
       "POST /:artistId/profile",
       "POST /:artistId/profile/publish",
-      "GET /:accountId",
     ]);
   });
 

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { reconstructArtistProfile } from "../../../../../../domain/artistProfiles/factories";
 import { handleAppError } from "../../../../../../errorMap";
-import getPublicProfile from "./index";
+import getArtistRoute from "./index";
 
 const mockArtistProfiles = {
   findByArtistId: vi.fn(),
@@ -19,7 +19,7 @@ vi.mock("../../../../../../infrastructure/capabilities", () => ({
 
 const createApp = () => {
   const app = new Hono();
-  app.route("/", getPublicProfile);
+  app.route("/:accountId", getArtistRoute);
   app.onError(handleAppError);
   return app;
 };

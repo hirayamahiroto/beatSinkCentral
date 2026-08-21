@@ -10,7 +10,7 @@ const paramSchema = z.object({
 });
 
 const app = new Hono().get(
-  "/:accountId",
+  "/",
   validateRequest("param", paramSchema),
   async (c) => {
     const { accountId } = c.req.valid("param");
