@@ -141,40 +141,70 @@ POST /users/:id/deactivate  → 無効化
 POST /orders/:id/cancel     → キャンセル
 ```
 
-## ファイル構成：1エンドポイント1ユニット（メソッド名ディレクトリ + index.ts）
+## ファイル構成：1エンドポイント1ユニット（意図名ディレクトリ + index.ts）
 
-ルート（`app/api/[[...route]]`）は **1 ユニット = 1 エンドポイント（1 HTTP メソッド + 1 パス）** で構成する。
+ルート（`app/api/[[...route]]`）は **1 ユニット = 1 エンドポイント（1 HTTP メソッド + 1 パス）** で構成する。ただし **ディレクトリを掘るのはリソースの境目とミドルウェアが変わる境目だけ**で、URL セグメントの数だけ階層を作らない。
 
-- **取得（GET）と保存（POST）は同じエンドポイント**。「使用例」の `GET /users/:id`（詳細取得）と `POST /users/:id`（更新）のように、**同じパスをメソッドで切り替えるだけ**。これを**別ユニットに分離**する。
-- プロジェクト共通の「ディレクトリ + `index.ts`」構成に揃える。**HTTP メソッドをディレクトリ名にし、その配下に `index.ts`**（`get/index.ts`・`post/index.ts`）。`get.ts` のような単一ファイル形や `save/` のような独自アクション名は使わない。
-- ディレクトリ階層は URL パスを写し、最末端のメソッドディレクトリ名が HTTP メソッド。`:param` 系は記述的なパスディレクトリ名（例 `detail/`）を使う。
-- アクションは「使用例」の `POST /users/:id/delete` と同じく **POST + パス接尾辞**で表し、`<接尾辞>/post/index.ts` に置く。
-- 各 `index.ts` は単一メソッドの Hono app を `default export` し、`route.ts` が import して該当パスにマウントする（同一パスに GET/POST がある場合は同じ base path に複数回 `.route()`）。
+- **取得（GET）と保存（POST）は別ユニット**。「使用例」の `GET /users/:id`（詳細取得）と `POST /users/:id`（更新）のように同じパスをメソッドで切り替える場合も、別ユニットに分離する。
+- ユニットは「ディレクトリ + `index.ts`」構成（+ 同階層 `index.test.ts`）。**ディレクトリ名はエンドポイントの意図を表す名前**にする（`updateAccountId/` `getProfile/` `saveProfile/` `publishProfile/` 等）。HTTP メソッド名のディレクトリ（`get/` `post/`）や method を埋め込んだファイル名（`profile.publish.post.ts`）は使わない。
+- ミドルウェアが変わる境界の `index.ts` が「path → ユニット」の対応表（マウントテーブル）を `.route()` で宣言する。ユニット自身は小さな Hono app として自分からの相対パス（`"/"` 等）と自分のバリデーション（`validateRequest`）だけを持ち、実際の絶対 URL は境界の `index.ts` だけが知っている。バリデーションは Hono の型推論の都合上、ユニットの Hono チェーン内で行う（境界側に持ち出さない）。
+- アクションは「使用例」の `POST /users/:id/delete` と同じ意図を、ディレクトリ名（`deleteUser/`）で表す。独自の method 接尾辞ファイル名は使わない。
 
 ```
 app/api/[[...route]]/
   artists/
     [accountId]/
-      get/index.ts             → GET  /artists/:accountId（公開詳細）
-    [artistId]/
-      profile/
-        get/index.ts           → GET  /artists/:artistId/profile
-        post/index.ts          → POST /artists/:artistId/profile
-        publish/
-          post/index.ts        → POST /artists/:artistId/profile/publish
+      get/index.ts                → GET  /artists/:accountId（公開詳細。境界外なので旧規約のまま）
+    [artistId]/                   ← 認証境界
+      index.ts                    → requireAuthMiddleware + マウントテーブル
+      updateAccountId/index.ts    → POST /:artistId
+      getProfile/index.ts         → GET  /:artistId/profile
+      saveProfile/index.ts        → POST /:artistId/profile
+      publishProfile/index.ts     → POST /:artistId/profile/publish
 ```
 
 ```typescript
-// route.ts（同一パスにメソッド別ユニットをそれぞれマウント）
-.route("/artists/:artistId/profile", getProfile) // get/index.ts  → GET /
-.route("/artists/:artistId/profile", saveProfile) // post/index.ts → POST /
-.route("/artists/:artistId/profile/publish", publishProfile) // publish/post/index.ts → POST /
-.route("/artists", getPublicProfile) // [accountId]/get/index.ts → GET /:accountId
+// artists/[artistId]/index.ts（境界のマウントテーブル）
+// 裸の "/" は公開ルート GET /:accountId と同形状で衝突するため、
+// .use("*", ...) ではなく衝突しないサブパス "/profile/*" だけに適用する。
+// 裸パスを使う updateAccountId は自分で requireAuthMiddleware を適用する（下記）。
+import { Hono } from "hono";
+import updateAccountId from "./updateAccountId";
+import getProfile from "./getProfile";
+import saveProfile from "./saveProfile";
+import publishProfile from "./publishProfile";
+import { requireAuthMiddleware } from "../../../../../middlewares/auth0";
+
+const app = new Hono()
+  .use("/profile/*", requireAuthMiddleware)
+  .route("/", updateAccountId)
+  .route("/profile", getProfile)
+  .route("/profile", saveProfile)
+  .route("/profile/publish", publishProfile);
+
+export default app;
 ```
 
-**理由**: エンドポイント単位で責務・変更差分・レビュー範囲が閉じる。1 ユニットに GET/POST/サブアクションが混在すると変更影響が追いにくくなる。各メソッドディレクトリにもテストを置く。
+```typescript
+// artists/[artistId]/updateAccountId/index.ts（裸パスのユニット。衝突するため自分で認証を適用する）
+const app = new Hono().post(
+  "/",
+  requireAuthMiddleware,
+  validateRequest("param", paramSchema),
+  validateRequest("json", updateAccountIdRequestSchema),
+  async (c) => {
+    /* ... */
+  },
+);
 
-> **既存の例外**: 規約制定以前のルート（`users/me` 等）には GET/POST 同居ファイルが残っている。これらは順次このルールへ移行する。
+export default app;
+```
+
+> **注意**: `.use("*", mw)` は同じ裸パスを共有する別リソースの公開ルート（今回は `GET /:accountId`）まで巻き込んで認証してしまう。境界の認証適用は「衝突しないサブパスだけ `.use()`、衝突する裸パスは個別ユニットで適用」を徹底する（詳細は [architecture.md](./architecture.md) の該当注意を参照）。
+
+**理由**: エンドポイント単位で責務・変更差分・レビュー範囲を閉じつつ（1 ユニット1エンドポイントを維持）、URL セグメントをすべてディレクトリに写すと階層が深くなりすぎる問題を避ける。マウントテーブルを境界の `index.ts` に集約することで、その境界配下に何が生えているかを1箇所で見渡せる。各ユニットにもテストを置く（`index.test.ts`）。
+
+> **既存の例外**: 規約制定以前のルート（`users/`, `link-types/`, `artists/me/`, `artists/get`, `artists/[accountId]/get` 等）には HTTP メソッド名ディレクトリが残っている。これらは新規実装・変更時にこの規約へ順次移行する。
 
 ## 使用例
 

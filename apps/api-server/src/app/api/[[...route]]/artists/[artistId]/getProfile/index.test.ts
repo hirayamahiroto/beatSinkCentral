@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import { reconstructUser } from "../../../../../../../domain/users/factories";
-import { reconstructArtist } from "../../../../../../../domain/artists/factories";
-import { reconstructArtistProfile } from "../../../../../../../domain/artistProfiles/factories";
-import { handleAppError } from "../../../../../../../errorMap";
+import { reconstructUser } from "../../../../../../domain/users/factories";
+import { reconstructArtist } from "../../../../../../domain/artists/factories";
+import { reconstructArtistProfile } from "../../../../../../domain/artistProfiles/factories";
+import { handleAppError } from "../../../../../../errorMap";
 import getProfileRoute from "./index";
 
 const actor = {
@@ -27,14 +27,7 @@ const mockArtistProfiles = {
 
 const mockResolveActorState = vi.fn();
 
-vi.mock("../../../../../../../middlewares/auth0", () => ({
-  requireAuthMiddleware: async (
-    _c: unknown,
-    next: () => Promise<void>,
-  ): Promise<void> => next(),
-}));
-
-vi.mock("../../../../../../../infrastructure/capabilities", () => ({
+vi.mock("../../../../../../infrastructure/capabilities", () => ({
   getCapabilityDeps: () => ({
     resolveActorState: (subId: string) => mockResolveActorState(subId),
     buildArtistReadCapabilities: (a: unknown) => ({
@@ -50,7 +43,7 @@ const createApp = (sub: string) => {
     c.set("auth0User", { sub });
     await next();
   });
-  app.route("/", getProfileRoute);
+  app.route("/:artistId/profile", getProfileRoute);
   app.onError(handleAppError);
   return app;
 };

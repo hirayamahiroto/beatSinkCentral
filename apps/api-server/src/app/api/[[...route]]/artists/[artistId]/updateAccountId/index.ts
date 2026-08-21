@@ -28,7 +28,7 @@ const updateAccountIdResponseSchema = z.object({
 });
 
 const app = new Hono().post(
-  "/:artistId",
+  "/",
   requireAuthMiddleware,
   validateRequest("param", paramSchema),
   validateRequest("json", updateAccountIdRequestSchema),

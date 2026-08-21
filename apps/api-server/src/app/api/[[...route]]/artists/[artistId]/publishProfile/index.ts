@@ -1,12 +1,11 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { getCapabilityDeps } from "../../../../../../../../infrastructure/capabilities";
-import { withArtistWriteCapabilitiesById } from "../../../../../../../../usecases/authorization/artistWrite";
-import { publishMyProfile } from "../../../../../../../../usecases/artistProfiles/publishMyProfile";
-import { validateRequest } from "../../../../../validators/validateRequest";
-import { handleAppError } from "../../../../../../../../errorMap";
-import { createResponseContractViolationError } from "../../../../../errors/responseContractViolation";
-import { requireAuthMiddleware } from "../../../../../../../../middlewares/auth0";
+import { getCapabilityDeps } from "../../../../../../infrastructure/capabilities";
+import { withArtistWriteCapabilitiesById } from "../../../../../../usecases/authorization/artistWrite";
+import { publishMyProfile } from "../../../../../../usecases/artistProfiles/publishMyProfile";
+import { validateRequest } from "../../../validators/validateRequest";
+import { handleAppError } from "../../../../../../errorMap";
+import { createResponseContractViolationError } from "../../../errors/responseContractViolation";
 
 const paramSchema = z.object({
   artistId: z.string().min(1).max(255),
@@ -25,8 +24,7 @@ const publishProfileResponseSchema = z.object({
 });
 
 const app = new Hono().post(
-  "/:artistId/profile/publish",
-  requireAuthMiddleware,
+  "/",
   validateRequest("param", paramSchema),
   validateRequest("json", publishProfileRequestSchema),
   async (c) => {

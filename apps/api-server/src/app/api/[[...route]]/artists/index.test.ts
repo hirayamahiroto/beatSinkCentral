@@ -39,6 +39,7 @@ describe("/artists ルーターの合成", () => {
       "GET /me/profile",
       "POST /me/profile",
       "POST /me/profile/publish",
+      "ALL /:artistId/profile/*",
       "POST /:artistId",
       "GET /:artistId/profile",
       "POST /:artistId/profile",

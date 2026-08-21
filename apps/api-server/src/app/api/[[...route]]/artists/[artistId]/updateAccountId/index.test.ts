@@ -50,7 +50,7 @@ const createApp = () => {
     c.set("auth0User", { sub: "auth0|123" });
     await next();
   });
-  app.route("/", updateAccountIdRoute);
+  app.route("/:artistId", updateAccountIdRoute);
   app.onError(handleAppError);
   return app;
 };
