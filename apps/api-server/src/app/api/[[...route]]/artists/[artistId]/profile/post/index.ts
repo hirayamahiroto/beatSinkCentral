@@ -5,6 +5,7 @@ import { withArtistWriteCapabilitiesById } from "../../../../../../../usecases/a
 import { saveMyProfile } from "../../../../../../../usecases/artistProfiles/saveMyProfile";
 import { validateRequest } from "../../../../validators/validateRequest";
 import { handleAppError } from "../../../../../../../errorMap";
+import { createResponseContractViolationError } from "../../../../errors/responseContractViolation";
 import { requireAuthMiddleware } from "../../../../../../../middlewares/auth0";
 
 const MAX_GENRES = 20;
@@ -35,6 +36,26 @@ export const saveProfileRequestSchema = z.object({
 
 export type SaveProfileRequestBody = z.infer<typeof saveProfileRequestSchema>;
 
+const saveProfileResponseSchema = z.object({
+  accountId: z.string(),
+  profile: z.object({
+    name: z.string().nullable(),
+    tagline: z.string().nullable(),
+    imageUrl: z.string().nullable(),
+    story: z.string().nullable(),
+    activityInfo: z.string().nullable(),
+    genres: z.array(z.string()),
+    links: z.array(
+      z.object({
+        type: z.string(),
+        url: z.string(),
+        label: z.string().nullable(),
+      }),
+    ),
+    published: z.boolean(),
+  }),
+});
+
 const app = new Hono().post(
   "/:artistId/profile",
   requireAuthMiddleware,
@@ -56,7 +77,15 @@ const app = new Hono().post(
       return handleAppError(result.error, c);
     }
 
-    return c.json(result.value);
+    const response = saveProfileResponseSchema.safeParse(result.value);
+    if (!response.success) {
+      return handleAppError(
+        createResponseContractViolationError(response.error.issues),
+        c,
+      );
+    }
+
+    return c.json(response.data);
   },
 );
 

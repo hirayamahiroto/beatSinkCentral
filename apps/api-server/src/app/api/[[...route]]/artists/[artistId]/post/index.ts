@@ -5,6 +5,7 @@ import { withArtistWriteCapabilitiesById } from "../../../../../../usecases/auth
 import { updateMyAccountId } from "../../../../../../usecases/users/updateMyAccountId";
 import { validateRequest } from "../../../validators/validateRequest";
 import { handleAppError } from "../../../../../../errorMap";
+import { createResponseContractViolationError } from "../../../errors/responseContractViolation";
 import { requireAuthMiddleware } from "../../../../../../middlewares/auth0";
 
 const paramSchema = z.object({
@@ -20,6 +21,11 @@ export const updateAccountIdRequestSchema = z.object({
 export type UpdateAccountIdRequestBody = z.infer<
   typeof updateAccountIdRequestSchema
 >;
+
+const updateAccountIdResponseSchema = z.object({
+  artistId: z.string(),
+  accountId: z.string(),
+});
 
 const app = new Hono().post(
   "/:artistId",
@@ -42,7 +48,15 @@ const app = new Hono().post(
       return handleAppError(result.error, c);
     }
 
-    return c.json(result.value);
+    const response = updateAccountIdResponseSchema.safeParse(result.value);
+    if (!response.success) {
+      return handleAppError(
+        createResponseContractViolationError(response.error.issues),
+        c,
+      );
+    }
+
+    return c.json(response.data);
   },
 );
 

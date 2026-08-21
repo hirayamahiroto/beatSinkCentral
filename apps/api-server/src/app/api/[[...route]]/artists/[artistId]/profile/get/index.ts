@@ -5,10 +5,33 @@ import { withArtistReadCapabilitiesById } from "../../../../../../../usecases/au
 import { getMyProfile } from "../../../../../../../usecases/artistProfiles/getMyProfile";
 import { validateRequest } from "../../../../validators/validateRequest";
 import { handleAppError } from "../../../../../../../errorMap";
+import { createResponseContractViolationError } from "../../../../errors/responseContractViolation";
 import { requireAuthMiddleware } from "../../../../../../../middlewares/auth0";
 
 const paramSchema = z.object({
   artistId: z.string().min(1).max(255),
+});
+
+const profileLinkSchema = z.object({
+  type: z.string(),
+  url: z.string(),
+  label: z.string().nullable(),
+});
+
+const artistProfileViewSchema = z.object({
+  name: z.string().nullable(),
+  tagline: z.string().nullable(),
+  imageUrl: z.string().nullable(),
+  story: z.string().nullable(),
+  activityInfo: z.string().nullable(),
+  genres: z.array(z.string()),
+  links: z.array(profileLinkSchema),
+  published: z.boolean(),
+});
+
+const getProfileResponseSchema = z.object({
+  accountId: z.string(),
+  profile: artistProfileViewSchema.nullable(),
 });
 
 const app = new Hono().get(
@@ -30,7 +53,15 @@ const app = new Hono().get(
       return handleAppError(result.error, c);
     }
 
-    return c.json(result.value);
+    const response = getProfileResponseSchema.safeParse(result.value);
+    if (!response.success) {
+      return handleAppError(
+        createResponseContractViolationError(response.error.issues),
+        c,
+      );
+    }
+
+    return c.json(response.data);
   },
 );
 

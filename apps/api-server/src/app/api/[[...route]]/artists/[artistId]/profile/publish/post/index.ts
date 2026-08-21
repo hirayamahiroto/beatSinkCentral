@@ -5,6 +5,7 @@ import { withArtistWriteCapabilitiesById } from "../../../../../../../../usecase
 import { publishMyProfile } from "../../../../../../../../usecases/artistProfiles/publishMyProfile";
 import { validateRequest } from "../../../../../validators/validateRequest";
 import { handleAppError } from "../../../../../../../../errorMap";
+import { createResponseContractViolationError } from "../../../../../errors/responseContractViolation";
 import { requireAuthMiddleware } from "../../../../../../../../middlewares/auth0";
 
 const paramSchema = z.object({
@@ -18,6 +19,10 @@ export const publishProfileRequestSchema = z.object({
 export type PublishProfileRequestBody = z.infer<
   typeof publishProfileRequestSchema
 >;
+
+const publishProfileResponseSchema = z.object({
+  published: z.boolean(),
+});
 
 const app = new Hono().post(
   "/:artistId/profile/publish",
@@ -40,7 +45,15 @@ const app = new Hono().post(
       return handleAppError(result.error, c);
     }
 
-    return c.json(result.value);
+    const response = publishProfileResponseSchema.safeParse(result.value);
+    if (!response.success) {
+      return handleAppError(
+        createResponseContractViolationError(response.error.issues),
+        c,
+      );
+    }
+
+    return c.json(response.data);
   },
 );
 
