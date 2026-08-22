@@ -94,20 +94,20 @@ read も write も **BFF route（`/api/*`）を経由する**。経路は対称�
 
 ```
 取得（read）─ SSR
-  page.tsx ──HTTP──▶ /api/*（BFF read ルート）──▶ api-server
-                       requestContext で cookie 付き apiClient
-                       呼び出し + 整形（集約・整形・そぎ落とし）
-                                              │
-                        整形済みデータ ◀───────┘
+  page.tsx ──▶ fetchers ──HTTP──▶ /api/*（BFF read ルート）──▶ api-server
+                                    requestContext で cookie 付き apiClient
+                                    呼び出し + 整形（集約・整形・そぎ落とし）
+                                                           │
+                        Result 化した整形済みデータ ◀───────┘
   page.tsx は整形済みデータで業務判断（redirect）し、初期レンダリング
   （編集可能な部分だけ colocated な ClientAdapter に必要な値を渡す）
 
 更新/削除（write）─ CSR
-  ClientAdapter ──▶ hook（useXxx）──▶ createBeatfolioBffClient ──▶ /api/*（BFF write ルート）
-                                                                        │
-                                                       zValidator で検証 │
-                                                                        ▼
-                                                  c.get("apiClient") ──▶ api-server へ送信
+  ClientAdapter ──▶ hook（useXxx）──▶ fetchers ──▶ /api/*（BFF write ルート）
+                                                        │
+                                       zValidator で検証 │
+                                                        ▼
+                                  c.get("apiClient") ──▶ api-server へ送信
 ```
 
 ### read の実装: BFF read ルート（`/api/*`）＋ `page.tsx` から呼ぶ
@@ -145,17 +145,17 @@ export default app;
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth0 } from "../../libs/auth0";
-import { createBeatfolioBffClient } from "../../utils/client";
+import { getDashboard } from "../../fetchers/dashboard/getDashboard";
 
 export default async function DashboardPage() {
   const session = await auth0.getSession();
   if (!session) redirect("/auth/login");
 
-  // SSR から自分の BFF read ルートを呼ぶ（cookie を転送する自己 HTTP hop）
+  // SSR から fetcher 経由で自分の BFF read ルートを呼ぶ（cookie を転送する自己 HTTP hop）
   const cookie = (await headers()).get("cookie") ?? undefined;
-  const res = await createBeatfolioBffClient({ cookie }).api.dashboard.$get();
-  if (!res.ok) throw new Error("Failed to fetch dashboard");
-  const dashboard = await res.json();
+  const result = await getDashboard({ cookie });
+  if (!result.ok) throw new Error(result.error.message);
+  const dashboard = result.value;
 
   if (!dashboard.registered) redirect("/onboarding");
 
@@ -228,9 +228,9 @@ const app = new Hono<RequestContextEnv>().post(
 
 ```tsx
 // src/app/dashboard/AccountIdEditorClientAdapter/hooks/useUpdateMyAccountId/index.ts
-// CSR: hook → createBeatfolioBffClient → /api/artists/me（write ルート）
-const client = createBeatfolioBffClient();
-const res = await client.api.artists.me.$post({ json: { accountId } });
+// CSR: hook → fetchers/artists/updateMyAccountId → /api/artists/me（write ルート）
+const result = await updateMyAccountId({ accountId });
+if (result.ok) router.refresh();
 ```
 
 ### 呼び出し面の集約: fetchers 層（`src/fetchers/`）
@@ -258,9 +258,7 @@ write: hook     ──▶ fetchers（CSR クライアント生成 + Result 正�
 
 > **命名の注意**: `createBffServerClient` は名前に反して **api-server を直接叩くクライアント**である（`hc<AppType>`、`AppType` は api-server のもの）。BFF `/api/*` を叩くのは `createBeatfolioBffClient` の方。混同しないこと（将来 `createApiServerClient` 等へリネームを検討）。
 
-> **read の経路**: `page.tsx` は api-server を直接叩かず、**自分の BFF read ルート（`/api/*`）を HTTP で呼ぶ**。整形責務を route に集約し read/write の経路を対称に保つための設計で、自己 HTTP hop はその対価として受け入れる。
->
-> **コード差分の注意**: `createBeatfolioBffClient` は現状 `hc("/")`（相対 URL・ブラウザ専用）。SSR の `page.tsx` から呼ぶには **絶対 URL ＋ cookie 転送**に対応させる必要がある（引数で cookie を受け取る形）。現コードは read を `page.tsx` 直呼び（`createBffServerClient`）で実装しており、本ドキュメントの規範からズレている。移行が必要。
+> **read の経路**: `page.tsx` は api-server を直接叩かず、**自分の BFF read ルート（`/api/*`）を HTTP で呼ぶ**。整形責務を route に集約し read/write の経路を対称に保つための設計で、自己 HTTP hop はその対価として受け入れる。SSR からの呼び出しは `createBeatfolioBffServerClient`（絶対 URL + cookie 転送）を使い、その生成は read fetcher（`src/fetchers/`）に閉じる。read / write とも全 BFF 呼び出しは fetchers 層経由に移行済み。
 
 ### バリデーションの役割分担
 
