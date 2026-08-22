@@ -16,13 +16,18 @@ const routeSurface = () => [
 
 describe("/users ルーターの合成", () => {
   it("配下のエンドポイントを実 URL として公開する", () => {
-    expect(routeSurface()).toEqual(["ALL /*", "POST /", "GET /me", "POST /me"]);
+    expect(routeSurface()).toEqual([
+      "ALL /*",
+      "POST /",
+      "GET /me",
+      "POST /:userId",
+    ]);
   });
 
   it.each([
     ["POST", "/users"],
     ["GET", "/users/me"],
-    ["POST", "/users/me"],
+    ["POST", "/users/user-1"],
   ])("%s %s は認証を要求する", async (method, path) => {
     const res = await createApp().request(path, {
       method,

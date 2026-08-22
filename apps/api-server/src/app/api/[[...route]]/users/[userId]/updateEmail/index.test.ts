@@ -4,7 +4,7 @@ import { reconstructUser } from "../../../../../../domain/users/factories";
 import { reconstructArtist } from "../../../../../../domain/artists/factories";
 import { createEmailAlreadyTakenError } from "../../../../../../domain/users/errors/emailAlreadyTaken";
 import { handleAppError } from "../../../../../../errorMap";
-import updateMyEmailRoute from "./index";
+import updateEmailRoute from "./index";
 
 const mockUsers = {
   findBySub: vi.fn(),
@@ -43,19 +43,19 @@ const createApp = () => {
     c.set("auth0User", { sub: "auth0|123" });
     await next();
   });
-  app.route("/", updateMyEmailRoute);
+  app.route("/:userId", updateEmailRoute);
   app.onError(handleAppError);
   return app;
 };
 
-const postEmail = (email: string) =>
-  createApp().request("/", {
+const postEmail = (userId: string, email: string) =>
+  createApp().request(`/${userId}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ email }),
   });
 
-describe("POST /users/me", () => {
+describe("POST /users/:userId", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockResolveActorState.mockResolvedValue({
@@ -64,7 +64,7 @@ describe("POST /users/me", () => {
     });
   });
 
-  it("emailを更新して200と更新後の値を返す", async () => {
+  it("本人と一致する userId ならemailを更新して200と更新後の値を返す", async () => {
     mockUsers.updateEmail.mockResolvedValue(
       reconstructUser({
         id: "user-1",
@@ -73,7 +73,7 @@ describe("POST /users/me", () => {
       }),
     );
 
-    const res = await postEmail("new@example.com");
+    const res = await postEmail("user-1", "new@example.com");
 
     expect(res.status).toBe(200);
     expect(await res.json()).toStrictEqual({
@@ -92,7 +92,7 @@ describe("POST /users/me", () => {
       }),
     );
 
-    const res = await postEmail("new@example.com");
+    const res = await postEmail("user-1", "new@example.com");
 
     expect(res.status).toBe(200);
     expect(await res.json()).toStrictEqual({
@@ -101,10 +101,18 @@ describe("POST /users/me", () => {
     });
   });
 
+  it("本人と一致しない userId は404を返し、更新しない（存在を秘匿）", async () => {
+    const res = await postEmail("other-user", "new@example.com");
+
+    expect(res.status).toBe(404);
+    expect(await res.json()).toStrictEqual({ error: "User not found" });
+    expect(mockUsers.updateEmail).not.toHaveBeenCalled();
+  });
+
   it("ユーザーが未登録なら404を返す", async () => {
     mockResolveActorState.mockResolvedValue({ status: "unregistered" });
 
-    const res = await postEmail("new@example.com");
+    const res = await postEmail("user-1", "new@example.com");
 
     expect(res.status).toBe(404);
     expect(await res.json()).toStrictEqual({ error: "User not found" });
@@ -114,14 +122,14 @@ describe("POST /users/me", () => {
   it("emailが他ユーザーに使われていたら409を返し、emailを露出しない", async () => {
     mockUsers.updateEmail.mockRejectedValue(createEmailAlreadyTakenError());
 
-    const res = await postEmail("taken@example.com");
+    const res = await postEmail("user-1", "taken@example.com");
 
     expect(res.status).toBe(409);
     expect(await res.json()).toStrictEqual({ error: "Email already taken" });
   });
 
   it("emailの形式が不正なら422を返し、更新しない", async () => {
-    const res = await postEmail("invalid");
+    const res = await postEmail("user-1", "invalid");
 
     expect(res.status).toBe(422);
     expect(await res.json()).toStrictEqual({ error: "Invalid email format" });
@@ -129,7 +137,7 @@ describe("POST /users/me", () => {
   });
 
   it("emailが空文字列なら400を返す", async () => {
-    const res = await postEmail("");
+    const res = await postEmail("user-1", "");
 
     expect(res.status).toBe(400);
     expect(mockUsers.updateEmail).not.toHaveBeenCalled();

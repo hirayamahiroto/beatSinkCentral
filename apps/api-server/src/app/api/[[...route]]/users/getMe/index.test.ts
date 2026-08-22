@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import { reconstructUser } from "../../../../../../domain/users/factories";
-import { reconstructArtist } from "../../../../../../domain/artists/factories";
-import type { AuthenticatedUser } from "../../../../../../middlewares/auth0";
+import { reconstructUser } from "../../../../../domain/users/factories";
+import { reconstructArtist } from "../../../../../domain/artists/factories";
+import type { AuthenticatedUser } from "../../../../../middlewares/auth0";
 import getMeRoute from "./index";
 
 const mockResolveActorState = vi.fn();
 
-vi.mock("../../../../../../infrastructure/capabilities", () => ({
+vi.mock("../../../../../infrastructure/capabilities", () => ({
   getCapabilityDeps: () => ({
     resolveActorState: (subId: string) => mockResolveActorState(subId),
   }),
