@@ -113,7 +113,7 @@ POST /users/:id/delete
 | 不一致は 404         | パスのリソースに主体がアクセスできない場合は 404 を返す（リソースの存在を秘匿する）                                                                                                                                                    |
 
 - クライアントは自分の `artistId` を `GET /users/me` から取得する。
-- **既存の `me` 系ルート（`/artists/me/*`）は廃止予定**。expand（`/:artistId` 系を追加）→ migrate（クライアント切り替え）→ contract（`me` 削除）の順で移行中であり、新規エンドポイントを `me` 配下に足さない。
+- **旧 `me` 系ルート（`/artists/me/*`）は廃止済み**。expand（`/:artistId` 系を追加）→ migrate（クライアント切り替え）→ contract（`me` 削除）の移行は完了しており、エンドポイントを `me` 配下に新設しない。
 
 ## リソース命名規則
 

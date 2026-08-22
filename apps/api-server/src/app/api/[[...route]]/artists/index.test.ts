@@ -35,12 +35,7 @@ describe("/artists ルーターの合成", () => {
     expect(routeSurface()).toEqual([
       "GET /",
       "GET /:accountId",
-      "ALL /me/*",
-      "POST /me",
-      "GET /me/profile",
-      "POST /me/profile",
-      "POST /me/profile/publish",
-      "ALL /:artistId/profile/*",
+      "ALL /:artistId/*",
       "POST /:artistId",
       "GET /:artistId/profile",
       "POST /:artistId/profile",
@@ -65,10 +60,6 @@ describe("/artists ルーターの合成", () => {
   });
 
   it.each([
-    ["POST", "/artists/me"],
-    ["GET", "/artists/me/profile"],
-    ["POST", "/artists/me/profile"],
-    ["POST", "/artists/me/profile/publish"],
     ["POST", "/artists/artist-1"],
     ["GET", "/artists/artist-1/profile"],
     ["POST", "/artists/artist-1/profile"],

@@ -6,7 +6,6 @@ import { updateMyAccountId } from "../../../../../../usecases/users/updateMyAcco
 import { validateRequest } from "../../../validators/validateRequest";
 import { handleAppError } from "../../../../../../errorMap";
 import { createResponseContractViolationError } from "../../../errors/responseContractViolation";
-import { requireAuthMiddleware } from "../../../../../../middlewares/auth0";
 
 const paramSchema = z.object({
   artistId: z.string().min(1).max(255),
@@ -29,7 +28,6 @@ const updateAccountIdResponseSchema = z.object({
 
 const app = new Hono().post(
   "/",
-  requireAuthMiddleware,
   validateRequest("param", paramSchema),
   validateRequest("json", updateAccountIdRequestSchema),
   async (c) => {

@@ -544,7 +544,7 @@ const emit = (
   "requestId": "iad1::abc-123",
   "traceId": "4bf92f3577b34da6a3ce929d0e0e4736",
   "method": "POST",
-  "route": "/api/artists/me/profile",
+  "route": "/api/artists/:artistId/profile",
   "errorType": "ProfileNotPublishableError",
   "status": 422,
   "context": { "missingFields": ["story"] }

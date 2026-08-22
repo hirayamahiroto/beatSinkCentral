@@ -730,13 +730,15 @@ app/api/[[...route]]/
 
 **認証はミドルウェアが変わる境界の `index.ts` で適用する。** トップでパス文字列を列挙しない。境界側で `.use("*", requireAuthMiddleware)` を一度書けば配下は構造的に保護されるため、リソース追加時の付け忘れが起きにくい（デフォルトが deny 側に倒れる）。境界はリソースの先頭に限らない。`artists/` は公開/認証が混在するため無防備なままで、認証境界は1階層下の `[artistId]/` にある。
 
-> **注意（`.use("*")` と同形の公開ルートが衝突する場合）**: `.use("*", mw)` は「ALL メソッド」に一致するため、境界の**裸のパス**（サブパスなしの `/`）で別リソースの公開ルートと**パス形状が重なる**場合、意図せずその公開ルートまで認証で弾いてしまう。例: `/artists/:artistId`（裸・POST・認証必須）と `/artists/:accountId`（裸・GET・公開）は同じ「1セグメントの動的パス」を共有するため、`[artistId]/index.ts` で `.use("*", requireAuthMiddleware)` にすると `GET /artists/:accountId` まで 401 になる。この場合は `.use("/profile/*", requireAuthMiddleware)` のように**衝突しないサブパスだけ**に絞り、裸パスを使うユニット（`updateAccountId`）は自分の `.post("/", requireAuthMiddleware, ...)` で個別に適用する。
+> **注意（`.use("*")` と同形の公開ルートが重なる場合はマウント順で解決する）**: `.use("*", mw)` は「ALL メソッド」に一致するため、境界の**裸のパス**（例: `/artists/:artistId`・POST・認証必須）と別リソースの公開ルート（例: `/artists/:accountId`・GET・公開）が同じ「1セグメントの動的パス」形状を共有しうる。ただし Hono はマッチした handler / middleware を**登録順に合成し、先に応答したハンドラで打ち切る**ため、親ルーターで**公開ルートを境界より先にマウントしていれば**、公開 GET は先に登録された公開ハンドラが応答し、境界の `use("*")` には到達しない。公開側に存在しないメソッド（POST 等）だけが境界に流れて認証される。したがって境界は素直に `.use("*", requireAuthMiddleware)` で全面適用してよい。
 >
-> **既知の制約（Hono ルーターのフォールバック）**: 同じ親パス配下に「リテラル segment + ワイルドカード」（例: `/artists/me/*`）と「動的パラメータ」（例: `/artists/:accountId`）が共存すると、Hono の `RegExpRouter` が `UnsupportedPathError` を投げ、`SmartRouter` が警告なしに `TrieRouter`（低速だが動作は正しい）へフォールバックする。`.route()` は子ルートを親の router へ完全にマージするため、この事象はアプリ全体の router に影響する。本プロジェクトでは `me/*` と `:accountId` の組み合わせで既に発生しており（本規約制定前から存在）、動作の正しさはテストで担保されている。パフォーマンス上の懸念があれば認識しておくこと。
+> 成立条件は「公開ルートを先にマウントする」の1点のみ（`artists/index.ts` の順序制約コメント参照）。逆順にすると TrieRouter フォールバック時に公開 GET が 401 になる（RegExpRouter は逆順でも公開側を優先するが、順序に依存しないことを保証する仕様ではない）。この順序は合成テストの「公開ルートは認証を要求しない」アサーションで担保する。
+>
+> **既知の制約（Hono ルーターのフォールバック）**: 同じ親パス配下に「リテラル segment + ワイルドカード」（例: `/artists/me/*`）と「動的パラメータ」（例: `/artists/:accountId`）が共存すると、Hono の `RegExpRouter` が `UnsupportedPathError` を投げ、`SmartRouter` が警告なしに `TrieRouter`（低速だが動作は正しい）へフォールバックする。`.route()` は子ルートを親の router へ完全にマージするため、この事象はアプリ全体の router に影響する。本プロジェクトではかつて `artists/me/*` と `:accountId` の組み合わせで発生していたが、`me` 系ルートの削除（contract 完了）により解消し、現在は `RegExpRouter` で動作している。リテラル segment + ワイルドカードを動的パラメータと同じ親配下に足すと再発するため、追加時は認識しておくこと。
 
 `AppType`（Hono RPC）の型推論を保つため、各 `index.ts` は `.route()` または `.get()`/`.post()` のメソッドチェーンを維持する。
 
-> **既存の例外**: `users/`, `link-types/`, `artists/me/` は旧規約（HTTP メソッド名ディレクトリ）のまま。新規実装・変更時にこの規約へ順次移行する。
+> **既存の例外**: `users/`, `link-types/` は旧規約（HTTP メソッド名ディレクトリ）のまま。新規実装・変更時にこの規約へ順次移行する。
 
 ### ミドルウェア層 (`middlewares/`)
 
@@ -1176,4 +1178,4 @@ describe("reconstructUser", () => {
 | POST     | `/api/artists/:artistId/profile/publish` | 公開/非公開の切り替え          | 要   |
 | GET      | `/api/link-types`                        | リンク種別マスタ一覧           | 不要 |
 
-> 旧 `me` 系（`POST /api/artists/me`・`GET|POST /api/artists/me/profile`・`POST /api/artists/me/profile/publish`）はクライアント移行が完了するまで併存させ、その後削除する（[api-design-guidelines.md](./api-design-guidelines.md) のリソースアドレッシング参照）。
+> 旧 `me` 系（`POST /api/artists/me`・`GET|POST /api/artists/me/profile`・`POST /api/artists/me/profile/publish`）はクライアント移行の完了に伴い削除済み（[api-design-guidelines.md](./api-design-guidelines.md) のリソースアドレッシング参照）。
