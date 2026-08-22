@@ -5,7 +5,7 @@ const meGet = vi.fn();
 
 const apiClient = {
   api: { users: { me: { $get: meGet } } },
-} as never;
+};
 
 const jsonResponse = (
   body: unknown,

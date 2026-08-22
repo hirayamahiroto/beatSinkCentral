@@ -1,24 +1,28 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import type { RequestContextEnv } from "../../../../../../../middlewares/requestContext";
+import {
+  requestContextMiddleware,
+  type RequestContextEnv,
+} from "../../../../../../../middlewares/requestContext";
 import saveMyProfile from "./index";
 
-const meGet = vi.fn();
-const profilePost = vi.fn();
+const { meGet, profilePost } = vi.hoisted(() => ({
+  meGet: vi.fn(),
+  profilePost: vi.fn(),
+}));
 
-const apiClient = {
-  api: {
-    users: { me: { $get: meGet } },
-    artists: { ":artistId": { profile: { $post: profilePost } } },
-  },
-};
+vi.mock("../../../../../../../utils/client", () => ({
+  createApiServerClient: () => ({
+    api: {
+      users: { me: { $get: meGet } },
+      artists: { ":artistId": { profile: { $post: profilePost } } },
+    },
+  }),
+}));
 
 const createApp = () => {
   const app = new Hono<RequestContextEnv>();
-  app.use("*", async (c, next) => {
-    c.set("apiClient", apiClient as never);
-    await next();
-  });
+  app.use("*", requestContextMiddleware);
   app.route("/", saveMyProfile);
   return app;
 };
