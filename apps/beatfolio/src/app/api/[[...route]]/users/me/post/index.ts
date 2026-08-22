@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import type { RequestContextEnv } from "../../../../../../middlewares/requestContext";
+import { resolveMyUserId } from "../../../shared/resolveMyUserId";
 
 const updateEmailRequestSchema = z.object({
   email: z.string().nonempty(),
@@ -21,7 +22,13 @@ const app = new Hono<RequestContextEnv>().post(
     const apiClient = c.get("apiClient");
     const body = c.req.valid("json");
 
-    const res = await apiClient.api.users.me.$post({
+    const resolved = await resolveMyUserId(apiClient);
+    if (!resolved.ok) {
+      return c.json(resolved.body, resolved.status);
+    }
+
+    const res = await apiClient.api.users[":userId"].$post({
+      param: { userId: resolved.userId },
       json: { email: body.email },
     });
 

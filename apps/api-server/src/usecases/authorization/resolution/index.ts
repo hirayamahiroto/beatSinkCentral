@@ -46,3 +46,15 @@ export const toUser = (
       return ok(resolution.actor.user);
   }
 };
+
+export const toAddressedUser = (
+  resolution: ActorResolution,
+  userId: string,
+): Result<User, ResolveUserError> => {
+  const user = toUser(resolution);
+  if (!user.ok) return user;
+  if (user.value.getId() !== userId) {
+    return err(createUserNotFoundError());
+  }
+  return user;
+};

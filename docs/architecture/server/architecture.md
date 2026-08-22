@@ -71,9 +71,9 @@ apps/api-server/src/
 │   │   ├── resolution/       # toActor / toUser（畳み込み）
 │   │   ├── conflict/         # 一意制約違反を err に戻す
 │   │   ├── identity/         # withIdentityCapabilities
-│   │   ├── artistRead/       # withArtistReadCapabilities
-│   │   ├── userWrite/        # withUserWriteCapabilities
-│   │   ├── artistWrite/      # withArtistWriteCapabilities
+│   │   ├── artistRead/       # withArtistReadCapabilitiesById
+│   │   ├── userWrite/        # withUserWriteCapabilitiesById
+│   │   ├── artistWrite/      # withArtistWriteCapabilitiesById
 │   │   └── registration/     # withRegistrationCapabilities
 │   ├── users/                # createUser / getMe / updateMyEmail ...
 │   ├── artistProfiles/       # プロフィールの取得・保存・公開
@@ -933,8 +933,8 @@ export type ActorResolution =
   | { status: "complete"; actor: Actor };
 ```
 
-- Artist を伴う経路（`withArtistReadCapabilities` / `withArtistWriteCapabilities`）は `toActor` で `Result<Actor, ResolveActorError>` に畳み、`unregistered` を `UserNotFoundError`、`userOnly` を `ArtistNotFoundError` として 404 にする
-- User スコープで完結する経路（`withUserWriteCapabilities`）は `toUser` で `Result<User, ResolveUserError>` に畳み、`unregistered` だけを 404 にする。`userOnly` / `complete` はどちらも `User` として通す
+- Artist を伴う経路（`withArtistReadCapabilitiesById` / `withArtistWriteCapabilitiesById`）は `toAddressedActor` で `Result<Actor, ResolveActorError>` に畳み、`unregistered` を `UserNotFoundError`、`userOnly` を `ArtistNotFoundError`、パスの `artistId` と本人の不一致を `ArtistNotFoundError` として 404 にする
+- User スコープで完結する経路（`withUserWriteCapabilitiesById`）は `toAddressedUser` で `Result<User, ResolveUserError>` に畳み、`unregistered` とパスの `userId` の不一致を 404 にする。`userOnly` / `complete` はどちらも `User` として通す
 - `GET /users/me` は**未登録が正常系**（オンボーディング動線）。`withIdentityCapabilities` で解決状態をそのまま受け取り、`registered: false` を 200 で返す
 
 「どの状態を失敗に畳むか」は用途ごとの判断であり、解決処理自体には持たせない。畳み込み（`toActor` / `toUser`）は純粋関数として `usecases/authorization/resolution` に置く。
@@ -943,20 +943,20 @@ export type ActorResolution =
 
 エントリポイントは権能を自分で組み立てず、`usecases/authorization` の**経路モジュール**を直接 import して通す。import パスにその route が乗る経路が現れる。
 
-| 経路モジュール                           | 入り口                                              | 主体     |
-| ---------------------------------------- | --------------------------------------------------- | -------- |
-| （`infrastructure/capabilities` を直接） | `getCapabilityDeps().buildPublicReadCapabilities()` | 不要     |
-| `usecases/authorization/identity`        | `withIdentityCapabilities(deps, subId, work)`       | 解決結果 |
-| `usecases/authorization/artistRead`      | `withArtistReadCapabilities(deps, subId, work)`     | Actor    |
-| `usecases/authorization/userWrite`       | `withUserWriteCapabilities(deps, subId, work)`      | User     |
-| `usecases/authorization/artistWrite`     | `withArtistWriteCapabilities(deps, subId, work)`    | Actor    |
-| `usecases/authorization/registration`    | `withRegistrationCapabilities(deps, work)`          | 不在     |
+| 経路モジュール                           | 入り口                                                         | 主体     |
+| ---------------------------------------- | -------------------------------------------------------------- | -------- |
+| （`infrastructure/capabilities` を直接） | `getCapabilityDeps().buildPublicReadCapabilities()`            | 不要     |
+| `usecases/authorization/identity`        | `withIdentityCapabilities(deps, subId, work)`                  | 解決結果 |
+| `usecases/authorization/artistRead`      | `withArtistReadCapabilitiesById(deps, subId, artistId, work)`  | Actor    |
+| `usecases/authorization/userWrite`       | `withUserWriteCapabilitiesById(deps, subId, userId, work)`     | User     |
+| `usecases/authorization/artistWrite`     | `withArtistWriteCapabilitiesById(deps, subId, artistId, work)` | Actor    |
+| `usecases/authorization/registration`    | `withRegistrationCapabilities(deps, work)`                     | 不在     |
 
 経路モジュールが共有する部品は 2 つに分けている。
 
 | モジュール                           | 責務                                                                                                                    |
 | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
-| `usecases/authorization/resolution`  | `toActor` / `toUser`（`ActorResolution` の畳み込み。純粋関数）                                                          |
+| `usecases/authorization/resolution`  | `toActor` / `toAddressedActor` / `toUser` / `toAddressedUser`（`ActorResolution` の畳み込み。純粋関数）                 |
 | `usecases/authorization/conflict`    | `AlreadyTakenError` と `catchAlreadyTaken`（一意制約違反を `err` に戻す）                                               |
 | `usecases/authorization/testDoubles` | 各経路のテストが共有する `CapabilityDeps` のスタブと Entity フィクスチャ（テスト専用のため `index.test.ts` を持たない） |
 
@@ -964,11 +964,11 @@ export type ActorResolution =
 
 境界を張るヘルパは、一意制約違反として上がってきた型付きエラーを `err` へ変換する（詳細は [並行更新ポリシー](./database/concurrency.md)）。**変換する型は、その権能で書ける範囲に一致させる。**
 
-| ヘルパ                         | 変換する型                                              |
-| ------------------------------ | ------------------------------------------------------- |
-| `withUserWriteCapabilities`    | `EmailAlreadyTakenError`                                |
-| `withArtistWriteCapabilities`  | `EmailAlreadyTakenError` / `AccountIdAlreadyTakenError` |
-| `withRegistrationCapabilities` | `EmailAlreadyTakenError` / `AccountIdAlreadyTakenError` |
+| ヘルパ                            | 変換する型                                              |
+| --------------------------------- | ------------------------------------------------------- |
+| `withUserWriteCapabilitiesById`   | `EmailAlreadyTakenError`                                |
+| `withArtistWriteCapabilitiesById` | `EmailAlreadyTakenError` / `AccountIdAlreadyTakenError` |
+| `withRegistrationCapabilities`    | `EmailAlreadyTakenError` / `AccountIdAlreadyTakenError` |
 
 ### トランザクション境界
 
@@ -1169,7 +1169,7 @@ describe("reconstructUser", () => {
 | GET      | `/api/test`                              | ヘルスチェック                 | 要   |
 | POST     | `/api/users`                             | ユーザー作成                   | 要   |
 | GET      | `/api/users/me`                          | 自分のユーザー情報取得         | 要   |
-| POST     | `/api/users/me`                          | 自分のメールアドレス更新       | 要   |
+| POST     | `/api/users/:userId`                     | メールアドレス更新             | 要   |
 | GET      | `/api/artists`                           | 公開プロフィール一覧           | 不要 |
 | GET      | `/api/artists/:accountId`                | 公開プロフィール詳細           | 不要 |
 | POST     | `/api/artists/:artistId`                 | accountId 更新                 | 要   |
@@ -1178,4 +1178,4 @@ describe("reconstructUser", () => {
 | POST     | `/api/artists/:artistId/profile/publish` | 公開/非公開の切り替え          | 要   |
 | GET      | `/api/link-types`                        | リンク種別マスタ一覧           | 不要 |
 
-> 旧 `me` 系（`POST /api/artists/me`・`GET|POST /api/artists/me/profile`・`POST /api/artists/me/profile/publish`）はクライアント移行の完了に伴い削除済み（[api-design-guidelines.md](./api-design-guidelines.md) のリソースアドレッシング参照）。
+> 旧 `me` 系（`POST /api/artists/me`・`GET|POST /api/artists/me/profile`・`POST /api/artists/me/profile/publish`・`POST /api/users/me`）はクライアント移行の完了に伴い削除済み（[api-design-guidelines.md](./api-design-guidelines.md) のリソースアドレッシング参照）。`GET /api/users/me` だけは、クライアントが自分の `userId` / `artistId` を解決する起点（bootstrap）として存置する。

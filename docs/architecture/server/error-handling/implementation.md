@@ -32,7 +32,7 @@ TypeScript は戻り値を捨てる呼び出し自体は防げないため、「
 
 1つ目は 500 に落ちるべき事象であり、クライアントに返す業務エラーではない。2つ目は Hono のミドルウェア層で起きるため戻り値を持てず、`onError` で受ける。
 
-3つ目は Drizzle の `transaction` が **throw でしかロールバックしない**という外部制約による。書き込みが制約で弾かれた事実を `err` で返すとトランザクションが中途半端に確定してしまうため、例外として境界の外まで抜けさせ、**境界を張っているヘルパ**（`withArtistWriteCapabilities` / `withRegistrationCapabilities`）が受けて `err` に戻す。**業務エラーを throw のまま外に流すのではなく、境界の外側で `Result` の中に必ず畳み込む**（詳細は [database/concurrency.md](../database/concurrency.md#一意制約違反の扱い) 参照）。usecase 側に `try/catch` は置かない。
+3つ目は Drizzle の `transaction` が **throw でしかロールバックしない**という外部制約による。書き込みが制約で弾かれた事実を `err` で返すとトランザクションが中途半端に確定してしまうため、例外として境界の外まで抜けさせ、**境界を張っているヘルパ**（`withUserWriteCapabilitiesById` / `withArtistWriteCapabilitiesById` / `withRegistrationCapabilities`）が受けて `err` に戻す。**業務エラーを throw のまま外に流すのではなく、境界の外側で `Result` の中に必ず畳み込む**（詳細は [database/concurrency.md](../database/concurrency.md#一意制約違反の扱い) 参照）。usecase 側に `try/catch` は置かない。
 
 ```typescript
 // usecases/authorization
@@ -333,9 +333,10 @@ export const handleAppError = createAppErrorHandler(createConsoleLogger());
 usecase の `Result` を判定し、`err` なら `handleAppError` に渡す。`try/catch` は書かない。
 
 ```typescript
-const result = await withArtistWriteCapabilities(
+const result = await withArtistWriteCapabilitiesById(
   getCapabilityDeps(),
   auth0User.sub,
+  artistId,
   (caps) => updateMyAccountId(caps, { accountId: body.accountId }),
 );
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { withUserWriteCapabilities } from "./index";
+import { withUserWriteCapabilitiesById } from "./index";
 import {
   createCapabilityDepsStub,
   testUser as user,
@@ -13,16 +13,17 @@ import {
 import { createAccountIdAlreadyTakenError } from "../../../domain/artists/errors/accountIdAlreadyTaken";
 import { ok } from "../../../utils/result";
 
-describe("withUserWriteCapabilities", () => {
+describe("withUserWriteCapabilitiesById", () => {
   it("未登録ならトランザクション境界を張らず UserNotFoundError を返す", async () => {
     const { deps, calls } = createCapabilityDepsStub({
       status: "unregistered",
     });
     let workCalls = 0;
 
-    const result = await withUserWriteCapabilities(
+    const result = await withUserWriteCapabilitiesById(
       deps,
       "auth0|123",
+      "user-1",
       async () => {
         workCalls += 1;
         return ok("called");
@@ -37,15 +38,36 @@ describe("withUserWriteCapabilities", () => {
     expect(calls.userWriteBoundaries).toBe(0);
   });
 
-  it("Artist が未作成でも user 権能で work を実行する", async () => {
+  it("パスの userId が本人と一致しなければ境界を張らず UserNotFoundError を返す（存在を秘匿）", async () => {
     const { deps, calls } = createCapabilityDepsStub({
       status: "userOnly",
       user,
     });
 
-    const result = await withUserWriteCapabilities(
+    const result = await withUserWriteCapabilitiesById(
       deps,
       "auth0|123",
+      "other-user",
+      async () => ok("called"),
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(isUserNotFoundError(result.error)).toBe(true);
+    }
+    expect(calls.userWriteBoundaries).toBe(0);
+  });
+
+  it("Artist が未作成でも userId が一致すれば user 権能で work を実行する", async () => {
+    const { deps, calls } = createCapabilityDepsStub({
+      status: "userOnly",
+      user,
+    });
+
+    const result = await withUserWriteCapabilitiesById(
+      deps,
+      "auth0|123",
+      "user-1",
       async (caps) => ok(caps.user.getId()),
     );
 
@@ -59,9 +81,10 @@ describe("withUserWriteCapabilities", () => {
       actor: { user, artist },
     });
 
-    const result = await withUserWriteCapabilities(
+    const result = await withUserWriteCapabilitiesById(
       deps,
       "auth0|123",
+      "user-1",
       async (caps) => ok(caps.user.getId()),
     );
 
@@ -72,9 +95,10 @@ describe("withUserWriteCapabilities", () => {
   it("email の一意制約違反は EmailAlreadyTakenError の err に変換する", async () => {
     const { deps } = createCapabilityDepsStub({ status: "userOnly", user });
 
-    const result = await withUserWriteCapabilities(
+    const result = await withUserWriteCapabilitiesById(
       deps,
       "auth0|123",
+      "user-1",
       async () => {
         throw createEmailAlreadyTakenError();
       },
@@ -91,7 +115,7 @@ describe("withUserWriteCapabilities", () => {
     const accountIdConflict = createAccountIdAlreadyTakenError("taken");
 
     await expect(
-      withUserWriteCapabilities(deps, "auth0|123", async () => {
+      withUserWriteCapabilitiesById(deps, "auth0|123", "user-1", async () => {
         throw accountIdConflict;
       }),
     ).rejects.toBe(accountIdConflict);
@@ -102,7 +126,7 @@ describe("withUserWriteCapabilities", () => {
     const connectionError = new Error("connection terminated");
 
     await expect(
-      withUserWriteCapabilities(deps, "auth0|123", async () => {
+      withUserWriteCapabilitiesById(deps, "auth0|123", "user-1", async () => {
         throw connectionError;
       }),
     ).rejects.toBe(connectionError);
