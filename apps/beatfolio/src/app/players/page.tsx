@@ -1,15 +1,14 @@
-import { createBeatfolioBffServerClient } from "../../utils/client";
+import { listPlayers } from "../../fetchers/players/listPlayers";
 import { PlayersClientAdapter } from "./PlayersClientAdapter";
 
 export default async function Players() {
-  const client = createBeatfolioBffServerClient();
-  const res = await client.api.players.$get();
+  const result = await listPlayers();
 
-  if (!res.ok) {
-    throw new Error("Failed to fetch players");
+  if (!result.ok) {
+    throw new Error(result.error.message);
   }
 
-  const { players } = await res.json();
+  const { players } = result.value;
 
   return <PlayersClientAdapter players={players} />;
 }
