@@ -1,45 +1,22 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { WizardValues } from "@ui/design-system/components/organisms/ArtistProfileWizard";
-import { createBeatfolioBffClient } from "../../../../../../../utils/client";
+import { saveMyProfile } from "../../../../../../../fetchers/artists/saveMyProfile";
+import { publishMyProfile } from "../../../../../../../fetchers/artists/publishMyProfile";
+import type { FetcherError } from "../../../../../../../fetchers/shared/error";
+import { type Result, ok } from "../../../../../../../utils/result";
 import { toSaveProfileRequest } from "../../toSaveProfileRequest";
-
-const readErrorMessage = (body: unknown): string | null =>
-  typeof body === "object" &&
-  body !== null &&
-  "error" in body &&
-  typeof body.error === "string" &&
-  body.error !== ""
-    ? body.error
-    : null;
 
 const run = async (
   values: WizardValues,
   options: { publish: boolean },
-): Promise<void> => {
-  const client = createBeatfolioBffClient();
+): Promise<Result<void, FetcherError>> => {
+  const saved = await saveMyProfile(toSaveProfileRequest(values));
+  if (!saved.ok) return saved;
 
-  const saveRes = await client.api.artists.me.profile.$post({
-    json: toSaveProfileRequest(values),
-  });
-  if (!saveRes.ok) {
-    const body: unknown = await saveRes.json();
-    throw new Error(
-      readErrorMessage(body) ?? "プロフィールの保存に失敗しました",
-    );
-  }
+  if (!options.publish) return ok(undefined);
 
-  if (!options.publish) return;
-
-  const publishRes = await client.api.artists.me.profile.publish.$post({
-    json: { published: true },
-  });
-  if (!publishRes.ok) {
-    const body: unknown = await publishRes.json();
-    throw new Error(
-      readErrorMessage(body) ?? "プロフィールの公開に失敗しました",
-    );
-  }
+  return publishMyProfile({ published: true });
 };
 
 export const useSaveProfile = () => {
@@ -54,16 +31,17 @@ export const useSaveProfile = () => {
     setIsLoading(true);
     setError(null);
 
-    try {
-      await run(values, options);
-      router.refresh();
-      return true;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "エラーが発生しました");
+    const result = await run(values, options);
+
+    setIsLoading(false);
+
+    if (!result.ok) {
+      setError(result.error.message);
       return false;
-    } finally {
-      setIsLoading(false);
     }
+
+    router.refresh();
+    return true;
   };
 
   const submit = (values: WizardValues): Promise<boolean> =>

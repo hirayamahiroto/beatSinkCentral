@@ -233,12 +233,28 @@ const client = createBeatfolioBffClient();
 const res = await client.api.artists.me.$post({ json: { accountId } });
 ```
 
+### 呼び出し面の集約: fetchers 層（`src/fetchers/`）
+
+UI 層（`page.tsx` / hooks）は hono クライアントを直接生成しない。BFF `/api/*` への fetch は **`src/fetchers/` の関数だけ**が行い、UI はそれを呼ぶ。「どこで BFF が fetch されているか」を `src/fetchers/` の一覧だけで見渡せるようにするための集約点である。
+
+- **構成**: BFF エンドポイント1つにつき1モジュール。`src/fetchers/<BFF ルートの名前空間>/<操作名>/index.ts`（+ `index.test.ts`）。例: `fetchers/artists/updateMyAccountId/`、`fetchers/dashboard/getProfileEditScreen/`。
+- **責務**: クライアント生成（write = CSR は `createBeatfolioBffClient`、read = SSR は `createBeatfolioBffServerClient`。read は `cookie` を引数で受ける）・レスポンス解釈・エラー正規化。
+- **契約**: `Promise<Result<T, FetcherError>>` を返し、**throw しない**（到達不能も catch して `unexpected` に正規化する）。`FetcherError` は `{ kind: "rejected" | "unexpected"; message: string }` — `rejected` はユーザー起因（400/409/422）でメッセージをそのまま画面に出せる、`unexpected` はそれ以外。共通処理は `fetchers/shared/error/` に置く。
+- **型は BFF AppType から導出する**（`InferRequestType` / `InferResponseType`）。fetchers 層でリクエスト・レスポンスの型を手書きしない。
+- **呼び出し側の責務**: hooks は状態管理（`isLoading` / `error` / `router.refresh`）に専念し、`page.tsx` は認証・`redirect`・描画に専念する。レスポンス解釈・エラー文言は fetchers 側にある。
+
+```
+read:  page.tsx ──▶ fetchers（SSR クライアント生成 + Result 正規化）──▶ /api/*（BFF read ルート）
+write: hook     ──▶ fetchers（CSR クライアント生成 + Result 正規化）──▶ /api/*（BFF write ルート）
+```
+
 ### クライアントの使い分け
 
-| クライアント               | 経路                            | 用途                                                                            |
-| -------------------------- | ------------------------------- | ------------------------------------------------------------------------------- |
-| `createBffServerClient`    | サーバー → **api-server 直**    | BFF route（read / write）が `requestContext` 経由（`c.get("apiClient")`）で使う |
-| `createBeatfolioBffClient` | クライアント → **BFF `/api/*`** | `page.tsx`（SSR の read）と CSR の write hook の両方                            |
+| クライアント                     | 経路                            | 用途                                                                            |
+| -------------------------------- | ------------------------------- | ------------------------------------------------------------------------------- |
+| `createBffServerClient`          | サーバー → **api-server 直**    | BFF route（read / write）が `requestContext` 経由（`c.get("apiClient")`）で使う |
+| `createBeatfolioBffClient`       | クライアント → **BFF `/api/*`** | **`src/fetchers/` だけが生成する**（CSR の write fetcher）                      |
+| `createBeatfolioBffServerClient` | サーバー → **BFF `/api/*`**     | **`src/fetchers/` だけが生成する**（SSR の read fetcher。`cookie` を引き継ぐ）  |
 
 > **命名の注意**: `createBffServerClient` は名前に反して **api-server を直接叩くクライアント**である（`hc<AppType>`、`AppType` は api-server のもの）。BFF `/api/*` を叩くのは `createBeatfolioBffClient` の方。混同しないこと（将来 `createApiServerClient` 等へリネームを検討）。
 
