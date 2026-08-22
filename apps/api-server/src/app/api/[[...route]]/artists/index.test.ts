@@ -34,16 +34,12 @@ describe("/artists ルーターの合成", () => {
   it("配下のエンドポイントを実 URL として公開する", () => {
     expect(routeSurface()).toEqual([
       "GET /",
-      "ALL /me/*",
-      "POST /me",
-      "GET /me/profile",
-      "POST /me/profile",
-      "POST /me/profile/publish",
+      "GET /:accountId",
+      "ALL /:artistId/*",
       "POST /:artistId",
       "GET /:artistId/profile",
       "POST /:artistId/profile",
       "POST /:artistId/profile/publish",
-      "GET /:accountId",
     ]);
   });
 
@@ -64,10 +60,6 @@ describe("/artists ルーターの合成", () => {
   });
 
   it.each([
-    ["POST", "/artists/me"],
-    ["GET", "/artists/me/profile"],
-    ["POST", "/artists/me/profile"],
-    ["POST", "/artists/me/profile/publish"],
     ["POST", "/artists/artist-1"],
     ["GET", "/artists/artist-1/profile"],
     ["POST", "/artists/artist-1/profile"],

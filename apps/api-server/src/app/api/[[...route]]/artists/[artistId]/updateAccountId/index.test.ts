@@ -14,13 +14,6 @@ const mockArtists = {
 
 const mockResolveActorState = vi.fn();
 
-vi.mock("../../../../../../middlewares/auth0", () => ({
-  requireAuthMiddleware: async (
-    _c: unknown,
-    next: () => Promise<void>,
-  ): Promise<void> => next(),
-}));
-
 vi.mock("../../../../../../infrastructure/capabilities", () => ({
   getCapabilityDeps: () => ({
     resolveActorState: (subId: string) => mockResolveActorState(subId),
@@ -50,7 +43,7 @@ const createApp = () => {
     c.set("auth0User", { sub: "auth0|123" });
     await next();
   });
-  app.route("/", updateAccountIdRoute);
+  app.route("/:artistId", updateAccountIdRoute);
   app.onError(handleAppError);
   return app;
 };

@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import { reconstructUser } from "../../../../../../../domain/users/factories";
-import { reconstructArtist } from "../../../../../../../domain/artists/factories";
-import { reconstructArtistProfile } from "../../../../../../../domain/artistProfiles/factories";
-import getMyProfile from "./index";
+import { reconstructUser } from "../../../../../../domain/users/factories";
+import { reconstructArtist } from "../../../../../../domain/artists/factories";
+import { reconstructArtistProfile } from "../../../../../../domain/artistProfiles/factories";
+import { handleAppError } from "../../../../../../errorMap";
+import getProfileRoute from "./index";
 
 const actor = {
   user: reconstructUser({
@@ -26,7 +27,7 @@ const mockArtistProfiles = {
 
 const mockResolveActorState = vi.fn();
 
-vi.mock("../../../../../../../infrastructure/capabilities", () => ({
+vi.mock("../../../../../../infrastructure/capabilities", () => ({
   getCapabilityDeps: () => ({
     resolveActorState: (subId: string) => mockResolveActorState(subId),
     buildArtistReadCapabilities: (a: unknown) => ({
@@ -42,40 +43,31 @@ const createApp = (sub: string) => {
     c.set("auth0User", { sub });
     await next();
   });
-  app.route("/", getMyProfile);
+  app.route("/:artistId/profile", getProfileRoute);
+  app.onError(handleAppError);
   return app;
 };
 
-describe("GET /artists/me/profile", () => {
+const request = (artistId: string) =>
+  createApp("auth0|123").request(`/${artistId}/profile`, { method: "GET" });
+
+describe("GET /artists/:artistId/profile", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockResolveActorState.mockResolvedValue({ status: "complete", actor });
   });
 
-  it("プロフィール未作成なら profile:null を返す", async () => {
-    mockArtistProfiles.findByArtistId.mockResolvedValue(null);
-
-    const res = await createApp("auth0|123").request("/", { method: "GET" });
-
-    expect(res.status).toBe(200);
-    expect(await res.json()).toStrictEqual({
-      accountId: "beatboxer_taro",
-      profile: null,
-    });
-  });
-
-  it("作成済みなら profile view を返す", async () => {
+  it("Actor と一致する artistId ならプロフィールを返す", async () => {
     mockArtistProfiles.findByArtistId.mockResolvedValue(
       reconstructArtistProfile({
         id: "p1",
         artistId: "artist-1",
         published: false,
         name: "Taro",
-        genres: ["bass"],
       }),
     );
 
-    const res = await createApp("auth0|123").request("/", { method: "GET" });
+    const res = await request("artist-1");
     const body = await res.json();
 
     expect(res.status).toBe(200);
@@ -83,10 +75,17 @@ describe("GET /artists/me/profile", () => {
     expect(mockArtistProfiles.findByArtistId).toHaveBeenCalledWith("artist-1");
   });
 
-  it("actor が解決できなければ 404 を返し、プロフィールを読まない", async () => {
+  it("Actor と一致しない artistId は 404 を返し、プロフィールを読まない", async () => {
+    const res = await request("other-artist");
+
+    expect(res.status).toBe(404);
+    expect(mockArtistProfiles.findByArtistId).not.toHaveBeenCalled();
+  });
+
+  it("actor が解決できなければ 404 を返す", async () => {
     mockResolveActorState.mockResolvedValue({ status: "unregistered" });
 
-    const res = await createApp("auth0|123").request("/", { method: "GET" });
+    const res = await request("artist-1");
 
     expect(res.status).toBe(404);
     expect(mockArtistProfiles.findByArtistId).not.toHaveBeenCalled();
