@@ -3,10 +3,14 @@ import { Hono } from "hono";
 import type { RequestContextEnv } from "../../../../../../../middlewares/requestContext";
 import saveMyProfile from "./index";
 
+const meGet = vi.fn();
 const profilePost = vi.fn();
 
 const apiClient = {
-  api: { artists: { me: { profile: { $post: profilePost } } } },
+  api: {
+    users: { me: { $get: meGet } },
+    artists: { ":artistId": { profile: { $post: profilePost } } },
+  },
 };
 
 const createApp = () => {
@@ -29,6 +33,16 @@ const request = (body: unknown) =>
 describe("POST /artists/me/profile", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    meGet.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        registered: true,
+        userId: "user-1",
+        email: "saku@example.com",
+        artist: { artistId: "artist-1", accountId: "saku", hasProfile: true },
+      }),
+    });
     profilePost.mockResolvedValue({
       ok: true,
       status: 200,
@@ -36,13 +50,29 @@ describe("POST /artists/me/profile", () => {
     });
   });
 
-  it("検証を通ったボディを api-server へ渡す", async () => {
+  it("検証を通ったボディを自分の artistId 宛てで api-server へ渡す", async () => {
     const body = { name: "SAKU", genres: ["Beatbox"] };
 
     const res = await request(body);
 
-    expect(profilePost).toHaveBeenCalledWith({ json: body });
+    expect(profilePost).toHaveBeenCalledWith({
+      param: { artistId: "artist-1" },
+      json: body,
+    });
     expect(res.status).toBe(200);
+  });
+
+  it("artist 未登録なら api-server へ渡さず 404 を返す", async () => {
+    meGet.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ registered: false }),
+    });
+
+    const res = await request({ name: "SAKU" });
+
+    expect(res.status).toBe(404);
+    expect(profilePost).not.toHaveBeenCalled();
   });
 
   it("genres が上限を超えたら api-server へ渡さず 400 を返す", async () => {

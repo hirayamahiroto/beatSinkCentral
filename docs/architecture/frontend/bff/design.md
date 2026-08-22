@@ -183,7 +183,7 @@ export default async function DashboardPage() {
 ### write の実装: HTTP ルート（`/api/*`）
 
 - 配置: `src/app/api/[[...route]]/{resource}/index.ts`
-- 責務: 入力バリデーション → `apiClient` で api-server へ送信 → 結果/エラーを返す（**薄いパススルー**）。
+- 責務: 入力バリデーション → 必要なら自分の `artistId` を解決（`shared/resolveMyArtistId`、内部で `GET /users/me`）→ `apiClient` で api-server へ送信 → 結果/エラーを返す（**薄いパススルー**）。ブラウザ向け URL は `me` のままでよい（セッション主体への読み替えは BFF の責務。api-server 側は `/:artistId` でアドレスする）。
 - 認証 cookie: `requestContextMiddleware` がセッション cookie を付与した `apiClient`（= `createBffServerClient`）を `c.set("apiClient", ...)` する。ルートは `c.get("apiClient")` を使うだけ。
 
 ```ts
@@ -206,7 +206,13 @@ const app = new Hono<RequestContextEnv>().post(
     const apiClient = c.get("apiClient");
     const body = c.req.valid("json");
 
-    const res = await apiClient.api.artists.me.$post({
+    const resolved = await resolveMyArtistId(apiClient);
+    if (!resolved.ok) {
+      return c.json(resolved.body, resolved.status);
+    }
+
+    const res = await apiClient.api.artists[":artistId"].$post({
+      param: { artistId: resolved.artistId },
       json: { accountId: body.accountId },
     });
 

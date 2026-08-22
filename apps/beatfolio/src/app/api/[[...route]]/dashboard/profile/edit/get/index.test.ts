@@ -10,7 +10,7 @@ const linkTypesGet = vi.fn();
 const apiClient = {
   api: {
     users: { me: { $get: meGet } },
-    artists: { me: { profile: { $get: profileGet } } },
+    artists: { ":artistId": { profile: { $get: profileGet } } },
     "link-types": { $get: linkTypesGet },
   },
 };
@@ -74,6 +74,9 @@ describe("GET /dashboard/profile/edit", () => {
     const res = await createApp().request("/", { method: "GET" });
 
     expect(res.status).toBe(200);
+    expect(profileGet).toHaveBeenCalledWith({
+      param: { artistId: "artist-1" },
+    });
     expect(await res.json()).toStrictEqual({
       registered: true,
       email: "saku@example.com",
@@ -112,6 +115,22 @@ describe("GET /dashboard/profile/edit", () => {
     const res = await createApp().request("/", { method: "GET" });
 
     expect(await res.json()).toStrictEqual({ registered: false });
+  });
+
+  it("登録済みでも artist が無ければ 502 を返す", async () => {
+    meGet.mockResolvedValue(
+      jsonResponse({
+        registered: true,
+        userId: "user-1",
+        email: "saku@example.com",
+        artist: null,
+      }),
+    );
+
+    const res = await createApp().request("/", { method: "GET" });
+
+    expect(res.status).toBe(502);
+    expect(profileGet).not.toHaveBeenCalled();
   });
 
   it("いずれかの api-server 呼び出しが失敗したら 502 を返す", async () => {
