@@ -112,8 +112,9 @@ POST /users/:id/delete
 | 主体はセッションから | 「誰が」はパスやボディでなくセッション（`sub`）から解決する。パスの対象リソースに対してその主体が操作できるかは authorization 層が照合する（対象の選択 = パス、本人性 = セッション、可否 = 認可、の分離）                              |
 | 不一致は 404         | パスのリソースに主体がアクセスできない場合は 404 を返す（リソースの存在を秘匿する）                                                                                                                                                    |
 
-- クライアントは自分の `artistId` を `GET /users/me` から取得する。
-- **旧 `me` 系ルート（`/artists/me/*`）は廃止済み**。expand（`/:artistId` 系を追加）→ migrate（クライアント切り替え）→ contract（`me` 削除）の移行は完了しており、エンドポイントを `me` 配下に新設しない。
+- クライアントは自分の `userId` / `artistId` を `GET /users/me` から取得する。`GET /users/me` は、セッション（`sub`）以外の識別子を持たないクライアントが自分のリソース ID を解決する唯一の起点（bootstrap）であり、未登録状態（`registered: false`）を表現できる唯一の宛先でもあるため、例外としてこの 1 本だけ存置する。
+- **旧 `me` 系ルート（`/artists/me/*`・`POST /users/me`）は廃止済み**。expand（`/:artistId`・`/:userId` 系を追加）→ migrate（クライアント切り替え）→ contract（`me` 削除）の移行は完了しており、エンドポイントを `me` 配下に新設しない。
+- `userId` / `artistId` が URL に現れること自体はリスクではない。守りは ID の秘匿ではなく、認証（セッション検証）と認可（パスの ID と本人の照合、不一致は 404）が担う。ID の知識だけでは何の権能にもならない設計を保つ（ID だけで叩ける非認証エンドポイントを作らない）。
 
 ## リソース命名規則
 
@@ -163,6 +164,13 @@ app/api/[[...route]]/
       getProfile/index.ts         → GET  /:artistId/profile
       saveProfile/index.ts        → POST /:artistId/profile
       publishProfile/index.ts     → POST /:artistId/profile/publish
+  users/                           ← 全ルート認証（境界は users/ 直下）
+    index.ts                       → requireAuthMiddleware + マウントテーブル
+    createUser/index.ts            → POST /users
+    getMe/index.ts                 → GET  /users/me（bootstrap。/:userId より先にマウントする）
+    [userId]/                     ← リソース境界（不変 ID userId）
+      index.ts                    → マウントテーブル
+      updateEmail/index.ts        → POST /users/:userId
 ```
 
 ```typescript
@@ -188,7 +196,7 @@ export default app;
 
 **理由**: エンドポイント単位で責務・変更差分・レビュー範囲を閉じつつ（1 ユニット1エンドポイントを維持）、URL セグメントをすべてディレクトリに写すと階層が深くなりすぎる問題を避ける。マウントテーブルを境界の `index.ts` に集約することで、その境界配下に何が生えているかを1箇所で見渡せる。各ユニットにもテストを置く（`index.test.ts`）。
 
-> **既存の例外**: 規約制定以前のルート（`users/`, `link-types/` 等）には HTTP メソッド名ディレクトリが残っている。これらは新規実装・変更時にこの規約へ順次移行する。
+> **既存の例外**: 規約制定以前のルート（`link-types/` 等）には HTTP メソッド名ディレクトリが残っている。これらは新規実装・変更時にこの規約へ順次移行する。
 
 ## 使用例
 
