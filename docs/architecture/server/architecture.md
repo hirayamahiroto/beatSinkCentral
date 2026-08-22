@@ -699,11 +699,11 @@ HTTPリクエスト/レスポンスの処理を担当。
 
 ディレクトリを切るのは **リソースの境目** と **ミドルウェアが変わる境目** だけ。URL セグメントの数だけディレクトリを掘らない。境界の `index.ts` が「path → ユニット」の対応表（マウントテーブル）を `.route()` で宣言し、ユニットは境界の直下に**意図を表す名前**のディレクトリ（`index.ts` + `index.test.ts`）としてフラットに並べる。各ユニットは自分の相対パスと自分のバリデーションを持つ小さな Hono app（型推論の都合上、バリデーションは境界側に持ち出さない）。
 
-```
+```text
 app/api/[[...route]]/
 ├── route.ts                    # basePath + 全体ミドルウェア + onError + トップ mount のみ
 ├── artists/
-│   ├── index.ts                # 公開 / 認証済み / 移行中の3区画を合成するだけ（ミドルウェアなし）
+│   ├── index.ts                # 公開 / 認証済みの2区画を合成するだけ（ミドルウェアなし）
 │   ├── public/                 # 公開（認証なし・可変ハンドル accountId）
 │   │   ├── index.ts            # マウントテーブル
 │   │   ├── listArtists/        # GET /artists
@@ -719,7 +719,7 @@ app/api/[[...route]]/
     └── get/                    # GET /link-types
 ```
 
-公開（認証なし・可変ハンドル `accountId`）と認証済み（不変 ID `artistId`）は同じ artist を指すが鍵も認可も別物なので、`artists/public/` と `artists/[artistId]/` に分けて並べる。こうしておくと、`artists/index.ts` の3行（`public` / `[artistId]` / 移行中の `me`）がそのまま「公開・認証・移行中」の3区画になり、境界の `index.ts` を見れば全体像が分かる。将来公開ルートの名前空間を分離する場合も、`artists/public/` をディレクトリごと移してマウント先を変えるだけで済む。
+公開（認証なし・可変ハンドル `accountId`）と認証済み（不変 ID `artistId`）は同じ artist を指すが鍵も認可も別物なので、`artists/public/` と `artists/[artistId]/` に分けて並べる。こうしておくと、`artists/index.ts` の2行（`public` / `[artistId]`）がそのまま「公開・認証」の2区画になり、境界の `index.ts` を見れば全体像が分かる。将来公開ルートの名前空間を分離する場合も、`artists/public/` をディレクトリごと移してマウント先を変えるだけで済む。
 
 階層 `index.ts` の責務は 2 つだけに限定する。
 

@@ -150,7 +150,7 @@ POST /orders/:id/cancel     → キャンセル
 - ミドルウェアが変わる境界の `index.ts` が「path → ユニット」の対応表（マウントテーブル）を `.route()` で宣言する。ユニット自身は小さな Hono app として自分からの相対パス（`"/"` 等）と自分のバリデーション（`validateRequest`）だけを持ち、実際の絶対 URL は境界の `index.ts` だけが知っている。バリデーションは Hono の型推論の都合上、ユニットの Hono チェーン内で行う（境界側に持ち出さない）。
 - アクションは「使用例」の `POST /users/:id/delete` と同じ意図を、ディレクトリ名（`deleteUser/`）で表す。独自の method 接尾辞ファイル名は使わない。
 
-```
+```text
 app/api/[[...route]]/
   artists/
     public/                        ← 公開（認証なし・可変ハンドル accountId）
@@ -167,9 +167,6 @@ app/api/[[...route]]/
 
 ```typescript
 // artists/[artistId]/index.ts（境界のマウントテーブル）
-// 裸の "/" は公開ルート GET /:accountId と同形状で衝突するため、
-// .use("*", ...) ではなく衝突しないサブパス "/profile/*" だけに適用する。
-// 裸パスを使う updateAccountId は自分で requireAuthMiddleware を適用する（下記）。
 import { Hono } from "hono";
 import updateAccountId from "./updateAccountId";
 import getProfile from "./getProfile";
@@ -178,7 +175,7 @@ import publishProfile from "./publishProfile";
 import { requireAuthMiddleware } from "../../../../../middlewares/auth0";
 
 const app = new Hono()
-  .use("/profile/*", requireAuthMiddleware)
+  .use("*", requireAuthMiddleware)
   .route("/", updateAccountId)
   .route("/profile", getProfile)
   .route("/profile", saveProfile)
@@ -187,26 +184,11 @@ const app = new Hono()
 export default app;
 ```
 
-```typescript
-// artists/[artistId]/updateAccountId/index.ts（裸パスのユニット。衝突するため自分で認証を適用する）
-const app = new Hono().post(
-  "/",
-  requireAuthMiddleware,
-  validateRequest("param", paramSchema),
-  validateRequest("json", updateAccountIdRequestSchema),
-  async (c) => {
-    /* ... */
-  },
-);
-
-export default app;
-```
-
-> **注意**: `.use("*", mw)` は同じ裸パスを共有する別リソースの公開ルート（今回は `GET /:accountId`）まで巻き込んで認証してしまう。境界の認証適用は「衝突しないサブパスだけ `.use()`、衝突する裸パスは個別ユニットで適用」を徹底する（詳細は [architecture.md](./architecture.md) の該当注意を参照）。
+> **注意**: 境界の `.use("*", mw)` は、同じ裸パス形状を共有する公開ルート（今回は `GET /:accountId`）と共存できるが、それは**親ルーターで公開ルートを境界より先にマウントしている**ことが前提（Hono は登録順に合成し、先に応答したハンドラで打ち切る）。マウント順を入れ替えないこと（詳細は [architecture.md](./architecture.md) の該当注意を参照）。
 
 **理由**: エンドポイント単位で責務・変更差分・レビュー範囲を閉じつつ（1 ユニット1エンドポイントを維持）、URL セグメントをすべてディレクトリに写すと階層が深くなりすぎる問題を避ける。マウントテーブルを境界の `index.ts` に集約することで、その境界配下に何が生えているかを1箇所で見渡せる。各ユニットにもテストを置く（`index.test.ts`）。
 
-> **既存の例外**: 規約制定以前のルート（`users/`, `link-types/`, `artists/me/` 等）には HTTP メソッド名ディレクトリが残っている。これらは新規実装・変更時にこの規約へ順次移行する。
+> **既存の例外**: 規約制定以前のルート（`users/`, `link-types/` 等）には HTTP メソッド名ディレクトリが残っている。これらは新規実装・変更時にこの規約へ順次移行する。
 
 ## 使用例
 
@@ -235,7 +217,7 @@ export default app;
 - 取得 (GET) と保存 (POST) は **同じ `/artists/:artistId/profile`**。`users` の `GET /users/:id` ⇔ `POST /users/:id` と同じ関係。
 - 公開切り替えは `POST /users/:id/delete` と同じくアクションを接尾辞で表す（`/publish`）。
 - 公開詳細のみ可変ハンドル（accountId）で引く。認証済み操作のパスキーは不変 ID（artistId）。
-- **移行中の例外**: 旧 `me` 系ルート（`/artists/me/*`）はクライアント移行が完了するまで併存させ、その後削除する。
+- 旧 `me` 系ルート（`/artists/me/*`）は移行完了に伴い削除済み。
 
 ### レスポンス形式
 
