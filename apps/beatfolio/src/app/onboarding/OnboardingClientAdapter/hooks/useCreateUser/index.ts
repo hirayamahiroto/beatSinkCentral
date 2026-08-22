@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { createUser } from "../../../../../fetchers/users/createUser";
 
 type UseCreateUserParams = {
   email: string;
@@ -18,27 +19,16 @@ export const useCreateUser = ({ email }: UseCreateUserParams) => {
     setIsLoading(true);
     setError(null);
 
-    try {
-      const res = await fetch("/api/users", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, accountId }),
-      });
+    const result = await createUser({ email, accountId });
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "ユーザー作成に失敗しました");
-      }
-
+    if (result.ok) {
       router.push("/dashboard");
       router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "エラーが発生しました");
-    } finally {
-      setIsLoading(false);
+    } else {
+      setError(result.error.message);
     }
+
+    setIsLoading(false);
   };
 
   return { handleSubmit, isLoading, error };

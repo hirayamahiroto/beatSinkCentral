@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { useCreateUser } from "./index";
 
@@ -12,6 +12,14 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
+const postMock = vi.fn();
+
+vi.mock("../../../../../utils/client", () => ({
+  createBeatfolioBffClient: () => ({
+    api: { users: { $post: postMock } },
+  }),
+}));
+
 const buildJsonResponse = (body: unknown, init: { status: number }): Response =>
   new Response(JSON.stringify(body), {
     status: init.status,
@@ -22,19 +30,12 @@ const buildNonJsonResponse = (init: { status: number }): Response =>
   new Response("<html></html>", { status: init.status });
 
 describe("useCreateUser", () => {
-  const fetchMock = vi.fn();
-
-  beforeEach(() => {
-    vi.stubGlobal("fetch", fetchMock);
-  });
-
   afterEach(() => {
-    vi.unstubAllGlobals();
     vi.clearAllMocks();
   });
 
   it("POST /api/users が成功すると /dashboard に遷移し、router.refresh が呼ばれる", async () => {
-    fetchMock.mockResolvedValueOnce(buildJsonResponse({}, { status: 200 }));
+    postMock.mockResolvedValueOnce(buildJsonResponse({}, { status: 201 }));
 
     const { result } = renderHook(() =>
       useCreateUser({ email: "user@example.com" }),
@@ -44,10 +45,8 @@ describe("useCreateUser", () => {
       await result.current.handleSubmit({ accountId: "newbie" });
     });
 
-    expect(fetchMock).toHaveBeenCalledWith("/api/users", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "user@example.com", accountId: "newbie" }),
+    expect(postMock).toHaveBeenCalledWith({
+      json: { email: "user@example.com", accountId: "newbie" },
     });
     expect(pushMock).toHaveBeenCalledWith("/dashboard");
     expect(refreshMock).toHaveBeenCalledTimes(1);
@@ -56,7 +55,7 @@ describe("useCreateUser", () => {
   });
 
   it("POST が non-ok JSON を返したら、error state にメッセージがセットされる", async () => {
-    fetchMock.mockResolvedValueOnce(
+    postMock.mockResolvedValueOnce(
       buildJsonResponse(
         { error: "そのアカウントIDはすでに使用されています" },
         { status: 409 },
@@ -80,7 +79,7 @@ describe("useCreateUser", () => {
   });
 
   it("POST が non-JSON ボディを返したら、フォールバックのエラーメッセージがセットされる", async () => {
-    fetchMock.mockResolvedValueOnce(buildNonJsonResponse({ status: 502 }));
+    postMock.mockResolvedValueOnce(buildNonJsonResponse({ status: 502 }));
 
     const { result } = renderHook(() =>
       useCreateUser({ email: "user@example.com" }),
@@ -96,12 +95,30 @@ describe("useCreateUser", () => {
     expect(result.current.isLoading).toBe(false);
   });
 
+  it("通信自体が失敗しても error state にメッセージがセットされる", async () => {
+    postMock.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+
+    const { result } = renderHook(() =>
+      useCreateUser({ email: "user@example.com" }),
+    );
+
+    await act(async () => {
+      await result.current.handleSubmit({ accountId: "newbie" });
+    });
+
+    expect(result.current.error).toBe(
+      "通信に失敗しました。時間をおいて再度お試しください",
+    );
+    expect(pushMock).not.toHaveBeenCalled();
+    expect(result.current.isLoading).toBe(false);
+  });
+
   it("submit 中は isLoading が true、完了後に false になる", async () => {
-    let resolveFetch: ((res: Response) => void) | undefined;
-    fetchMock.mockImplementationOnce(
+    let resolvePost: ((res: Response) => void) | undefined;
+    postMock.mockImplementationOnce(
       () =>
         new Promise<Response>((resolve) => {
-          resolveFetch = resolve;
+          resolvePost = resolve;
         }),
     );
 
@@ -119,7 +136,7 @@ describe("useCreateUser", () => {
     });
 
     await act(async () => {
-      resolveFetch?.(buildJsonResponse({}, { status: 200 }));
+      resolvePost?.(buildJsonResponse({}, { status: 201 }));
       await submitPromise;
     });
 

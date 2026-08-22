@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { auth0 } from "../../libs/auth0";
-import { createBeatfolioBffServerClient } from "../../utils/client";
+import { getOnboarding } from "../../fetchers/onboarding/getOnboarding";
 import { OnboardingClientAdapter } from "./OnboardingClientAdapter";
 
 export default async function OnboardingPage() {
@@ -18,14 +18,10 @@ export default async function OnboardingPage() {
   }
 
   const cookieHeader = (await headers()).get("cookie") ?? undefined;
-  const client = createBeatfolioBffServerClient({ cookie: cookieHeader });
-  const res = await client.api.onboarding.$get();
+  const result = await getOnboarding({ cookie: cookieHeader });
 
-  if (res.ok) {
-    const { registered } = await res.json();
-    if (registered) {
-      redirect("/dashboard");
-    }
+  if (result.ok && result.value.registered) {
+    redirect("/dashboard");
   }
 
   return (
