@@ -4,7 +4,7 @@ import { ok, err } from "../../../utils/result";
 
 const PROFILE_IMAGES_BUCKET = "profile-images";
 
-export type ProfileImageStorageClient = {
+type ProfileImageStorageClient = {
   storage: {
     from(bucketId: string): {
       upload(
