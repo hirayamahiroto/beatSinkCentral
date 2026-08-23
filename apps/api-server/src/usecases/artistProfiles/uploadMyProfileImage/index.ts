@@ -9,7 +9,7 @@ import { type Result, ok, err } from "../../../utils/result";
 export type UploadMyProfileImageInput = {
   contentType: string;
   sizeBytes: number;
-  bytes: Promise<Uint8Array>;
+  bytes: Uint8Array;
 };
 
 export type UploadMyProfileImageOutput = {

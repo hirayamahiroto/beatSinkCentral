@@ -28,6 +28,8 @@ const app = new Hono().post(
     const { file } = c.req.valid("form");
     const auth0User = c.get("auth0User");
 
+    const bytes = new Uint8Array(await file.arrayBuffer());
+
     const result = await withArtistStorageWriteCapabilitiesById(
       getCapabilityDeps(),
       auth0User.sub,
@@ -36,7 +38,7 @@ const app = new Hono().post(
         uploadMyProfileImage(caps, {
           contentType: file.type,
           sizeBytes: file.size,
-          bytes: file.bytes(),
+          bytes,
         }),
     );
 

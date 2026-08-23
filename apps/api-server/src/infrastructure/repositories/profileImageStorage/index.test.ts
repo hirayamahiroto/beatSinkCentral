@@ -43,7 +43,7 @@ describe("createProfileImageStorage", () => {
     await storage.upload({
       artistId: "artist-1",
       image,
-      bytes: Promise.resolve(new Uint8Array([1, 2, 3])),
+      bytes: new Uint8Array([1, 2, 3]),
     });
 
     expect(stub.from).toHaveBeenCalledWith("profile-images");
@@ -58,11 +58,7 @@ describe("createProfileImageStorage", () => {
     const storage = createProfileImageStorage(() => stub.client);
     const bytes = new Uint8Array([1, 2, 3]);
 
-    await storage.upload({
-      artistId: "artist-1",
-      image,
-      bytes: Promise.resolve(bytes),
-    });
+    await storage.upload({ artistId: "artist-1", image, bytes });
 
     const [, uploadedBytes, options] = stub.upload.mock.calls[0];
     expect(uploadedBytes).toBe(bytes);
@@ -76,7 +72,7 @@ describe("createProfileImageStorage", () => {
     const result = await storage.upload({
       artistId: "artist-1",
       image,
-      bytes: Promise.resolve(new Uint8Array([1, 2, 3])),
+      bytes: new Uint8Array([1, 2, 3]),
     });
 
     expect(result.ok).toBe(true);
@@ -96,7 +92,7 @@ describe("createProfileImageStorage", () => {
     const result = await storage.upload({
       artistId: "artist-1",
       image,
-      bytes: Promise.resolve(new Uint8Array([1, 2, 3])),
+      bytes: new Uint8Array([1, 2, 3]),
     });
 
     expect(result.ok).toBe(false);

@@ -85,7 +85,7 @@ describe("POST /artists/:artistId/profile/image", () => {
       sizeBytes: 3,
       extension: "jpg",
     });
-    expect(await bytes).toBeInstanceOf(Uint8Array);
+    expect(bytes).toBeInstanceOf(Uint8Array);
   });
 
   it("Actor と一致しない artistId は 404 を返し、アップロードしない", async () => {
@@ -112,10 +112,7 @@ describe("POST /artists/:artistId/profile/image", () => {
   });
 
   it("サポート外の contentType は 422 を返し、アップロードしない", async () => {
-    const res = await request(
-      "artist-1",
-      createImageFile({ type: "image/gif" }),
-    );
+    const res = await request("artist-1", createImageFile({ type: "image/gif" }));
 
     expect(res.status).toBe(422);
     expect(mockUpload).not.toHaveBeenCalled();

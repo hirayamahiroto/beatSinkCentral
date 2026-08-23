@@ -24,7 +24,7 @@ export const createProfileImageStorage = (
     const bucket = getClient().storage.from(PROFILE_IMAGES_BUCKET);
     const path = `${artistId}/${crypto.randomUUID()}.${image.extension}`;
 
-    const uploaded = await bucket.upload(path, await bytes, {
+    const uploaded = await bucket.upload(path, bytes, {
       contentType: image.contentType,
       upsert: false,
     });
