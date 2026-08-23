@@ -28,6 +28,7 @@ const app = new Hono().post(
     const { file } = c.req.valid("form");
     const auth0User = c.get("auth0User");
 
+    // File は HTTP 層（multipart）由来の型のため、usecase 以下にはプラットフォーム非依存の Uint8Array に変換して渡す
     const bytes = new Uint8Array(await file.arrayBuffer());
 
     const result = await withArtistStorageWriteCapabilitiesById(
