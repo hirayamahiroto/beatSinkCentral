@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { Typography } from "@ui/design-system/components/atoms/Typography";
 import { auth0 } from "../../../libs/auth0";
-import { createBeatfolioBffServerClient } from "../../../utils/client";
+import { getSettings } from "../../../fetchers/dashboard/getSettings";
 import { EmailEditorClientAdapter } from "./EmailEditorClientAdapter";
 import { AccountIdEditorClientAdapter } from "./AccountIdEditorClientAdapter";
 
@@ -14,14 +14,13 @@ export default async function SettingsPage() {
   }
 
   const cookieHeader = (await headers()).get("cookie") ?? undefined;
-  const client = createBeatfolioBffServerClient({ cookie: cookieHeader });
-  const res = await client.api.dashboard.settings.$get();
+  const result = await getSettings({ cookie: cookieHeader });
 
-  if (!res.ok) {
-    throw new Error("Failed to fetch settings");
+  if (!result.ok) {
+    throw new Error(result.error.message);
   }
 
-  const settings = await res.json();
+  const settings = result.value;
 
   if (!settings.registered) {
     redirect("/onboarding");

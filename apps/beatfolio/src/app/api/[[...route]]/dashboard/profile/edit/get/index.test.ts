@@ -1,26 +1,30 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import type { RequestContextEnv } from "../../../../../../../middlewares/requestContext";
+import {
+  requestContextMiddleware,
+  type RequestContextEnv,
+} from "../../../../../../../middlewares/requestContext";
 import getProfileEdit from "./index";
 
-const meGet = vi.fn();
-const profileGet = vi.fn();
-const linkTypesGet = vi.fn();
+const { meGet, profileGet, linkTypesGet } = vi.hoisted(() => ({
+  meGet: vi.fn(),
+  profileGet: vi.fn(),
+  linkTypesGet: vi.fn(),
+}));
 
-const apiClient = {
-  api: {
-    users: { me: { $get: meGet } },
-    artists: { me: { profile: { $get: profileGet } } },
-    "link-types": { $get: linkTypesGet },
-  },
-};
+vi.mock("../../../../../../../utils/client", () => ({
+  createApiServerClient: () => ({
+    api: {
+      users: { me: { $get: meGet } },
+      artists: { ":artistId": { profile: { $get: profileGet } } },
+      "link-types": { $get: linkTypesGet },
+    },
+  }),
+}));
 
 const createApp = () => {
   const app = new Hono<RequestContextEnv>();
-  app.use("*", async (c, next) => {
-    c.set("apiClient", apiClient as never);
-    await next();
-  });
+  app.use("*", requestContextMiddleware);
   app.route("/", getProfileEdit);
   return app;
 };
@@ -74,10 +78,12 @@ describe("GET /dashboard/profile/edit", () => {
     const res = await createApp().request("/", { method: "GET" });
 
     expect(res.status).toBe(200);
+    expect(profileGet).toHaveBeenCalledWith({
+      param: { artistId: "artist-1" },
+    });
     expect(await res.json()).toStrictEqual({
       registered: true,
       email: "saku@example.com",
-      artistId: "artist-1",
       linkTypeOptions: linkTypes,
       defaultValues: {
         name: "SAKU",
@@ -101,7 +107,6 @@ describe("GET /dashboard/profile/edit", () => {
     expect(await res.json()).toStrictEqual({
       registered: true,
       email: "saku@example.com",
-      artistId: "artist-1",
       linkTypeOptions: linkTypes,
       defaultValues: null,
     });
@@ -114,6 +119,22 @@ describe("GET /dashboard/profile/edit", () => {
     const res = await createApp().request("/", { method: "GET" });
 
     expect(await res.json()).toStrictEqual({ registered: false });
+  });
+
+  it("登録済みでも artist が無ければ 502 を返す", async () => {
+    meGet.mockResolvedValue(
+      jsonResponse({
+        registered: true,
+        userId: "user-1",
+        email: "saku@example.com",
+        artist: null,
+      }),
+    );
+
+    const res = await createApp().request("/", { method: "GET" });
+
+    expect(res.status).toBe(502);
+    expect(profileGet).not.toHaveBeenCalled();
   });
 
   it("いずれかの api-server 呼び出しが失敗したら 502 を返す", async () => {

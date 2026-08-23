@@ -6,23 +6,28 @@ import {
   type WizardValues,
 } from "@ui/design-system/components/organisms/ArtistProfileWizard";
 import { useSaveProfile } from "./hooks/useSaveProfile";
-import { useUploadProfileImage } from "./hooks/useUploadProfileImage";
+import { uploadMyProfileImage } from "../../../../../fetchers/artists/uploadMyProfileImage";
 
 type Props = {
   email: string;
-  artistId: string;
   linkTypeOptions: LinkTypeOption[];
   defaultValues?: Partial<WizardValues>;
 };
 
+const uploadImage = async (file: File): Promise<string> => {
+  const result = await uploadMyProfileImage(file);
+  if (!result.ok) {
+    throw new Error(result.error.message);
+  }
+  return result.value.imageUrl;
+};
+
 export const ProfileWizardClientAdapter = ({
   email,
-  artistId,
   linkTypeOptions,
   defaultValues,
 }: Props) => {
   const { submit, saveDraft, isLoading, error } = useSaveProfile();
-  const { uploadImage } = useUploadProfileImage();
 
   return (
     <ArtistProfileWizard
@@ -34,7 +39,7 @@ export const ProfileWizardClientAdapter = ({
       onSubmit={async (data) => {
         await submit(data);
       }}
-      onUploadImage={(file) => uploadImage(artistId, file)}
+      onUploadImage={uploadImage}
       onSaveDraft={(data) => {
         void saveDraft(data);
       }}

@@ -386,8 +386,6 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
 ### 基本原則
 
-<<<<<<< HEAD
-
 1. **primitives配下は改造しない** - shadcn/ui から生成された状態を保持する
 2. **コマンド実行のみでアップデート可能な状態を維持** - shadcnのアップデートコマンドで更新できる状態とする
 3. 依存関係に手を加えずに対応

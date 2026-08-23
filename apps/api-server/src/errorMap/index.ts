@@ -35,6 +35,8 @@ import {
   createMalformedRequestBodyError,
   type MalformedRequestBodyError,
 } from "../app/api/[[...route]]/errors/malformedRequestBody";
+import type { RequestBodyTooLargeError } from "../app/api/[[...route]]/errors/requestBodyTooLarge";
+import type { ResponseContractViolationError } from "../app/api/[[...route]]/errors/responseContractViolation";
 import type { UnauthorizedError } from "../middlewares/auth0/errors/unauthorized";
 import type { LogFields, LogLevel, Logger } from "../utils/logger";
 import { createConsoleLogger } from "../utils/logger";
@@ -43,6 +45,8 @@ import { getRequestContext } from "../utils/requestContext";
 export type AppError =
   | InvalidRequestFormatError
   | MalformedRequestBodyError
+  | RequestBodyTooLargeError
+  | ResponseContractViolationError
   | UnauthorizedError
   | UserAlreadyRegisteredError
   | UserNotFoundError
@@ -99,6 +103,19 @@ const errorMap: ErrorMap = {
     status: 400,
     clientMessage: () => "Malformed request body",
     logLevel: "info",
+  },
+  RequestBodyTooLargeError: {
+    status: 413,
+    clientMessage: () => "Request body is too large",
+    logLevel: "info",
+  },
+  ResponseContractViolationError: {
+    status: 500,
+    clientMessage: () => "Internal Server Error",
+    logLevel: "error",
+    logFields: (error) => ({
+      issuePaths: error.issues.map((issue) => issue.path.join(".")),
+    }),
   },
   UnauthorizedError: {
     status: 401,

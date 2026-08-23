@@ -14,6 +14,7 @@ import { createInvalidNameFormatError } from "../domain/users/valueObjects/name"
 import { createInvalidAccountIdFormatError } from "../domain/artists/valueObjects/accountId";
 import { createInvalidArtistIdFormatError } from "../domain/artists/valueObjects/artistId";
 import { createInvalidRequestFormatError } from "../app/api/[[...route]]/errors/invalidRequestFormat";
+import { createRequestBodyTooLargeError } from "../app/api/[[...route]]/errors/requestBodyTooLarge";
 import { createUnauthorizedError } from "../middlewares/auth0/errors/unauthorized";
 import { createProfileNotPublishableError } from "../domain/artistProfiles/policies/publishability";
 import {
@@ -188,6 +189,15 @@ describe("createAppErrorHandler", () => {
       ).toStrictEqual({
         status: 422,
         body: { error: "Unsupported image type" },
+      });
+    });
+
+    it("RequestBodyTooLargeErrorを413に変換する", async () => {
+      expect(
+        await clientResponseOf(createRequestBodyTooLargeError()),
+      ).toStrictEqual({
+        status: 413,
+        body: { error: "Request body is too large" },
       });
     });
 
