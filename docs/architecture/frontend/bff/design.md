@@ -94,20 +94,20 @@ read も write も **BFF route（`/api/*`）を経由する**。経路は対称�
 
 ```
 取得（read）─ SSR
-  page.tsx ──HTTP──▶ /api/*（BFF read ルート）──▶ api-server
-                       requestContext で cookie 付き apiClient
-                       呼び出し + 整形（集約・整形・そぎ落とし）
-                                              │
-                        整形済みデータ ◀───────┘
+  page.tsx ──▶ fetchers ──HTTP──▶ /api/*（BFF read ルート）──▶ api-server
+                                    requestContext で cookie 付き apiClient
+                                    呼び出し + 整形（集約・整形・そぎ落とし）
+                                                           │
+                        Result 化した整形済みデータ ◀───────┘
   page.tsx は整形済みデータで業務判断（redirect）し、初期レンダリング
   （編集可能な部分だけ colocated な ClientAdapter に必要な値を渡す）
 
 更新/削除（write）─ CSR
-  ClientAdapter ──▶ hook（useXxx）──▶ createBeatfolioBffClient ──▶ /api/*（BFF write ルート）
-                                                                        │
-                                                       zValidator で検証 │
-                                                                        ▼
-                                                  c.get("apiClient") ──▶ api-server へ送信
+  ClientAdapter ──▶ hook（useXxx）──▶ fetchers ──▶ /api/*（BFF write ルート）
+                                                        │
+                                       zValidator で検証 │
+                                                        ▼
+                                  c.get("apiClient") ──▶ api-server へ送信
 ```
 
 ### read の実装: BFF read ルート（`/api/*`）＋ `page.tsx` から呼ぶ
@@ -145,17 +145,17 @@ export default app;
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth0 } from "../../libs/auth0";
-import { createBeatfolioBffClient } from "../../utils/client";
+import { getDashboard } from "../../fetchers/dashboard/getDashboard";
 
 export default async function DashboardPage() {
   const session = await auth0.getSession();
   if (!session) redirect("/auth/login");
 
-  // SSR から自分の BFF read ルートを呼ぶ（cookie を転送する自己 HTTP hop）
+  // SSR から fetcher 経由で自分の BFF read ルートを呼ぶ（cookie を転送する自己 HTTP hop）
   const cookie = (await headers()).get("cookie") ?? undefined;
-  const res = await createBeatfolioBffClient({ cookie }).api.dashboard.$get();
-  if (!res.ok) throw new Error("Failed to fetch dashboard");
-  const dashboard = await res.json();
+  const result = await getDashboard({ cookie });
+  if (!result.ok) throw new Error(result.error.message);
+  const dashboard = result.value;
 
   if (!dashboard.registered) redirect("/onboarding");
 
@@ -183,7 +183,7 @@ export default async function DashboardPage() {
 ### write の実装: HTTP ルート（`/api/*`）
 
 - 配置: `src/app/api/[[...route]]/{resource}/index.ts`
-- 責務: 入力バリデーション → `apiClient` で api-server へ送信 → 結果/エラーを返す（**薄いパススルー**）。
+- 責務: 入力バリデーション → 必要なら自分の `userId` / `artistId` を解決（`shared/resolveMyUserId` / `shared/resolveMyArtistId`、内部で `GET /users/me`）→ `apiClient` で api-server へ送信 → 結果/エラーを返す（**薄いパススルー**）。ブラウザ向け URL は `me` のままでよい（セッション主体への読み替えは BFF の責務。api-server 側は `/:userId` / `/:artistId` でアドレスする）。
 - 認証 cookie: `requestContextMiddleware` がセッション cookie を付与した `apiClient`（= `createBffServerClient`）を `c.set("apiClient", ...)` する。ルートは `c.get("apiClient")` を使うだけ。
 
 ```ts
@@ -206,7 +206,13 @@ const app = new Hono<RequestContextEnv>().post(
     const apiClient = c.get("apiClient");
     const body = c.req.valid("json");
 
-    const res = await apiClient.api.artists.me.$post({
+    const resolved = await resolveMyArtistId(apiClient);
+    if (!resolved.ok) {
+      return c.json(resolved.body, resolved.status);
+    }
+
+    const res = await apiClient.api.artists[":artistId"].$post({
+      param: { artistId: resolved.artistId },
       json: { accountId: body.accountId },
     });
 
@@ -222,23 +228,37 @@ const app = new Hono<RequestContextEnv>().post(
 
 ```tsx
 // src/app/dashboard/AccountIdEditorClientAdapter/hooks/useUpdateMyAccountId/index.ts
-// CSR: hook → createBeatfolioBffClient → /api/artists/me（write ルート）
-const client = createBeatfolioBffClient();
-const res = await client.api.artists.me.$post({ json: { accountId } });
+// CSR: hook → fetchers/artists/updateMyAccountId → /api/artists/me（write ルート）
+const result = await updateMyAccountId({ accountId });
+if (result.ok) router.refresh();
+```
+
+### 呼び出し面の集約: fetchers 層（`src/fetchers/`）
+
+UI 層（`page.tsx` / hooks）は hono クライアントを直接生成しない。BFF `/api/*` への fetch は **`src/fetchers/` の関数だけ**が行い、UI はそれを呼ぶ。「どこで BFF が fetch されているか」を `src/fetchers/` の一覧だけで見渡せるようにするための集約点である。
+
+- **構成**: BFF エンドポイント1つにつき1モジュール。`src/fetchers/<BFF ルートの名前空間>/<操作名>/index.ts`（+ `index.test.ts`）。例: `fetchers/artists/updateMyAccountId/`、`fetchers/dashboard/getProfileEditScreen/`。
+- **責務**: クライアント生成（write = CSR は `createBeatfolioBffClient`、read = SSR は `createBeatfolioBffServerClient`。read は `cookie` を引数で受ける）・レスポンス解釈・エラー正規化。
+- **契約**: `Promise<Result<T, FetcherError>>` を返し、**throw しない**（到達不能も catch して `unexpected` に正規化する）。`FetcherError` は `{ kind: "rejected" | "unexpected"; message: string }` — `rejected` はユーザー起因（400/409/422）でメッセージをそのまま画面に出せる、`unexpected` はそれ以外。共通処理は `fetchers/shared/error/` に置く。
+- **型は BFF AppType から導出する**（`InferRequestType` / `InferResponseType`）。fetchers 層でリクエスト・レスポンスの型を手書きしない。
+- **呼び出し側の責務**: hooks は状態管理（`isLoading` / `error` / `router.refresh`）に専念し、`page.tsx` は認証・`redirect`・描画に専念する。レスポンス解釈・エラー文言は fetchers 側にある。
+
+```
+read:  page.tsx ──▶ fetchers（SSR クライアント生成 + Result 正規化）──▶ /api/*（BFF read ルート）
+write: hook     ──▶ fetchers（CSR クライアント生成 + Result 正規化）──▶ /api/*（BFF write ルート）
 ```
 
 ### クライアントの使い分け
 
-| クライアント               | 経路                            | 用途                                                                            |
-| -------------------------- | ------------------------------- | ------------------------------------------------------------------------------- |
-| `createBffServerClient`    | サーバー → **api-server 直**    | BFF route（read / write）が `requestContext` 経由（`c.get("apiClient")`）で使う |
-| `createBeatfolioBffClient` | クライアント → **BFF `/api/*`** | `page.tsx`（SSR の read）と CSR の write hook の両方                            |
+| クライアント                     | 経路                            | 用途                                                                            |
+| -------------------------------- | ------------------------------- | ------------------------------------------------------------------------------- |
+| `createBffServerClient`          | サーバー → **api-server 直**    | BFF route（read / write）が `requestContext` 経由（`c.get("apiClient")`）で使う |
+| `createBeatfolioBffClient`       | クライアント → **BFF `/api/*`** | **`src/fetchers/` だけが生成する**（CSR の write fetcher）                      |
+| `createBeatfolioBffServerClient` | サーバー → **BFF `/api/*`**     | **`src/fetchers/` だけが生成する**（SSR の read fetcher。`cookie` を引き継ぐ）  |
 
 > **命名の注意**: `createBffServerClient` は名前に反して **api-server を直接叩くクライアント**である（`hc<AppType>`、`AppType` は api-server のもの）。BFF `/api/*` を叩くのは `createBeatfolioBffClient` の方。混同しないこと（将来 `createApiServerClient` 等へリネームを検討）。
 
-> **read の経路**: `page.tsx` は api-server を直接叩かず、**自分の BFF read ルート（`/api/*`）を HTTP で呼ぶ**。整形責務を route に集約し read/write の経路を対称に保つための設計で、自己 HTTP hop はその対価として受け入れる。
->
-> **コード差分の注意**: `createBeatfolioBffClient` は現状 `hc("/")`（相対 URL・ブラウザ専用）。SSR の `page.tsx` から呼ぶには **絶対 URL ＋ cookie 転送**に対応させる必要がある（引数で cookie を受け取る形）。現コードは read を `page.tsx` 直呼び（`createBffServerClient`）で実装しており、本ドキュメントの規範からズレている。移行が必要。
+> **read の経路**: `page.tsx` は api-server を直接叩かず、**自分の BFF read ルート（`/api/*`）を HTTP で呼ぶ**。整形責務を route に集約し read/write の経路を対称に保つための設計で、自己 HTTP hop はその対価として受け入れる。SSR からの呼び出しは `createBeatfolioBffServerClient`（絶対 URL + cookie 転送）を使い、その生成は read fetcher（`src/fetchers/`）に閉じる。read / write とも全 BFF 呼び出しは fetchers 層経由に移行済み。
 
 ### バリデーションの役割分担
 

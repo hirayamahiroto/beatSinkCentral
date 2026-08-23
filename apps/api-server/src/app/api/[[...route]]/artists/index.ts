@@ -1,11 +1,7 @@
 import { Hono } from "hono";
-import listPublicProfiles from "./get";
-import getPublicProfile from "./[accountId]/get";
-import me from "./me";
+import publicRoutes from "./public";
+import artistId from "./[artistId]";
 
-const app = new Hono()
-  .route("/", listPublicProfiles)
-  .route("/me", me)
-  .route("/", getPublicProfile);
+const app = new Hono().route("/", publicRoutes).route("/:artistId", artistId);
 
 export default app;

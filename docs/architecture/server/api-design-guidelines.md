@@ -101,6 +101,21 @@ POST /users/:id/delete
 
 この明確な役割分担により、シンプルで予測可能なAPI設計を維持できます。
 
+## リソースアドレッシング（パスキーの選び方）
+
+エンドポイントの URL は**ドメインモデルの現状（例: 1 ユーザー = 1 アーティスト）に依存させず、リソース指向で設計する**。URL は外部契約でありモデルより寿命が長いため、モデルの都合を URL に焼き込むと、モデル変更が URL の破壊的変更に波及する。
+
+| 原則                 | 内容                                                                                                                                                                                                                                   |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 対象はパスで指定する | 操作対象のリソースは `/artists/:artistId/...` のようにパスでアドレスする。`me` のような「セッションの主体に暗黙で紐づく」パスは新設しない                                                                                              |
+| パスキーは不変 ID    | 書き込み・認証済み参照のパスキーは**不変なリソース ID**（`artistId` = UUID）を使う。`accountId` のような**可変ハンドルは公開 read 専用**（SEO・シェア URL 向け）とし、書き込みの宛先に使わない（リネームと古いハンドルの問題を避ける） |
+| 主体はセッションから | 「誰が」はパスやボディでなくセッション（`sub`）から解決する。パスの対象リソースに対してその主体が操作できるかは authorization 層が照合する（対象の選択 = パス、本人性 = セッション、可否 = 認可、の分離）                              |
+| 不一致は 404         | パスのリソースに主体がアクセスできない場合は 404 を返す（リソースの存在を秘匿する）                                                                                                                                                    |
+
+- クライアントは自分の `userId` / `artistId` を `GET /users/me` から取得する。`GET /users/me` は、セッション（`sub`）以外の識別子を持たないクライアントが自分のリソース ID を解決する唯一の起点（bootstrap）であり、未登録状態（`registered: false`）を表現できる唯一の宛先でもあるため、例外としてこの 1 本だけ存置する。
+- **旧 `me` 系ルート（`/artists/me/*`・`POST /users/me`）は廃止済み**。expand（`/:artistId`・`/:userId` 系を追加）→ migrate（クライアント切り替え）→ contract（`me` 削除）の移行は完了しており、エンドポイントを `me` 配下に新設しない。
+- `userId` / `artistId` が URL に現れること自体はリスクではない。守りは ID の秘匿ではなく、認証（セッション検証）と認可（パスの ID と本人の照合、不一致は 404）が担う。ID の知識だけでは何の権能にもならない設計を保つ（ID だけで叩ける非認証エンドポイントを作らない）。
+
 ## リソース命名規則
 
 ### 複数形を使用
@@ -127,40 +142,61 @@ POST /users/:id/deactivate  → 無効化
 POST /orders/:id/cancel     → キャンセル
 ```
 
-## ファイル構成：1エンドポイント1ユニット（メソッド名ディレクトリ + index.ts）
+## ファイル構成：1エンドポイント1ユニット（意図名ディレクトリ + index.ts）
 
-ルート（`app/api/[[...route]]`）は **1 ユニット = 1 エンドポイント（1 HTTP メソッド + 1 パス）** で構成する。
+ルート（`app/api/[[...route]]`）は **1 ユニット = 1 エンドポイント（1 HTTP メソッド + 1 パス）** で構成する。ただし **ディレクトリを掘るのはリソースの境目とミドルウェアが変わる境目だけ**で、URL セグメントの数だけ階層を作らない。
 
-- **取得（GET）と保存（POST）は同じエンドポイント**。「使用例」の `GET /users/:id`（詳細取得）と `POST /users/:id`（更新）のように、**同じパスをメソッドで切り替えるだけ**。これを**別ユニットに分離**する。
-- プロジェクト共通の「ディレクトリ + `index.ts`」構成に揃える。**HTTP メソッドをディレクトリ名にし、その配下に `index.ts`**（`get/index.ts`・`post/index.ts`）。`get.ts` のような単一ファイル形や `save/` のような独自アクション名は使わない。
-- ディレクトリ階層は URL パスを写し、最末端のメソッドディレクトリ名が HTTP メソッド。`:param` 系は記述的なパスディレクトリ名（例 `detail/`）を使う。
-- アクションは「使用例」の `POST /users/:id/delete` と同じく **POST + パス接尾辞**で表し、`<接尾辞>/post/index.ts` に置く。
-- 各 `index.ts` は単一メソッドの Hono app を `default export` し、`route.ts` が import して該当パスにマウントする（同一パスに GET/POST がある場合は同じ base path に複数回 `.route()`）。
+- **取得（GET）と保存（POST）は別ユニット**。「使用例」の `GET /users/:id`（詳細取得）と `POST /users/:id`（更新）のように同じパスをメソッドで切り替える場合も、別ユニットに分離する。
+- ユニットは「ディレクトリ + `index.ts`」構成（+ 同階層 `index.test.ts`）。**ディレクトリ名はエンドポイントの意図を表す名前**にする（`updateAccountId/` `getProfile/` `saveProfile/` `publishProfile/` 等）。HTTP メソッド名のディレクトリ（`get/` `post/`）や method を埋め込んだファイル名（`profile.publish.post.ts`）は使わない。
+- ミドルウェアが変わる境界の `index.ts` が「path → ユニット」の対応表（マウントテーブル）を `.route()` で宣言する。ユニット自身は小さな Hono app として自分からの相対パス（`"/"` 等）と自分のバリデーション（`validateRequest`）だけを持ち、実際の絶対 URL は境界の `index.ts` だけが知っている。バリデーションは Hono の型推論の都合上、ユニットの Hono チェーン内で行う（境界側に持ち出さない）。
+- アクションは「使用例」の `POST /users/:id/delete` と同じ意図を、ディレクトリ名（`deleteUser/`）で表す。独自の method 接尾辞ファイル名は使わない。
 
-```
+```text
 app/api/[[...route]]/
   artists/
-    detail/
-      get/index.ts             → GET  /artists/:accountId
-    me/
-      profile/
-        get/index.ts           → GET  /artists/me/profile
-        post/index.ts          → POST /artists/me/profile
-        publish/
-          post/index.ts        → POST /artists/me/profile/publish
+    public/                        ← 公開（認証なし・可変ハンドル accountId）
+      index.ts                     → マウントテーブル
+      listArtists/index.ts         → GET /artists
+      getArtist/index.ts           → GET /artists/:accountId
+    [artistId]/                   ← 認証境界（不変 ID artistId）
+      index.ts                    → requireAuthMiddleware + マウントテーブル
+      updateAccountId/index.ts    → POST /:artistId
+      getProfile/index.ts         → GET  /:artistId/profile
+      saveProfile/index.ts        → POST /:artistId/profile
+      publishProfile/index.ts     → POST /:artistId/profile/publish
+  users/                           ← 全ルート認証（境界は users/ 直下）
+    index.ts                       → requireAuthMiddleware + マウントテーブル
+    createUser/index.ts            → POST /users
+    getMe/index.ts                 → GET  /users/me（bootstrap。/:userId より先にマウントする）
+    [userId]/                     ← リソース境界（不変 ID userId）
+      index.ts                    → マウントテーブル
+      updateEmail/index.ts        → POST /users/:userId
 ```
 
 ```typescript
-// route.ts（同一パスにメソッド別ユニットをそれぞれマウント）
-.route("/artists/me/profile", getMyProfile) // get/index.ts  → GET /
-.route("/artists/me/profile", saveMyProfile) // post/index.ts → POST /
-.route("/artists/me/profile/publish", publishMyProfile) // publish/post/index.ts → POST /
-.route("/artists", getPublicProfile) // detail/get/index.ts → GET /:accountId
+// artists/[artistId]/index.ts（境界のマウントテーブル）
+import { Hono } from "hono";
+import updateAccountId from "./updateAccountId";
+import getProfile from "./getProfile";
+import saveProfile from "./saveProfile";
+import publishProfile from "./publishProfile";
+import { requireAuthMiddleware } from "../../../../../middlewares/auth0";
+
+const app = new Hono()
+  .use("*", requireAuthMiddleware)
+  .route("/", updateAccountId)
+  .route("/profile", getProfile)
+  .route("/profile", saveProfile)
+  .route("/profile/publish", publishProfile);
+
+export default app;
 ```
 
-**理由**: エンドポイント単位で責務・変更差分・レビュー範囲が閉じる。1 ユニットに GET/POST/サブアクションが混在すると変更影響が追いにくくなる。各メソッドディレクトリにもテストを置く。
+> **注意**: 境界の `.use("*", mw)` は、同じ裸パス形状を共有する公開ルート（今回は `GET /:accountId`）と共存できるが、それは**親ルーターで公開ルートを境界より先にマウントしている**ことが前提（Hono は登録順に合成し、先に応答したハンドラで打ち切る）。マウント順を入れ替えないこと（詳細は [architecture.md](./architecture.md) の該当注意を参照）。
 
-> **既存の例外**: 規約制定以前のルート（`users/me` 等）には GET/POST 同居ファイルが残っている。これらは順次このルールへ移行する。
+**理由**: エンドポイント単位で責務・変更差分・レビュー範囲を閉じつつ（1 ユニット1エンドポイントを維持）、URL セグメントをすべてディレクトリに写すと階層が深くなりすぎる問題を避ける。マウントテーブルを境界の `index.ts` に集約することで、その境界配下に何が生えているかを1箇所で見渡せる。各ユニットにもテストを置く（`index.test.ts`）。
+
+> **既存の例外**: 規約制定以前のルート（`link-types/` 等）には HTTP メソッド名ディレクトリが残っている。これらは新規実装・変更時にこの規約へ順次移行する。
 
 ## 使用例
 
@@ -176,18 +212,20 @@ app/api/[[...route]]/
 
 ### アーティストプロフィール操作
 
-本人のプロフィールは「1 ユーザー = 1 アーティスト」のため `me` スコープ。取得と保存は同一エンドポイントをメソッドで切り替える。
+対象アーティストは不変 ID（`artistId`）でアドレスし、操作可否は authorization 層が「セッションの主体がその artistId に書けるか」を照合する。取得と保存は同一エンドポイントをメソッドで切り替える。
 
-| 操作                     | メソッド | エンドポイント                |
-| ------------------------ | -------- | ----------------------------- |
-| 取得（本人・下書き含む） | GET      | `/artists/me/profile`         |
-| 保存（作成・更新）       | POST     | `/artists/me/profile`         |
-| 公開 / 非公開            | POST     | `/artists/me/profile/publish` |
-| 公開詳細（誰でも）       | GET      | `/artists/:accountId`         |
+| 操作                     | メソッド | エンドポイント                       |
+| ------------------------ | -------- | ------------------------------------ |
+| 取得（本人・下書き含む） | GET      | `/artists/:artistId/profile`         |
+| 保存（作成・更新）       | POST     | `/artists/:artistId/profile`         |
+| 公開 / 非公開            | POST     | `/artists/:artistId/profile/publish` |
+| accountId 変更           | POST     | `/artists/:artistId`                 |
+| 公開詳細（誰でも）       | GET      | `/artists/:accountId`                |
 
-- 取得 (GET) と保存 (POST) は **同じ `/artists/me/profile`**。`users` の `GET /users/:id` ⇔ `POST /users/:id` と同じ関係。
+- 取得 (GET) と保存 (POST) は **同じ `/artists/:artistId/profile`**。`users` の `GET /users/:id` ⇔ `POST /users/:id` と同じ関係。
 - 公開切り替えは `POST /users/:id/delete` と同じくアクションを接尾辞で表す（`/publish`）。
-- 公開詳細は `GET /users/:id` と同じく ID（ここでは accountId ハンドル）で引く。
+- 公開詳細のみ可変ハンドル（accountId）で引く。認証済み操作のパスキーは不変 ID（artistId）。
+- 旧 `me` 系ルート（`/artists/me/*`）は移行完了に伴い削除済み。
 
 ### レスポンス形式
 

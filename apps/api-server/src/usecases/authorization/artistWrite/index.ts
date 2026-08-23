@@ -3,7 +3,7 @@ import type {
   ResolveActorError,
   ArtistWriteCapabilities,
 } from "../../capabilities";
-import { toActor } from "../resolution";
+import { toAddressedActor } from "../resolution";
 import {
   catchAlreadyTaken,
   isAlreadyTakenError,
@@ -11,12 +11,13 @@ import {
 } from "../conflict";
 import type { Result } from "../../../utils/result";
 
-export const withArtistWriteCapabilities = async <T, E>(
+export const withArtistWriteCapabilitiesById = async <T, E>(
   deps: CapabilityDeps,
   subId: string,
+  artistId: string,
   work: (caps: ArtistWriteCapabilities) => Promise<Result<T, E>>,
 ): Promise<Result<T, E | ResolveActorError | AlreadyTakenError>> => {
-  const actor = toActor(await deps.resolveActorState(subId));
+  const actor = toAddressedActor(await deps.resolveActorState(subId), artistId);
   if (!actor.ok) return actor;
 
   return catchAlreadyTaken(isAlreadyTakenError, () =>

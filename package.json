@@ -40,5 +40,11 @@
   ],
   "lint-staged": {
     "*.{js,jsx,ts,tsx,json,md}": "prettier --write"
+  },
+  "overrides": {
+    "@esbuild-kit/core-utils": {
+      "esbuild": "^0.25.0"
+    },
+    "valibot": "^1.4.2"
   }
 }

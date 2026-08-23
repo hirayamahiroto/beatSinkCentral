@@ -1,38 +1,16 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { z } from "zod";
-import { createBeatfolioBffClient } from "../../../../../../utils/client";
-import { type Result, ok, err } from "../../../../../../utils/result";
+import { updateMyEmail } from "../../../../../../fetchers/users/updateMyEmail";
+import type { FetcherError } from "../../../../../../fetchers/shared/error";
+import type { Result } from "../../../../../../utils/result";
 
 type UpdateData = {
   email: string;
 };
 
-export type UpdateMyEmailError = {
-  kind: "rejected" | "unexpected";
-  message: string;
-};
+export type UpdateMyEmailError = FetcherError;
 
 export type UpdateMyEmailResult = Result<void, UpdateMyEmailError>;
-
-const FALLBACK_MESSAGE = "メールアドレスの更新に失敗しました";
-
-const NETWORK_MESSAGE = "通信に失敗しました。時間をおいて再度お試しください";
-
-const REJECTED_STATUSES = [400, 409, 422];
-
-const errorBodySchema = z.object({ error: z.string().min(1) });
-
-const readErrorMessage = async (res: {
-  json: () => Promise<unknown>;
-}): Promise<string> => {
-  try {
-    const parsed = errorBodySchema.safeParse(await res.json());
-    return parsed.success ? parsed.data.error : FALLBACK_MESSAGE;
-  } catch {
-    return FALLBACK_MESSAGE;
-  }
-};
 
 export const useUpdateMyEmail = () => {
   const router = useRouter();
@@ -43,26 +21,14 @@ export const useUpdateMyEmail = () => {
   }: UpdateData): Promise<UpdateMyEmailResult> => {
     setIsLoading(true);
 
-    try {
-      const client = createBeatfolioBffClient();
-      const res = await client.api.users.me.$post({ json: { email } });
+    const result = await updateMyEmail({ email });
 
-      if (!res.ok) {
-        return err({
-          kind: REJECTED_STATUSES.includes(res.status)
-            ? "rejected"
-            : "unexpected",
-          message: await readErrorMessage(res),
-        });
-      }
-
+    if (result.ok) {
       router.refresh();
-      return ok(undefined);
-    } catch {
-      return err({ kind: "unexpected", message: NETWORK_MESSAGE });
-    } finally {
-      setIsLoading(false);
     }
+
+    setIsLoading(false);
+    return result;
   };
 
   return { update, isLoading };

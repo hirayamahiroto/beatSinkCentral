@@ -22,6 +22,18 @@ export const toActor = (
   }
 };
 
+export const toAddressedActor = (
+  resolution: ActorResolution,
+  artistId: string,
+): Result<Actor, ResolveActorError> => {
+  const actor = toActor(resolution);
+  if (!actor.ok) return actor;
+  if (actor.value.artist.getArtistId() !== artistId) {
+    return err(createArtistNotFoundError());
+  }
+  return actor;
+};
+
 export const toUser = (
   resolution: ActorResolution,
 ): Result<User, ResolveUserError> => {
@@ -33,4 +45,16 @@ export const toUser = (
     case "complete":
       return ok(resolution.actor.user);
   }
+};
+
+export const toAddressedUser = (
+  resolution: ActorResolution,
+  userId: string,
+): Result<User, ResolveUserError> => {
+  const user = toUser(resolution);
+  if (!user.ok) return user;
+  if (user.value.getId() !== userId) {
+    return err(createUserNotFoundError());
+  }
+  return user;
 };

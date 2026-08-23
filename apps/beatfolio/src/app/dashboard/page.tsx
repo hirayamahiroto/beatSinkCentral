@@ -5,7 +5,7 @@ import { Typography } from "@ui/design-system/components/atoms/Typography";
 import { Card } from "@ui/design-system/components/atoms/Card";
 import { Button } from "@ui/design-system/components/atoms/Button";
 import { auth0 } from "../../libs/auth0";
-import { createBeatfolioBffServerClient } from "../../utils/client";
+import { getDashboard } from "../../fetchers/dashboard/getDashboard";
 
 export default async function DashboardPage() {
   const session = await auth0.getSession();
@@ -15,14 +15,13 @@ export default async function DashboardPage() {
   }
 
   const cookieHeader = (await headers()).get("cookie") ?? undefined;
-  const client = createBeatfolioBffServerClient({ cookie: cookieHeader });
-  const res = await client.api.dashboard.$get();
+  const result = await getDashboard({ cookie: cookieHeader });
 
-  if (!res.ok) {
-    throw new Error("Failed to fetch dashboard");
+  if (!result.ok) {
+    throw new Error(result.error.message);
   }
 
-  const dashboard = await res.json();
+  const dashboard = result.value;
 
   if (!dashboard.registered) {
     redirect("/onboarding");

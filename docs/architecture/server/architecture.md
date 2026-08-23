@@ -71,10 +71,10 @@ apps/api-server/src/
 │   │   ├── resolution/       # toActor / toUser（畳み込み）
 │   │   ├── conflict/         # 一意制約違反を err に戻す
 │   │   ├── identity/         # withIdentityCapabilities
-│   │   ├── artistRead/       # withArtistReadCapabilities
-│   │   ├── userWrite/        # withUserWriteCapabilities
-│   │   ├── artistWrite/      # withArtistWriteCapabilities
-│   │   ├── artistStorageWrite/ # withArtistStorageWriteCapabilities
+│   │   ├── artistRead/       # withArtistReadCapabilitiesById
+│   │   ├── userWrite/        # withUserWriteCapabilitiesById
+│   │   ├── artistWrite/      # withArtistWriteCapabilitiesById
+│   │   ├── artistStorageWrite/ # withArtistStorageWriteCapabilitiesById
 │   │   └── registration/     # withRegistrationCapabilities
 │   ├── users/                # createUser / getMe / updateMyEmail ...
 │   ├── artistProfiles/       # プロフィールの取得・保存・公開
@@ -698,45 +698,48 @@ HTTPリクエスト/レスポンスの処理を担当。
 
 #### ルーティングは階層ごとに合成する
 
-**ディレクトリ = URL セグメント**を 1:1 に対応させ、各階層の `index.ts` が配下を合成する。親は子ルーターだけを mount し、mount 文字列は 1 セグメント分に留める。
+ディレクトリを切るのは **リソースの境目** と **ミドルウェアが変わる境目** だけ。URL セグメントの数だけディレクトリを掘らない。境界の `index.ts` が「path → ユニット」の対応表（マウントテーブル）を `.route()` で宣言し、ユニットは境界の直下に**意図を表す名前**のディレクトリ（`index.ts` + `index.test.ts`）としてフラットに並べる。各ユニットは自分の相対パスと自分のバリデーションを持つ小さな Hono app（型推論の都合上、バリデーションは境界側に持ち出さない）。
 
-```
+```text
 app/api/[[...route]]/
 ├── route.ts                    # basePath + 全体ミドルウェア + onError + トップ mount のみ
 ├── artists/
-│   ├── index.ts                # /artists の合成
-│   ├── get/                    # GET /artists
-│   ├── [accountId]/get/        # GET /artists/:accountId
-│   └── me/
-│       ├── index.ts            # requireAuthMiddleware を適用
-│       ├── post/               # POST /artists/me
-│       └── profile/
-│           ├── index.ts
-│           ├── get/            # GET  /artists/me/profile
-│           ├── post/           # POST /artists/me/profile
-│           └── publish/post/   # POST /artists/me/profile/publish
-├── users/
-│   ├── index.ts                # requireAuthMiddleware を適用
-│   ├── post/                   # POST /users
-│   └── me/
-│       ├── index.ts
-│       ├── get/                # GET  /users/me
-│       └── post/               # POST /users/me
+│   ├── index.ts                # 公開 / 認証済みの2区画を合成するだけ（ミドルウェアなし）
+│   ├── public/                 # 公開（認証なし・可変ハンドル accountId）
+│   │   ├── index.ts            # マウントテーブル
+│   │   ├── listArtists/        # GET /artists
+│   │   └── getArtist/          # GET /artists/:accountId
+│   └── [artistId]/             # ← ここが認証境界（不変 ID artistId。accountId とは別の鍵）
+│       ├── index.ts            # requireAuthMiddleware + マウントテーブル
+│       ├── updateAccountId/    # POST /:artistId
+│       ├── getProfile/         # GET  /:artistId/profile
+│       ├── saveProfile/        # POST /:artistId/profile
+│       └── publishProfile/     # POST /:artistId/profile/publish
 └── link-types/
-    ├── index.ts
+    ├── index.ts                # 認証不要 → 集約のみ
     └── get/                    # GET /link-types
 ```
 
+公開（認証なし・可変ハンドル `accountId`）と認証済み（不変 ID `artistId`）は同じ artist を指すが鍵も認可も別物なので、`artists/public/` と `artists/[artistId]/` に分けて並べる。こうしておくと、`artists/index.ts` の2行（`public` / `[artistId]`）がそのまま「公開・認証」の2区画になり、境界の `index.ts` を見れば全体像が分かる。将来公開ルートの名前空間を分離する場合も、`artists/public/` をディレクトリごと移してマウント先を変えるだけで済む。
+
 階層 `index.ts` の責務は 2 つだけに限定する。
 
-1. 配下の子ルーター／エンドポイントの合成
+1. 配下ユニットの合成（マウントテーブルとして path → ユニット を `.route()` で宣言）
 2. その階層に効くミドルウェアの適用
 
-リーフ（`get/` `post/`）は 1 ファイル 1 エンドポイントを維持する。動的セグメントは `[accountId]/` と表記する（`[[...route]]` 配下は Next.js のルート探索対象外なので、ルーティング解釈と衝突しない）。
+ユニット（リーフ）は **1 ディレクトリ = 1 エンドポイント**を維持する。ディレクトリ名はアクションの意図を表す名前にする。HTTP メソッド名のディレクトリ（`get/` `post/`）や method を埋め込んだファイル名（`profile.publish.post.ts` 等）は使わない。動的セグメントは `[accountId]/` と表記する（`[[...route]]` 配下は Next.js のルート探索対象外なので、ルーティング解釈と衝突しない）。
 
-**認証は保護対象階層の `index.ts` で適用する。** トップでパス文字列を列挙しない。階層側で `.use("*", requireAuthMiddleware)` を一度書けば配下は構造的に保護されるため、リソース追加時の付け忘れが起きにくい（デフォルトが deny 側に倒れる）。
+**認証はミドルウェアが変わる境界の `index.ts` で適用する。** トップでパス文字列を列挙しない。境界側で `.use("*", requireAuthMiddleware)` を一度書けば配下は構造的に保護されるため、リソース追加時の付け忘れが起きにくい（デフォルトが deny 側に倒れる）。境界はリソースの先頭に限らない。`artists/` は公開/認証が混在するため無防備なままで、認証境界は1階層下の `[artistId]/` にある。
 
-`AppType`（Hono RPC）の型推論を保つため、各 `index.ts` は `.route()` のメソッドチェーンを維持する。
+> **注意（`.use("*")` と同形の公開ルートが重なる場合はマウント順で解決する）**: `.use("*", mw)` は「ALL メソッド」に一致するため、境界の**裸のパス**（例: `/artists/:artistId`・POST・認証必須）と別リソースの公開ルート（例: `/artists/:accountId`・GET・公開）が同じ「1セグメントの動的パス」形状を共有しうる。ただし Hono はマッチした handler / middleware を**登録順に合成し、先に応答したハンドラで打ち切る**ため、親ルーターで**公開ルートを境界より先にマウントしていれば**、公開 GET は先に登録された公開ハンドラが応答し、境界の `use("*")` には到達しない。公開側に存在しないメソッド（POST 等）だけが境界に流れて認証される。したがって境界は素直に `.use("*", requireAuthMiddleware)` で全面適用してよい。
+>
+> 成立条件は「公開ルートを先にマウントする」の1点のみ（`artists/index.ts` の順序制約コメント参照）。逆順にすると TrieRouter フォールバック時に公開 GET が 401 になる（RegExpRouter は逆順でも公開側を優先するが、順序に依存しないことを保証する仕様ではない）。この順序は合成テストの「公開ルートは認証を要求しない」アサーションで担保する。
+>
+> **既知の制約（Hono ルーターのフォールバック）**: 同じ親パス配下に「リテラル segment + ワイルドカード」（例: `/artists/me/*`）と「動的パラメータ」（例: `/artists/:accountId`）が共存すると、Hono の `RegExpRouter` が `UnsupportedPathError` を投げ、`SmartRouter` が警告なしに `TrieRouter`（低速だが動作は正しい）へフォールバックする。`.route()` は子ルートを親の router へ完全にマージするため、この事象はアプリ全体の router に影響する。本プロジェクトではかつて `artists/me/*` と `:accountId` の組み合わせで発生していたが、`me` 系ルートの削除（contract 完了）により解消し、現在は `RegExpRouter` で動作している。リテラル segment + ワイルドカードを動的パラメータと同じ親配下に足すと再発するため、追加時は認識しておくこと。
+
+`AppType`（Hono RPC）の型推論を保つため、各 `index.ts` は `.route()` または `.get()`/`.post()` のメソッドチェーンを維持する。
+
+> **既存の例外**: `users/`, `link-types/` は旧規約（HTTP メソッド名ディレクトリ）のまま。新規実装・変更時にこの規約へ順次移行する。
 
 ### ミドルウェア層 (`middlewares/`)
 
@@ -934,8 +937,8 @@ export type ActorResolution =
   | { status: "complete"; actor: Actor };
 ```
 
-- Artist を伴う経路（`withArtistReadCapabilities` / `withArtistWriteCapabilities`）は `toActor` で `Result<Actor, ResolveActorError>` に畳み、`unregistered` を `UserNotFoundError`、`userOnly` を `ArtistNotFoundError` として 404 にする
-- User スコープで完結する経路（`withUserWriteCapabilities`）は `toUser` で `Result<User, ResolveUserError>` に畳み、`unregistered` だけを 404 にする。`userOnly` / `complete` はどちらも `User` として通す
+- Artist を伴う経路（`withArtistReadCapabilitiesById` / `withArtistWriteCapabilitiesById`）は `toAddressedActor` で `Result<Actor, ResolveActorError>` に畳み、`unregistered` を `UserNotFoundError`、`userOnly` を `ArtistNotFoundError`、パスの `artistId` と本人の不一致を `ArtistNotFoundError` として 404 にする
+- User スコープで完結する経路（`withUserWriteCapabilitiesById`）は `toAddressedUser` で `Result<User, ResolveUserError>` に畳み、`unregistered` とパスの `userId` の不一致を 404 にする。`userOnly` / `complete` はどちらも `User` として通す
 - `GET /users/me` は**未登録が正常系**（オンボーディング動線）。`withIdentityCapabilities` で解決状態をそのまま受け取り、`registered: false` を 200 で返す
 
 「どの状態を失敗に畳むか」は用途ごとの判断であり、解決処理自体には持たせない。畳み込み（`toActor` / `toUser`）は純粋関数として `usecases/authorization/resolution` に置く。
@@ -944,21 +947,21 @@ export type ActorResolution =
 
 エントリポイントは権能を自分で組み立てず、`usecases/authorization` の**経路モジュール**を直接 import して通す。import パスにその route が乗る経路が現れる。
 
-| 経路モジュール                              | 入り口                                                  | 主体     |
-| ------------------------------------------- | ------------------------------------------------------- | -------- |
-| （`infrastructure/capabilities` を直接）    | `getCapabilityDeps().buildPublicReadCapabilities()`     | 不要     |
-| `usecases/authorization/identity`           | `withIdentityCapabilities(deps, subId, work)`           | 解決結果 |
-| `usecases/authorization/artistRead`         | `withArtistReadCapabilities(deps, subId, work)`         | Actor    |
-| `usecases/authorization/userWrite`          | `withUserWriteCapabilities(deps, subId, work)`          | User     |
-| `usecases/authorization/artistWrite`        | `withArtistWriteCapabilities(deps, subId, work)`        | Actor    |
-| `usecases/authorization/artistStorageWrite` | `withArtistStorageWriteCapabilities(deps, subId, work)` | Actor    |
-| `usecases/authorization/registration`       | `withRegistrationCapabilities(deps, work)`              | 不在     |
+| 経路モジュール                              | 入り口                                                                | 主体     |
+| ------------------------------------------- | --------------------------------------------------------------------- | -------- |
+| （`infrastructure/capabilities` を直接）    | `getCapabilityDeps().buildPublicReadCapabilities()`                   | 不要     |
+| `usecases/authorization/identity`           | `withIdentityCapabilities(deps, subId, work)`                         | 解決結果 |
+| `usecases/authorization/artistRead`         | `withArtistReadCapabilitiesById(deps, subId, artistId, work)`         | Actor    |
+| `usecases/authorization/userWrite`          | `withUserWriteCapabilitiesById(deps, subId, userId, work)`            | User     |
+| `usecases/authorization/artistWrite`        | `withArtistWriteCapabilitiesById(deps, subId, artistId, work)`        | Actor    |
+| `usecases/authorization/artistStorageWrite` | `withArtistStorageWriteCapabilitiesById(deps, subId, artistId, work)` | Actor    |
+| `usecases/authorization/registration`       | `withRegistrationCapabilities(deps, work)`                            | 不在     |
 
 経路モジュールが共有する部品は 2 つに分けている。
 
 | モジュール                           | 責務                                                                                                                    |
 | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
-| `usecases/authorization/resolution`  | `toActor` / `toUser`（`ActorResolution` の畳み込み。純粋関数）                                                          |
+| `usecases/authorization/resolution`  | `toActor` / `toAddressedActor` / `toUser` / `toAddressedUser`（`ActorResolution` の畳み込み。純粋関数）                 |
 | `usecases/authorization/conflict`    | `AlreadyTakenError` と `catchAlreadyTaken`（一意制約違反を `err` に戻す）                                               |
 | `usecases/authorization/testDoubles` | 各経路のテストが共有する `CapabilityDeps` のスタブと Entity フィクスチャ（テスト専用のため `index.test.ts` を持たない） |
 
@@ -966,11 +969,11 @@ export type ActorResolution =
 
 境界を張るヘルパは、一意制約違反として上がってきた型付きエラーを `err` へ変換する（詳細は [並行更新ポリシー](./database/concurrency.md)）。**変換する型は、その権能で書ける範囲に一致させる。**
 
-| ヘルパ                         | 変換する型                                              |
-| ------------------------------ | ------------------------------------------------------- |
-| `withUserWriteCapabilities`    | `EmailAlreadyTakenError`                                |
-| `withArtistWriteCapabilities`  | `EmailAlreadyTakenError` / `AccountIdAlreadyTakenError` |
-| `withRegistrationCapabilities` | `EmailAlreadyTakenError` / `AccountIdAlreadyTakenError` |
+| ヘルパ                            | 変換する型                                              |
+| --------------------------------- | ------------------------------------------------------- |
+| `withUserWriteCapabilitiesById`   | `EmailAlreadyTakenError`                                |
+| `withArtistWriteCapabilitiesById` | `EmailAlreadyTakenError` / `AccountIdAlreadyTakenError` |
+| `withRegistrationCapabilities`    | `EmailAlreadyTakenError` / `AccountIdAlreadyTakenError` |
 
 ### トランザクション境界
 
@@ -1166,17 +1169,19 @@ describe("reconstructUser", () => {
 
 ## API エンドポイント
 
-| メソッド | パス                              | 説明                         | 認証 |
-| -------- | --------------------------------- | ---------------------------- | ---- |
-| GET      | `/api/test`                       | ヘルスチェック               | 要   |
-| POST     | `/api/users`                      | ユーザー作成                 | 要   |
-| GET      | `/api/users/me`                   | 自分のユーザー情報取得       | 要   |
-| POST     | `/api/users/me`                   | 自分のメールアドレス更新     | 要   |
-| GET      | `/api/artists`                    | 公開プロフィール一覧         | 不要 |
-| GET      | `/api/artists/:accountId`         | 公開プロフィール詳細         | 不要 |
-| POST     | `/api/artists/me`                 | 自分の accountId 更新        | 要   |
-| GET      | `/api/artists/me/profile`         | 自分のプロフィール取得       | 要   |
-| POST     | `/api/artists/me/profile`         | 自分のプロフィール保存       | 要   |
-| POST     | `/api/artists/me/profile/publish` | 公開/非公開の切り替え        | 要   |
-| POST     | `/api/artists/me/profile/image`   | プロフィール画像アップロード | 要   |
-| GET      | `/api/link-types`                 | リンク種別マスタ一覧         | 不要 |
+| メソッド | パス                                     | 説明                           | 認証 |
+| -------- | ---------------------------------------- | ------------------------------ | ---- |
+| GET      | `/api/test`                              | ヘルスチェック                 | 要   |
+| POST     | `/api/users`                             | ユーザー作成                   | 要   |
+| GET      | `/api/users/me`                          | 自分のユーザー情報取得         | 要   |
+| POST     | `/api/users/:userId`                     | メールアドレス更新             | 要   |
+| GET      | `/api/artists`                           | 公開プロフィール一覧           | 不要 |
+| GET      | `/api/artists/:accountId`                | 公開プロフィール詳細           | 不要 |
+| POST     | `/api/artists/:artistId`                 | accountId 更新                 | 要   |
+| GET      | `/api/artists/:artistId/profile`         | プロフィール取得（下書き含む） | 要   |
+| POST     | `/api/artists/:artistId/profile`         | プロフィール保存               | 要   |
+| POST     | `/api/artists/:artistId/profile/publish` | 公開/非公開の切り替え          | 要   |
+| POST     | `/api/artists/:artistId/profile/image`   | プロフィール画像アップロード   | 要   |
+| GET      | `/api/link-types`                        | リンク種別マスタ一覧           | 不要 |
+
+> 旧 `me` 系（`POST /api/artists/me`・`GET|POST /api/artists/me/profile`・`POST /api/artists/me/profile/publish`・`POST /api/users/me`）はクライアント移行の完了に伴い削除済み（[api-design-guidelines.md](./api-design-guidelines.md) のリソースアドレッシング参照）。`GET /api/users/me` だけは、クライアントが自分の `userId` / `artistId` を解決する起点（bootstrap）として存置する。

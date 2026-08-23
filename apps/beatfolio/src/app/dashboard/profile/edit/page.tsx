@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { auth0 } from "../../../../libs/auth0";
-import { createBeatfolioBffServerClient } from "../../../../utils/client";
+import { getProfileEditScreen } from "../../../../fetchers/dashboard/getProfileEditScreen";
 import { ProfileWizardClientAdapter } from "./ProfileWizardClientAdapter";
 
 export default async function ProfileEditPage() {
@@ -12,14 +12,13 @@ export default async function ProfileEditPage() {
   }
 
   const cookieHeader = (await headers()).get("cookie") ?? undefined;
-  const client = createBeatfolioBffServerClient({ cookie: cookieHeader });
-  const res = await client.api.dashboard.profile.edit.$get();
+  const result = await getProfileEditScreen({ cookie: cookieHeader });
 
-  if (!res.ok) {
-    throw new Error("Failed to fetch profile edit screen");
+  if (!result.ok) {
+    throw new Error(result.error.message);
   }
 
-  const screen = await res.json();
+  const screen = result.value;
 
   if (!screen.registered) {
     redirect("/onboarding");
