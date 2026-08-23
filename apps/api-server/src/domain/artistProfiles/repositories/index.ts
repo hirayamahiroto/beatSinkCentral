@@ -35,7 +35,7 @@ export interface IArtistProfileWriter {
 export type ProfileImageUploadData = {
   artistId: string;
   image: ProfileImage;
-  bytes: Uint8Array;
+  bytes: Promise<Uint8Array>;
 };
 
 export interface IProfileImageStorage {

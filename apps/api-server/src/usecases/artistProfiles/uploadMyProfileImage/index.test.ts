@@ -39,7 +39,7 @@ describe("uploadMyProfileImage", () => {
 
   it("画像をアップロードし public URL を返す", async () => {
     const caps = createCaps();
-    const bytes = new Uint8Array([1, 2, 3]);
+    const bytes = Promise.resolve(new Uint8Array([1, 2, 3]));
 
     const result = await uploadMyProfileImage(caps, {
       contentType: "image/jpeg",
@@ -57,7 +57,7 @@ describe("uploadMyProfileImage", () => {
 
   it("actor の artistId と検証済み画像でストレージに渡す", async () => {
     const caps = createCaps();
-    const bytes = new Uint8Array([1, 2, 3]);
+    const bytes = Promise.resolve(new Uint8Array([1, 2, 3]));
 
     await uploadMyProfileImage(caps, {
       contentType: "image/png",
@@ -78,7 +78,7 @@ describe("uploadMyProfileImage", () => {
     const result = await uploadMyProfileImage(caps, {
       contentType: "image/gif",
       sizeBytes: 3,
-      bytes: new Uint8Array([1, 2, 3]),
+      bytes: Promise.resolve(new Uint8Array([1, 2, 3])),
     });
 
     expect(result.ok).toBe(false);
@@ -97,7 +97,7 @@ describe("uploadMyProfileImage", () => {
     const result = await uploadMyProfileImage(caps, {
       contentType: "image/jpeg",
       sizeBytes: 3,
-      bytes: new Uint8Array([1, 2, 3]),
+      bytes: Promise.resolve(new Uint8Array([1, 2, 3])),
     });
 
     expect(result.ok).toBe(false);
