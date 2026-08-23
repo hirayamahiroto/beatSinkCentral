@@ -112,7 +112,10 @@ describe("POST /artists/:artistId/profile/image", () => {
   });
 
   it("サポート外の contentType は 422 を返し、アップロードしない", async () => {
-    const res = await request("artist-1", createImageFile({ type: "image/gif" }));
+    const res = await request(
+      "artist-1",
+      createImageFile({ type: "image/gif" }),
+    );
 
     expect(res.status).toBe(422);
     expect(mockUpload).not.toHaveBeenCalled();
@@ -125,6 +128,17 @@ describe("POST /artists/:artistId/profile/image", () => {
     );
 
     expect(res.status).toBe(413);
+    expect(mockUpload).not.toHaveBeenCalled();
+  });
+
+  it("本文上限を超えるリクエストは 413 を返し、multipart を解析しない", async () => {
+    const res = await request(
+      "artist-1",
+      createImageFile({ size: 5 * 1024 * 1024 + 1024 + 1 }),
+    );
+
+    expect(res.status).toBe(413);
+    expect(mockResolveActorState).not.toHaveBeenCalled();
     expect(mockUpload).not.toHaveBeenCalled();
   });
 

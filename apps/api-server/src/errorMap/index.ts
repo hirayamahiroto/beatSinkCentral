@@ -35,6 +35,7 @@ import {
   createMalformedRequestBodyError,
   type MalformedRequestBodyError,
 } from "../app/api/[[...route]]/errors/malformedRequestBody";
+import type { RequestBodyTooLargeError } from "../app/api/[[...route]]/errors/requestBodyTooLarge";
 import type { ResponseContractViolationError } from "../app/api/[[...route]]/errors/responseContractViolation";
 import type { UnauthorizedError } from "../middlewares/auth0/errors/unauthorized";
 import type { LogFields, LogLevel, Logger } from "../utils/logger";
@@ -44,6 +45,7 @@ import { getRequestContext } from "../utils/requestContext";
 export type AppError =
   | InvalidRequestFormatError
   | MalformedRequestBodyError
+  | RequestBodyTooLargeError
   | ResponseContractViolationError
   | UnauthorizedError
   | UserAlreadyRegisteredError
@@ -100,6 +102,11 @@ const errorMap: ErrorMap = {
   MalformedRequestBodyError: {
     status: 400,
     clientMessage: () => "Malformed request body",
+    logLevel: "info",
+  },
+  RequestBodyTooLargeError: {
+    status: 413,
+    clientMessage: () => "Request body is too large",
     logLevel: "info",
   },
   ResponseContractViolationError: {
