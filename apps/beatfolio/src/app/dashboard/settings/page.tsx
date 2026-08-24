@@ -1,13 +1,13 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { Typography } from "@ui/design-system/components/atoms/Typography";
-import { auth0 } from "../../../libs/auth0";
+import { getSession } from "../../../libs/auth0";
 import { getSettings } from "../../../fetchers/dashboard/getSettings";
 import { EmailEditorClientAdapter } from "./EmailEditorClientAdapter";
 import { AccountIdEditorClientAdapter } from "./AccountIdEditorClientAdapter";
 
 export default async function SettingsPage() {
-  const session = await auth0.getSession();
+  const session = await getSession();
 
   if (!session) {
     redirect("/auth/login");

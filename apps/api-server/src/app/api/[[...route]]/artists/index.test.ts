@@ -10,7 +10,7 @@ const mockArtistProfiles = {
 };
 
 vi.mock("../../../../infrastructure/auth0", () => ({
-  auth0: { getSession: vi.fn(async () => null) },
+  getAuth0: () => ({ getSession: async () => null }),
 }));
 
 vi.mock("../../../../infrastructure/capabilities", () => ({

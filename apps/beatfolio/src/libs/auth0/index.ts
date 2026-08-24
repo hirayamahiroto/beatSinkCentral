@@ -1,12 +1,25 @@
 import { Auth0Client } from "@auth0/nextjs-auth0/server";
 import { NextRequest } from "next/server";
 
-export const auth0 = new Auth0Client();
+const getAuth0 = (() => {
+  let client: Auth0Client | null = null;
+
+  return (): Auth0Client => {
+    if (!client) {
+      client = new Auth0Client();
+    }
+    return client;
+  };
+})();
 
 export const getSession = async () => {
-  return await auth0.getSession();
+  return await getAuth0().getSession();
 };
 
 export const getSessionFromRequest = async (req: NextRequest) => {
-  return await auth0.getSession(req);
+  return await getAuth0().getSession(req);
+};
+
+export const handleAuthRequest = async (req: Request) => {
+  return await getAuth0().middleware(req);
 };
