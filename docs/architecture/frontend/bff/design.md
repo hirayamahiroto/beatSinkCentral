@@ -226,6 +226,17 @@ const app = new Hono<RequestContextEnv>().post(
 );
 ```
 
+#### ファイルを扱う write（multipart/FormData）
+
+JSON と同じく**薄いパススルー**で扱う。BFF はファイルの中身に触れない。
+
+- 検証: `zValidator("form", z.object({ file: z.instanceof(File) }))`。「File であること」だけを UX 契約として弾く
+- 送信: hono RPC の `{ form: { file } }` で **File をそのまま上流へ透過**する
+- BFF で Buffer 化・再エンコード・サイズ/MIME の内容検証はしない（内容の検証は api-server のドメイン層とストレージ側の制約が担う）
+- エラー透過は JSON write と同じ（`c.json(error, res.status)`）
+- 上流のパスパラメータ（`:artistId` 等）は JSON write と同じく `shared/resolveMyArtistId` で解決し、hono RPC の `{ param }` で渡す（ブラウザ向け URL は `me` のまま）
+- 実装例: `src/app/api/[[...route]]/artists/me/profile/image/post/index.ts`
+
 ```tsx
 // src/app/dashboard/AccountIdEditorClientAdapter/hooks/useUpdateMyAccountId/index.ts
 // CSR: hook → fetchers/artists/updateMyAccountId → /api/artists/me（write ルート）
