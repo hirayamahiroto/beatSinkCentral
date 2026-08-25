@@ -219,7 +219,9 @@ describe("createAppErrorHandler", () => {
 
     it("ProfileImageUploadFailedErrorを502に変換する", async () => {
       expect(
-        await clientResponseOf(createProfileImageUploadFailedError()),
+        await clientResponseOf(
+          createProfileImageUploadFailedError("Bucket not found"),
+        ),
       ).toStrictEqual({
         status: 502,
         body: { error: "Failed to upload image" },
@@ -303,13 +305,16 @@ describe("createAppErrorHandler", () => {
     });
 
     it("ストレージ書き込み失敗は error で記録する", async () => {
-      expect(await logOf(createProfileImageUploadFailedError())).toStrictEqual({
+      expect(
+        await logOf(createProfileImageUploadFailedError("Bucket not found")),
+      ).toStrictEqual({
         level: "error",
         event: "AppError",
         fields: {
           ...REQUEST_FIELDS,
           errorType: "ProfileImageUploadFailedError",
           status: 502,
+          context: { reason: "Bucket not found" },
         },
       });
     });

@@ -245,6 +245,7 @@ const errorMap: ErrorMap = {
     status: 502,
     clientMessage: () => "Failed to upload image",
     logLevel: "error",
+    logFields: (error) => ({ reason: error.reason }),
   },
 };
 

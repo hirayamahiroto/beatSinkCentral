@@ -150,7 +150,9 @@ describe("POST /artists/:artistId/profile/image", () => {
   });
 
   it("ストレージの失敗は 502 を返す", async () => {
-    mockUpload.mockResolvedValue(err(createProfileImageUploadFailedError()));
+    mockUpload.mockResolvedValue(
+      err(createProfileImageUploadFailedError("Bucket not found")),
+    );
 
     const res = await request("artist-1", createImageFile());
 

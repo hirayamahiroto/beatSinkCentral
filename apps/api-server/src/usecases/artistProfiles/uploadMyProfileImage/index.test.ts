@@ -91,7 +91,7 @@ describe("uploadMyProfileImage", () => {
   it("ストレージの失敗は err(ProfileImageUploadFailedError) を伝播する", async () => {
     const caps = createCaps();
     caps.profileImages.upload.mockResolvedValue(
-      err(createProfileImageUploadFailedError()),
+      err(createProfileImageUploadFailedError("Bucket not found")),
     );
 
     const result = await uploadMyProfileImage(caps, {

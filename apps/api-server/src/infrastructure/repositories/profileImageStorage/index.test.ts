@@ -98,6 +98,7 @@ describe("createProfileImageStorage", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error.type).toBe("ProfileImageUploadFailedError");
+      expect(result.error.reason).toBe("bucket error");
     }
     expect(stub.getPublicUrl).not.toHaveBeenCalled();
   });

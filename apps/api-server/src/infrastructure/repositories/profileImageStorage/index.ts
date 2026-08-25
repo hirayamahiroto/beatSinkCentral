@@ -4,6 +4,9 @@ import { ok, err } from "../../../utils/result";
 
 const PROFILE_IMAGES_BUCKET = "profile-images";
 
+const describeStorageError = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
+
 type ProfileImageStorageClient = {
   storage: {
     from(bucketId: string): {
@@ -29,7 +32,11 @@ export const createProfileImageStorage = (
       upsert: false,
     });
     if (uploaded.data === null) {
-      return err(createProfileImageUploadFailedError());
+      return err(
+        createProfileImageUploadFailedError(
+          describeStorageError(uploaded.error),
+        ),
+      );
     }
 
     const { data } = bucket.getPublicUrl(uploaded.data.path);
