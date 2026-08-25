@@ -12,7 +12,6 @@ locals {
   }
 
   preview_env = {
-    API_SERVER_BASE_URL = var.preview_api_server_base_url
     AUTH0_DOMAIN        = var.preview_auth0_domain
     AUTH0_CLIENT_ID     = var.preview_auth0_client_id
     AUTH0_CLIENT_SECRET = var.preview_auth0_client_secret
