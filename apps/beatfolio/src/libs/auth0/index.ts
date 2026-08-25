@@ -1,12 +1,13 @@
 import { Auth0Client } from "@auth0/nextjs-auth0/server";
 import { NextRequest } from "next/server";
+import { getAppBaseUrl } from "../../utils/config/appBaseUrl";
 
 const getAuth0 = (() => {
   let client: Auth0Client | null = null;
 
   return (): Auth0Client => {
     if (!client) {
-      client = new Auth0Client();
+      client = new Auth0Client({ appBaseUrl: getAppBaseUrl() });
     }
     return client;
   };

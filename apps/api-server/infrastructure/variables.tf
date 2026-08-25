@@ -98,11 +98,6 @@ variable "production_api_server_base_url" {
   type        = string
 }
 
-variable "preview_app_base_url" {
-  description = "Preview の APP_BASE_URL。"
-  type        = string
-}
-
 variable "preview_api_server_base_url" {
   description = "Preview の API_SERVER_BASE_URL。"
   type        = string

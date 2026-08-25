@@ -23,7 +23,6 @@ preview_auth0_secret        = "REPLACE_ME"
 # ===== Base URLs =====
 production_app_base_url        = "https://beatfolio.example.com"
 production_api_server_base_url = "https://api.beatfolio.example.com"
-preview_app_base_url           = "https://beatfolio-preview.example.com"
 preview_api_server_base_url    = "https://api-beatfolio-preview.example.com"
 
 # ===== Database (Transaction pooler / port 6543) =====

@@ -16,7 +16,6 @@ locals {
   }
 
   preview_env = {
-    APP_BASE_URL              = var.preview_app_base_url
     API_SERVER_BASE_URL       = var.preview_api_server_base_url
     DATABASE_URL              = var.preview_database_url
     AUTH0_DOMAIN              = var.preview_auth0_domain

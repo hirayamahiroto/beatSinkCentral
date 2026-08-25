@@ -28,10 +28,6 @@ export const createApiServerClient = (options?: ClientOptions) => {
 };
 
 export const createBeatfolioBffServerClient = (options?: ClientOptions) => {
-  if (!beatfolioBffConfig.baseUrl) {
-    throw new Error("APP_BASE_URL is not set");
-  }
-
   return hc<BeatfolioBffAppType>(beatfolioBffConfig.baseUrl, {
     headers: options?.cookie ? { cookie: options.cookie } : undefined,
   });
