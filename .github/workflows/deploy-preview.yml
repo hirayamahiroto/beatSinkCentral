@@ -137,15 +137,6 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_BEATFOLIO_PROJECT_ID }}
 
-      - name: 🔍 Beatfolio環境変数の設定
-        run: |
-          vercel env rm DEBUG_URL preview --yes --token=${{ secrets.VERCEL_TOKEN }} || true
-          # APIサーバーのURLを環境変数として設定（必要に応じて）
-          echo "API_URL=${{ needs.deploy-api-server.outputs.api-url }}"
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_BEATFOLIO_PROJECT_ID }}
-
       - name: 🏗️ Beatfolioビルド
         run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
         env:
@@ -154,8 +145,10 @@ jobs:
 
       - name: 🚀 Beatfolioデプロイ
         run: |
-          OUTPUT=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
-          echo "BeatfolioURL: $OUTPUT"
+          OUTPUT=$(vercel deploy --prebuilt \
+            -e API_SERVER_BASE_URL=${{ needs.deploy-api-server.outputs.api-url }} \
+            --token=${{ secrets.VERCEL_TOKEN }})
+          echo "BeatfolioURL: $OUTPUT (API_SERVER_BASE_URL=${{ needs.deploy-api-server.outputs.api-url }})"
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_BEATFOLIO_PROJECT_ID }}
