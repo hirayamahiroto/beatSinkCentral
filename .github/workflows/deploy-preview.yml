@@ -2,12 +2,13 @@ name: "🚀 プレビュー環境へデプロイ"
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, closed]
   workflow_dispatch:
 
 env:
   NODE_VERSION: "20"
   PNPM_VERSION: "9.15.1"
+  GIT_BRANCH: ${{ github.head_ref || github.ref_name }}
 
 permissions:
   contents: read
@@ -17,6 +18,7 @@ permissions:
 jobs:
   # ビルドとテスト
   test-api-server:
+    if: github.event.action != 'closed'
     name: 🧪 test-api-server
     runs-on: ubuntu-latest
     steps:
@@ -30,6 +32,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
 
   test-beatfolio:
+    if: github.event.action != 'closed'
     name: 🧪 test-beatfolio
     runs-on: ubuntu-latest
     steps:
@@ -43,6 +46,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
 
   db-migrate:
+    if: github.event.action != 'closed'
     name: 🗄️ db-migrate
     runs-on: ubuntu-latest
     steps:
@@ -106,7 +110,9 @@ jobs:
       - name: 🚀 APIサーバーデプロイ
         id: deploy
         run: |
-          OUTPUT=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }} 2> deploy.log)
+          OUTPUT=$(vercel deploy --prebuilt \
+            --meta gitBranch=${{ env.GIT_BRANCH }} \
+            --token=${{ secrets.VERCEL_TOKEN }} 2> deploy.log)
           INSPECT_URL=$(grep -o 'https://vercel.com/[^ ]*' deploy.log | head -n 1)
           echo "url=$OUTPUT" >> $GITHUB_OUTPUT
           echo "inspect-url=$INSPECT_URL" >> $GITHUB_OUTPUT
@@ -153,6 +159,7 @@ jobs:
         run: |
           OUTPUT=$(vercel deploy --prebuilt \
             -e API_SERVER_BASE_URL=${{ needs.deploy-api-server.outputs.api-url }} \
+            --meta gitBranch=${{ env.GIT_BRANCH }} \
             --token=${{ secrets.VERCEL_TOKEN }} 2> deploy.log)
           INSPECT_URL=$(grep -o 'https://vercel.com/[^ ]*' deploy.log | head -n 1)
           echo "url=$OUTPUT" >> $GITHUB_OUTPUT
@@ -201,3 +208,31 @@ jobs:
             } else {
               await github.rest.issues.createComment({ owner, repo, issue_number, body });
             }
+
+  cleanup-preview:
+    name: 🧹 cleanup-preview
+    runs-on: ubuntu-latest
+    if: github.event.action == 'closed'
+    strategy:
+      matrix:
+        include:
+          - app: api-server
+            project-id-secret: VERCEL_API_SERVER_PROJECT_ID
+          - app: beatfolio
+            project-id-secret: VERCEL_BEATFOLIO_PROJECT_ID
+    steps:
+      - name: 🔧 Vercel CLIのインストール
+        run: npm install --global vercel@latest
+
+      - name: 🧹 ${{ matrix.app }} のプレビューデプロイを削除
+        run: |
+          for _ in $(seq 1 10); do
+            URLS=$(vercel ls --meta gitBranch=${{ env.GIT_BRANCH }} --token=${{ secrets.VERCEL_TOKEN }} 2>&1 \
+              | grep -oE 'https://[^ ]+\.vercel\.app' || true)
+            [ -z "$URLS" ] && break
+            echo "$URLS" | xargs -n1 vercel rm --yes --token=${{ secrets.VERCEL_TOKEN }}
+          done
+          echo "gitBranch=${{ env.GIT_BRANCH }} のプレビューデプロイを削除しました"
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets[matrix.project-id-secret] }}
