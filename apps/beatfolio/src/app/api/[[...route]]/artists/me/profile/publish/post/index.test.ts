@@ -98,4 +98,23 @@ describe("POST /artists/me/profile/publish", () => {
     expect(res.status).toBe(404);
     expect(await res.json()).toStrictEqual({ error: "Profile not found" });
   });
+
+  it("公開条件を満たさない拒否は不足項目を表示ラベルに解決して返す", async () => {
+    publishPost.mockResolvedValue({
+      ok: false,
+      status: 422,
+      json: async () => ({
+        error: "Profile is not publishable: required fields are missing",
+        details: { missingFields: ["imageUrl", "links"] },
+      }),
+    });
+
+    const res = await request({ published: true });
+
+    expect(res.status).toBe(422);
+    expect(await res.json()).toStrictEqual({
+      error: "Profile is not publishable: required fields are missing",
+      missingRequirements: ["アーティスト写真", "SNS / 配信リンク"],
+    });
+  });
 });

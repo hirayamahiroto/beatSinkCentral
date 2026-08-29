@@ -39,7 +39,7 @@ const createCaps = () =>
 describe("getMyProfile", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("プロフィール未作成なら profile: null を返す", async () => {
+  it("プロフィール未作成なら profile と missingPublishFields を null で返す", async () => {
     const caps = createCaps();
 
     const result = await getMyProfile(caps);
@@ -49,6 +49,7 @@ describe("getMyProfile", () => {
       expect(result.value).toEqual({
         accountId: "beatboxer_taro",
         profile: null,
+        missingPublishFields: null,
       });
     }
   });
@@ -71,6 +72,53 @@ describe("getMyProfile", () => {
     if (result.ok) {
       expect(result.value.profile?.name).toBe("Taro");
       expect(result.value.profile?.published).toBe(false);
+    }
+  });
+
+  it("公開に足りない項目を missingPublishFields として返す", async () => {
+    const caps = createCaps();
+    caps.artistProfiles.findByArtistId.mockResolvedValue(
+      reconstructArtistProfile({
+        id: "profile-1",
+        artistId: "artist-1",
+        published: false,
+        name: "Taro",
+        story: "始めたきっかけ。",
+        genres: ["Beatbox"],
+      }),
+    );
+
+    const result = await getMyProfile(caps);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.missingPublishFields).toStrictEqual([
+        "imageUrl",
+        "links",
+      ]);
+    }
+  });
+
+  it("公開可能なプロフィールなら missingPublishFields は空配列を返す", async () => {
+    const caps = createCaps();
+    caps.artistProfiles.findByArtistId.mockResolvedValue(
+      reconstructArtistProfile({
+        id: "profile-1",
+        artistId: "artist-1",
+        published: true,
+        name: "Taro",
+        imageUrl: "https://example.com/taro.jpg",
+        story: "始めたきっかけ。",
+        genres: ["Beatbox"],
+        links: [{ type: "youtube", url: "https://youtube.com/@taro" }],
+      }),
+    );
+
+    const result = await getMyProfile(caps);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.missingPublishFields).toStrictEqual([]);
     }
   });
 });

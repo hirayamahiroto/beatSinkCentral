@@ -18,11 +18,7 @@ const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const wizardSchema = z.object({
   name: z.string().trim().min(1, "活動名を入力してください").max(255),
   imageUrl: z.string().trim().url("画像をアップロードしてください"),
-  tagline: z
-    .string()
-    .trim()
-    .min(1, "タグラインを入力してください")
-    .max(60, "60文字以内で入力してください"),
+  tagline: z.string().trim().max(60, "60文字以内で入力してください").optional(),
   genres: z.array(z.string()).min(1, "ジャンルを1つ以上追加してください"),
   storyOrigin: z.string().trim().min(1, "この問いに答えてください"),
   storyTurning: z.string().trim().optional(),
@@ -236,7 +232,7 @@ export const ArtistProfileWizard = ({
               />
 
               <FormField
-                label="タグライン"
+                label="タグライン（任意）"
                 htmlFor="tagline"
                 hint="活動を一行で（OGPの説明文にも）"
                 error={errors.tagline?.message}
@@ -426,9 +422,9 @@ export const ArtistProfileWizard = ({
           <Card>
             <div className="flex flex-col gap-5">
               <div className="flex flex-col gap-1">
-                <Typography variant="h4">最後に確認して公開</Typography>
+                <Typography variant="h4">最後に確認して保存</Typography>
                 <Typography variant="small" tone="muted">
-                  保存すると公開ページに反映されます。
+                  保存しただけでは公開されません。公開はダッシュボードから切り替えます。
                 </Typography>
               </div>
 
@@ -459,7 +455,7 @@ export const ArtistProfileWizard = ({
             </Button>
           ) : (
             <Button type="submit" disabled={isLoading || isUploadingImage}>
-              {isLoading ? "保存中..." : "保存して公開する"}
+              {isLoading ? "保存中..." : "保存する"}
             </Button>
           )}
         </div>

@@ -72,6 +72,12 @@ describe("GET /artists/:artistId/profile", () => {
 
     expect(res.status).toBe(200);
     expect(body.profile.name).toBe("Taro");
+    expect(body.missingPublishFields).toStrictEqual([
+      "imageUrl",
+      "story",
+      "genres",
+      "links",
+    ]);
     expect(mockArtistProfiles.findByArtistId).toHaveBeenCalledWith("artist-1");
   });
 

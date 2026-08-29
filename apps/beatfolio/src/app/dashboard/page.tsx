@@ -6,6 +6,7 @@ import { Card } from "@ui/design-system/components/atoms/Card";
 import { Button } from "@ui/design-system/components/atoms/Button";
 import { getSession } from "../../libs/auth0";
 import { getDashboard } from "../../fetchers/dashboard/getDashboard";
+import { ProfilePublishClientAdapter } from "./ProfilePublishClientAdapter";
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -39,19 +40,19 @@ export default async function DashboardPage() {
             <div className="flex flex-col gap-3">
               <Typography variant="h4">アーティストプロフィール</Typography>
               <Typography variant="small" tone="muted">
-                {artist.hasProfile
-                  ? "プロフィールはプレイヤー一覧に表示されます。内容を更新できます。"
-                  : "プロフィールを作成すると、プレイヤー一覧に表示されるようになります。"}
+                {artist.profile
+                  ? "保存した内容はいつでも編集できます。公開するかどうかは下の公開状態から切り替えます。"
+                  : "プロフィールを作成すると、公開できるようになります。"}
               </Typography>
               <div className="flex flex-wrap gap-3">
                 <Button asChild>
                   <Link href="/dashboard/profile/edit">
-                    {artist.hasProfile
+                    {artist.profile
                       ? "プロフィールを編集する"
                       : "プロフィールを作成する"}
                   </Link>
                 </Button>
-                {artist.hasProfile && (
+                {artist.profile?.published && (
                   <Button asChild variant="outline">
                     <Link href={`/players/${artist.accountId}`}>
                       公開ページを見る
@@ -61,6 +62,13 @@ export default async function DashboardPage() {
               </div>
             </div>
           </Card>
+        )}
+
+        {artist?.profile && (
+          <ProfilePublishClientAdapter
+            published={artist.profile.published}
+            missingRequirements={artist.profile.missingPublishRequirements}
+          />
         )}
 
         <Card>

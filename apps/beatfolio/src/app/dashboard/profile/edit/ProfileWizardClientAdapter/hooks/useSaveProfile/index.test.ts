@@ -4,10 +4,12 @@ import type { WizardValues } from "@ui/design-system/components/organisms/Artist
 import { useSaveProfile } from "./index";
 
 const refreshMock = vi.fn();
+const pushMock = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     refresh: refreshMock,
+    push: pushMock,
   }),
 }));
 
@@ -54,9 +56,8 @@ describe("useSaveProfile", () => {
     vi.clearAllMocks();
   });
 
-  it("submit は合成済みの json で保存した後に publish を published=true で呼び refresh する", async () => {
+  it("submit は合成済みの json で保存し、公開はせずダッシュボードへ遷移する", async () => {
     saveMock.mockResolvedValueOnce(buildJsonResponse({}, { status: 200 }));
-    publishMock.mockResolvedValueOnce(buildJsonResponse({}, { status: 200 }));
 
     const { result } = renderHook(() => useSaveProfile());
 
@@ -76,13 +77,13 @@ describe("useSaveProfile", () => {
         links: [{ type: "youtube", url: "https://youtube.com/@saku" }],
       },
     });
-    expect(publishMock).toHaveBeenCalledWith({ json: { published: true } });
+    expect(publishMock).not.toHaveBeenCalled();
     expect(returned).toBe(true);
-    expect(refreshMock).toHaveBeenCalledTimes(1);
+    expect(pushMock).toHaveBeenCalledWith("/dashboard");
     expect(result.current.error).toBeNull();
   });
 
-  it("saveDraft は publish を呼ばない", async () => {
+  it("saveDraft は保存して画面を更新するだけで、遷移も公開もしない", async () => {
     saveMock.mockResolvedValueOnce(buildJsonResponse({}, { status: 200 }));
 
     const { result } = renderHook(() => useSaveProfile());
@@ -93,9 +94,11 @@ describe("useSaveProfile", () => {
 
     expect(saveMock).toHaveBeenCalledTimes(1);
     expect(publishMock).not.toHaveBeenCalled();
+    expect(refreshMock).toHaveBeenCalledTimes(1);
+    expect(pushMock).not.toHaveBeenCalled();
   });
 
-  it("保存が non-ok ならサーバーのエラーを error にセットし publish は呼ばない", async () => {
+  it("保存が non-ok ならサーバーのエラーを error にセットし遷移しない", async () => {
     saveMock.mockResolvedValueOnce(
       buildJsonResponse({ error: "保存に失敗" }, { status: 400 }),
     );
@@ -109,25 +112,7 @@ describe("useSaveProfile", () => {
 
     expect(returned).toBe(false);
     expect(result.current.error).toBe("保存に失敗");
-    expect(publishMock).not.toHaveBeenCalled();
-    expect(refreshMock).not.toHaveBeenCalled();
-  });
-
-  it("公開が non-ok なら publish のエラーを error にセットし refresh しない", async () => {
-    saveMock.mockResolvedValueOnce(buildJsonResponse({}, { status: 200 }));
-    publishMock.mockResolvedValueOnce(
-      buildJsonResponse({ error: "必須項目が揃っていません" }, { status: 422 }),
-    );
-
-    const { result } = renderHook(() => useSaveProfile());
-
-    let returned: boolean | undefined;
-    await act(async () => {
-      returned = await result.current.submit(values);
-    });
-
-    expect(returned).toBe(false);
-    expect(result.current.error).toBe("必須項目が揃っていません");
+    expect(pushMock).not.toHaveBeenCalled();
     expect(refreshMock).not.toHaveBeenCalled();
   });
 });

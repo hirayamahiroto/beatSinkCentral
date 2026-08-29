@@ -38,6 +38,17 @@ export const collectMissingPublishFields = (
   return missing;
 };
 
+const isPublishable = (profile: ArtistProfile): boolean =>
+  collectMissingPublishFields(profile).length === 0;
+
+// 公開中のプロフィールが編集で公開条件を割ったまま公開され続けると、公開ページが壊れた状態で見えてしまう
+export const enforcePublishInvariant = (
+  profile: ArtistProfile,
+): ArtistProfile =>
+  profile.isPublished() && !isPublishable(profile)
+    ? profile.unpublish()
+    : profile;
+
 export const ensurePublishable = (
   profile: ArtistProfile,
 ): Result<void, ProfileNotPublishableError> => {

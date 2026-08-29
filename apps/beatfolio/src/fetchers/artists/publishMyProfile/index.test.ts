@@ -37,7 +37,54 @@ describe("publishMyProfile", () => {
 
     expect(result).toStrictEqual({
       ok: false,
-      error: { kind: "unexpected", message: "Profile not found" },
+      error: {
+        kind: "unexpected",
+        message: "Profile not found",
+        missingRequirements: null,
+      },
+    });
+  });
+
+  it("公開条件を満たさない 422 は不足項目付きの rejected を返す", async () => {
+    postMock.mockResolvedValue({
+      ok: false,
+      status: 422,
+      json: async () => ({
+        error: "Profile is not publishable: required fields are missing",
+        missingRequirements: ["アーティスト写真", "SNS / 配信リンク"],
+      }),
+    });
+
+    const result = await publishMyProfile({ published: true });
+
+    expect(result).toStrictEqual({
+      ok: false,
+      error: {
+        kind: "rejected",
+        message: "公開に必要な項目が足りません",
+        missingRequirements: ["アーティスト写真", "SNS / 配信リンク"],
+      },
+    });
+  });
+
+  it("エラー本文が読めなければ既定のメッセージを返す", async () => {
+    postMock.mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => {
+        throw new SyntaxError("Unexpected end of JSON input");
+      },
+    });
+
+    const result = await publishMyProfile({ published: true });
+
+    expect(result).toStrictEqual({
+      ok: false,
+      error: {
+        kind: "unexpected",
+        message: "プロフィールの公開に失敗しました",
+        missingRequirements: null,
+      },
     });
   });
 
@@ -48,7 +95,11 @@ describe("publishMyProfile", () => {
 
     expect(result).toStrictEqual({
       ok: false,
-      error: { kind: "unexpected", message: NETWORK_ERROR_MESSAGE },
+      error: {
+        kind: "unexpected",
+        message: NETWORK_ERROR_MESSAGE,
+        missingRequirements: null,
+      },
     });
   });
 });

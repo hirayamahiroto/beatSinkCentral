@@ -28,9 +28,18 @@ const artistProfileViewSchema = z.object({
   published: z.boolean(),
 });
 
+const publishRequiredFieldSchema = z.enum([
+  "name",
+  "imageUrl",
+  "story",
+  "genres",
+  "links",
+]);
+
 const getProfileResponseSchema = z.object({
   accountId: z.string(),
   profile: artistProfileViewSchema.nullable(),
+  missingPublishFields: z.array(publishRequiredFieldSchema).nullable(),
 });
 
 const app = new Hono().get(
