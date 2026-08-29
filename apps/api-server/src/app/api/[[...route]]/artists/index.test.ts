@@ -10,7 +10,7 @@ const mockArtistProfiles = {
 };
 
 vi.mock("../../../../infrastructure/auth0", () => ({
-  auth0: { getSession: vi.fn(async () => null) },
+  getAuth0: () => ({ getSession: async () => null }),
 }));
 
 vi.mock("../../../../infrastructure/capabilities", () => ({
@@ -40,6 +40,7 @@ describe("/artists ルーターの合成", () => {
       "GET /:artistId/profile",
       "POST /:artistId/profile",
       "POST /:artistId/profile/publish",
+      "POST /:artistId/profile/image",
     ]);
   });
 
@@ -64,6 +65,7 @@ describe("/artists ルーターの合成", () => {
     ["GET", "/artists/artist-1/profile"],
     ["POST", "/artists/artist-1/profile"],
     ["POST", "/artists/artist-1/profile/publish"],
+    ["POST", "/artists/artist-1/profile/image"],
   ])("%s %s は認証を要求する", async (method, path) => {
     const res = await createApp().request(path, {
       method,

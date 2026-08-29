@@ -1,7 +1,9 @@
 import { getDb } from "../database";
+import { getStorageClient } from "../storage";
 import { runInTransaction } from "../transaction";
 import { createUserReader } from "../repositories/userRepository";
 import { createArtistReader } from "../repositories/artistRepository";
+import { createProfileImageStorage } from "../repositories/profileImageStorage";
 import { resolveActorState } from "./resolveActorState";
 import {
   buildPublicReadCapabilities,
@@ -9,6 +11,7 @@ import {
   buildRegistrationCapabilities,
   buildUserWriteCapabilities,
   buildArtistWriteCapabilities,
+  buildArtistStorageWriteCapabilities,
 } from "./builders";
 import type { CapabilityDeps } from "../../usecases/capabilities";
 
@@ -32,6 +35,11 @@ export const getCapabilityDeps = (() => {
 
         buildArtistReadCapabilities: (actor) =>
           buildArtistReadCapabilities(actor)(db),
+
+        buildArtistStorageWriteCapabilities: (actor) =>
+          buildArtistStorageWriteCapabilities(actor)(
+            createProfileImageStorage(getStorageClient),
+          ),
 
         runWithUserWriteCapabilities: (user, work) =>
           runInTransaction(db, buildUserWriteCapabilities(user), work),

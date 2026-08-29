@@ -13,6 +13,7 @@
     "@auth0/nextjs-auth0": "^4.22.0",
     "@hono/client": "^0.0.3",
     "@hono/zod-validator": "^0.4.3",
+    "@supabase/supabase-js": "^2.112.3",
     "database": "*",
     "drizzle-orm": "^0.45.2",
     "hono": "^4.13.3",

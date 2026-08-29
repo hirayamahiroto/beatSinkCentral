@@ -2,7 +2,7 @@ import { zValidator } from "@hono/zod-validator";
 import type { ZodSchema } from "zod";
 import { createInvalidRequestFormatError } from "../../errors/invalidRequestFormat";
 
-type ValidationTarget = "json" | "param" | "query" | "header";
+type ValidationTarget = "json" | "form" | "param" | "query" | "header";
 
 export const validateRequest = <
   Target extends ValidationTarget,

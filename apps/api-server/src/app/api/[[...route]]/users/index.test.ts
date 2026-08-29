@@ -4,7 +4,7 @@ import users from "./index";
 import { handleAppError } from "../../../../errorMap";
 
 vi.mock("../../../../infrastructure/auth0", () => ({
-  auth0: { getSession: vi.fn(async () => null) },
+  getAuth0: () => ({ getSession: async () => null }),
 }));
 
 const createApp = () =>

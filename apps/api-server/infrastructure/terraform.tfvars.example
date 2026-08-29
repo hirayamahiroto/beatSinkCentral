@@ -10,6 +10,9 @@ vercel_team_id = "team_xxxxxxxxxxxxxxxxxxxxxxxx"
 # github_repo は default = "hirayamahiroto/beatSinkCentral" 済み
 
 # ===== Auth0 =====
+# Preview と Production は別々の Auth0 Application を使う（client_id / client_secret を共有しない）。
+# Preview 用だけに `https://*.vercel.app` のワイルドカードを登録し、Production 用は固定ドメインのみ許可する。
+# 理由は docs/architecture/authentication.md#auth0-側の許可リスト
 production_auth0_domain        = "your-tenant.us.auth0.com"
 production_auth0_client_id     = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 production_auth0_client_secret = "REPLACE_ME"
@@ -23,14 +26,14 @@ preview_auth0_secret        = "REPLACE_ME"
 # ===== Base URLs =====
 production_app_base_url        = "https://beatfolio.example.com"
 production_api_server_base_url = "https://api.beatfolio.example.com"
-preview_app_base_url           = "https://beatfolio-preview.example.com"
 preview_api_server_base_url    = "https://api-beatfolio-preview.example.com"
 
 # ===== Database (Transaction pooler / port 6543) =====
 production_database_url = "postgresql://postgres.<prod-ref>:<PASSWORD>@<region>.pooler.supabase.com:6543/postgres"
 preview_database_url    = "postgresql://postgres.<preview-ref>:<PASSWORD>@<region>.pooler.supabase.com:6543/postgres"
 
-# ===== Basic Auth (全環境共通) =====
-enable_basic_auth   = "true"
-basic_auth_username = "REPLACE_ME"
-basic_auth_password = "REPLACE_ME"
+# ===== Supabase Storage (プロフィール画像アップロード) =====
+production_supabase_url              = "https://<prod-ref>.supabase.co"
+production_supabase_service_role_key = "REPLACE_ME"
+preview_supabase_url                 = "https://<preview-ref>.supabase.co"
+preview_supabase_service_role_key    = "REPLACE_ME"

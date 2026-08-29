@@ -74,6 +74,7 @@ apps/api-server/src/
 │   │   ├── artistRead/       # withArtistReadCapabilitiesById
 │   │   ├── userWrite/        # withUserWriteCapabilitiesById
 │   │   ├── artistWrite/      # withArtistWriteCapabilitiesById
+│   │   ├── artistStorageWrite/ # withArtistStorageWriteCapabilitiesById
 │   │   └── registration/     # withRegistrationCapabilities
 │   ├── users/                # createUser / getMe / updateMyEmail ...
 │   ├── artistProfiles/       # プロフィールの取得・保存・公開
@@ -93,7 +94,6 @@ apps/api-server/src/
 │
 ├── middlewares/              # ミドルウェア
 │   ├── auth0/                # Auth0 認証・メール検証
-│   ├── basicAuth/            # ベーシック認証
 │   └── requestContext/       # リクエスト相関 ID の確定
 │
 └── utils/                    # ユーティリティ
@@ -131,7 +131,7 @@ apps/api-server/src/
 
 ```
 API Handlers
-  ├─→ Middlewares (Auth0, BasicAuth)
+  ├─→ Middlewares (Auth0)
   ├─→ Authorization (権能の組み立て・Actor 解決・トランザクション境界)
   │    └─→ Usecase (createUser 等)
   │         └─→ IUserReader / IUserWriter (interface)
@@ -749,7 +749,6 @@ app/api/[[...route]]/
 | `requestContextMiddleware`  | リクエスト相関 ID（requestId / traceId）の確定 |
 | `requireAuthMiddleware`     | Auth0 セッション検証                           |
 | `requireVerifiedMiddleware` | メールアドレス検証チェック                     |
-| `basicAuthMiddleware`       | ベーシック認証（オプション）                   |
 
 `requestContextMiddleware` は認証より前に置く。認証失敗（401）のログにも相関情報を載せるため。
 
@@ -896,14 +895,17 @@ usecase にリポジトリ一式と `subId` を渡す形は取らない。**「�
 
 権能型は**用途（どの経路で呼ばれるか）ごとに 1 つ**定義する。中身は集約ごとの Reader / Writer を必要な分だけ持つ。
 
-| 権能型                     | 主体                 | 境界             | 用途                                     |
-| -------------------------- | -------------------- | ---------------- | ---------------------------------------- |
-| `PublicReadCapabilities`   | 不要                 | なし             | 未認証で読める公開データ                 |
-| `IdentityCapabilities`     | 解決結果             | なし             | 自分の登録状態そのものを返す             |
-| `ArtistReadCapabilities`   | Actor（User+Artist） | なし             | Artist を伴うデータの読み取り            |
-| `UserWriteCapabilities`    | User                 | トランザクション | User スコープで完結する更新（例: email） |
-| `ArtistWriteCapabilities`  | Actor（User+Artist） | トランザクション | Artist を伴うデータの更新                |
-| `RegistrationCapabilities` | 不在                 | トランザクション | 登録（主体が原理的に存在しない書き込み） |
+| 権能型                           | 主体                 | 境界                    | 用途                                                        |
+| -------------------------------- | -------------------- | ----------------------- | ----------------------------------------------------------- |
+| `PublicReadCapabilities`         | 不要                 | なし                    | 未認証で読める公開データ                                    |
+| `IdentityCapabilities`           | 解決結果             | なし                    | 自分の登録状態そのものを返す                                |
+| `ArtistReadCapabilities`         | Actor（User+Artist） | なし                    | Artist を伴うデータの読み取り                               |
+| `UserWriteCapabilities`          | User                 | トランザクション        | User スコープで完結する更新（例: email）                    |
+| `ArtistWriteCapabilities`        | Actor（User+Artist） | トランザクション        | Artist を伴うデータの更新                                   |
+| `RegistrationCapabilities`       | 不在                 | トランザクション        | 登録（主体が原理的に存在しない書き込み）                    |
+| `ArtistStorageWriteCapabilities` | Actor（User+Artist） | なし（DB 外の外部 I/O） | Artist を伴うストレージへの書き込み（例: プロフィール画像） |
+
+DB トランザクションを張らない権能（`ArtistStorageWriteCapabilities`）は、Storage への PUT のような**外部 I/O をトランザクション境界に入れない**ための分離でもある。ストレージ書き込みと DB 更新（URL の保存）は別リクエストに分かれ、原子性は求めない。
 
 **主体のスコープは機能の要件で決める**。Artist の有無に依存しない機能は `UserWriteCapabilities` を使い、Artist 未作成（`userOnly`）を弾かない。「認証済みなら Actor が揃っている」という前提を全経路に敷かない。
 
@@ -943,14 +945,15 @@ export type ActorResolution =
 
 エントリポイントは権能を自分で組み立てず、`usecases/authorization` の**経路モジュール**を直接 import して通す。import パスにその route が乗る経路が現れる。
 
-| 経路モジュール                           | 入り口                                                         | 主体     |
-| ---------------------------------------- | -------------------------------------------------------------- | -------- |
-| （`infrastructure/capabilities` を直接） | `getCapabilityDeps().buildPublicReadCapabilities()`            | 不要     |
-| `usecases/authorization/identity`        | `withIdentityCapabilities(deps, subId, work)`                  | 解決結果 |
-| `usecases/authorization/artistRead`      | `withArtistReadCapabilitiesById(deps, subId, artistId, work)`  | Actor    |
-| `usecases/authorization/userWrite`       | `withUserWriteCapabilitiesById(deps, subId, userId, work)`     | User     |
-| `usecases/authorization/artistWrite`     | `withArtistWriteCapabilitiesById(deps, subId, artistId, work)` | Actor    |
-| `usecases/authorization/registration`    | `withRegistrationCapabilities(deps, work)`                     | 不在     |
+| 経路モジュール                              | 入り口                                                                | 主体     |
+| ------------------------------------------- | --------------------------------------------------------------------- | -------- |
+| （`infrastructure/capabilities` を直接）    | `getCapabilityDeps().buildPublicReadCapabilities()`                   | 不要     |
+| `usecases/authorization/identity`           | `withIdentityCapabilities(deps, subId, work)`                         | 解決結果 |
+| `usecases/authorization/artistRead`         | `withArtistReadCapabilitiesById(deps, subId, artistId, work)`         | Actor    |
+| `usecases/authorization/userWrite`          | `withUserWriteCapabilitiesById(deps, subId, userId, work)`            | User     |
+| `usecases/authorization/artistWrite`        | `withArtistWriteCapabilitiesById(deps, subId, artistId, work)`        | Actor    |
+| `usecases/authorization/artistStorageWrite` | `withArtistStorageWriteCapabilitiesById(deps, subId, artistId, work)` | Actor    |
+| `usecases/authorization/registration`       | `withRegistrationCapabilities(deps, work)`                            | 不在     |
 
 経路モジュールが共有する部品は 2 つに分けている。
 
@@ -1176,6 +1179,7 @@ describe("reconstructUser", () => {
 | GET      | `/api/artists/:artistId/profile`         | プロフィール取得（下書き含む） | 要   |
 | POST     | `/api/artists/:artistId/profile`         | プロフィール保存               | 要   |
 | POST     | `/api/artists/:artistId/profile/publish` | 公開/非公開の切り替え          | 要   |
+| POST     | `/api/artists/:artistId/profile/image`   | プロフィール画像アップロード   | 要   |
 | GET      | `/api/link-types`                        | リンク種別マスタ一覧           | 不要 |
 
 > 旧 `me` 系（`POST /api/artists/me`・`GET|POST /api/artists/me/profile`・`POST /api/artists/me/profile/publish`・`POST /api/users/me`）はクライアント移行の完了に伴い削除済み（[api-design-guidelines.md](./api-design-guidelines.md) のリソースアドレッシング参照）。`GET /api/users/me` だけは、クライアントが自分の `userId` / `artistId` を解決する起点（bootstrap）として存置する。

@@ -47,7 +47,6 @@ const values: WizardValues = {
   activityForm: "solo",
   affiliation: "",
   links: [{ type: "youtube", url: "https://youtube.com/@saku" }],
-  published: false,
 };
 
 describe("useSaveProfile", () => {
@@ -55,8 +54,9 @@ describe("useSaveProfile", () => {
     vi.clearAllMocks();
   });
 
-  it("submit(published=false) は保存だけ呼び、合成済みの json を送り refresh する", async () => {
+  it("submit は合成済みの json で保存した後に publish を published=true で呼び refresh する", async () => {
     saveMock.mockResolvedValueOnce(buildJsonResponse({}, { status: 200 }));
+    publishMock.mockResolvedValueOnce(buildJsonResponse({}, { status: 200 }));
 
     const { result } = renderHook(() => useSaveProfile());
 
@@ -76,36 +76,19 @@ describe("useSaveProfile", () => {
         links: [{ type: "youtube", url: "https://youtube.com/@saku" }],
       },
     });
-    expect(publishMock).not.toHaveBeenCalled();
+    expect(publishMock).toHaveBeenCalledWith({ json: { published: true } });
     expect(returned).toBe(true);
     expect(refreshMock).toHaveBeenCalledTimes(1);
     expect(result.current.error).toBeNull();
   });
 
-  it("submit(published=true) は保存後に publish を published=true で呼ぶ", async () => {
-    saveMock.mockResolvedValueOnce(buildJsonResponse({}, { status: 200 }));
-    publishMock.mockResolvedValueOnce(buildJsonResponse({}, { status: 200 }));
-
-    const { result } = renderHook(() => useSaveProfile());
-
-    let returned: boolean | undefined;
-    await act(async () => {
-      returned = await result.current.submit({ ...values, published: true });
-    });
-
-    expect(saveMock).toHaveBeenCalledTimes(1);
-    expect(publishMock).toHaveBeenCalledWith({ json: { published: true } });
-    expect(returned).toBe(true);
-    expect(refreshMock).toHaveBeenCalledTimes(1);
-  });
-
-  it("saveDraft は published=true でも publish を呼ばない", async () => {
+  it("saveDraft は publish を呼ばない", async () => {
     saveMock.mockResolvedValueOnce(buildJsonResponse({}, { status: 200 }));
 
     const { result } = renderHook(() => useSaveProfile());
 
     await act(async () => {
-      await result.current.saveDraft({ ...values, published: true });
+      await result.current.saveDraft(values);
     });
 
     expect(saveMock).toHaveBeenCalledTimes(1);
@@ -121,7 +104,7 @@ describe("useSaveProfile", () => {
 
     let returned: boolean | undefined;
     await act(async () => {
-      returned = await result.current.submit({ ...values, published: true });
+      returned = await result.current.submit(values);
     });
 
     expect(returned).toBe(false);
@@ -140,7 +123,7 @@ describe("useSaveProfile", () => {
 
     let returned: boolean | undefined;
     await act(async () => {
-      returned = await result.current.submit({ ...values, published: true });
+      returned = await result.current.submit(values);
     });
 
     expect(returned).toBe(false);

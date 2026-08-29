@@ -98,11 +98,6 @@ variable "production_api_server_base_url" {
   type        = string
 }
 
-variable "preview_app_base_url" {
-  description = "Preview の APP_BASE_URL。"
-  type        = string
-}
-
 variable "preview_api_server_base_url" {
   description = "Preview の API_SERVER_BASE_URL。"
   type        = string
@@ -130,23 +125,28 @@ variable "preview_database_url" {
 }
 
 # ===========================
-# Basic Auth (全環境共通)
+# Supabase Storage (プロフィール画像アップロード)
+# service role key は api-server のみが保持する（beatfolio には配らない）
 # ===========================
 
-variable "enable_basic_auth" {
-  description = "Basic Auth を有効化するか(\"true\" / \"false\" 文字列)。"
+variable "production_supabase_url" {
+  description = "Production の SUPABASE_URL(Supabase プロジェクトの API URL)。"
   type        = string
-  default     = "true"
 }
 
-variable "basic_auth_username" {
-  description = "Basic Auth ユーザー名。"
+variable "production_supabase_service_role_key" {
+  description = "Production の SUPABASE_SERVICE_ROLE_KEY。Storage への書き込みに使用。"
   type        = string
   sensitive   = true
 }
 
-variable "basic_auth_password" {
-  description = "Basic Auth パスワード。"
+variable "preview_supabase_url" {
+  description = "Preview の SUPABASE_URL。"
+  type        = string
+}
+
+variable "preview_supabase_service_role_key" {
+  description = "Preview の SUPABASE_SERVICE_ROLE_KEY。"
   type        = string
   sensitive   = true
 }

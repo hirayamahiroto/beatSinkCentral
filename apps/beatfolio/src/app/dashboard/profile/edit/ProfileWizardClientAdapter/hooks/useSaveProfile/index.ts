@@ -45,7 +45,7 @@ export const useSaveProfile = () => {
   };
 
   const submit = (values: WizardValues): Promise<boolean> =>
-    save(values, { publish: values.published });
+    save(values, { publish: true });
 
   const saveDraft = (values: WizardValues): Promise<boolean> =>
     save(values, { publish: false });

@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   db-migrate:
-    name: 🗄️ データベースマイグレーション
+    name: 🗄️ db-migrate
     runs-on: ubuntu-latest
     steps:
       - name: 📥 コードのチェックアウト
@@ -38,7 +38,7 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
   deploy-production:
-    name: 🏭 本番デプロイ
+    name: 🏭 deploy-production
     needs: db-migrate
     runs-on: ubuntu-latest
     steps:

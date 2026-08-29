@@ -2,7 +2,7 @@ name: "🎵 beatfolio"
 
 on:
   push:
-    branches: [main, feature/*]
+    branches: [main]
     paths:
       - "apps/beatfolio/**"
       - "packages/**"

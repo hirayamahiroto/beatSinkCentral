@@ -22,13 +22,7 @@
     },
     "api-server#build": {
       "outputs": [".next/**", "!.next/cache/**", "dist/**"],
-      "env": [
-        "DATABASE_URL",
-        "API_SERVER_BASE_URL",
-        "ENABLE_BASIC_AUTH",
-        "BASIC_AUTH_USERNAME",
-        "BASIC_AUTH_PASSWORD"
-      ]
+      "env": ["DATABASE_URL", "API_SERVER_BASE_URL"]
     },
     "lint": {
       "dependsOn": ["^lint"],

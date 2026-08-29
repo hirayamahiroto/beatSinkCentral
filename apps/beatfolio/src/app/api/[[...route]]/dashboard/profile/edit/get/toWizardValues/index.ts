@@ -24,6 +24,5 @@ export const toWizardValues = (profile: ProfileView): Partial<WizardValues> => {
     ...(profile.story ? { storyOrigin: profile.story } : {}),
     ...activity,
     ...(links.length > 0 ? { links } : {}),
-    published: profile.published,
   };
 };

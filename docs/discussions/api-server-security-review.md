@@ -148,6 +148,12 @@ const ALLOWED_PROTOCOLS = ["http:", "https:"];
 
 `packages/ui` 側のフォーム検証（`ArtistProfileWizard`）も同じ制約に揃える必要があるが、**信頼境界はサーバー側**なので VO の修正が本体。
 
+### 対応状況（2026-08-19 決着）
+
+- `imageUrl` VO に `http:` / `https:` のみ許可する scheme 制限を追加（`javascript:` / `data:` / `file:` 等は 422）
+- 画像はプロフィール編集からの **ファイルアップロード**に移行。クライアントは Storage へ直接書き込まず、BFF から `POST /api/artists/:artistId/profile/image` に中継し、api-server が service role で Supabase Storage へ保存する（方式は [`../architecture/server/database/storage.md`](../architecture/server/database/storage.md)）。サーバー側（API・バケット）は対応済み。UI の URL 入力をファイルアップロードに置き換えるクライアント側は後続 PR で対応
+- 後続課題: `imageUrl` の許可ドメイン限定（自前 Storage の URL のみ受け付ける）、`snsUrl` の scheme 制限、差し替え時の孤児オブジェクト削除
+
 ---
 
 ## S-3 🟡 Basic 認証の実装が脆い

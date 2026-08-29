@@ -64,4 +64,4 @@ next-env.d.ts
 **/crash.*.log
 
 # Terraform-related sensitive scratch files
-dd.md
+.env*.local

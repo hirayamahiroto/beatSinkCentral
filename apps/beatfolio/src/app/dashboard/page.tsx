@@ -4,11 +4,11 @@ import Link from "next/link";
 import { Typography } from "@ui/design-system/components/atoms/Typography";
 import { Card } from "@ui/design-system/components/atoms/Card";
 import { Button } from "@ui/design-system/components/atoms/Button";
-import { auth0 } from "../../libs/auth0";
+import { getSession } from "../../libs/auth0";
 import { getDashboard } from "../../fetchers/dashboard/getDashboard";
 
 export default async function DashboardPage() {
-  const session = await auth0.getSession();
+  const session = await getSession();
 
   if (!session) {
     redirect("/auth/login");

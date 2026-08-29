@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
-import { auth0 } from "../../libs/auth0";
+import { getSession } from "../../libs/auth0";
 import { getOnboarding } from "../../fetchers/onboarding/getOnboarding";
 import { OnboardingClientAdapter } from "./OnboardingClientAdapter";
 
 export default async function OnboardingPage() {
-  const session = await auth0.getSession();
+  const session = await getSession();
 
   if (!session) {
     redirect("/auth/login");

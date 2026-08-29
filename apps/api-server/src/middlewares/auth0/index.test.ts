@@ -5,9 +5,9 @@ import { handleAppError } from "../../errorMap";
 const getSessionMock = vi.fn();
 
 vi.mock("../../infrastructure/auth0", () => ({
-  auth0: {
+  getAuth0: () => ({
     getSession: () => getSessionMock(),
-  },
+  }),
 }));
 
 const buildApp = async () => {

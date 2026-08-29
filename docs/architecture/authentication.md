@@ -127,6 +127,45 @@ requireRegisteredMiddleware（新規追加予定）
 └── 未登録の場合はリダイレクトまたは403
 ```
 
+## アプリのベース URL（appBaseUrl）の決定
+
+Auth0 の `redirect_uri` と、beatfolio が自分自身の BFF を呼ぶ際のベース URL は、両アプリとも同じ優先順位で決定する。
+実装は `apps/api-server/src/infrastructure/appBaseUrl` / `apps/beatfolio/src/utils/config/appBaseUrl`。
+
+| 優先 | 出所                | 用途                                                     |
+| ---- | ------------------- | -------------------------------------------------------- |
+| 1    | `APP_BASE_URL`      | Production の固定ドメイン。末尾スラッシュは除去する      |
+| 2    | `VERCEL_BRANCH_URL` | Preview。ブランチ単位で安定する URL（Vercel が自動注入） |
+| 3    | `VERCEL_URL`        | Preview。デプロイ単位の URL（Vercel が自動注入）         |
+| 4    | localhost           | ローカル開発（beatfolio: 3000 / api-server: 3001）       |
+
+### 環境ごとの設定
+
+- **Production**: Terraform で `APP_BASE_URL` を固定値で配る
+- **Preview**: `APP_BASE_URL` を**設定しない**。Vercel が注入する URL から自動で組み立てる。
+  `https://beat-sink-central-*-....vercel.app` のようなワイルドカード入り文字列を `APP_BASE_URL` に置くと、
+  その文字列がそのまま `redirect_uri` になり、ログイン後に存在しないホストへ飛ぶ（`DNS_PROBE_FINISHED_NXDOMAIN`）
+- **Local**: `.env.local` に明示するか、未設定で localhost にフォールバックさせる
+
+### Auth0 側の許可リスト
+
+**Preview と Production は別々の Auth0 Application を使う。** ワイルドカードを登録した Application は
+`*.vercel.app` のどのサブドメインでも `redirect_uri` として受け付けるため、Production を同じ Application で
+運用すると、第三者が作った Preview デプロイへ Production の認証結果を渡せてしまう。
+Terraform の `preview_auth0_client_id` / `production_auth0_client_id` には、**異なる Application の値**を入れる。
+
+Preview 用 Application — デプロイごとに URL が変わるため、ワイルドカードで登録する。
+
+- Allowed Callback URLs: `https://*.vercel.app/auth/callback`
+- Allowed Logout URLs: `https://*.vercel.app`
+- Allowed Web Origins（サイレント認証を使う場合のみ）: `https://*.vercel.app`
+
+Production 用 Application — ワイルドカードは登録せず、固定ドメインだけを列挙する。
+
+- Allowed Callback URLs: `https://beatfolio.example.com/auth/callback`
+- Allowed Logout URLs: `https://beatfolio.example.com`
+- Allowed Web Origins（サイレント認証を使う場合のみ）: `https://beatfolio.example.com`
+
 ## セキュリティ考慮事項
 
 1. **auth0UserId/emailはセッションから取得**

@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
-import { auth0 } from "../../../../libs/auth0";
+import { getSession } from "../../../../libs/auth0";
 import { getProfileEditScreen } from "../../../../fetchers/dashboard/getProfileEditScreen";
 import { ProfileWizardClientAdapter } from "./ProfileWizardClientAdapter";
 
 export default async function ProfileEditPage() {
-  const session = await auth0.getSession();
+  const session = await getSession();
 
   if (!session) {
     redirect("/auth/login");
