@@ -17,7 +17,6 @@ const baseValues: WizardValues = {
     { type: "youtube", url: "https://youtube.com/@saku" },
     { type: "x", url: "https://x.com/saku" },
   ],
-  published: false,
 };
 
 describe("toSaveProfileRequest", () => {

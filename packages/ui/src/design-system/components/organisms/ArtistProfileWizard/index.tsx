@@ -6,7 +6,6 @@ import { Button } from "@ui/design-system/components/atoms/Button";
 import { Card } from "@ui/design-system/components/atoms/Card";
 import { Input } from "@ui/design-system/components/atoms/Input";
 import { Textarea } from "@ui/design-system/components/atoms/Textarea";
-import { Switch } from "@ui/design-system/components/atoms/Switch";
 import { Typography } from "@ui/design-system/components/atoms/Typography";
 import { FormField } from "@ui/design-system/components/molecules/FormField";
 import { ImageFileInput } from "@ui/design-system/components/molecules/ImageFileInput";
@@ -39,7 +38,6 @@ const wizardSchema = z.object({
       }),
     )
     .min(1, "SNS / 配信リンクを1つ以上登録してください"),
-  published: z.boolean(),
 });
 
 type WizardValues = z.infer<typeof wizardSchema>;
@@ -118,7 +116,6 @@ export const ArtistProfileWizard = ({
       activityForm: "solo",
       affiliation: "",
       links: defaultLinkType ? [{ type: defaultLinkType.type, url: "" }] : [],
-      published: false,
       ...defaultValues,
     },
   });
@@ -431,28 +428,8 @@ export const ArtistProfileWizard = ({
               <div className="flex flex-col gap-1">
                 <Typography variant="h4">最後に確認して公開</Typography>
                 <Typography variant="small" tone="muted">
-                  準備ができたら公開しましょう。オフなら下書きとして保存されます。
+                  保存すると公開ページに反映されます。
                 </Typography>
-              </div>
-
-              <div className="flex items-center justify-between rounded-md border border-white/10 bg-white/5 p-4">
-                <div className="flex flex-col gap-1">
-                  <Typography variant="p">今すぐ公開する</Typography>
-                  <Typography variant="small" tone="muted">
-                    必須項目が揃うと公開できます
-                  </Typography>
-                </div>
-                <Controller
-                  control={control}
-                  name="published"
-                  render={({ field }) => (
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      aria-label="公開する"
-                    />
-                  )}
-                />
               </div>
 
               {error && (

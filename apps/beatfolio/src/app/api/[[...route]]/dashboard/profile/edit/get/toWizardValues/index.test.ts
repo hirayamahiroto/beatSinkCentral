@@ -30,7 +30,6 @@ describe("toWizardValues", () => {
         { type: "youtube", url: "https://youtube.com/@saku" },
         { type: "x", url: "https://x.com/saku" },
       ],
-      published: true,
     });
   });
 
@@ -57,6 +56,6 @@ describe("toWizardValues", () => {
         links: [],
         published: false,
       }),
-    ).toStrictEqual({ published: false });
+    ).toStrictEqual({});
   });
 });

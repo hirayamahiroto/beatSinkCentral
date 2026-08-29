@@ -94,7 +94,6 @@ describe("GET /dashboard/profile/edit", () => {
         location: "東京",
         activityForm: "solo",
         links: [{ type: "youtube", url: "https://youtube.com/@saku" }],
-        published: true,
       },
     });
   });
