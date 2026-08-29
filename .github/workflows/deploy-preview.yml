@@ -1,9 +1,6 @@
 name: "🚀 プレビュー環境へデプロイ"
 
 on:
-  push:
-    branches-ignore:
-      - main
   pull_request:
     types: [opened, synchronize, reopened]
   workflow_dispatch:

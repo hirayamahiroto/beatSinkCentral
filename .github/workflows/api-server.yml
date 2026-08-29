@@ -2,7 +2,7 @@ name: "🚀 api-server"
 
 on:
   push:
-    branches: [main, feature/*]
+    branches: [main]
     paths:
       - "apps/api-server/**"
       - "packages/**"
