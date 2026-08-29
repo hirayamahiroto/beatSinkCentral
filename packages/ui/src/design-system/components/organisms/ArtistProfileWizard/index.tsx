@@ -126,12 +126,23 @@ export const ArtistProfileWizard = ({
   const { fields, append, remove } = useFieldArray({ control, name: "links" });
 
   const goNext = async () => {
+    if (isUploadingImage) return;
     const valid = await trigger(STEP_FIELDS[step]);
     if (!valid) return;
     if (step < TOTAL) {
       onSaveDraft?.(getValues());
       setStep(step + 1);
     }
+  };
+
+  const saveDraft = () => {
+    if (isUploadingImage) return;
+    onSaveDraft?.(getValues());
+  };
+
+  const submit = async (data: WizardValues) => {
+    if (isUploadingImage) return;
+    await onSubmit(data);
   };
 
   const handleImageSelect = async (file: File) => {
@@ -164,15 +175,16 @@ export const ArtistProfileWizard = ({
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate>
+    <form onSubmit={handleSubmit(submit)} noValidate>
       <div className="mb-2 flex items-center justify-between">
         <Typography variant="small" tone="muted">
           ステップ {step} / {TOTAL}
         </Typography>
         <button
           type="button"
-          onClick={() => onSaveDraft?.(getValues())}
-          className="text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
+          onClick={saveDraft}
+          disabled={isUploadingImage}
+          className="text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-muted-foreground"
         >
           途中保存して終了
         </button>
@@ -465,11 +477,11 @@ export const ArtistProfileWizard = ({
           </Button>
           <div className="flex-1" />
           {step < TOTAL ? (
-            <Button type="button" onClick={goNext}>
+            <Button type="button" onClick={goNext} disabled={isUploadingImage}>
               次へ
             </Button>
           ) : (
-            <Button type="submit" disabled={isLoading}>
+            <Button type="submit" disabled={isLoading || isUploadingImage}>
               {isLoading ? "保存中..." : "保存して公開する"}
             </Button>
           )}

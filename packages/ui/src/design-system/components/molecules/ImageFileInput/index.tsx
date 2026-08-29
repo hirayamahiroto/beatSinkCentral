@@ -10,6 +10,8 @@ type ImageFileInputProps = {
   accept?: string;
   disabled?: boolean;
   id?: string;
+  "aria-invalid"?: React.AriaAttributes["aria-invalid"];
+  "aria-describedby"?: string;
 };
 
 export type { ImageFileInputProps };
@@ -21,6 +23,8 @@ export const ImageFileInput = ({
   accept = "image/*",
   disabled = false,
   id,
+  "aria-invalid": ariaInvalid,
+  "aria-describedby": ariaDescribedBy,
 }: ImageFileInputProps) => {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const isInteractive = !disabled && !isUploading;
@@ -45,8 +49,10 @@ export const ImageFileInput = ({
         id={id}
         type="file"
         accept={accept}
-        className="hidden"
+        className="sr-only"
         disabled={!isInteractive}
+        aria-invalid={ariaInvalid}
+        aria-describedby={ariaDescribedBy}
         onChange={(event) => {
           const file = event.target.files?.[0];
           if (file) onFileSelect(file);
