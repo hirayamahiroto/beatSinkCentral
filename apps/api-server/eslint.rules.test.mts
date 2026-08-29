@@ -60,6 +60,32 @@ describe("local/usecase-capability-boundary", () => {
     expect(ruleIds).toContain(BOUNDARY);
   });
 
+  it("解決先を静的に確認できない dynamic import を検出する", async () => {
+    const ruleIds = await ruleIdsFor(
+      USECASE,
+      [
+        `const target = "../../../infrastructure/capabilities";`,
+        `export const load = async (caps: never) => import(target);`,
+        ``,
+      ].join("\n"),
+    );
+
+    expect(ruleIds).toContain(BOUNDARY);
+  });
+
+  it("テンプレートリテラルで組み立てた dynamic import も検出する", async () => {
+    const ruleIds = await ruleIdsFor(
+      USECASE,
+      [
+        `export const load = async (name: string) =>`,
+        "  import(`../../../infrastructure/${name}`);",
+        ``,
+      ].join("\n"),
+    );
+
+    expect(ruleIds).toContain(BOUNDARY);
+  });
+
   it("経路モジュール（authorization）にも効く", async () => {
     const ruleIds = await ruleIdsFor(
       AUTHORIZATION,

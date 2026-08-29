@@ -215,6 +215,13 @@ const USECASE_CAPABILITY_BOUNDARY_MESSAGE =
   "usecases/ から infrastructure 層・DB / ストレージクライアントを直接 import しない。" +
   "DB への到達手段は第1引数で受け取る権能（capabilities）だけに限る。";
 
+// 変数・テンプレートリテラルで組み立てた import 先は静的に確認できず、
+// boundary の検査をすり抜ける。usecases/ に動的な依存解決を持ち込む理由が無いため、
+// 解決先を確認できない dynamic import そのものを禁止して穴を残さない。
+const USECASE_UNRESOLVABLE_IMPORT_MESSAGE =
+  "usecases/ では import 先を静的に確認できない dynamic import（変数・式で組み立てたパス）を使わない。" +
+  "権能を迂回した DB への到達を検出できなくなる。";
+
 const USECASE_CAPABILITY_PARAMETER_MESSAGE =
   "usecase のエクスポート関数は第1引数で権能（capabilities）を受け取る。" +
   "型注釈は usecases/capabilities から import した権能型（`caps: XxxCapabilities`）か、" +
@@ -257,6 +264,13 @@ const usecaseCapabilityBoundaryRule = {
         reportIfRestricted(node, node.source);
       },
       ImportExpression(node) {
+        if (node.source?.type !== "Literal") {
+          context.report({
+            node,
+            message: USECASE_UNRESOLVABLE_IMPORT_MESSAGE,
+          });
+          return;
+        }
         reportIfRestricted(node, node.source);
       },
     };
