@@ -94,7 +94,6 @@ apps/api-server/src/
 │
 ├── middlewares/              # ミドルウェア
 │   ├── auth0/                # Auth0 認証・メール検証
-│   ├── basicAuth/            # ベーシック認証
 │   └── requestContext/       # リクエスト相関 ID の確定
 │
 └── utils/                    # ユーティリティ
@@ -132,7 +131,7 @@ apps/api-server/src/
 
 ```
 API Handlers
-  ├─→ Middlewares (Auth0, BasicAuth)
+  ├─→ Middlewares (Auth0)
   ├─→ Authorization (権能の組み立て・Actor 解決・トランザクション境界)
   │    └─→ Usecase (createUser 等)
   │         └─→ IUserReader / IUserWriter (interface)
@@ -750,7 +749,6 @@ app/api/[[...route]]/
 | `requestContextMiddleware`  | リクエスト相関 ID（requestId / traceId）の確定 |
 | `requireAuthMiddleware`     | Auth0 セッション検証                           |
 | `requireVerifiedMiddleware` | メールアドレス検証チェック                     |
-| `basicAuthMiddleware`       | ベーシック認証（オプション）                   |
 
 `requestContextMiddleware` は認証より前に置く。認証失敗（401）のログにも相関情報を載せるため。
 

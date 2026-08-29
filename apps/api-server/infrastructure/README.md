@@ -62,11 +62,6 @@ terraform import \
 terraform import \
   'vercel_project_environment_variable.preview["DATABASE_URL"]' \
   '<project_id>/<env_id>'
-
-# production / preview 共通スコープ(BASIC_AUTH 等)
-terraform import \
-  'vercel_project_environment_variable.shared["BASIC_AUTH_USERNAME"]' \
-  '<project_id>/<env_id>'
 ```
 
 各 env を 1 つずつ繰り返す。
@@ -95,7 +90,7 @@ Vercel Dashboard での手動変更は禁止(差分が出たら Terraform を正
 | --------------------------- | ------------------------------------------------------------- |
 | `main.tf`                   | terraform ブロック、バックエンド設定                          |
 | `providers.tf`              | Vercel provider 設定(team_id は var から取得)                 |
-| `variables.tf`              | 入力変数(Auth0 / DB / Base URL / Basic Auth / Vercel team 等) |
+| `variables.tf`              | 入力変数(Auth0 / DB / Base URL / Vercel team 等) |
 | `vercel.tf`                 | `vercel_project` リソース                                     |
 | `env.tf`                    | 環境変数群(production / preview / 全環境共通)                 |
 | `terraform.tfvars.example`  | 入力変数のサンプル                                            |

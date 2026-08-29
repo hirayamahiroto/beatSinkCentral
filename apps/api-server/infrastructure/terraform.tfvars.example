@@ -37,8 +37,3 @@ production_supabase_url              = "https://<prod-ref>.supabase.co"
 production_supabase_service_role_key = "REPLACE_ME"
 preview_supabase_url                 = "https://<preview-ref>.supabase.co"
 preview_supabase_service_role_key    = "REPLACE_ME"
-
-# ===== Basic Auth (全環境共通) =====
-enable_basic_auth   = "true"
-basic_auth_username = "REPLACE_ME"
-basic_auth_password = "REPLACE_ME"

@@ -150,25 +150,3 @@ variable "preview_supabase_service_role_key" {
   type        = string
   sensitive   = true
 }
-
-# ===========================
-# Basic Auth (全環境共通)
-# ===========================
-
-variable "enable_basic_auth" {
-  description = "Basic Auth を有効化するか(\"true\" / \"false\" 文字列)。"
-  type        = string
-  default     = "true"
-}
-
-variable "basic_auth_username" {
-  description = "Basic Auth ユーザー名。"
-  type        = string
-  sensitive   = true
-}
-
-variable "basic_auth_password" {
-  description = "Basic Auth パスワード。"
-  type        = string
-  sensitive   = true
-}
