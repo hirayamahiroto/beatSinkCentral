@@ -7,7 +7,7 @@ import { requireSessionMiddleware } from "./middlewares/requireSession";
 
 const app = new Hono();
 
-app.use("*", except("/auth/*", basicAuthMiddleware));
+app.use("*", except(["/auth/*", "/api/*"], basicAuthMiddleware));
 app.use("*", requireAuthMiddleware);
 app.use("/onboarding/*", requireSessionMiddleware);
 app.use("/dashboard/*", requireSessionMiddleware);
