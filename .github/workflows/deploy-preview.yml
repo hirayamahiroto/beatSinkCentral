@@ -228,9 +228,9 @@ jobs:
         run: |
           for _ in $(seq 1 10); do
             URLS=$(vercel ls --meta gitBranch=${{ env.GIT_BRANCH }} --token=${{ secrets.VERCEL_TOKEN }} 2>&1 \
-              | grep -oE 'https://[^ ]+\.vercel\.app' || true)
+              | grep -oE 'https://[^ ]+\.vercel\.app' | sort -u || true)
             [ -z "$URLS" ] && break
-            echo "$URLS" | xargs -n1 vercel rm --yes --token=${{ secrets.VERCEL_TOKEN }}
+            echo "$URLS" | xargs -n1 vercel rm --yes --token=${{ secrets.VERCEL_TOKEN }} || true
           done
           echo "gitBranch=${{ env.GIT_BRANCH }} のプレビューデプロイを削除しました"
         env:
