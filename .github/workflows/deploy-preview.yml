@@ -16,7 +16,7 @@ permissions:
 jobs:
   # ビルドとテスト
   test-api-server:
-    name: 🧪 APIサーバーテスト
+    name: 🧪 test-api-server
     runs-on: ubuntu-latest
     steps:
       - name: 📥 コードのチェックアウト
@@ -29,7 +29,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
 
   test-beatfolio:
-    name: 🧪 Beatfolioテスト
+    name: 🧪 test-beatfolio
     runs-on: ubuntu-latest
     steps:
       - name: 📥 コードのチェックアウト
@@ -42,7 +42,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
 
   db-migrate:
-    name: 🗄️ データベースマイグレーション
+    name: 🗄️ db-migrate
     runs-on: ubuntu-latest
     steps:
       - name: 📥 コードのチェックアウト
@@ -65,7 +65,7 @@ jobs:
 
   # APIサーバーのデプロイ（テスト・マイグレーション完了後に実行）
   deploy-api-server:
-    name: 🔮 APIサーバープレビューデプロイ
+    name: 🔮 deploy-api-server
     runs-on: ubuntu-latest
     needs: [test-api-server, db-migrate]  # テストとマイグレーション完了後に実行
     outputs:
@@ -113,7 +113,7 @@ jobs:
 
   # Beatfolioのデプロイ（APIサーバーのデプロイ完了後に実行）
   deploy-beatfolio:
-    name: 🔮 Beatfolioプレビューデプロイ
+    name: 🔮 deploy-beatfolio
     runs-on: ubuntu-latest
     needs: [test-beatfolio, deploy-api-server]  # テストとAPIサーバーのデプロイが完了してから実行
     steps:
