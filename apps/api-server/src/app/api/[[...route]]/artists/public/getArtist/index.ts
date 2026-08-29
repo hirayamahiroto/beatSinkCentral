@@ -10,7 +10,6 @@ const paramSchema = z.object({
   accountId: z.string().min(1).max(255),
 });
 
-// 公開済みは ensurePublishable を通っており name を必ず持つ（domain/artistProfiles/policies/publishability）
 const publicProfileSchema = z.object({
   name: z.string().min(1),
   tagline: z.string().nullable(),
