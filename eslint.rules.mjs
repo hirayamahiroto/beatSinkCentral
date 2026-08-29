@@ -204,3 +204,160 @@ export const responseValidationPendingWarn = (files) => ({
     "local/response-validation": "warn",
   },
 });
+
+// なぜ型ではなく lint か: 「usecase の第1引数は権能である」を型で強制するには
+// defineUsecase / Exact のようなラッパを全 usecase に被せる必要があるが、
+// docs/architecture/server/architecture.md「認可と権能（capabilities）」は
+// そのコストに見合わないとして採用しないと決めている。よって規範（advisory）に
+// 留まっていた2点 —— (1) usecase が権能を経由せず DB へ到達しない、
+// (2) 第1引数が権能型である —— を AST 上の形として検出する。
+const USECASE_CAPABILITY_BOUNDARY_MESSAGE =
+  "usecases/ から infrastructure 層・DB / ストレージクライアントを直接 import しない。" +
+  "DB への到達手段は第1引数で受け取る権能（capabilities）だけに限る。";
+
+const USECASE_CAPABILITY_PARAMETER_MESSAGE =
+  "usecase のエクスポート関数は第1引数で権能（capabilities）を受け取る。" +
+  "`caps: XxxCapabilities` もしくは `Pick<XxxCapabilities, ...>` を型注釈に持つ形にする。";
+
+// usecases/ から見て「権能を迂回して DB へ到達しうる」入口。
+// infrastructure/ は権能の組み立て側（Composition Root）で、リポジトリ実装と db を握る。
+const RESTRICTED_USECASE_SOURCES = [
+  /(^|\/)infrastructure(\/|$)/,
+  /^database(\/|$)/,
+  /^drizzle-orm(\/|$)/,
+  /^@supabase\//,
+];
+
+const isRestrictedUsecaseSource = (source) =>
+  typeof source === "string" &&
+  RESTRICTED_USECASE_SOURCES.some((pattern) => pattern.test(source));
+
+const usecaseCapabilityBoundaryRule = {
+  meta: {
+    type: "problem",
+    docs: { description: USECASE_CAPABILITY_BOUNDARY_MESSAGE },
+    schema: [],
+  },
+  create(context) {
+    const reportIfRestricted = (node, sourceNode) => {
+      if (sourceNode?.type !== "Literal") return;
+      if (!isRestrictedUsecaseSource(sourceNode.value)) return;
+      context.report({ node, message: USECASE_CAPABILITY_BOUNDARY_MESSAGE });
+    };
+
+    return {
+      ImportDeclaration(node) {
+        reportIfRestricted(node, node.source);
+      },
+      ExportNamedDeclaration(node) {
+        reportIfRestricted(node, node.source);
+      },
+      ExportAllDeclaration(node) {
+        reportIfRestricted(node, node.source);
+      },
+      ImportExpression(node) {
+        reportIfRestricted(node, node.source);
+      },
+    };
+  },
+};
+
+// Pick<Caps, ...> のように権能型を包むユーティリティ型は展開して中身で判定する。
+const CAPABILITY_WRAPPER_TYPES = new Set([
+  "Pick",
+  "Omit",
+  "Readonly",
+  "Partial",
+]);
+
+const CAPABILITY_TYPE_NAME = /(Caps|Capabilities)$/;
+
+// typescript-eslint は v8 で TSTypeReference の型引数を typeArguments に移した。
+// 旧フィールド名でも動くよう両方を見る。
+const typeArgumentsOf = (typeNode) =>
+  typeNode.typeArguments ? typeNode.typeArguments : typeNode.typeParameters;
+
+const isCapabilityType = (typeNode) => {
+  if (!typeNode || typeNode.type !== "TSTypeReference") return false;
+  if (typeNode.typeName.type !== "Identifier") return false;
+
+  const typeName = typeNode.typeName.name;
+  if (CAPABILITY_TYPE_NAME.test(typeName)) return true;
+  if (!CAPABILITY_WRAPPER_TYPES.has(typeName)) return false;
+
+  const typeArguments = typeArgumentsOf(typeNode);
+  if (!typeArguments) return false;
+  return isCapabilityType(typeArguments.params[0]);
+};
+
+const receivesCapabilities = (fn) => {
+  const [firstParameter] = fn.params;
+  if (!firstParameter) return false;
+  return isCapabilityType(firstParameter.typeAnnotation?.typeAnnotation);
+};
+
+const FUNCTION_TYPES = new Set([
+  "ArrowFunctionExpression",
+  "FunctionExpression",
+  "FunctionDeclaration",
+]);
+
+const exportedFunctionsOf = (declaration) => {
+  if (!declaration) return [];
+  if (FUNCTION_TYPES.has(declaration.type)) return [declaration];
+  if (declaration.type !== "VariableDeclaration") return [];
+  return declaration.declarations
+    .map((declarator) => declarator.init)
+    .filter((init) => init && FUNCTION_TYPES.has(init.type));
+};
+
+const usecaseCapabilityParameterRule = {
+  meta: {
+    type: "problem",
+    docs: { description: USECASE_CAPABILITY_PARAMETER_MESSAGE },
+    schema: [],
+  },
+  create(context) {
+    const checkExport = (node) => {
+      for (const fn of exportedFunctionsOf(node.declaration)) {
+        if (receivesCapabilities(fn)) continue;
+        context.report({
+          node: fn,
+          message: USECASE_CAPABILITY_PARAMETER_MESSAGE,
+        });
+      }
+    };
+
+    return {
+      ExportNamedDeclaration: checkExport,
+      ExportDefaultDeclaration: checkExport,
+    };
+  },
+};
+
+const usecaseCapabilityPlugin = {
+  rules: {
+    "usecase-capability-boundary": usecaseCapabilityBoundaryRule,
+    "usecase-capability-parameter": usecaseCapabilityParameterRule,
+  },
+};
+
+export const usecaseCapabilityRules = (files) => ({
+  files,
+  plugins: { local: usecaseCapabilityPlugin },
+  rules: {
+    "local/usecase-capability-boundary": "error",
+    "local/usecase-capability-parameter": "error",
+  },
+});
+
+// 権能を「組み立てる／定義する」側（経路モジュールは CapabilityDeps を受け、
+// resolution / conflict は純粋関数）と、テスト・テストダブルは、第1引数で権能を
+// 受け取る形にはならない。DB への直接到達の禁止（boundary）は外さない。
+export const usecaseCapabilityParameterExempt = (files) => ({
+  files,
+  plugins: { local: usecaseCapabilityPlugin },
+  rules: {
+    "local/usecase-capability-parameter": "off",
+  },
+});
