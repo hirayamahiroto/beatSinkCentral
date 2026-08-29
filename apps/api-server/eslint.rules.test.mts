@@ -129,6 +129,74 @@ describe("local/usecase-capability-parameter", () => {
     expect(ruleIds).not.toContain(PARAMETER);
   });
 
+  it("分離した export（export { run }）も検出する", async () => {
+    const ruleIds = await ruleIdsFor(
+      USECASE,
+      [
+        `const run = async (artistId: string) => artistId;`,
+        `export { run };`,
+        ``,
+      ].join("\n"),
+    );
+
+    expect(ruleIds).toContain(PARAMETER);
+  });
+
+  it("識別子だけの default export も検出する", async () => {
+    const ruleIds = await ruleIdsFor(
+      USECASE,
+      [
+        `const run = async (artistId: string) => artistId;`,
+        `export default run;`,
+        ``,
+      ].join("\n"),
+    );
+
+    expect(ruleIds).toContain(PARAMETER);
+  });
+
+  it("分離した export でも権能を受け取っていれば許可する", async () => {
+    const ruleIds = await ruleIdsFor(
+      USECASE,
+      [
+        `import type { ArtistWriteCapabilities } from "../../capabilities";`,
+        `const run = async (caps: ArtistWriteCapabilities) => caps.actor;`,
+        `export { run };`,
+        ``,
+      ].join("\n"),
+    );
+
+    expect(ruleIds).not.toContain(PARAMETER);
+  });
+
+  it("権能型の定義元から来ていない同名接尾辞の型は許可しない", async () => {
+    const ruleIds = await ruleIdsFor(
+      USECASE,
+      [
+        `type FakeCaps = { db: { query: (sql: string) => Promise<unknown> } };`,
+        `export const run = async (caps: FakeCaps) => caps.db;`,
+        ``,
+      ].join("\n"),
+    );
+
+    expect(ruleIds).toContain(PARAMETER);
+  });
+
+  it("名前空間 import 経由の権能型も許可する", async () => {
+    const ruleIds = await ruleIdsFor(
+      USECASE,
+      [
+        `import type * as caps from "../../capabilities";`,
+        `export const run = async (`,
+        `  c: Pick<caps.ArtistWriteCapabilities, "actor">,`,
+        `) => c.actor;`,
+        ``,
+      ].join("\n"),
+    );
+
+    expect(ruleIds).not.toContain(PARAMETER);
+  });
+
   it("関数以外のエクスポートは対象外", async () => {
     const ruleIds = await ruleIdsFor(
       USECASE,

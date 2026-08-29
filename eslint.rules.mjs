@@ -217,7 +217,8 @@ const USECASE_CAPABILITY_BOUNDARY_MESSAGE =
 
 const USECASE_CAPABILITY_PARAMETER_MESSAGE =
   "usecase のエクスポート関数は第1引数で権能（capabilities）を受け取る。" +
-  "`caps: XxxCapabilities` もしくは `Pick<XxxCapabilities, ...>` を型注釈に持つ形にする。";
+  "型注釈は usecases/capabilities から import した権能型（`caps: XxxCapabilities`）か、" +
+  "それを Pick / Omit 等で包んだ型にする。";
 
 // usecases/ から見て「権能を迂回して DB へ到達しうる」入口。
 // infrastructure/ は権能の組み立て側（Composition Root）で、リポジトリ実装と db を握る。
@@ -270,30 +271,80 @@ const CAPABILITY_WRAPPER_TYPES = new Set([
   "Partial",
 ]);
 
-const CAPABILITY_TYPE_NAME = /(Caps|Capabilities)$/;
+// 権能型かどうかは型名の接尾辞では判定しない。`FakeCaps` のような名前を付けた
+// 構造型（raw な db を持つ型）でルールを通過できてしまうため、権能型の定義元
+// （usecases/capabilities）から来ている型だけを権能型として認める。
+const CAPABILITY_MODULE_SOURCE = /(^|\/)capabilities(\/|$)/;
+
+const isCapabilityModuleSource = (source) =>
+  typeof source === "string" &&
+  source.startsWith(".") &&
+  CAPABILITY_MODULE_SOURCE.test(source);
 
 // typescript-eslint は v8 で TSTypeReference の型引数を typeArguments に移した。
 // 旧フィールド名でも動くよう両方を見る。
 const typeArgumentsOf = (typeNode) =>
   typeNode.typeArguments ? typeNode.typeArguments : typeNode.typeParameters;
 
-const isCapabilityType = (typeNode) => {
-  if (!typeNode || typeNode.type !== "TSTypeReference") return false;
-  if (typeNode.typeName.type !== "Identifier") return false;
+// 名前空間 import（`import type * as caps` → `caps.ArtistWriteCapabilities`）は
+// 左端の識別子で判定できるよう、修飾名を左端まで畳む。
+const typeReferenceName = (typeNode) => {
+  if (!typeNode || typeNode.type !== "TSTypeReference") return null;
 
-  const typeName = typeNode.typeName.name;
-  if (CAPABILITY_TYPE_NAME.test(typeName)) return true;
-  if (!CAPABILITY_WRAPPER_TYPES.has(typeName)) return false;
+  let typeName = typeNode.typeName;
+  while (typeName.type === "TSQualifiedName") typeName = typeName.left;
+  return typeName.type === "Identifier" ? typeName.name : null;
+};
+
+const isCapabilityType = (typeNode, capabilityNames) => {
+  const name = typeReferenceName(typeNode);
+  if (!name) return false;
+  if (capabilityNames.has(name)) return true;
+  if (!CAPABILITY_WRAPPER_TYPES.has(name)) return false;
 
   const typeArguments = typeArgumentsOf(typeNode);
   if (!typeArguments) return false;
-  return isCapabilityType(typeArguments.params[0]);
+  return isCapabilityType(typeArguments.params[0], capabilityNames);
 };
 
-const receivesCapabilities = (fn) => {
+const referencesCapabilityType = (node, capabilityNames) => {
+  if (!node || typeof node !== "object") return false;
+  if (Array.isArray(node)) {
+    return node.some((child) => referencesCapabilityType(child, capabilityNames));
+  }
+  if (capabilityNames.has(typeReferenceName(node))) return true;
+
+  return Object.entries(node).some(
+    ([key, value]) =>
+      key !== "parent" && referencesCapabilityType(value, capabilityNames),
+  );
+};
+
+// `type SaveMyProfileCaps = Pick<ArtistWriteCapabilities, ...>` のような
+// ファイル内の別名も権能型として扱う。別名が別名を参照する形に備えて
+// 増えなくなるまで繰り返す。
+const expandCapabilityAliases = (aliases, capabilityNames) => {
+  let expanded = true;
+  while (expanded) {
+    expanded = false;
+    for (const alias of aliases) {
+      if (capabilityNames.has(alias.name)) continue;
+      if (!referencesCapabilityType(alias.typeAnnotation, capabilityNames)) {
+        continue;
+      }
+      capabilityNames.add(alias.name);
+      expanded = true;
+    }
+  }
+};
+
+const receivesCapabilities = (fn, capabilityNames) => {
   const [firstParameter] = fn.params;
   if (!firstParameter) return false;
-  return isCapabilityType(firstParameter.typeAnnotation?.typeAnnotation);
+  return isCapabilityType(
+    firstParameter.typeAnnotation?.typeAnnotation,
+    capabilityNames,
+  );
 };
 
 const FUNCTION_TYPES = new Set([
@@ -302,13 +353,56 @@ const FUNCTION_TYPES = new Set([
   "FunctionDeclaration",
 ]);
 
-const exportedFunctionsOf = (declaration) => {
-  if (!declaration) return [];
-  if (FUNCTION_TYPES.has(declaration.type)) return [declaration];
-  if (declaration.type !== "VariableDeclaration") return [];
-  return declaration.declarations
-    .map((declarator) => declarator.init)
-    .filter((init) => init && FUNCTION_TYPES.has(init.type));
+const findVariable = (scope, name) => {
+  for (let current = scope; current; current = current.upper) {
+    const variable = current.set.get(name);
+    if (variable) return variable;
+  }
+  return null;
+};
+
+// `export { run }` / `export default run` は宣言そのものを持たないため、
+// 束縛先まで辿って関数を取り出す。辿れない（import の再エクスポート・
+// 関数以外の値・型）場合は対象外。
+const functionOfVariable = (variable) => {
+  if (!variable) return null;
+
+  for (const def of variable.defs) {
+    if (def.node.type === "FunctionDeclaration") return def.node;
+    if (
+      def.node.type === "VariableDeclarator" &&
+      FUNCTION_TYPES.has(def.node.init?.type)
+    ) {
+      return def.node.init;
+    }
+  }
+  return null;
+};
+
+const exportedFunctionsOf = (node, scope) => {
+  const declaration = node.declaration;
+
+  if (declaration) {
+    if (FUNCTION_TYPES.has(declaration.type)) return [declaration];
+    if (declaration.type === "VariableDeclaration") {
+      return declaration.declarations
+        .map((declarator) => declarator.init)
+        .filter((init) => init && FUNCTION_TYPES.has(init.type));
+    }
+    if (declaration.type === "Identifier") {
+      const fn = functionOfVariable(findVariable(scope, declaration.name));
+      return fn ? [fn] : [];
+    }
+    return [];
+  }
+
+  if (!node.specifiers) return [];
+  return node.specifiers
+    .filter((specifier) => specifier.local?.type === "Identifier")
+    .map((specifier) =>
+      functionOfVariable(findVariable(scope, specifier.local.name)),
+    )
+    .filter((fn) => fn !== null);
 };
 
 const usecaseCapabilityParameterRule = {
@@ -318,19 +412,47 @@ const usecaseCapabilityParameterRule = {
     schema: [],
   },
   create(context) {
-    const checkExport = (node) => {
-      for (const fn of exportedFunctionsOf(node.declaration)) {
-        if (receivesCapabilities(fn)) continue;
-        context.report({
-          node: fn,
-          message: USECASE_CAPABILITY_PARAMETER_MESSAGE,
-        });
+    const sourceCode = context.sourceCode;
+    const capabilityNames = new Set();
+    const aliases = [];
+    const exportedFunctions = new Set();
+
+    const collectExport = (node) => {
+      // 再エクスポート（`export { x } from "..."`）は値の定義がこのファイルに無い。
+      // 権能を迂回する import 自体は boundary ルールが見る。
+      if (node.source) return;
+      for (const fn of exportedFunctionsOf(node, sourceCode.getScope(node))) {
+        exportedFunctions.add(fn);
       }
     };
 
     return {
-      ExportNamedDeclaration: checkExport,
-      ExportDefaultDeclaration: checkExport,
+      ImportDeclaration(node) {
+        if (!isCapabilityModuleSource(node.source.value)) return;
+        for (const specifier of node.specifiers) {
+          if (specifier.local?.type !== "Identifier") continue;
+          capabilityNames.add(specifier.local.name);
+        }
+      },
+      TSTypeAliasDeclaration(node) {
+        aliases.push({
+          name: node.id.name,
+          typeAnnotation: node.typeAnnotation,
+        });
+      },
+      ExportNamedDeclaration: collectExport,
+      ExportDefaultDeclaration: collectExport,
+      "Program:exit"() {
+        expandCapabilityAliases(aliases, capabilityNames);
+
+        for (const fn of exportedFunctions) {
+          if (receivesCapabilities(fn, capabilityNames)) continue;
+          context.report({
+            node: fn,
+            message: USECASE_CAPABILITY_PARAMETER_MESSAGE,
+          });
+        }
+      },
     };
   },
 };
