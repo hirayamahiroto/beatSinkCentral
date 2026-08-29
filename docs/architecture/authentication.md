@@ -149,11 +149,22 @@ Auth0 の `redirect_uri` と、beatfolio が自分自身の BFF を呼ぶ際の�
 
 ### Auth0 側の許可リスト
 
-Preview はデプロイごとに URL が変わるため、Auth0 Application の設定にはワイルドカードで登録する。
+**Preview と Production は別々の Auth0 Application を使う。** ワイルドカードを登録した Application は
+`*.vercel.app` のどのサブドメインでも `redirect_uri` として受け付けるため、Production を同じ Application で
+運用すると、第三者が作った Preview デプロイへ Production の認証結果を渡せてしまう。
+Terraform の `preview_auth0_client_id` / `production_auth0_client_id` には、**異なる Application の値**を入れる。
+
+Preview 用 Application — デプロイごとに URL が変わるため、ワイルドカードで登録する。
 
 - Allowed Callback URLs: `https://*.vercel.app/auth/callback`
 - Allowed Logout URLs: `https://*.vercel.app`
 - Allowed Web Origins（サイレント認証を使う場合のみ）: `https://*.vercel.app`
+
+Production 用 Application — ワイルドカードは登録せず、固定ドメインだけを列挙する。
+
+- Allowed Callback URLs: `https://beatfolio.example.com/auth/callback`
+- Allowed Logout URLs: `https://beatfolio.example.com`
+- Allowed Web Origins（サイレント認証を使う場合のみ）: `https://beatfolio.example.com`
 
 ## セキュリティ考慮事項
 

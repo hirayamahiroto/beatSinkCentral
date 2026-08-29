@@ -36,7 +36,7 @@ Supabase Storage のバケットは同一 Postgres 内の `storage.buckets` テ�
 
 ## オブジェクトキー設計（profile-images）
 
-```
+```text
 {artistId}/{randomUUID()}.{ext}
 ```
 
