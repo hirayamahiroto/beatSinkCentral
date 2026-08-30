@@ -105,7 +105,10 @@ describe("POST /users/:userId", () => {
     const res = await postEmail("other-user", "new@example.com");
 
     expect(res.status).toBe(404);
-    expect(await res.json()).toStrictEqual({ error: "User not found" });
+    expect(await res.json()).toStrictEqual({
+      error: "User not found",
+      code: "UserNotFoundError",
+    });
     expect(mockUsers.updateEmail).not.toHaveBeenCalled();
   });
 
@@ -115,7 +118,10 @@ describe("POST /users/:userId", () => {
     const res = await postEmail("user-1", "new@example.com");
 
     expect(res.status).toBe(404);
-    expect(await res.json()).toStrictEqual({ error: "User not found" });
+    expect(await res.json()).toStrictEqual({
+      error: "User not found",
+      code: "UserNotFoundError",
+    });
     expect(mockUsers.updateEmail).not.toHaveBeenCalled();
   });
 
@@ -125,14 +131,20 @@ describe("POST /users/:userId", () => {
     const res = await postEmail("user-1", "taken@example.com");
 
     expect(res.status).toBe(409);
-    expect(await res.json()).toStrictEqual({ error: "Email already taken" });
+    expect(await res.json()).toStrictEqual({
+      error: "Email already taken",
+      code: "EmailAlreadyTakenError",
+    });
   });
 
   it("emailの形式が不正なら422を返し、更新しない", async () => {
     const res = await postEmail("user-1", "invalid");
 
     expect(res.status).toBe(422);
-    expect(await res.json()).toStrictEqual({ error: "Invalid email format" });
+    expect(await res.json()).toStrictEqual({
+      error: "Invalid email format",
+      code: "InvalidEmailFormatError",
+    });
     expect(mockUsers.updateEmail).not.toHaveBeenCalled();
   });
 

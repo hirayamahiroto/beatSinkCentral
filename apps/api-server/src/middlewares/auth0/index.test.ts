@@ -33,7 +33,10 @@ describe("requireAuthMiddleware", () => {
     const res = await app.request("/", { method: "GET" });
 
     expect(res.status).toBe(401);
-    expect(await res.json()).toStrictEqual({ error: "Unauthorized" });
+    expect(await res.json()).toStrictEqual({
+      error: "Unauthorized",
+      code: "UnauthorizedError",
+    });
   });
 
   it("session.user が無い場合は 401 を返す", async () => {
@@ -43,7 +46,10 @@ describe("requireAuthMiddleware", () => {
     const res = await app.request("/", { method: "GET" });
 
     expect(res.status).toBe(401);
-    expect(await res.json()).toStrictEqual({ error: "Unauthorized" });
+    expect(await res.json()).toStrictEqual({
+      error: "Unauthorized",
+      code: "UnauthorizedError",
+    });
   });
 
   it("session.user がある場合は context に auth0User を設定して通過する", async () => {

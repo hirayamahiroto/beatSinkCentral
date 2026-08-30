@@ -255,7 +255,7 @@ const isAppError = (error: unknown): error is AppError => {
 };
 
 type ClientResponse = {
-  body: { error: string; details?: unknown };
+  body: { error: string; code: AppError["type"]; details?: unknown };
   status: ErrorStatusCode;
 };
 
@@ -277,7 +277,10 @@ const buildClientResponse = <SpecificError extends AppError>(
   error: SpecificError,
 ): ClientResponse => {
   const mapping = resolveMapping(error);
-  const body: ClientResponse["body"] = { error: mapping.clientMessage(error) };
+  const body: ClientResponse["body"] = {
+    error: mapping.clientMessage(error),
+    code: error.type,
+  };
   if (mapping.clientDetails) {
     body.details = mapping.clientDetails(error);
   }

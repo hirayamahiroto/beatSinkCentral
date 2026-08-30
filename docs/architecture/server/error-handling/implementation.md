@@ -222,6 +222,16 @@ export const reconstructUser = (params: ReconstructUserParams): User =>
 
 全エラーを `type` をキーとしたテーブルで一元管理する。HTTP と内部ログへの変換表であり、**ドメインや usecase から import されてはいけない**（方向: errorMap → 各レイヤー）。
 
+### クライアント向けレスポンスの契約
+
+```typescript
+{ error: string; code: AppError["type"]; details?: unknown }
+```
+
+- `code` は **機械可読な識別子**で、`AppError["type"]` をそのまま使う（独立した語彙は作らない。`errorMap` の mapped type が全 `type` に entry を要求するため 1:1 が型で保証される）。BFF / UI はステータスや文字列ではなく `code` で分岐する。
+- `error` はクライアント向けメッセージ、`details` はエラー固有の構造化情報（`issues` / `missingFields` 等）。
+- `errorMap` 未登録のエラー（500）には `code` を付けない。
+
 ### 配置
 
 ```text
@@ -279,7 +289,10 @@ const buildClientResponse = <SpecificError extends AppError>(
   error: SpecificError,
 ): ClientResponse => {
   const mapping = resolveMapping(error);
-  const body: ClientResponse["body"] = { error: mapping.clientMessage(error) };
+  const body: ClientResponse["body"] = {
+    error: mapping.clientMessage(error),
+    code: error.type,
+  };
   if (mapping.clientDetails) {
     body.details = mapping.clientDetails(error);
   }
