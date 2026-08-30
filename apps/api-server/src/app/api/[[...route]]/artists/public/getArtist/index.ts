@@ -13,18 +13,20 @@ const paramSchema = z.object({
 const publicProfileSchema = z.object({
   name: z.string().min(1),
   tagline: z.string().nullable(),
-  imageUrl: z.string().nullable(),
-  story: z.string().nullable(),
+  imageUrl: z.string().min(1),
+  story: z.string().min(1),
   activityInfo: z.string().nullable(),
-  genres: z.array(z.string()),
-  links: z.array(
-    z.object({
-      type: z.string(),
-      url: z.string(),
-      label: z.string().nullable(),
-    }),
-  ),
-  published: z.boolean(),
+  genres: z.array(z.string()).min(1),
+  links: z
+    .array(
+      z.object({
+        type: z.string(),
+        url: z.string(),
+        label: z.string().nullable(),
+      }),
+    )
+    .min(1),
+  published: z.literal(true),
 });
 
 const getArtistResponseSchema = z.object({

@@ -55,9 +55,11 @@ export const ProfilePublishControl = ({
         )}
 
         {error && (
-          <Typography variant="small" tone="danger">
-            {error}
-          </Typography>
+          <div role="alert">
+            <Typography variant="small" tone="danger">
+              {error}
+            </Typography>
+          </div>
         )}
 
         <div>
