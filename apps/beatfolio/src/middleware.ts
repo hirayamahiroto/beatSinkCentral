@@ -2,16 +2,23 @@ import { Hono } from "hono";
 import { except } from "hono/combine";
 import { handle } from "hono/vercel";
 import { basicAuthMiddleware } from "./middlewares/basicAuth";
-import { requireAuthMiddleware } from "./middlewares/auth0";
+import { requireAuthMiddleware, type AuthEnv } from "./middlewares/auth0";
 import { requireSessionMiddleware } from "./middlewares/requireSession";
 
-const app = new Hono();
+export const SESSION_REQUIRED_PATHS = [
+  "/onboarding/*",
+  "/dashboard/*",
+] as const;
 
-app.use("*", except(["/auth/*", "/api/*"], basicAuthMiddleware));
-app.use("*", requireAuthMiddleware);
-app.use("/onboarding/*", requireSessionMiddleware);
-app.use("/dashboard/*", requireSessionMiddleware);
-app.use("/admin/*", requireSessionMiddleware);
+const app = new Hono<AuthEnv>()
+  .use("*", except(["/auth/*", "/api/*"], basicAuthMiddleware))
+  .use("*", requireAuthMiddleware);
+
+for (const path of SESSION_REQUIRED_PATHS) {
+  app.use(path, requireSessionMiddleware);
+}
+
+app.all("*", (c) => c.get("authResponse"));
 
 export const middleware = handle(app);
 
