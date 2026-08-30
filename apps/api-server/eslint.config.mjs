@@ -5,6 +5,8 @@ import {
   typeSafetyPendingWarn,
   responseValidationRules,
   responseValidationPendingWarn,
+  usecaseCapabilityRules,
+  usecaseCapabilityParameterExempt,
 } from "../../eslint.rules.mjs";
 
 const eslintConfig = [
@@ -41,6 +43,13 @@ const eslintConfig = [
     "src/app/api/\\[\\[...route\\]\\]/artists/me/profile/get/index.ts",
     "src/app/api/\\[\\[...route\\]\\]/artists/me/profile/image/post/index.ts",
     "src/app/api/\\[\\[...route\\]\\]/artists/me/profile/publish/post/index.ts",
+  ]),
+  usecaseCapabilityRules(["src/usecases/**/*.ts"]),
+  usecaseCapabilityParameterExempt([
+    "src/usecases/authorization/**/*.ts",
+    "src/usecases/capabilities/**/*.ts",
+    "src/usecases/**/testDoubles/**/*.ts",
+    "src/usecases/**/*.test.ts",
   ]),
 ];
 

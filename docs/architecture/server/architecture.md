@@ -996,6 +996,23 @@ usecase が `tx` を受け取ることはない。**リポジトリの executor 
 
 エントリポイントが参照できる依存の入口は `getCapabilityDeps()` だけである。リポジトリ一式をまとめて配る Composition Root（旧 `getContainer`）は廃止した。usecase は渡された権能以外に到達手段を持たない。
 
+### 権能の迂回は lint で機械的に落とす
+
+上の2点（「usecase は渡された権能以外に到達手段を持たない」「権能は第1引数で受け取る」）は規約に留めず、**ESLint のローカルルールで検出する**。ルールの実体は `eslint.rules.mjs`、適用範囲は `apps/api-server/eslint.config.mjs` で決める。
+
+| ルール                               | 検出する形                                                                                                                                                                                                                                           | 適用範囲                                                                            |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `local/usecase-capability-boundary`  | `usecases/` から `infrastructure/`・`database`・`drizzle-orm`・`@supabase/*` への import。あわせて、解決先を静的に確認できない dynamic import（変数・式で組み立てたパス）も禁止する                                                                  | `src/usecases/**`（経路モジュール・テストを含む全体）                               |
+| `local/usecase-capability-parameter` | エクスポート関数（`export { x }` / `export default x` の分離形を含む）の第1引数が権能型でない。権能型は**型名ではなく出所**で判定し、`usecases/capabilities` から import した型と、それを `Pick` / `Omit` 等で包んだ型・ファイル内の別名だけを認める | `src/usecases/**`（`authorization/` `capabilities/` `testDoubles/` とテストは除外） |
+
+`usecases/authorization`（経路モジュール）は権能を**組み立てる**側で第1引数に `CapabilityDeps` を取り、`resolution` / `conflict` は純粋関数なので、`usecase-capability-parameter` の対象から外す。テストとテストダブルも usecase 本体ではないため同様に外す。一方 `usecase-capability-boundary` は経路モジュールにも効かせる（経路モジュールが知ってよいのは `capabilities` の型までで、DB は `infrastructure/capabilities` の責務）。
+
+**なぜ型ではなく lint か**: 「第1引数は権能である」を型で強制するには `defineUsecase` / `Exact` のようなラッパを全 usecase に被せる必要があるが、上述の通りその型ユーティリティは追加コストに見合わないとして採用していない。ラッパを入れずに同じ制約を機械判定するのが lint の役割で、**型で消せる制約は型で消し、型で消せない構造だけを lint が見る**という役割分担にする。
+
+権能型を型名の接尾辞（`*Caps` / `*Capabilities`）で判定していないのは、raw な db を持つ構造型に `FakeCaps` と名付けるだけでルールを通過できてしまうため。判定の軸は**その型が権能型の定義元から来ているか**に置く。
+
+新しい依存の入口（別の外部クライアント等）を `infrastructure/` に足したときは、`RESTRICTED_USECASE_SOURCES` に追加するか、`infrastructure/` 配下に置いてパスで拾われるようにする。ルール自体の振る舞いは `apps/api-server/eslint.rules.test.mts` で固定している。
+
 ---
 
 ## 設計原則: Functional Core, Imperative Shell

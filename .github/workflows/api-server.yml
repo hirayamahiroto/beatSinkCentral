@@ -8,12 +8,16 @@ on:
       - "packages/**"
       - "turbo.json"
       - "package.json"
+      - "eslint.config.mjs"
+      - "eslint.rules.mjs"
   pull_request:
     paths:
       - "apps/api-server/**"
       - "packages/**"
       - "turbo.json"
       - "package.json"
+      - "eslint.config.mjs"
+      - "eslint.rules.mjs"
   workflow_dispatch:
 
 jobs:

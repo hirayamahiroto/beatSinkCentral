@@ -204,3 +204,296 @@ export const responseValidationPendingWarn = (files) => ({
     "local/response-validation": "warn",
   },
 });
+
+// なぜ型ではなく lint か: 「usecase の第1引数は権能である」を型で強制するには
+// defineUsecase / Exact のようなラッパを全 usecase に被せる必要があるが、
+// docs/architecture/server/architecture.md「認可と権能（capabilities）」は
+// そのコストに見合わないとして採用しないと決めている。よって規範（advisory）に
+// 留まっていた2点 —— (1) usecase が権能を経由せず DB へ到達しない、
+// (2) 第1引数が権能型である —— を AST 上の形として検出する。
+const USECASE_CAPABILITY_BOUNDARY_MESSAGE =
+  "usecases/ から infrastructure 層・DB / ストレージクライアントを直接 import しない。" +
+  "DB への到達手段は第1引数で受け取る権能（capabilities）だけに限る。";
+
+// 変数・テンプレートリテラルで組み立てた import 先は静的に確認できず、
+// boundary の検査をすり抜ける。usecases/ に動的な依存解決を持ち込む理由が無いため、
+// 解決先を確認できない dynamic import そのものを禁止して穴を残さない。
+const USECASE_UNRESOLVABLE_IMPORT_MESSAGE =
+  "usecases/ では import 先を静的に確認できない dynamic import（変数・式で組み立てたパス）を使わない。" +
+  "権能を迂回した DB への到達を検出できなくなる。";
+
+const USECASE_CAPABILITY_PARAMETER_MESSAGE =
+  "usecase のエクスポート関数は第1引数で権能（capabilities）を受け取る。" +
+  "型注釈は usecases/capabilities から import した権能型（`caps: XxxCapabilities`）か、" +
+  "それを Pick / Omit 等で包んだ型にする。";
+
+// usecases/ から見て「権能を迂回して DB へ到達しうる」入口。
+// infrastructure/ は権能の組み立て側（Composition Root）で、リポジトリ実装と db を握る。
+const RESTRICTED_USECASE_SOURCES = [
+  /(^|\/)infrastructure(\/|$)/,
+  /^database(\/|$)/,
+  /^drizzle-orm(\/|$)/,
+  /^@supabase\//,
+];
+
+const isRestrictedUsecaseSource = (source) =>
+  typeof source === "string" &&
+  RESTRICTED_USECASE_SOURCES.some((pattern) => pattern.test(source));
+
+const usecaseCapabilityBoundaryRule = {
+  meta: {
+    type: "problem",
+    docs: { description: USECASE_CAPABILITY_BOUNDARY_MESSAGE },
+    schema: [],
+  },
+  create(context) {
+    const reportIfRestricted = (node, sourceNode) => {
+      if (sourceNode?.type !== "Literal") return;
+      if (!isRestrictedUsecaseSource(sourceNode.value)) return;
+      context.report({ node, message: USECASE_CAPABILITY_BOUNDARY_MESSAGE });
+    };
+
+    return {
+      ImportDeclaration(node) {
+        reportIfRestricted(node, node.source);
+      },
+      ExportNamedDeclaration(node) {
+        reportIfRestricted(node, node.source);
+      },
+      ExportAllDeclaration(node) {
+        reportIfRestricted(node, node.source);
+      },
+      ImportExpression(node) {
+        if (node.source?.type !== "Literal") {
+          context.report({
+            node,
+            message: USECASE_UNRESOLVABLE_IMPORT_MESSAGE,
+          });
+          return;
+        }
+        reportIfRestricted(node, node.source);
+      },
+    };
+  },
+};
+
+// Pick<Caps, ...> のように権能型を包むユーティリティ型は展開して中身で判定する。
+const CAPABILITY_WRAPPER_TYPES = new Set([
+  "Pick",
+  "Omit",
+  "Readonly",
+  "Partial",
+]);
+
+// 権能型かどうかは型名の接尾辞では判定しない。`FakeCaps` のような名前を付けた
+// 構造型（raw な db を持つ型）でルールを通過できてしまうため、権能型の定義元
+// （usecases/capabilities）から来ている型だけを権能型として認める。
+const CAPABILITY_MODULE_SOURCE = /(^|\/)capabilities(\/|$)/;
+
+const isCapabilityModuleSource = (source) =>
+  typeof source === "string" &&
+  source.startsWith(".") &&
+  CAPABILITY_MODULE_SOURCE.test(source);
+
+// typescript-eslint は v8 で TSTypeReference の型引数を typeArguments に移した。
+// 旧フィールド名でも動くよう両方を見る。
+const typeArgumentsOf = (typeNode) =>
+  typeNode.typeArguments ? typeNode.typeArguments : typeNode.typeParameters;
+
+// 名前空間 import（`import type * as caps` → `caps.ArtistWriteCapabilities`）は
+// 左端の識別子で判定できるよう、修飾名を左端まで畳む。
+const typeReferenceName = (typeNode) => {
+  if (!typeNode || typeNode.type !== "TSTypeReference") return null;
+
+  let typeName = typeNode.typeName;
+  while (typeName.type === "TSQualifiedName") typeName = typeName.left;
+  return typeName.type === "Identifier" ? typeName.name : null;
+};
+
+const isCapabilityType = (typeNode, capabilityNames) => {
+  const name = typeReferenceName(typeNode);
+  if (!name) return false;
+  if (capabilityNames.has(name)) return true;
+  if (!CAPABILITY_WRAPPER_TYPES.has(name)) return false;
+
+  const typeArguments = typeArgumentsOf(typeNode);
+  if (!typeArguments) return false;
+  return isCapabilityType(typeArguments.params[0], capabilityNames);
+};
+
+const referencesCapabilityType = (node, capabilityNames) => {
+  if (!node || typeof node !== "object") return false;
+  if (Array.isArray(node)) {
+    return node.some((child) => referencesCapabilityType(child, capabilityNames));
+  }
+  if (capabilityNames.has(typeReferenceName(node))) return true;
+
+  return Object.entries(node).some(
+    ([key, value]) =>
+      key !== "parent" && referencesCapabilityType(value, capabilityNames),
+  );
+};
+
+// `type SaveMyProfileCaps = Pick<ArtistWriteCapabilities, ...>` のような
+// ファイル内の別名も権能型として扱う。別名が別名を参照する形に備えて
+// 増えなくなるまで繰り返す。
+const expandCapabilityAliases = (aliases, capabilityNames) => {
+  let expanded = true;
+  while (expanded) {
+    expanded = false;
+    for (const alias of aliases) {
+      if (capabilityNames.has(alias.name)) continue;
+      if (!referencesCapabilityType(alias.typeAnnotation, capabilityNames)) {
+        continue;
+      }
+      capabilityNames.add(alias.name);
+      expanded = true;
+    }
+  }
+};
+
+const receivesCapabilities = (fn, capabilityNames) => {
+  const [firstParameter] = fn.params;
+  if (!firstParameter) return false;
+  return isCapabilityType(
+    firstParameter.typeAnnotation?.typeAnnotation,
+    capabilityNames,
+  );
+};
+
+const FUNCTION_TYPES = new Set([
+  "ArrowFunctionExpression",
+  "FunctionExpression",
+  "FunctionDeclaration",
+]);
+
+const findVariable = (scope, name) => {
+  for (let current = scope; current; current = current.upper) {
+    const variable = current.set.get(name);
+    if (variable) return variable;
+  }
+  return null;
+};
+
+// `export { run }` / `export default run` は宣言そのものを持たないため、
+// 束縛先まで辿って関数を取り出す。辿れない（import の再エクスポート・
+// 関数以外の値・型）場合は対象外。
+const functionOfVariable = (variable) => {
+  if (!variable) return null;
+
+  for (const def of variable.defs) {
+    if (def.node.type === "FunctionDeclaration") return def.node;
+    if (
+      def.node.type === "VariableDeclarator" &&
+      FUNCTION_TYPES.has(def.node.init?.type)
+    ) {
+      return def.node.init;
+    }
+  }
+  return null;
+};
+
+const exportedFunctionsOf = (node, scope) => {
+  const declaration = node.declaration;
+
+  if (declaration) {
+    if (FUNCTION_TYPES.has(declaration.type)) return [declaration];
+    if (declaration.type === "VariableDeclaration") {
+      return declaration.declarations
+        .map((declarator) => declarator.init)
+        .filter((init) => init && FUNCTION_TYPES.has(init.type));
+    }
+    if (declaration.type === "Identifier") {
+      const fn = functionOfVariable(findVariable(scope, declaration.name));
+      return fn ? [fn] : [];
+    }
+    return [];
+  }
+
+  if (!node.specifiers) return [];
+  return node.specifiers
+    .filter((specifier) => specifier.local?.type === "Identifier")
+    .map((specifier) =>
+      functionOfVariable(findVariable(scope, specifier.local.name)),
+    )
+    .filter((fn) => fn !== null);
+};
+
+const usecaseCapabilityParameterRule = {
+  meta: {
+    type: "problem",
+    docs: { description: USECASE_CAPABILITY_PARAMETER_MESSAGE },
+    schema: [],
+  },
+  create(context) {
+    const sourceCode = context.sourceCode;
+    const capabilityNames = new Set();
+    const aliases = [];
+    const exportedFunctions = new Set();
+
+    const collectExport = (node) => {
+      // 再エクスポート（`export { x } from "..."`）は値の定義がこのファイルに無い。
+      // 権能を迂回する import 自体は boundary ルールが見る。
+      if (node.source) return;
+      for (const fn of exportedFunctionsOf(node, sourceCode.getScope(node))) {
+        exportedFunctions.add(fn);
+      }
+    };
+
+    return {
+      ImportDeclaration(node) {
+        if (!isCapabilityModuleSource(node.source.value)) return;
+        for (const specifier of node.specifiers) {
+          if (specifier.local?.type !== "Identifier") continue;
+          capabilityNames.add(specifier.local.name);
+        }
+      },
+      TSTypeAliasDeclaration(node) {
+        aliases.push({
+          name: node.id.name,
+          typeAnnotation: node.typeAnnotation,
+        });
+      },
+      ExportNamedDeclaration: collectExport,
+      ExportDefaultDeclaration: collectExport,
+      "Program:exit"() {
+        expandCapabilityAliases(aliases, capabilityNames);
+
+        for (const fn of exportedFunctions) {
+          if (receivesCapabilities(fn, capabilityNames)) continue;
+          context.report({
+            node: fn,
+            message: USECASE_CAPABILITY_PARAMETER_MESSAGE,
+          });
+        }
+      },
+    };
+  },
+};
+
+const usecaseCapabilityPlugin = {
+  rules: {
+    "usecase-capability-boundary": usecaseCapabilityBoundaryRule,
+    "usecase-capability-parameter": usecaseCapabilityParameterRule,
+  },
+};
+
+export const usecaseCapabilityRules = (files) => ({
+  files,
+  plugins: { local: usecaseCapabilityPlugin },
+  rules: {
+    "local/usecase-capability-boundary": "error",
+    "local/usecase-capability-parameter": "error",
+  },
+});
+
+// 権能を「組み立てる／定義する」側（経路モジュールは CapabilityDeps を受け、
+// resolution / conflict は純粋関数）と、テスト・テストダブルは、第1引数で権能を
+// 受け取る形にはならない。DB への直接到達の禁止（boundary）は外さない。
+export const usecaseCapabilityParameterExempt = (files) => ({
+  files,
+  plugins: { local: usecaseCapabilityPlugin },
+  rules: {
+    "local/usecase-capability-parameter": "off",
+  },
+});
