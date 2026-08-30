@@ -90,6 +90,20 @@ read も write も **BFF route（`/api/*`）を経由する**。経路は対称�
 > read・write の両方を `/api/*` の BFF route が担う。route が api-server を呼び出し、read は整形して、write はパススルーして返す。
 > `page.tsx` はその read route を呼んで初期レンダリングするだけにし、取得・整形ロジックを `page.tsx` に持たせない。
 
+### route の実装規約は api-server と共有する
+
+BFF も api-server と同じ Hono で実装するため、**「Hono の使い方」は api-server の規範をそのまま適用する**。URL の意味（何を 1 つの route にするか）だけが BFF 固有で、read は画面単位・write はセッション主体（`me`）で切る（前述）。
+
+| 観点               | 規範（api-server と共通）                                                                                                                  | 出典                                                                                  |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| ルート合成         | 境界の `index.ts` がマウントテーブル。ディレクトリを掘るのは**リソースの境目とミドルウェアが変わる境目だけ**。URL セグメントごとに掘らない | [`architecture.md`「ルーティングは階層ごとに合成する」](../../server/architecture.md) |
+| ユニット命名       | `{操作名}/index.ts`（`getDashboard/` `updateMyAccountId/`）。HTTP メソッド名のディレクトリ（`get/` `post/`）は使わない                     | [`api-design-guidelines.md`「ファイル構成」](../../server/api-design-guidelines.md)   |
+| リクエスト検証     | `validators/validateRequest` が型付きエラーを throw。route 内で 400 を組み立てない                                                         | 同上                                                                                  |
+| エラー定義の置き場 | エントリポイント固有のエラーは `[[...route]]/errors/{errorName}/`                                                                          | [`error-handling/implementation.md`](../../server/error-handling/implementation.md)   |
+| HTTP への翻訳      | `errorMap` + `route.ts` の `.onError` で一括。route はステータスを書かない                                                                 | [エラー契約](#エラー契約)                                                             |
+
+BFF に usecase / domain 層は作らない。route 横断の小さな helper（`shared/`）で足りる。
+
 ### 全体データフロー
 
 ```
@@ -117,15 +131,13 @@ read は **画面名で切った BFF read route** が api-server を呼び、画
 route は**リソース名ではなく画面名**で設計する（`me` ではなく `dashboard`）。
 
 ```ts
-// src/app/api/[[...route]]/dashboard/index.ts  ← 画面名（getMe ではなく getDashboard）
+// src/app/api/[[...route]]/dashboard/getDashboard/index.ts  ← 画面名（getMe ではなく getDashboard）
 const app = new Hono<RequestContextEnv>().get("/", async (c) => {
   const apiClient = c.get("apiClient");
 
   const res = await apiClient.api.users.me.$get();
-  if (!res.ok) {
-    return c.json({ error: "Failed to fetch dashboard" }, 502);
-  }
-  const me = await res.json();
+  if (!res.ok) throw await toUpstreamError(res); // ステータスは route が決めない（errorMap が翻訳）
+  const me = await readUpstreamJson(res);
 
   // 集約・整形・そぎ落とし: この画面に必要なフィールドだけ返す
   return c.json({
@@ -182,46 +194,32 @@ export default async function DashboardPage() {
 
 ### write の実装: HTTP ルート（`/api/*`）
 
-- 配置: `src/app/api/[[...route]]/{resource}/index.ts`
-- 責務: 入力バリデーション → 必要なら自分の `userId` / `artistId` を解決（`shared/resolveMyUserId` / `shared/resolveMyArtistId`、内部で `GET /users/me`）→ `apiClient` で api-server へ送信 → 結果/エラーを返す（**薄いパススルー**）。ブラウザ向け URL は `me` のままでよい（セッション主体への読み替えは BFF の責務。api-server 側は `/:userId` / `/:artistId` でアドレスする）。
-- 認証 cookie: `requestContextMiddleware` がセッション cookie を付与した `apiClient`（= `createBffServerClient`）を `c.set("apiClient", ...)` する。ルートは `c.get("apiClient")` を使うだけ。
+- 配置: `src/app/api/[[...route]]/{resource}/{操作名}/index.ts`（例: `artists/me/updateMyAccountId/`。ディレクトリ構成の規約は [route の実装規約](#route-の実装規約は-api-server-と共有する) を参照）
+- 責務: 入力バリデーション（`validators/validateRequest`）→ 必要なら自分の `userId` / `artistId` を解決（`shared/resolveMyUserId` / `shared/resolveMyArtistId`、内部で `GET /users/me`。見つからなければ型付きエラーを throw）→ `apiClient` で api-server へ送信 → 成功なら結果を返し、失敗なら `throw await toUpstreamError(res)`（**薄いパススルー**。ステータスの決定は route ではなく `errorMap`）。ブラウザ向け URL は `me` のままでよい（セッション主体への読み替えは BFF の責務。api-server 側は `/:userId` / `/:artistId` でアドレスする）。
+- 認証 cookie: `requestContextMiddleware` がセッション cookie を付与した `apiClient`（= `createApiServerClient`）を `c.set("apiClient", ...)` する。ルートは `c.get("apiClient")` を使うだけ。
 
 ```ts
-// src/app/api/[[...route]]/artists/me/index.ts
+// src/app/api/[[...route]]/artists/me/updateMyAccountId/index.ts
 const updateAccountIdRequestSchema = z.object({
   accountId: z.string().nonempty(),
 });
 
 const app = new Hono<RequestContextEnv>().post(
   "/",
-  zValidator("json", updateAccountIdRequestSchema, (result, c) => {
-    if (!result.success) {
-      return c.json(
-        { error: "Invalid request", issues: result.error.issues },
-        400,
-      );
-    }
-  }),
+  validateRequest("json", updateAccountIdRequestSchema), // 失敗は InvalidRequestFormatError を throw
   async (c) => {
     const apiClient = c.get("apiClient");
     const body = c.req.valid("json");
 
-    const resolved = await resolveMyArtistId(apiClient);
-    if (!resolved.ok) {
-      return c.json(resolved.body, resolved.status);
-    }
+    const artistId = await resolveMyArtistId(apiClient); // 不在は MyArtistNotFoundError を throw
 
     const res = await apiClient.api.artists[":artistId"].$post({
-      param: { artistId: resolved.artistId },
+      param: { artistId },
       json: { accountId: body.accountId },
     });
+    if (!res.ok) throw await toUpstreamError(res); // 4xx は同じステータス・ボディで透過、5xx は 502
 
-    // エラー透過: api-server のステータスとボディをそのまま返す
-    if (!res.ok) {
-      const error = await res.json();
-      return c.json(error, res.status);
-    }
-    return c.json(await res.json());
+    return c.json(await readUpstreamJson(res));
   },
 );
 ```
@@ -233,9 +231,9 @@ JSON と同じく**薄いパススルー**で扱う。BFF はファイルの中�
 - 検証: `zValidator("form", z.object({ file: z.instanceof(File) }))`。「File であること」だけを UX 契約として弾く
 - 送信: hono RPC の `{ form: { file } }` で **File をそのまま上流へ透過**する
 - BFF で Buffer 化・再エンコード・サイズ/MIME の内容検証はしない（内容の検証は api-server のドメイン層とストレージ側の制約が担う）
-- エラー透過は JSON write と同じ（`c.json(error, res.status)`）
+- 失敗の扱いは JSON write と同じ（`throw await toUpstreamError(res)`）
 - 上流のパスパラメータ（`:artistId` 等）は JSON write と同じく `shared/resolveMyArtistId` で解決し、hono RPC の `{ param }` で渡す（ブラウザ向け URL は `me` のまま）
-- 実装例: `src/app/api/[[...route]]/artists/me/profile/image/post/index.ts`
+- 実装例: `src/app/api/[[...route]]/artists/me/uploadMyProfileImage/index.ts`
 
 ```tsx
 // src/app/dashboard/AccountIdEditorClientAdapter/hooks/useUpdateMyAccountId/index.ts
@@ -263,11 +261,11 @@ write: hook     ──▶ fetchers（CSR クライアント生成 + Result 正�
 
 | クライアント                     | 経路                            | 用途                                                                            |
 | -------------------------------- | ------------------------------- | ------------------------------------------------------------------------------- |
-| `createBffServerClient`          | サーバー → **api-server 直**    | BFF route（read / write）が `requestContext` 経由（`c.get("apiClient")`）で使う |
+| `createApiServerClient`          | サーバー → **api-server 直**    | BFF route（read / write）が `requestContext` 経由（`c.get("apiClient")`）で使う |
 | `createBeatfolioBffClient`       | クライアント → **BFF `/api/*`** | **`src/fetchers/` だけが生成する**（CSR の write fetcher）                      |
 | `createBeatfolioBffServerClient` | サーバー → **BFF `/api/*`**     | **`src/fetchers/` だけが生成する**（SSR の read fetcher。`cookie` を引き継ぐ）  |
 
-> **命名の注意**: `createBffServerClient` は名前に反して **api-server を直接叩くクライアント**である（`hc<AppType>`、`AppType` は api-server のもの）。BFF `/api/*` を叩くのは `createBeatfolioBffClient` の方。混同しないこと（将来 `createApiServerClient` 等へリネームを検討）。
+> **命名の注意**: `createApiServerClient` は **api-server を直接叩くクライアント**（`hc<AppType>`、`AppType` は api-server のもの）。BFF `/api/*` を叩くのは `createBeatfolioBffClient` / `createBeatfolioBffServerClient` の方。名前の `ApiServer` / `BeatfolioBff` が「叩く先」を表す。
 
 > **read の経路**: `page.tsx` は api-server を直接叩かず、**自分の BFF read ルート（`/api/*`）を HTTP で呼ぶ**。整形責務を route に集約し read/write の経路を対称に保つための設計で、自己 HTTP hop はその対価として受け入れる。SSR からの呼び出しは `createBeatfolioBffServerClient`（絶対 URL + cookie 転送）を使い、その生成は read fetcher（`src/fetchers/`）に閉じる。read / write とも全 BFF 呼び出しは fetchers 層経由に移行済み。
 
@@ -284,23 +282,38 @@ write: hook     ──▶ fetchers（CSR クライアント生成 + Result 正�
 
 BFF が依拠するルールは **「api-server は応答する」「契約どおりの形を返す」** の2つ。この違反が BFF 層のエラーであり、api-server 側と同じ構造（型付きエラー + `errorMap` + エントリポイントでの一括変換）で扱う。
 
-`fetch` の失敗モードは2つあり、**`!res.ok` は前者しか捕捉しない**ことに注意する。
+#### 不変条件: route は HTTP ステータスを書かない
 
-| 失敗モード                                     | Promise                | 検知する層                                                     | HTTP                     |
-| ---------------------------------------------- | ---------------------- | -------------------------------------------------------------- | ------------------------ |
-| 上流に到達できない（DNS / 接続拒否 / timeout） | **reject**             | `createApiServerClient`（`UpstreamUnavailableError` を throw） | 502                      |
-| 上流がエラーステータスを返した                 | resolve（`ok: false`） | 各 route（`!res.ok`）                                          | read: 502 ／ write: 透過 |
-| 応答が解析できない                             | reject                 | 未対応（`.onError()` が 500 化）                               | 500                      |
+> **失敗のステータスを知っているのは `errorMap`（`apps/beatfolio/src/errorMap/`）だけ。route は型付きエラーを `throw` するだけで、`c.json(body, status)` に失敗系ステータスを書かない**（成功系 2xx の明示は可）。
 
-- **到達不能の検知は route ではなく client 層**が担う。route ごとに `try/catch` を重ねない。client が型付きエラーを throw し、`route.ts` の `.onError(handleBffError)` が `errorMap` で HTTP へ変換する。
-- **`errorMap` は BFF 側にも置く**（`apps/beatfolio/src/errorMap/`）。api-server の `errorMap` と同じ形で、HTTP への翻訳をここだけが行う。
-- **未知のエラーは 500 + `console.error`**。上流障害（502）と BFF 自身のバグ（500）を混ぜない。混ぜると切り分け不能になる（[エラーハンドリングの層責務](../../server/error-handling/layer-responsibilities.md#例外-bff-から見た-api-serverゲートウェイの上流障害)）。
-- **read の `!res.ok` は 502 に寄せる**。ただし「対象が存在しない」を画面が区別する必要がある場合は上流のステータスを透過してよい（例: `players/detail/get` の 404）。
-- **write は上流のレスポンスを透過する**（`c.json(error, res.status)`）。api-server の `errorMap` が返す業務エラー（409 / 422 等）をユーザーへ届ける必要があるため。
+この不変条件は ESLint ローカルルール `local-bff/no-status-in-route`（`eslint.rules.mjs`）で機械的に検証する。ステータス決定が route に散ると「read は 502 に寄せる」「write は透過」といった判断が route ごとに手で再現され、変更が一箇所で済まなくなる。
+
+#### 原則: BFF はステータスと種別を透過し、翻訳するのは文言のみ
+
+api-server はエラーを型付きエラーで分類し、`errorMap` で `{ error, code, details? }` + ステータスに翻訳して返す（`code = AppError["type"]`）。BFF は **その分類を再分類・推定しない**。5xx は畳み、4xx は `code` で読み、読めなければ BFF 側の契約違反として扱う。ユーザー向け文言への翻訳（`code` → 日本語）は BFF の責務だが、現時点では上流のボディを透過している（翻訳表の導入は Issue #217）。
+
+#### 失敗の分類（`shared/toUpstreamError` が 1 箇所で行う）
+
+| 上流の状態                                       | 検知する層                                            | 型付きエラー                                    | HTTP                               | ログ  |
+| ------------------------------------------------ | ----------------------------------------------------- | ----------------------------------------------- | ---------------------------------- | ----- |
+| 到達できない（DNS / 接続拒否 / timeout）         | `createApiServerClient`（fetch の reject を捕捉）     | `UpstreamUnavailableError`                      | 502                                | warn  |
+| 5xx を返した                                     | `toUpstreamError`（ボディは読まない）                 | `UpstreamServerError`                           | 502                                | warn  |
+| 4xx を返し、ボディに `code` がある               | `toUpstreamError`                                     | `UpstreamRejectedError`                         | **上流のステータス・ボディを透過** | info  |
+| 4xx を返したが `code` が無い / ボディが解析不能  | `toUpstreamError`                                     | `UpstreamContractViolationError`                | 502                                | error |
+| 成功応答のボディが解析できない                   | `shared/readUpstreamJson`                             | `UpstreamContractViolationError`                | 502                                | error |
+| セッション主体が未登録 / artist 不在             | `shared/resolveMyUserId` / `shared/resolveMyArtistId` | `MyUserNotFoundError` / `MyArtistNotFoundError` | 404                                | info  |
+| 画面の対象が不在（未公開・存在しない accountId） | 各 read route                                         | `PlayerNotFoundError` 等                        | 404                                | info  |
+| BFF へのリクエスト形式が不正                     | `validators/validateRequest`                          | `InvalidRequestFormatError`                     | 400 + `issues`                     | info  |
+
+- **到達不能の検知は route ではなく client 層**が担う。route ごとに `try/catch` を重ねない。
+- **route の失敗パスは `if (!res.ok) throw await toUpstreamError(res);` の 1 行**。成功応答の読み取りは `await readUpstreamJson(res)`。`route.ts` の `.onError(handleBffError)` が `errorMap` で HTTP へ変換する。
+- **read も write も同じ経路**。read で「対象の不在」を画面が区別する必要がある場合（`players/getPlayerDetail` の 404）は、route が意味を判定して専用の型付きエラー（`PlayerNotFoundError`）を throw する。ステータスは `errorMap` 側にある。
+- **未知のエラーは 500 + `console.error`**。上流障害（502）と BFF 自身のバグ（500）を混ぜない（[エラーハンドリングの層責務](../../server/error-handling/layer-responsibilities.md#例外-bff-から見た-api-serverゲートウェイの上流障害)）。
+- BFF の `errorMap` が返すボディも `{ error, code }` を持つ（`code = BffError["type"]`）。`UpstreamRejectedError` は上流のボディをそのまま返すため、`code` は api-server のものになる。
 - **`page.tsx`（read 呼び出し側）**: BFF read ルートのレスポンスを純粋関数（resolver）に渡し、その判定に従って `redirect()` 実行 or 描画する（throw でエラーバウンダリに委ねる選択も resolver の戻り値で表現する）。
 
 > **未対応（今後の検討）**
-> 「応答が解析できない」を `UpstreamContractViolationError` として 502 に寄せること、到達不能を timeout（504）と接続失敗（502）に分けること、`page.tsx` 側の失敗表示（`error.tsx` / リトライ）は未設計。
+> 到達不能を timeout（504）と接続失敗（502）に分けること、`code` → 日本語文言の翻訳表（#217）、read の部分失敗をセクション単位で返すこと（#241）、`page.tsx` 側の失敗表示（#219）は未設計。
 
 ### テスタビリティ: テストしやすさを「分離できているか」の指標にする
 
@@ -350,11 +363,18 @@ return <DashboardScreen>{/* view.data を配る */}</DashboardScreen>;
 ```
 apps/beatfolio/src/
 ├── app/
-│   ├── {page}/page.tsx           # SSR: 認証 → BFF read ルート呼び出し → redirect → 初期レンダリング
+│   ├── {page}/page.tsx                    # SSR: 認証 → BFF read ルート呼び出し → redirect → 初期レンダリング
 │   └── api/[[...route]]/
-│       ├── {screen}/index.ts     # read:  BFF read ルート（画面名・GET・集約/整形/そぎ落とし）
-│       └── {resource}/index.ts   # write: BFF write ルート（パススルー）
-└── utils/client/index.ts         # createBffServerClient（route→api-server直）/ createBeatfolioBffClient（→BFF /api/*）
+│       ├── route.ts                       # basePath + requestContextMiddleware + onError(handleBffError) + トップ mount
+│       ├── {screen}/index.ts              # read:  境界のマウントテーブル（画面名。例: dashboard/）
+│       ├── {screen}/{操作名}/index.ts     #        read ルート本体（例: dashboard/getDashboard/ getSettings/ getProfileEditScreen/）
+│       ├── {resource}/index.ts            # write: 境界のマウントテーブル（例: artists/ → /me）
+│       ├── {resource}/me/{操作名}/index.ts #       write ルート本体（例: artists/me/updateMyAccountId/ saveMyProfile/）
+│       ├── errors/{errorName}/index.ts    # BFF エントリポイント固有の型付きエラー（upstreamRejected 等）
+│       ├── validators/validateRequest/    # zValidator を InvalidRequestFormatError の throw に統一
+│       └── shared/                        # route 横断の helper（toUpstreamError / readUpstreamJson / resolveMy*）
+├── errorMap/index.ts                      # BffError → HTTP の翻訳表（ステータスを知る唯一の場所）
+└── utils/client/index.ts                  # createApiServerClient（route→api-server直）/ createBeatfolioBffClient（→BFF /api/*）
 ```
 
 ---

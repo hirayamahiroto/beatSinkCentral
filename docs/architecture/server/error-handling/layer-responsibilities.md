@@ -107,6 +107,19 @@ usecases/users/createUser/
 - errorMap に登録するのは **クライアントに意味のあるフィードバックを返すべきエラー** のみ
 - Infrastructure 層のエラーを errorMap に足すと、内部事情（「DBが応答しません」）が漏れる。500 + ログが正解
 
+### クライアント向けレスポンスの契約
+
+`errorMap` に登録されたエラーは、次の形でクライアントへ返す。
+
+```typescript
+{ error: string; code: AppError["type"]; details?: unknown }
+```
+
+- `code` は **機械可読な識別子**で、`AppError["type"]` をそのまま使う（独立した語彙は作らない。`errorMap` の mapped type が全 `type` に entry を要求するため 1:1 が型で保証される）。BFF / UI はステータスや文字列ではなく `code` で分岐する。
+- `error` はクライアント向けメッセージ、`details` はエラー固有の構造化情報（`issues` / `missingFields` 等）。
+- `errorMap` 未登録のエラー（500）には `code` を付けない。
+- HTTP ステータスは種別の分類（HTTP の語彙）、`code` は業務の語彙。BFF はステータスと `code` を透過し、ユーザー向け文言への翻訳だけを担う（[`../../frontend/bff/design.md`「エラー契約」](../../frontend/bff/design.md#エラー契約)）。
+
 ### 例外: BFF から見た api-server（ゲートウェイの上流障害）
 
 上表は api-server 内部の層を対象とする。**BFF（`apps/beatfolio`）から見た api-server は「内部依存」ではなく「ゲートウェイの上流」**なので、到達不能は errorMap に登録し **502** を返す。
@@ -115,7 +128,7 @@ usecases/users/createUser/
 - BFF にとって api-server は上流サービスであり、「上流が応答しない」は 502 の定義そのもの。内部事情の漏洩にはあたらない（「api-server の DB が落ちている」とは言わない）
 - 分けないと **BFF 自身のバグ（500）と上流障害（502）が混ざり、切り分け不能**になる
 
-BFF 側の実装は [`../../frontend/bff/design.md`](../../frontend/bff/design.md) の「上流障害の扱い」を参照。
+BFF 側の実装は [`../../frontend/bff/design.md`「エラー契約」](../../frontend/bff/design.md#エラー契約) を参照。
 
 ---
 

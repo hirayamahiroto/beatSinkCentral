@@ -96,6 +96,7 @@ describe("GET /artists/:accountId", () => {
     expect(res.status).toBe(422);
     expect(await res.json()).toStrictEqual({
       error: "Invalid accountId format",
+      code: "InvalidAccountIdFormatError",
     });
     expect(mockArtistProfiles.findPublishedByAccountId).not.toHaveBeenCalled();
   });

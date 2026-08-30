@@ -222,6 +222,8 @@ export const reconstructUser = (params: ReconstructUserParams): User =>
 
 全エラーを `type` をキーとしたテーブルで一元管理する。HTTP と内部ログへの変換表であり、**ドメインや usecase から import されてはいけない**（方向: errorMap → 各レイヤー）。
 
+クライアント向けレスポンスの形（`{ error, code, details? }`）と `code` の規則は [`layer-responsibilities.md`「クライアント向けレスポンスの契約」](./layer-responsibilities.md#クライアント向けレスポンスの契約) を参照。ここではその契約を `errorMap` がどう組み立てるかだけを扱う。
+
 ### 配置
 
 ```text
@@ -279,7 +281,10 @@ const buildClientResponse = <SpecificError extends AppError>(
   error: SpecificError,
 ): ClientResponse => {
   const mapping = resolveMapping(error);
-  const body: ClientResponse["body"] = { error: mapping.clientMessage(error) };
+  const body: ClientResponse["body"] = {
+    error: mapping.clientMessage(error),
+    code: error.type,
+  };
   if (mapping.clientDetails) {
     body.details = mapping.clientDetails(error);
   }

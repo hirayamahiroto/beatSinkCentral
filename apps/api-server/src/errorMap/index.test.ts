@@ -92,7 +92,10 @@ describe("createAppErrorHandler", () => {
         await clientResponseOf(createUserAlreadyRegisteredError()),
       ).toStrictEqual({
         status: 409,
-        body: { error: "User already registered" },
+        body: {
+          error: "User already registered",
+          code: "UserAlreadyRegisteredError",
+        },
       });
     });
 
@@ -101,7 +104,10 @@ describe("createAppErrorHandler", () => {
         await clientResponseOf(createAccountIdAlreadyTakenError("taken_id")),
       ).toStrictEqual({
         status: 409,
-        body: { error: "Account ID already taken: taken_id" },
+        body: {
+          error: "Account ID already taken: taken_id",
+          code: "AccountIdAlreadyTakenError",
+        },
       });
     });
 
@@ -110,14 +116,14 @@ describe("createAppErrorHandler", () => {
         await clientResponseOf(createEmailAlreadyTakenError()),
       ).toStrictEqual({
         status: 409,
-        body: { error: "Email already taken" },
+        body: { error: "Email already taken", code: "EmailAlreadyTakenError" },
       });
     });
 
     it("UnauthorizedErrorを401に変換する", async () => {
       expect(await clientResponseOf(createUnauthorizedError())).toStrictEqual({
         status: 401,
-        body: { error: "Unauthorized" },
+        body: { error: "Unauthorized", code: "UnauthorizedError" },
       });
     });
 
@@ -130,6 +136,7 @@ describe("createAppErrorHandler", () => {
         status: 400,
         body: {
           error: "Invalid request",
+          code: "InvalidRequestFormatError",
           details: JSON.parse(JSON.stringify(issues)),
         },
       });
@@ -142,6 +149,7 @@ describe("createAppErrorHandler", () => {
         status: 422,
         body: {
           error: "Profile is not publishable: required fields are missing",
+          code: "ProfileNotPublishableError",
           details: { missingFields: ["name"] },
         },
       });
@@ -175,10 +183,10 @@ describe("createAppErrorHandler", () => {
       ],
     ])(
       "Value Object由来の %s を422に変換する",
-      async (_name, createError, message) => {
+      async (name, createError, message) => {
         expect(await clientResponseOf(createError())).toStrictEqual({
           status: 422,
-          body: { error: message },
+          body: { error: message, code: name },
         });
       },
     );
@@ -188,7 +196,10 @@ describe("createAppErrorHandler", () => {
         await clientResponseOf(createUnsupportedImageTypeError()),
       ).toStrictEqual({
         status: 422,
-        body: { error: "Unsupported image type" },
+        body: {
+          error: "Unsupported image type",
+          code: "UnsupportedImageTypeError",
+        },
       });
     });
 
@@ -197,14 +208,17 @@ describe("createAppErrorHandler", () => {
         await clientResponseOf(createRequestBodyTooLargeError()),
       ).toStrictEqual({
         status: 413,
-        body: { error: "Request body is too large" },
+        body: {
+          error: "Request body is too large",
+          code: "RequestBodyTooLargeError",
+        },
       });
     });
 
     it("ImageTooLargeErrorを413に変換する", async () => {
       expect(await clientResponseOf(createImageTooLargeError())).toStrictEqual({
         status: 413,
-        body: { error: "Image file is too large" },
+        body: { error: "Image file is too large", code: "ImageTooLargeError" },
       });
     });
 
@@ -212,7 +226,7 @@ describe("createAppErrorHandler", () => {
       expect(await clientResponseOf(createEmptyImageFileError())).toStrictEqual(
         {
           status: 422,
-          body: { error: "Image file is empty" },
+          body: { error: "Image file is empty", code: "EmptyImageFileError" },
         },
       );
     });
@@ -224,7 +238,10 @@ describe("createAppErrorHandler", () => {
         ),
       ).toStrictEqual({
         status: 502,
-        body: { error: "Failed to upload image" },
+        body: {
+          error: "Failed to upload image",
+          code: "ProfileImageUploadFailedError",
+        },
       });
     });
 
@@ -255,7 +272,10 @@ describe("createAppErrorHandler", () => {
         ),
       ).toStrictEqual({
         status: 400,
-        body: { error: "Malformed request body" },
+        body: {
+          error: "Malformed request body",
+          code: "MalformedRequestBodyError",
+        },
       });
     });
 
@@ -483,6 +503,7 @@ describe("createAppErrorHandler", () => {
       expect(response.status).toBe(400);
       expect(await response.json()).toStrictEqual({
         error: "Malformed request body",
+        code: "MalformedRequestBodyError",
       });
     });
 

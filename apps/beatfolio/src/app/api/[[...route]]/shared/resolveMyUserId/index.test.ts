@@ -29,34 +29,24 @@ describe("resolveMyUserId", () => {
       }),
     );
 
-    const result = await resolveMyUserId(apiClient);
-
-    expect(result).toStrictEqual({ ok: true, userId: "user-1" });
+    await expect(resolveMyUserId(apiClient)).resolves.toBe("user-1");
   });
 
-  it("未登録なら 404 を返す", async () => {
+  it("未登録なら MyUserNotFoundError を投げる", async () => {
     meGet.mockResolvedValue(jsonResponse({ registered: false }));
 
-    const result = await resolveMyUserId(apiClient);
-
-    expect(result).toStrictEqual({
-      ok: false,
-      status: 404,
-      body: { error: "User not found" },
+    await expect(resolveMyUserId(apiClient)).rejects.toMatchObject({
+      type: "MyUserNotFoundError",
     });
   });
 
-  it("users/me の取得に失敗したら 502 を返す", async () => {
+  it("users/me が 5xx なら UpstreamServerError を投げる", async () => {
     meGet.mockResolvedValue(
       jsonResponse({ error: "Internal" }, { ok: false, status: 500 }),
     );
 
-    const result = await resolveMyUserId(apiClient);
-
-    expect(result).toStrictEqual({
-      ok: false,
-      status: 502,
-      body: { error: "Failed to resolve user" },
+    await expect(resolveMyUserId(apiClient)).rejects.toMatchObject({
+      type: "UpstreamServerError",
     });
   });
 });

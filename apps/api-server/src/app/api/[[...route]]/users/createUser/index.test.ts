@@ -222,6 +222,7 @@ describe("User Create API", () => {
       expect(res.status).toBe(409);
       expect(await res.json()).toStrictEqual({
         error: "User already registered",
+        code: "UserAlreadyRegisteredError",
       });
       expect(mockUsers.save).not.toHaveBeenCalled();
     });
@@ -251,7 +252,10 @@ describe("User Create API", () => {
       const res = await postCreate(validPayload);
 
       expect(res.status).toBe(409);
-      expect(await res.json()).toStrictEqual({ error: "Email already taken" });
+      expect(await res.json()).toStrictEqual({
+        error: "Email already taken",
+        code: "EmailAlreadyTakenError",
+      });
       expect(mockArtists.save).not.toHaveBeenCalled();
     });
 
@@ -264,6 +268,7 @@ describe("User Create API", () => {
       expect(res.status).toBe(422);
       expect(await res.json()).toStrictEqual({
         error: "Invalid accountId format",
+        code: "InvalidAccountIdFormatError",
       });
       expect(mockArtists.save).not.toHaveBeenCalled();
     });
