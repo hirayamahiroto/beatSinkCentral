@@ -1,18 +1,11 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { Typography } from "@ui/design-system/components/atoms/Typography";
-import { getSession } from "../../../libs/auth0";
 import { getSettings } from "../../../fetchers/dashboard/getSettings";
 import { EmailEditorClientAdapter } from "./EmailEditorClientAdapter";
 import { AccountIdEditorClientAdapter } from "./AccountIdEditorClientAdapter";
 
 export default async function SettingsPage() {
-  const session = await getSession();
-
-  if (!session) {
-    redirect("/auth/login");
-  }
-
   const cookieHeader = (await headers()).get("cookie") ?? undefined;
   const result = await getSettings({ cookie: cookieHeader });
 

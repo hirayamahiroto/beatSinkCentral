@@ -41,7 +41,7 @@ beatfolio における実体は **アーティストの公開プロフィール*
 
 ### 原則4: 認証境界を階層で表す
 
-ログイン必須の画面は `/dashboard` 配下に集約する。URL を見れば認証が要るか判別でき、middleware / `page.tsx` の `redirect` 判定も階層で一貫させられる。
+ログイン必須の画面は `/dashboard` 配下に集約する。URL を見れば認証が要るか判別でき、認証境界を **`src/middleware.ts` の `SESSION_REQUIRED_PATHS`（`/dashboard/*` `/onboarding/*`）1 箇所**で表せる。`page.tsx` は認証を判定しない（[`bff/design.md`](./bff/design.md)）。新しいログイン必須画面は `/dashboard` 配下に置くだけで保護される。
 
 ### 原則5: アカウント設定と公開物の編集を混ぜない
 

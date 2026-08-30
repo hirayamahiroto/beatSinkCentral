@@ -1,16 +1,9 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
-import { getSession } from "../../../../libs/auth0";
 import { getProfileEditScreen } from "../../../../fetchers/dashboard/getProfileEditScreen";
 import { ProfileWizardClientAdapter } from "./ProfileWizardClientAdapter";
 
 export default async function ProfileEditPage() {
-  const session = await getSession();
-
-  if (!session) {
-    redirect("/auth/login");
-  }
-
   const cookieHeader = (await headers()).get("cookie") ?? undefined;
   const result = await getProfileEditScreen({ cookie: cookieHeader });
 
