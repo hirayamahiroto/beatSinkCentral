@@ -66,9 +66,20 @@ describe("GET /artists/:accountId", () => {
       }),
     );
 
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
     const res = await createApp().request("/beatboxer_taro", { method: "GET" });
 
     expect(res.status).toBe(500);
+    expect(consoleError).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(consoleError.mock.calls[0][0])).toMatchObject({
+      event: "AppError",
+      errorType: "ResponseContractViolationError",
+      context: { issuePaths: ["profile.imageUrl", "profile.genres"] },
+    });
+    consoleError.mockRestore();
   });
 
   it("公開プロフィールが無ければ 404 を返す", async () => {
