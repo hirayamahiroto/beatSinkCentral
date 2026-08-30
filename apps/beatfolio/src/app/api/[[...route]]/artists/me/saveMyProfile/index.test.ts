@@ -3,15 +3,16 @@ import { Hono } from "hono";
 import {
   requestContextMiddleware,
   type RequestContextEnv,
-} from "../../../../../../../middlewares/requestContext";
+} from "../../../../../../middlewares/requestContext";
 import saveMyProfile from "./index";
+import { handleBffError } from "../../../../../../errorMap";
 
 const { meGet, profilePost } = vi.hoisted(() => ({
   meGet: vi.fn(),
   profilePost: vi.fn(),
 }));
 
-vi.mock("../../../../../../../utils/client", () => ({
+vi.mock("../../../../../../utils/client", () => ({
   createApiServerClient: () => ({
     api: {
       users: { me: { $get: meGet } },
@@ -24,6 +25,7 @@ const createApp = () => {
   const app = new Hono<RequestContextEnv>();
   app.use("*", requestContextMiddleware);
   app.route("/", saveMyProfile);
+  app.onError(handleBffError);
   return app;
 };
 
@@ -109,7 +111,10 @@ describe("POST /artists/me/profile", () => {
     profilePost.mockResolvedValue({
       ok: false,
       status: 422,
-      json: async () => ({ error: "Invalid imageUrl format" }),
+      json: async () => ({
+        error: "Invalid imageUrl format",
+        code: "InvalidImageUrlFormatError",
+      }),
     });
 
     const res = await request({ imageUrl: "not-a-url" });
@@ -117,6 +122,7 @@ describe("POST /artists/me/profile", () => {
     expect(res.status).toBe(422);
     expect(await res.json()).toStrictEqual({
       error: "Invalid imageUrl format",
+      code: "InvalidImageUrlFormatError",
     });
   });
 });

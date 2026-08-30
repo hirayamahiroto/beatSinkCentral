@@ -1,5 +1,8 @@
 import type { InferResponseType } from "hono/client";
 import type { createApiServerClient } from "../../../../../utils/client";
+import { createMyArtistNotFoundError } from "../../errors/myArtistNotFound";
+import { toUpstreamError, type UpstreamResponse } from "../toUpstreamError";
+import { readUpstreamJson } from "../readUpstreamJson";
 
 type ApiClient = ReturnType<typeof createApiServerClient>;
 type UsersMeSuccess = InferResponseType<
@@ -12,35 +15,24 @@ type UsersMeClient = {
     users: {
       me: {
         $get: () => Promise<
-          { ok: true; json: () => Promise<UsersMeSuccess> } | { ok: false }
+          | { ok: true; status: number; json: () => Promise<UsersMeSuccess> }
+          | ({ ok: false } & UpstreamResponse)
         >;
       };
     };
   };
 };
 
-export type ResolveMyArtistIdResult =
-  | { ok: true; artistId: string }
-  | { ok: false; status: 404 | 502; body: { error: string } };
-
 export const resolveMyArtistId = async (
   apiClient: UsersMeClient,
-): Promise<ResolveMyArtistIdResult> => {
+): Promise<string> => {
   const res = await apiClient.api.users.me.$get();
+  if (!res.ok) throw await toUpstreamError(res);
 
-  if (!res.ok) {
-    return {
-      ok: false,
-      status: 502,
-      body: { error: "Failed to resolve artist" },
-    };
-  }
-
-  const me = await res.json();
-
+  const me = await readUpstreamJson(res);
   if (!me.registered || me.artist === null) {
-    return { ok: false, status: 404, body: { error: "Artist not found" } };
+    throw createMyArtistNotFoundError();
   }
 
-  return { ok: true, artistId: me.artist.artistId };
+  return me.artist.artistId;
 };

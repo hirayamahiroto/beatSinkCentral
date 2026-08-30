@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import type { RequestContextEnv } from "../../../../../../middlewares/requestContext";
+import type { RequestContextEnv } from "../../../../../middlewares/requestContext";
 import getPlayerDetail from "./index";
+import { handleBffError } from "../../../../../errorMap";
 
 const profileGet = vi.fn();
 const linkTypesGet = vi.fn();
@@ -20,6 +21,7 @@ const createApp = () => {
     await next();
   });
   app.route("/", getPlayerDetail);
+  app.onError(handleBffError);
   return app;
 };
 

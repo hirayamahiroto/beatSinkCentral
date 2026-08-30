@@ -3,15 +3,16 @@ import { Hono } from "hono";
 import {
   requestContextMiddleware,
   type RequestContextEnv,
-} from "../../../../../../../../middlewares/requestContext";
+} from "../../../../../../middlewares/requestContext";
 import publishMyProfile from "./index";
+import { handleBffError } from "../../../../../../errorMap";
 
 const { meGet, publishPost } = vi.hoisted(() => ({
   meGet: vi.fn(),
   publishPost: vi.fn(),
 }));
 
-vi.mock("../../../../../../../../utils/client", () => ({
+vi.mock("../../../../../../utils/client", () => ({
   createApiServerClient: () => ({
     api: {
       users: { me: { $get: meGet } },
@@ -26,6 +27,7 @@ const createApp = () => {
   const app = new Hono<RequestContextEnv>();
   app.use("*", requestContextMiddleware);
   app.route("/", publishMyProfile);
+  app.onError(handleBffError);
   return app;
 };
 
@@ -90,13 +92,19 @@ describe("POST /artists/me/profile/publish", () => {
     publishPost.mockResolvedValue({
       ok: false,
       status: 404,
-      json: async () => ({ error: "Profile not found" }),
+      json: async () => ({
+        error: "Profile not found",
+        code: "ArtistProfileNotFoundError",
+      }),
     });
 
     const res = await request({ published: true });
 
     expect(res.status).toBe(404);
-    expect(await res.json()).toStrictEqual({ error: "Profile not found" });
+    expect(await res.json()).toStrictEqual({
+      error: "Profile not found",
+      code: "ArtistProfileNotFoundError",
+    });
   });
 
   it("公開条件を満たさない拒否は不足項目を表示ラベルに解決して返す", async () => {
@@ -105,6 +113,7 @@ describe("POST /artists/me/profile/publish", () => {
       status: 422,
       json: async () => ({
         error: "Profile is not publishable: required fields are missing",
+        code: "ProfileNotPublishableError",
         details: { missingFields: ["imageUrl", "links"] },
       }),
     });
@@ -114,6 +123,7 @@ describe("POST /artists/me/profile/publish", () => {
     expect(res.status).toBe(422);
     expect(await res.json()).toStrictEqual({
       error: "Profile is not publishable: required fields are missing",
+      code: "ProfileNotPublishableError",
       missingRequirements: ["アーティスト写真", "SNS / 配信リンク"],
     });
   });

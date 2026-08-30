@@ -5,6 +5,7 @@ import {
   type RequestContextEnv,
 } from "../../../../../../middlewares/requestContext";
 import updateMyAccountId from "./index";
+import { handleBffError } from "../../../../../../errorMap";
 
 const { meGet, accountIdPost } = vi.hoisted(() => ({
   meGet: vi.fn(),
@@ -24,6 +25,7 @@ const createApp = () => {
   const app = new Hono<RequestContextEnv>();
   app.use("*", requestContextMiddleware);
   app.route("/", updateMyAccountId);
+  app.onError(handleBffError);
   return app;
 };
 
@@ -88,7 +90,10 @@ describe("POST /artists/me", () => {
     accountIdPost.mockResolvedValue({
       ok: false,
       status: 409,
-      json: async () => ({ error: "accountId already taken" }),
+      json: async () => ({
+        error: "accountId already taken",
+        code: "AccountIdAlreadyTakenError",
+      }),
     });
 
     const res = await request({ accountId: "saku_new" });
@@ -96,6 +101,23 @@ describe("POST /artists/me", () => {
     expect(res.status).toBe(409);
     expect(await res.json()).toStrictEqual({
       error: "accountId already taken",
+      code: "AccountIdAlreadyTakenError",
+    });
+  });
+
+  it("code の無い 4xx は契約違反として 502 にする", async () => {
+    accountIdPost.mockResolvedValue({
+      ok: false,
+      status: 409,
+      json: async () => ({ error: "accountId already taken" }),
+    });
+
+    const res = await request({ accountId: "saku_new" });
+
+    expect(res.status).toBe(502);
+    expect(await res.json()).toStrictEqual({
+      error: "Upstream response violated contract",
+      code: "UpstreamContractViolationError",
     });
   });
 });

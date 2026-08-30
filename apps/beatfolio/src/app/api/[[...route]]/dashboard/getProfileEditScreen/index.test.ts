@@ -3,8 +3,9 @@ import { Hono } from "hono";
 import {
   requestContextMiddleware,
   type RequestContextEnv,
-} from "../../../../../../../middlewares/requestContext";
+} from "../../../../../middlewares/requestContext";
 import getProfileEdit from "./index";
+import { handleBffError } from "../../../../../errorMap";
 
 const { meGet, profileGet, linkTypesGet } = vi.hoisted(() => ({
   meGet: vi.fn(),
@@ -12,7 +13,7 @@ const { meGet, profileGet, linkTypesGet } = vi.hoisted(() => ({
   linkTypesGet: vi.fn(),
 }));
 
-vi.mock("../../../../../../../utils/client", () => ({
+vi.mock("../../../../../utils/client", () => ({
   createApiServerClient: () => ({
     api: {
       users: { me: { $get: meGet } },
@@ -26,6 +27,7 @@ const createApp = () => {
   const app = new Hono<RequestContextEnv>();
   app.use("*", requestContextMiddleware);
   app.route("/", getProfileEdit);
+  app.onError(handleBffError);
   return app;
 };
 
@@ -120,7 +122,7 @@ describe("GET /dashboard/profile/edit", () => {
     expect(await res.json()).toStrictEqual({ registered: false });
   });
 
-  it("登録済みでも artist が無ければ 502 を返す", async () => {
+  it("登録済みでも artist が無ければ 404 を返す", async () => {
     meGet.mockResolvedValue(
       jsonResponse({
         registered: true,
@@ -132,7 +134,7 @@ describe("GET /dashboard/profile/edit", () => {
 
     const res = await createApp().request("/", { method: "GET" });
 
-    expect(res.status).toBe(502);
+    expect(res.status).toBe(404);
     expect(profileGet).not.toHaveBeenCalled();
   });
 

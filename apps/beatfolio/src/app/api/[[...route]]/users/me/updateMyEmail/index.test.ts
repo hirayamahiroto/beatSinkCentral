@@ -5,6 +5,7 @@ import {
   type RequestContextEnv,
 } from "../../../../../../middlewares/requestContext";
 import updateMyEmail from "./index";
+import { handleBffError } from "../../../../../../errorMap";
 
 const { meGet, emailPost } = vi.hoisted(() => ({
   meGet: vi.fn(),
@@ -26,6 +27,7 @@ const createApp = () => {
   const app = new Hono<RequestContextEnv>();
   app.use("*", requestContextMiddleware);
   app.route("/", updateMyEmail);
+  app.onError(handleBffError);
   return app;
 };
 
@@ -94,12 +96,18 @@ describe("POST /users/me", () => {
     emailPost.mockResolvedValue({
       ok: false,
       status: 409,
-      json: async () => ({ error: "Email already taken" }),
+      json: async () => ({
+        error: "Email already taken",
+        code: "EmailAlreadyTakenError",
+      }),
     });
 
     const res = await request({ email: "taken@example.com" });
 
     expect(res.status).toBe(409);
-    expect(await res.json()).toStrictEqual({ error: "Email already taken" });
+    expect(await res.json()).toStrictEqual({
+      error: "Email already taken",
+      code: "EmailAlreadyTakenError",
+    });
   });
 });

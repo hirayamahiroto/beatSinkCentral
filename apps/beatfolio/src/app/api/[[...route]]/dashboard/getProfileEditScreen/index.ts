@@ -1,5 +1,8 @@
 import { Hono } from "hono";
-import type { RequestContextEnv } from "../../../../../../../middlewares/requestContext";
+import type { RequestContextEnv } from "../../../../../middlewares/requestContext";
+import { toUpstreamError } from "../../shared/toUpstreamError";
+import { readUpstreamJson } from "../../shared/readUpstreamJson";
+import { createMyArtistNotFoundError } from "../../errors/myArtistNotFound";
 import { toWizardValues } from "./toWizardValues";
 
 const app = new Hono<RequestContextEnv>().get("/", async (c) => {
@@ -9,31 +12,23 @@ const app = new Hono<RequestContextEnv>().get("/", async (c) => {
     apiClient.api.users.me.$get(),
     apiClient.api["link-types"].$get(),
   ]);
+  if (!meRes.ok) throw await toUpstreamError(meRes);
+  if (!linkTypesRes.ok) throw await toUpstreamError(linkTypesRes);
 
-  if (!meRes.ok || !linkTypesRes.ok) {
-    return c.json({ error: "Failed to fetch profile edit screen" }, 502);
-  }
-
-  const me = await meRes.json();
+  const me = await readUpstreamJson(meRes);
 
   if (!me.registered) {
     return c.json({ registered: false as const });
   }
-
-  if (me.artist === null) {
-    return c.json({ error: "Failed to fetch profile edit screen" }, 502);
-  }
+  if (me.artist === null) throw createMyArtistNotFoundError();
 
   const profileRes = await apiClient.api.artists[":artistId"].profile.$get({
     param: { artistId: me.artist.artistId },
   });
+  if (!profileRes.ok) throw await toUpstreamError(profileRes);
 
-  if (!profileRes.ok) {
-    return c.json({ error: "Failed to fetch profile edit screen" }, 502);
-  }
-
-  const { profile } = await profileRes.json();
-  const { linkTypes } = await linkTypesRes.json();
+  const { profile } = await readUpstreamJson(profileRes);
+  const { linkTypes } = await readUpstreamJson(linkTypesRes);
 
   return c.json({
     registered: true as const,

@@ -1,7 +1,9 @@
 import { Hono } from "hono";
-import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import type { RequestContextEnv } from "../../../../../middlewares/requestContext";
+import { validateRequest } from "../../validators/validateRequest";
+import { toUpstreamError } from "../../shared/toUpstreamError";
+import { readUpstreamJson } from "../../shared/readUpstreamJson";
 
 const requestSchema = z.object({
   accountId: z.string().nonempty(),
@@ -10,32 +12,17 @@ const requestSchema = z.object({
 
 const app = new Hono<RequestContextEnv>().post(
   "/",
-  zValidator("json", requestSchema, (result, c) => {
-    if (!result.success) {
-      return c.json(
-        { error: "Invalid request", issues: result.error.issues },
-        400,
-      );
-    }
-  }),
+  validateRequest("json", requestSchema),
   async (c) => {
     const apiClient = c.get("apiClient");
     const body = c.req.valid("json");
 
     const res = await apiClient.api.users.$post({
-      json: {
-        accountId: body.accountId,
-        email: body.email,
-      },
+      json: { accountId: body.accountId, email: body.email },
     });
+    if (!res.ok) throw await toUpstreamError(res);
 
-    if (!res.ok) {
-      const error = await res.json();
-      return c.json(error, res.status);
-    }
-
-    const data = await res.json();
-    return c.json(data, 201);
+    return c.json(await readUpstreamJson(res), 201);
   },
 );
 

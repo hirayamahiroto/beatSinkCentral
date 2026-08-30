@@ -5,15 +5,16 @@ import { Hono } from "hono";
 import {
   requestContextMiddleware,
   type RequestContextEnv,
-} from "../../../../../../../../middlewares/requestContext";
+} from "../../../../../../middlewares/requestContext";
 import uploadProfileImage from "./index";
+import { handleBffError } from "../../../../../../errorMap";
 
 const { meGet, imagePost } = vi.hoisted(() => ({
   meGet: vi.fn(),
   imagePost: vi.fn(),
 }));
 
-vi.mock("../../../../../../../../utils/client", () => ({
+vi.mock("../../../../../../utils/client", () => ({
   createApiServerClient: () => ({
     api: {
       users: { me: { $get: meGet } },
@@ -26,6 +27,7 @@ const createApp = () => {
   const app = new Hono<RequestContextEnv>();
   app.use("*", requestContextMiddleware);
   app.route("/", uploadProfileImage);
+  app.onError(handleBffError);
   return app;
 };
 
@@ -97,7 +99,10 @@ describe("POST /artists/me/profile/image", () => {
     imagePost.mockResolvedValue({
       ok: false,
       status: 413,
-      json: async () => ({ error: "Image file is too large" }),
+      json: async () => ({
+        error: "Image file is too large",
+        code: "ImageTooLargeError",
+      }),
     });
 
     const res = await request(imageFile());
@@ -105,6 +110,7 @@ describe("POST /artists/me/profile/image", () => {
     expect(res.status).toBe(413);
     expect(await res.json()).toStrictEqual({
       error: "Image file is too large",
+      code: "ImageTooLargeError",
     });
   });
 });

@@ -1,8 +1,10 @@
 import { Hono } from "hono";
-import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import type { RequestContextEnv } from "../../../../../../middlewares/requestContext";
+import { validateRequest } from "../../../validators/validateRequest";
 import { resolveMyArtistId } from "../../../shared/resolveMyArtistId";
+import { toUpstreamError } from "../../../shared/toUpstreamError";
+import { readUpstreamJson } from "../../../shared/readUpstreamJson";
 
 const updateAccountIdRequestSchema = z.object({
   accountId: z.string().nonempty(),
@@ -10,35 +12,20 @@ const updateAccountIdRequestSchema = z.object({
 
 const app = new Hono<RequestContextEnv>().post(
   "/",
-  zValidator("json", updateAccountIdRequestSchema, (result, c) => {
-    if (!result.success) {
-      return c.json(
-        { error: "Invalid request", issues: result.error.issues },
-        400,
-      );
-    }
-  }),
+  validateRequest("json", updateAccountIdRequestSchema),
   async (c) => {
     const apiClient = c.get("apiClient");
     const body = c.req.valid("json");
 
-    const resolved = await resolveMyArtistId(apiClient);
-    if (!resolved.ok) {
-      return c.json(resolved.body, resolved.status);
-    }
+    const artistId = await resolveMyArtistId(apiClient);
 
     const res = await apiClient.api.artists[":artistId"].$post({
-      param: { artistId: resolved.artistId },
+      param: { artistId },
       json: { accountId: body.accountId },
     });
+    if (!res.ok) throw await toUpstreamError(res);
 
-    if (!res.ok) {
-      const error = await res.json();
-      return c.json(error, res.status);
-    }
-
-    const data = await res.json();
-    return c.json(data);
+    return c.json(await readUpstreamJson(res));
   },
 );
 

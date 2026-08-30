@@ -1,8 +1,10 @@
 import { Hono } from "hono";
-import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import type { RequestContextEnv } from "../../../../../../../../middlewares/requestContext";
-import { resolveMyArtistId } from "../../../../../shared/resolveMyArtistId";
+import type { RequestContextEnv } from "../../../../../../middlewares/requestContext";
+import { validateRequest } from "../../../validators/validateRequest";
+import { resolveMyArtistId } from "../../../shared/resolveMyArtistId";
+import { toUpstreamError } from "../../../shared/toUpstreamError";
+import { readUpstreamJson } from "../../../shared/readUpstreamJson";
 
 const uploadProfileImageRequestSchema = z.object({
   file: z.instanceof(File),
@@ -10,34 +12,20 @@ const uploadProfileImageRequestSchema = z.object({
 
 const app = new Hono<RequestContextEnv>().post(
   "/",
-  zValidator("form", uploadProfileImageRequestSchema, (result, c) => {
-    if (!result.success) {
-      return c.json(
-        { error: "Invalid request", issues: result.error.issues },
-        400,
-      );
-    }
-  }),
+  validateRequest("form", uploadProfileImageRequestSchema),
   async (c) => {
     const apiClient = c.get("apiClient");
     const { file } = c.req.valid("form");
 
-    const resolved = await resolveMyArtistId(apiClient);
-    if (!resolved.ok) {
-      return c.json(resolved.body, resolved.status);
-    }
+    const artistId = await resolveMyArtistId(apiClient);
 
     const res = await apiClient.api.artists[":artistId"].profile.image.$post({
-      param: { artistId: resolved.artistId },
+      param: { artistId },
       form: { file },
     });
+    if (!res.ok) throw await toUpstreamError(res);
 
-    if (!res.ok) {
-      const error = await res.json();
-      return c.json(error, res.status);
-    }
-
-    return c.json(await res.json());
+    return c.json(await readUpstreamJson(res));
   },
 );
 

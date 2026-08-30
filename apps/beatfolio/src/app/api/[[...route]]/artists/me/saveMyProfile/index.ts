@@ -1,8 +1,10 @@
 import { Hono } from "hono";
-import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import type { RequestContextEnv } from "../../../../../../../middlewares/requestContext";
-import { resolveMyArtistId } from "../../../../shared/resolveMyArtistId";
+import type { RequestContextEnv } from "../../../../../../middlewares/requestContext";
+import { validateRequest } from "../../../validators/validateRequest";
+import { resolveMyArtistId } from "../../../shared/resolveMyArtistId";
+import { toUpstreamError } from "../../../shared/toUpstreamError";
+import { readUpstreamJson } from "../../../shared/readUpstreamJson";
 
 const MAX_GENRES = 20;
 const MAX_LINKS = 20;
@@ -28,34 +30,20 @@ const saveProfileRequestSchema = z.object({
 
 const app = new Hono<RequestContextEnv>().post(
   "/",
-  zValidator("json", saveProfileRequestSchema, (result, c) => {
-    if (!result.success) {
-      return c.json(
-        { error: "Invalid request", issues: result.error.issues },
-        400,
-      );
-    }
-  }),
+  validateRequest("json", saveProfileRequestSchema),
   async (c) => {
     const apiClient = c.get("apiClient");
     const body = c.req.valid("json");
 
-    const resolved = await resolveMyArtistId(apiClient);
-    if (!resolved.ok) {
-      return c.json(resolved.body, resolved.status);
-    }
+    const artistId = await resolveMyArtistId(apiClient);
 
     const res = await apiClient.api.artists[":artistId"].profile.$post({
-      param: { artistId: resolved.artistId },
+      param: { artistId },
       json: body,
     });
+    if (!res.ok) throw await toUpstreamError(res);
 
-    if (!res.ok) {
-      const error = await res.json();
-      return c.json(error, res.status);
-    }
-
-    return c.json(await res.json());
+    return c.json(await readUpstreamJson(res));
   },
 );
 

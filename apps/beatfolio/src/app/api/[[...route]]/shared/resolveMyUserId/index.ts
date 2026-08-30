@@ -1,5 +1,8 @@
 import type { InferResponseType } from "hono/client";
 import type { createApiServerClient } from "../../../../../utils/client";
+import { createMyUserNotFoundError } from "../../errors/myUserNotFound";
+import { toUpstreamError, type UpstreamResponse } from "../toUpstreamError";
+import { readUpstreamJson } from "../readUpstreamJson";
 
 type ApiClient = ReturnType<typeof createApiServerClient>;
 type UsersMeSuccess = InferResponseType<
@@ -12,35 +15,22 @@ type UsersMeClient = {
     users: {
       me: {
         $get: () => Promise<
-          { ok: true; json: () => Promise<UsersMeSuccess> } | { ok: false }
+          | { ok: true; status: number; json: () => Promise<UsersMeSuccess> }
+          | ({ ok: false } & UpstreamResponse)
         >;
       };
     };
   };
 };
 
-export type ResolveMyUserIdResult =
-  | { ok: true; userId: string }
-  | { ok: false; status: 404 | 502; body: { error: string } };
-
 export const resolveMyUserId = async (
   apiClient: UsersMeClient,
-): Promise<ResolveMyUserIdResult> => {
+): Promise<string> => {
   const res = await apiClient.api.users.me.$get();
+  if (!res.ok) throw await toUpstreamError(res);
 
-  if (!res.ok) {
-    return {
-      ok: false,
-      status: 502,
-      body: { error: "Failed to resolve user" },
-    };
-  }
+  const me = await readUpstreamJson(res);
+  if (!me.registered) throw createMyUserNotFoundError();
 
-  const me = await res.json();
-
-  if (!me.registered) {
-    return { ok: false, status: 404, body: { error: "User not found" } };
-  }
-
-  return { ok: true, userId: me.userId };
+  return me.userId;
 };

@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import type { RequestContextEnv } from "../../../../../middlewares/requestContext";
 import listPlayers from "./index";
+import { createUpstreamUnavailableError } from "../../../../../utils/client/errors/upstreamUnavailable";
+import { handleBffError } from "../../../../../errorMap";
 
 const artistsGet = vi.fn();
 
@@ -18,6 +20,7 @@ const createApp = () => {
     await next();
   });
   app.route("/", listPlayers);
+  app.onError(handleBffError);
   return app;
 };
 
@@ -84,13 +87,16 @@ describe("GET /players", () => {
   });
 
   it("api-server への接続自体が失敗したら 502 を返す", async () => {
-    artistsGet.mockRejectedValue(new TypeError("fetch failed"));
+    artistsGet.mockRejectedValue(
+      createUpstreamUnavailableError(new TypeError("fetch failed")),
+    );
 
     const res = await createApp().request("/", { method: "GET" });
 
     expect(res.status).toBe(502);
     expect(await res.json()).toStrictEqual({
-      error: "Failed to fetch players",
+      error: "Upstream request failed",
+      code: "UpstreamUnavailableError",
     });
   });
 
@@ -107,7 +113,8 @@ describe("GET /players", () => {
 
     expect(res.status).toBe(502);
     expect(await res.json()).toStrictEqual({
-      error: "Failed to fetch players",
+      error: "Upstream response violated contract",
+      code: "UpstreamContractViolationError",
     });
   });
 });

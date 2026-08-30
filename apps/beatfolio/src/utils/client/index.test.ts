@@ -79,6 +79,7 @@ describe("createApiServerClient", () => {
     expect(res.status).toBe(502);
     expect(await res.json()).toStrictEqual({
       error: "Upstream request failed",
+      code: "UpstreamUnavailableError",
     });
   });
 });

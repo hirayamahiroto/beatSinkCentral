@@ -1,5 +1,5 @@
 import type { WizardValues } from "@ui/design-system/components/organisms/ArtistProfileWizard";
-import { parseActivityInfo } from "../../../../../../../../libs/activityInfo";
+import { parseActivityInfo } from "../../../../../../libs/activityInfo";
 
 export type ProfileView = {
   name: string | null;

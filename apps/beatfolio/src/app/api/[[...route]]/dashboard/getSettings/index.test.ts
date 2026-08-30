@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import type { RequestContextEnv } from "../../../../../../middlewares/requestContext";
+import type { RequestContextEnv } from "../../../../../middlewares/requestContext";
 import getSettings from "./index";
+import { handleBffError } from "../../../../../errorMap";
 
 const meGet = vi.fn();
 
@@ -14,6 +15,7 @@ const createApp = () => {
     await next();
   });
   app.route("/", getSettings);
+  app.onError(handleBffError);
   return app;
 };
 
@@ -80,13 +82,30 @@ describe("GET /dashboard/settings", () => {
     expect(await res.json()).toStrictEqual({ registered: false });
   });
 
-  it("api-server が失敗したら 502 を返す", async () => {
+  it("api-server が 5xx なら 502 を返す", async () => {
     meGet.mockResolvedValue(
-      jsonResponse({ error: "Unauthorized" }, { ok: false, status: 401 }),
+      jsonResponse({ error: "Internal" }, { ok: false, status: 500 }),
     );
 
     const res = await createApp().request("/", { method: "GET" });
 
     expect(res.status).toBe(502);
+  });
+
+  it("api-server の 4xx はステータスと code を透過する", async () => {
+    meGet.mockResolvedValue(
+      jsonResponse(
+        { error: "Unauthorized", code: "UnauthorizedError" },
+        { ok: false, status: 401 },
+      ),
+    );
+
+    const res = await createApp().request("/", { method: "GET" });
+
+    expect(res.status).toBe(401);
+    expect(await res.json()).toStrictEqual({
+      error: "Unauthorized",
+      code: "UnauthorizedError",
+    });
   });
 });

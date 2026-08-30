@@ -1,63 +1,31 @@
 import { Hono } from "hono";
-import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import type { RequestContextEnv } from "../../../../../../../../middlewares/requestContext";
-import { resolveMyArtistId } from "../../../../../shared/resolveMyArtistId";
-import { resolvePublishRequirementLabels } from "../../../../../shared/resolvePublishRequirementLabels";
+import type { RequestContextEnv } from "../../../../../../middlewares/requestContext";
+import { validateRequest } from "../../../validators/validateRequest";
+import { resolveMyArtistId } from "../../../shared/resolveMyArtistId";
+import { toUpstreamError } from "../../../shared/toUpstreamError";
+import { readUpstreamJson } from "../../../shared/readUpstreamJson";
 
 const publishProfileRequestSchema = z.object({
   published: z.boolean(),
 });
 
-const notPublishableErrorSchema = z.object({
-  error: z.string(),
-  details: z.object({ missingFields: z.array(z.string()) }),
-});
-
 const app = new Hono<RequestContextEnv>().post(
   "/",
-  zValidator("json", publishProfileRequestSchema, (result, c) => {
-    if (!result.success) {
-      return c.json(
-        { error: "Invalid request", issues: result.error.issues },
-        400,
-      );
-    }
-  }),
+  validateRequest("json", publishProfileRequestSchema),
   async (c) => {
     const apiClient = c.get("apiClient");
     const body = c.req.valid("json");
 
-    const resolved = await resolveMyArtistId(apiClient);
-    if (!resolved.ok) {
-      return c.json(resolved.body, resolved.status);
-    }
+    const artistId = await resolveMyArtistId(apiClient);
 
     const res = await apiClient.api.artists[":artistId"].profile.publish.$post({
-      param: { artistId: resolved.artistId },
+      param: { artistId },
       json: { published: body.published },
     });
+    if (!res.ok) throw await toUpstreamError(res);
 
-    if (!res.ok) {
-      const error = await res.json();
-      const notPublishable = notPublishableErrorSchema.safeParse(error);
-
-      if (notPublishable.success) {
-        return c.json(
-          {
-            error: notPublishable.data.error,
-            missingRequirements: resolvePublishRequirementLabels(
-              notPublishable.data.details.missingFields,
-            ),
-          },
-          res.status,
-        );
-      }
-
-      return c.json(error, res.status);
-    }
-
-    return c.json(await res.json());
+    return c.json(await readUpstreamJson(res));
   },
 );
 

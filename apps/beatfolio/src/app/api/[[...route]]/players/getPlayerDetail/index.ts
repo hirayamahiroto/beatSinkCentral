@@ -1,6 +1,9 @@
 import { Hono } from "hono";
-import type { RequestContextEnv } from "../../../../../../middlewares/requestContext";
-import { resolveLinkLabels } from "../../../shared/resolveLinkLabels";
+import type { RequestContextEnv } from "../../../../../middlewares/requestContext";
+import { resolveLinkLabels } from "../../shared/resolveLinkLabels";
+import { toUpstreamError } from "../../shared/toUpstreamError";
+import { readUpstreamJson } from "../../shared/readUpstreamJson";
+import { createPlayerNotFoundError } from "../../errors/playerNotFound";
 
 const app = new Hono<RequestContextEnv>().get("/:accountId", async (c) => {
   const apiClient = c.get("apiClient");
@@ -12,14 +15,13 @@ const app = new Hono<RequestContextEnv>().get("/:accountId", async (c) => {
   ]);
 
   if (profileRes.status === 404 || profileRes.status === 422) {
-    return c.json({ error: "Player profile not found" }, 404);
+    throw createPlayerNotFoundError();
   }
-  if (!profileRes.ok || !linkTypesRes.ok) {
-    return c.json({ error: "Failed to fetch player profile" }, 502);
-  }
+  if (!profileRes.ok) throw await toUpstreamError(profileRes);
+  if (!linkTypesRes.ok) throw await toUpstreamError(linkTypesRes);
 
-  const { profile } = await profileRes.json();
-  const { linkTypes } = await linkTypesRes.json();
+  const { profile } = await readUpstreamJson(profileRes);
+  const { linkTypes } = await readUpstreamJson(linkTypesRes);
 
   return c.json({
     name: profile.name,

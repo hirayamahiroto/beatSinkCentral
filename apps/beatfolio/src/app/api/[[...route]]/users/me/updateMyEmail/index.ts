@@ -1,8 +1,10 @@
 import { Hono } from "hono";
-import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import type { RequestContextEnv } from "../../../../../../middlewares/requestContext";
+import { validateRequest } from "../../../validators/validateRequest";
 import { resolveMyUserId } from "../../../shared/resolveMyUserId";
+import { toUpstreamError } from "../../../shared/toUpstreamError";
+import { readUpstreamJson } from "../../../shared/readUpstreamJson";
 
 const updateEmailRequestSchema = z.object({
   email: z.string().nonempty(),
@@ -10,35 +12,20 @@ const updateEmailRequestSchema = z.object({
 
 const app = new Hono<RequestContextEnv>().post(
   "/",
-  zValidator("json", updateEmailRequestSchema, (result, c) => {
-    if (!result.success) {
-      return c.json(
-        { error: "Invalid request", issues: result.error.issues },
-        400,
-      );
-    }
-  }),
+  validateRequest("json", updateEmailRequestSchema),
   async (c) => {
     const apiClient = c.get("apiClient");
     const body = c.req.valid("json");
 
-    const resolved = await resolveMyUserId(apiClient);
-    if (!resolved.ok) {
-      return c.json(resolved.body, resolved.status);
-    }
+    const userId = await resolveMyUserId(apiClient);
 
     const res = await apiClient.api.users[":userId"].$post({
-      param: { userId: resolved.userId },
+      param: { userId },
       json: { email: body.email },
     });
+    if (!res.ok) throw await toUpstreamError(res);
 
-    if (!res.ok) {
-      const error = await res.json();
-      return c.json(error, res.status);
-    }
-
-    const data = await res.json();
-    return c.json(data);
+    return c.json(await readUpstreamJson(res));
   },
 );
 

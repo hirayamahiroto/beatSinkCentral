@@ -29,24 +29,18 @@ describe("resolveMyArtistId", () => {
       }),
     );
 
-    const result = await resolveMyArtistId(apiClient);
-
-    expect(result).toStrictEqual({ ok: true, artistId: "artist-1" });
+    await expect(resolveMyArtistId(apiClient)).resolves.toBe("artist-1");
   });
 
-  it("未登録なら 404 を返す", async () => {
+  it("未登録なら MyArtistNotFoundError を投げる", async () => {
     meGet.mockResolvedValue(jsonResponse({ registered: false }));
 
-    const result = await resolveMyArtistId(apiClient);
-
-    expect(result).toStrictEqual({
-      ok: false,
-      status: 404,
-      body: { error: "Artist not found" },
+    await expect(resolveMyArtistId(apiClient)).rejects.toMatchObject({
+      type: "MyArtistNotFoundError",
     });
   });
 
-  it("登録済みでも artist が無ければ 404 を返す", async () => {
+  it("登録済みでも artist が無ければ MyArtistNotFoundError を投げる", async () => {
     meGet.mockResolvedValue(
       jsonResponse({
         registered: true,
@@ -56,26 +50,32 @@ describe("resolveMyArtistId", () => {
       }),
     );
 
-    const result = await resolveMyArtistId(apiClient);
-
-    expect(result).toStrictEqual({
-      ok: false,
-      status: 404,
-      body: { error: "Artist not found" },
+    await expect(resolveMyArtistId(apiClient)).rejects.toMatchObject({
+      type: "MyArtistNotFoundError",
     });
   });
 
-  it("users/me の取得に失敗したら 502 を返す", async () => {
+  it("users/me が 5xx なら UpstreamServerError を投げる", async () => {
     meGet.mockResolvedValue(
       jsonResponse({ error: "Internal" }, { ok: false, status: 500 }),
     );
 
-    const result = await resolveMyArtistId(apiClient);
+    await expect(resolveMyArtistId(apiClient)).rejects.toMatchObject({
+      type: "UpstreamServerError",
+    });
+  });
 
-    expect(result).toStrictEqual({
-      ok: false,
-      status: 502,
-      body: { error: "Failed to resolve artist" },
+  it("users/me が 4xx なら UpstreamRejectedError を投げる", async () => {
+    meGet.mockResolvedValue(
+      jsonResponse(
+        { error: "Unauthorized", code: "UnauthorizedError" },
+        { ok: false, status: 401 },
+      ),
+    );
+
+    await expect(resolveMyArtistId(apiClient)).rejects.toMatchObject({
+      type: "UpstreamRejectedError",
+      status: 401,
     });
   });
 });
