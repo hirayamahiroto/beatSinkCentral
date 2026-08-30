@@ -3,7 +3,7 @@ import { composeActivityInfo } from "../../../../../../libs/activityInfo";
 
 export type SaveProfileRequest = {
   name: string;
-  tagline: string;
+  tagline: string | null;
   imageUrl: string;
   story: string;
   activityInfo: string;
@@ -23,7 +23,7 @@ export const toSaveProfileRequest = (
   values: WizardValues,
 ): SaveProfileRequest => ({
   name: values.name,
-  tagline: values.tagline,
+  tagline: values.tagline?.trim() ? values.tagline : null,
   imageUrl: values.imageUrl,
   story: joinStory(values),
   activityInfo: composeActivityInfo(values),

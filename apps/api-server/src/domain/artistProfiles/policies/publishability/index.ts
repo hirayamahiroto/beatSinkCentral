@@ -38,6 +38,16 @@ export const collectMissingPublishFields = (
   return missing;
 };
 
+const isPublishable = (profile: ArtistProfile): boolean =>
+  collectMissingPublishFields(profile).length === 0;
+
+export const enforcePublishInvariant = (
+  profile: ArtistProfile,
+): ArtistProfile =>
+  profile.isPublished() && !isPublishable(profile)
+    ? profile.unpublish()
+    : profile;
+
 export const ensurePublishable = (
   profile: ArtistProfile,
 ): Result<void, ProfileNotPublishableError> => {

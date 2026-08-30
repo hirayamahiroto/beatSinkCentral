@@ -52,6 +52,36 @@ describe("GET /artists/:accountId", () => {
     );
   });
 
+  it("公開必須項目が欠けた公開プロフィールは契約違反として 500 を返す", async () => {
+    mockArtistProfiles.findPublishedByAccountId.mockResolvedValue(
+      reconstructArtistProfile({
+        id: "p1",
+        artistId: "artist-1",
+        published: true,
+        name: "Taro",
+        imageUrl: null,
+        story: "私の歩み",
+        genres: [],
+        links: [{ type: "x", url: "https://x.com/taro" }],
+      }),
+    );
+
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
+    const res = await createApp().request("/beatboxer_taro", { method: "GET" });
+
+    expect(res.status).toBe(500);
+    expect(consoleError).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(consoleError.mock.calls[0][0])).toMatchObject({
+      event: "AppError",
+      errorType: "ResponseContractViolationError",
+      context: { issuePaths: ["profile.imageUrl", "profile.genres"] },
+    });
+    consoleError.mockRestore();
+  });
+
   it("公開プロフィールが無ければ 404 を返す", async () => {
     mockArtistProfiles.findPublishedByAccountId.mockResolvedValue(null);
 

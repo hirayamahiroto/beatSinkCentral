@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   collectMissingPublishFields,
   createProfileNotPublishableError,
+  enforcePublishInvariant,
   ensurePublishable,
   isProfileNotPublishableError,
 } from "./index";
@@ -87,5 +88,35 @@ describe("ProfileNotPublishableError", () => {
       isProfileNotPublishableError({ type: "ProfileNotPublishableError" }),
     ).toBe(false);
     expect(isProfileNotPublishableError(null)).toBe(false);
+  });
+});
+
+describe("enforcePublishInvariant", () => {
+  it("公開中に公開条件を割ったプロフィールは非公開へ降ろす", () => {
+    const profile = reconstructArtistProfile({
+      ...fullContent,
+      published: true,
+      imageUrl: undefined,
+    });
+
+    expect(enforcePublishInvariant(profile).isPublished()).toBe(false);
+  });
+
+  it("公開中でも条件を満たしていれば公開のままにする", () => {
+    const profile = reconstructArtistProfile({
+      ...fullContent,
+      published: true,
+    });
+
+    expect(enforcePublishInvariant(profile).isPublished()).toBe(true);
+  });
+
+  it("未公開のプロフィールは条件を満たしていても公開しない", () => {
+    const profile = reconstructArtistProfile({
+      ...fullContent,
+      published: false,
+    });
+
+    expect(enforcePublishInvariant(profile).isPublished()).toBe(false);
   });
 });

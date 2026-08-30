@@ -25,6 +25,21 @@ const existingArtist = reconstructArtist({
 
 const actor: Actor = { user: existingUser, artist: existingArtist };
 
+const publishableContent = {
+  name: "Taro",
+  imageUrl: "https://example.com/taro.png",
+  story: "私の歩み",
+  genres: ["bass"],
+  links: [{ type: "x", url: "https://x.com/taro" }],
+};
+
+const publishedContent = {
+  ...publishableContent,
+  id: "profile-existing",
+  artistId: "artist-1",
+  published: true,
+};
+
 const echoUpsert = async (data: ArtistProfilePersistenceData) =>
   reconstructArtistProfile({ ...data });
 
@@ -83,19 +98,36 @@ describe("saveMyProfile", () => {
     const caps = createCaps();
     caps.artistProfiles.findByArtistId.mockResolvedValue(
       reconstructArtistProfile({
-        id: "profile-existing",
-        artistId: "artist-1",
-        published: true,
+        ...publishedContent,
         name: "Old Name",
       }),
     );
 
-    await saveMyProfile(caps, { name: "New Name" });
+    await saveMyProfile(caps, { ...publishableContent, name: "New Name" });
 
     const persisted = caps.artistProfiles.upsert.mock.calls[0][0];
     expect(persisted.id).toBe("profile-existing");
     expect(persisted.published).toBe(true);
     expect(persisted.name).toBe("New Name");
+  });
+
+  it("公開中の更新で公開条件を割ったら非公開へ降ろして保存する", async () => {
+    const caps = createCaps();
+    caps.artistProfiles.findByArtistId.mockResolvedValue(
+      reconstructArtistProfile(publishedContent),
+    );
+
+    const result = await saveMyProfile(caps, {
+      ...publishableContent,
+      imageUrl: null,
+    });
+
+    const persisted = caps.artistProfiles.upsert.mock.calls[0][0];
+    expect(persisted.published).toBe(false);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.profile.published).toBe(false);
+    }
   });
 
   it("不正な画像 URL は err(InvalidImageUrlFormatError)（保存しない）", async () => {

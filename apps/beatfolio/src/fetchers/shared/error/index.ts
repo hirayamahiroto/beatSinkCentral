@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export type FetcherError = {
-  kind: "rejected" | "unexpected";
+  kind: "rejected" | "notFound" | "unexpected";
   message: string;
 };
 

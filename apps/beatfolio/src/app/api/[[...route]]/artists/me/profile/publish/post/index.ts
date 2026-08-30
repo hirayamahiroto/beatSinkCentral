@@ -3,9 +3,15 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import type { RequestContextEnv } from "../../../../../../../../middlewares/requestContext";
 import { resolveMyArtistId } from "../../../../../shared/resolveMyArtistId";
+import { resolvePublishRequirementLabels } from "../../../../../shared/resolvePublishRequirementLabels";
 
 const publishProfileRequestSchema = z.object({
   published: z.boolean(),
+});
+
+const notPublishableErrorSchema = z.object({
+  error: z.string(),
+  details: z.object({ missingFields: z.array(z.string()) }),
 });
 
 const app = new Hono<RequestContextEnv>().post(
@@ -34,6 +40,20 @@ const app = new Hono<RequestContextEnv>().post(
 
     if (!res.ok) {
       const error = await res.json();
+      const notPublishable = notPublishableErrorSchema.safeParse(error);
+
+      if (notPublishable.success) {
+        return c.json(
+          {
+            error: notPublishable.data.error,
+            missingRequirements: resolvePublishRequirementLabels(
+              notPublishable.data.details.missingFields,
+            ),
+          },
+          res.status,
+        );
+      }
+
       return c.json(error, res.status);
     }
 

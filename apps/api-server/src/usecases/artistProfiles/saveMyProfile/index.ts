@@ -5,6 +5,7 @@ import {
   type ArtistProfileContent,
   type ArtistProfileContentError,
 } from "../../../domain/artistProfiles/factories";
+import { enforcePublishInvariant } from "../../../domain/artistProfiles/policies/publishability";
 import type { ArtistWriteCapabilities } from "../../capabilities";
 import { type Result, ok, err } from "../../../utils/result";
 
@@ -39,7 +40,9 @@ export const saveMyProfile = async (
     : createArtistProfile({ artistId, ...content });
   if (!profile.ok) return err(profile.error);
 
-  const saved = await caps.artistProfiles.upsert(profile.value.toPersistence());
+  const saved = await caps.artistProfiles.upsert(
+    enforcePublishInvariant(profile.value).toPersistence(),
+  );
 
   return ok({
     accountId: caps.actor.artist.getAccountId(),
