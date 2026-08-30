@@ -1,5 +1,7 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getPlayerDetail } from "../../../fetchers/players/getPlayerDetail";
+import { resolveReadFailure } from "../../../views/resolveReadFailure";
+import { DegradedScreen } from "../../shared/DegradedScreen";
 import { PlayerDetailClientAdapter } from "./PlayerDetailClientAdapter";
 
 type Props = {
@@ -11,10 +13,11 @@ export default async function PlayerDetailPage({ params }: Props) {
   const result = await getPlayerDetail({ accountId });
 
   if (!result.ok) {
-    if (result.error.kind === "notFound") {
-      notFound();
-    }
-    throw new Error(result.error.message);
+    const failure = resolveReadFailure(result.error);
+    if (failure.kind === "redirect") redirect(failure.to);
+    if (failure.kind === "notFound") notFound();
+
+    return <DegradedScreen feedback={failure.feedback} />;
   }
 
   const player = result.value;

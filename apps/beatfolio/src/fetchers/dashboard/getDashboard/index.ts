@@ -1,7 +1,11 @@
 import type { InferResponseType } from "hono/client";
 import { createBeatfolioBffServerClient } from "../../../utils/client";
 import { type Result, ok, err } from "../../../utils/result";
-import { type FetcherError, NETWORK_ERROR_MESSAGE } from "../../shared/error";
+import {
+  type FetcherError,
+  toReadFetcherError,
+  NETWORK_ERROR_MESSAGE,
+} from "../../shared/error";
 
 type BffClient = ReturnType<typeof createBeatfolioBffServerClient>;
 
@@ -20,7 +24,7 @@ export const getDashboard = async (options: {
     const res = await client.api.dashboard.$get();
 
     if (!res.ok) {
-      return err({ kind: "unexpected", message: FALLBACK_MESSAGE });
+      return err(toReadFetcherError(res.status, FALLBACK_MESSAGE));
     }
 
     return ok(await res.json());

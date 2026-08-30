@@ -3,6 +3,7 @@ export const routes = {
   players: "/players",
   event: "/event",
   dashboard: "/dashboard",
+  onboarding: "/onboarding",
   auth: {
     login: "/auth/login",
     logout: "/auth/logout",

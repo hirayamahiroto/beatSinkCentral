@@ -310,10 +310,63 @@ api-server はエラーを型付きエラーで分類し、`errorMap` で `{ err
 - **read も write も同じ経路**。read で「対象の不在」を画面が区別する必要がある場合（`players/getPlayerDetail` の 404）は、route が意味を判定して専用の型付きエラー（`PlayerNotFoundError`）を throw する。ステータスは `errorMap` 側にある。
 - **未知のエラーは 500 + `console.error`**。上流障害（502）と BFF 自身のバグ（500）を混ぜない（[エラーハンドリングの層責務](../../server/error-handling/layer-responsibilities.md#例外-bff-から見た-api-serverゲートウェイの上流障害)）。
 - BFF の `errorMap` が返すボディも `{ error, code }` を持つ（`code = BffError["type"]`）。`UpstreamRejectedError` は上流のボディをそのまま返すため、`code` は api-server のものになる。
-- **`page.tsx`（read 呼び出し側）**: BFF read ルートのレスポンスを純粋関数（resolver）に渡し、その判定に従って `redirect()` 実行 or 描画する（throw でエラーバウンダリに委ねる選択も resolver の戻り値で表現する）。
+- **`page.tsx`（read 呼び出し側）**: BFF read ルートのレスポンスを純粋関数（resolver）に渡し、その判定に従って `redirect()` / `notFound()` を実行するか描画する。失敗をどう画面へ出すかは次節「read の失敗表示」で定義する。
 
 > **未対応（今後の検討）**
-> 到達不能を timeout（504）と接続失敗（502）に分けること、`code` → 日本語文言の翻訳表（#217）、read の部分失敗をセクション単位で返すこと（#241）、`page.tsx` 側の失敗表示（#219）は未設計。
+> 到達不能を timeout（504）と接続失敗（502）に分けること、`code` → 日本語文言の翻訳表（#217）、read の部分失敗をセクション単位で返すこと（#241）は未設計。
+
+### read の失敗表示: 画面を落とさず、失敗を隠さない
+
+> **エラーで画面を落とさない。他の操作ができる状態を保ったまま、失敗を画面内で伝え、次の動きを提示する。**
+
+read の失敗は `page.tsx` で `throw` しない。`throw` は本番ビルドでは digest に置換され、ユーザーには `Application error` とハッシュしか残らない（ナビゲーションもリトライも無い行き止まりになる）。代わりに **失敗の種類を resolver が判定し、`page.tsx` はそれを実行する**。
+
+#### resolver の戻り値（`ScreenView`）
+
+```ts
+// src/views/screenView/index.ts
+type ScreenView<Data> =
+  | { kind: "redirect"; to: string }
+  | { kind: "notFound" }
+  | { kind: "degraded"; feedback: Feedback }
+  | { kind: "render"; data: Data };
+```
+
+失敗種別 → `ScreenView` の写像は画面ごとに書かず、`src/views/resolveReadFailure/` が 1 箇所で持つ。各画面の resolver は「データ由来の遷移（`registered` 等）」だけを自分で判断し、失敗はこれに委譲する。
+
+| `FetcherError["kind"]` | 由来                              | `ScreenView`                    | 画面の見え方                             |
+| ---------------------- | --------------------------------- | ------------------------------- | ---------------------------------------- |
+| `unauthorized`         | BFF が 401                        | `redirect`（`/auth/login`）     | ログインし直せば直るので導線へ送る       |
+| `notFound`             | 対象の不在（`PlayerNotFound` 等） | `notFound`                      | `app/not-found.tsx`                      |
+| `unexpected`           | 上流障害 / 到達不能               | `degraded`（`recovery: retry`） | 領域内に文言 + 再試行 + 別動線           |
+| `rejected`             | 400 / 409 / 422                   | `degraded`（`recovery: none`）  | 再試行しても直らないので再試行を出さない |
+
+`notFound` を作るのは「**画面の対象**が不在」を意味する read fetcher だけ（`getPlayerDetail`）。ダッシュボード系の 404（`MyArtistNotFoundError` 等）はセッション主体側の不整合であり、`not-found` 画面ではなく縮退で扱う。
+
+`Feedback`（`{ message, recovery }`）と `Recovery` の型は `src/feedback/` に置く。**recovery は〈ユーザーが取れる行動〉で切る**ため、UI 側は `recovery.kind` だけを見て出し分けでき、エラーの種類が増えても変更が要らない。現時点の `message` は fetcher が持つ画面別の日本語で、`code` → 文言の解決を BFF の `feedbackMap` へ移す作業は #217 に分離してある（移行しても `ScreenView` と UI 側の契約は変わらない）。
+
+#### トーストではなく領域内の縮退
+
+read はユーザー操作を起点としないため、トーストは不自然（ユーザーは何もしていないのに通知が飛び、しかも本体が空になる）。失敗は **その領域の中** に出す。ヘッダー・ナビゲーションは `app/layout.tsx` 側なので生きたまま残る。
+
+- 縮退表示は `molecules/FailureNotice`（文言 + 再試行 + 別動線）。再試行の実体（`router.refresh()` / `reset()`）と遷移先は app 層が props で与える。
+- `page.tsx` は `redirect()` / `notFound()` を実行し、`degraded` なら `DegradedScreen` を返す。判定は resolver 側にあるので `page.tsx` に分岐ロジックは残らない。
+
+#### 取得失敗を空データにフォールバックしない
+
+取得に失敗したリストを `?? []` で空配列にすると、画面は操作可能でも「まだ誰も登録していない」という**嘘**をユーザーに見せることになる。`.claude/rules/code-review-checklist.md` §11-3（未取得と 0 件を区別する）・§12（必須値を偽の既定値で埋めない）と同じ話で、**「操作可能である」と「失敗を隠さない」の両立が必須条件**になる。
+
+#### `error.tsx` は最後の受け皿
+
+read の失敗が resolver 経由で扱われるため、エラーバウンダリは**主経路から最後の受け皿へ格下げ**される。描画中の想定外例外はゼロにできないので最小構成で置く。
+
+| ファイル               | 受けるもの                 | 持たせる動線                        |
+| ---------------------- | -------------------------- | ----------------------------------- |
+| `app/error.tsx`        | 描画中の想定外例外         | `reset()` + トップ / ダッシュボード |
+| `app/global-error.tsx` | root layout ごと壊れた場合 | `reset()` + トップ                  |
+| `app/not-found.tsx`    | `notFound()` と未定義 URL  | プレイヤー一覧 / トップ             |
+
+> **現時点の制約**: 縮退の単位は**画面単位**（ヘッダー / ナビは残る）。「画面の一部だけ欠けたらその領域だけ縮退」は BFF read route が任意セクションを `{ ok: true; value } | { ok: false }` で返せるようになってから（#241）。route の応答契約が変わっても `page.tsx` は `{ ok: false }` を値として ClientAdapter に渡すだけで、本節の `degraded` に接続できる。
 
 ### テスタビリティ: テストしやすさを「分離できているか」の指標にする
 
@@ -331,27 +384,29 @@ api-server はエラーを型付きエラーで分類し、`errorMap` で `{ err
 **redirect 先（エラー時含む）は `page.tsx` の責務ではなく純粋関数の責務**にする。`page.tsx` は判定結果を受けて `redirect()` を「実行する」だけにとどめる。
 
 ```ts
-// src/app/dashboard/resolveDashboardView.ts  ← Next 非依存・純粋（単体テスト対象）
-type DashboardView =
-  | { kind: "redirect"; to: string }
-  | { kind: "render"; data: DashboardData };
+// src/app/dashboard/resolveDashboardView/index.ts  ← Next 非依存・純粋（単体テスト対象）
+export const resolveDashboardView = (
+  result: Result<DashboardScreen, FetcherError>,
+): ScreenView<DashboardData> => {
+  if (!result.ok) return resolveReadFailure(result.error);
+  if (!result.value.registered) {
+    return { kind: "redirect", to: routes.onboarding };
+  }
 
-export function resolveDashboardView(
-  result: { ok: true; data: DashboardData } | { ok: false },
-): DashboardView {
-  if (!result.ok) return { kind: "redirect", to: "/error" };
-  if (!result.data.registered) return { kind: "redirect", to: "/onboarding" };
-  return { kind: "render", data: result.data };
-}
+  return { kind: "render", data: result.value };
+};
 ```
 
 ```tsx
 // page.tsx は「判定の実行」だけ持つ（分岐ロジックは resolver 側）
-const res = await createBeatfolioBffClient({ cookie }).api.dashboard.$get();
-const view = resolveDashboardView(
-  res.ok ? { ok: true, data: await res.json() } : { ok: false },
-);
+const view = resolveDashboardView(await getDashboard({ cookie }));
+
 if (view.kind === "redirect") redirect(view.to);
+if (view.kind === "notFound") notFound();
+if (view.kind === "degraded") {
+  return <DegradedScreen feedback={view.feedback} />;
+}
+
 return <DashboardScreen>{/* view.data を配る */}</DashboardScreen>;
 ```
 
@@ -373,6 +428,13 @@ apps/beatfolio/src/
 │       ├── errors/{errorName}/index.ts    # BFF エントリポイント固有の型付きエラー（upstreamRejected 等）
 │       ├── validators/validateRequest/    # zValidator を InvalidRequestFormatError の throw に統一
 │       └── shared/                        # route 横断の helper（toUpstreamError / readUpstreamJson / resolveMy*）
+│   ├── shared/{Component}/index.tsx       # 画面をまたぐ app 層コンポーネント（FailureScreen / DegradedScreen）
+│   ├── {page}/resolve{Screen}View/        # 画面ごとの resolver（Next 非依存・純粋。単体テスト対象）
+│   ├── error.tsx / global-error.tsx       # 描画中の想定外例外の最後の受け皿
+│   └── not-found.tsx                      # notFound() と未定義 URL の受け皿
+├── views/screenView/index.ts              # ScreenView（redirect / notFound / degraded / render）
+├── views/resolveReadFailure/index.ts      # FetcherError → ScreenView の写像（1 箇所）
+├── feedback/index.ts                      # Feedback / Recovery（#217 の feedbackMap の置き場）
 ├── errorMap/index.ts                      # BffError → HTTP の翻訳表（ステータスを知る唯一の場所）
 └── utils/client/index.ts                  # createApiServerClient（route→api-server直）/ createBeatfolioBffClient（→BFF /api/*）
 ```

@@ -1,8 +1,10 @@
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { Typography } from "@ui/design-system/components/atoms/Typography";
 import { getSession } from "../../../libs/auth0";
 import { getSettings } from "../../../fetchers/dashboard/getSettings";
+import { DegradedScreen } from "../../shared/DegradedScreen";
+import { resolveSettingsView } from "./resolveSettingsView";
 import { EmailEditorClientAdapter } from "./EmailEditorClientAdapter";
 import { AccountIdEditorClientAdapter } from "./AccountIdEditorClientAdapter";
 
@@ -14,19 +16,15 @@ export default async function SettingsPage() {
   }
 
   const cookieHeader = (await headers()).get("cookie") ?? undefined;
-  const result = await getSettings({ cookie: cookieHeader });
+  const view = resolveSettingsView(await getSettings({ cookie: cookieHeader }));
 
-  if (!result.ok) {
-    throw new Error(result.error.message);
+  if (view.kind === "redirect") redirect(view.to);
+  if (view.kind === "notFound") notFound();
+  if (view.kind === "degraded") {
+    return <DegradedScreen feedback={view.feedback} />;
   }
 
-  const settings = result.value;
-
-  if (!settings.registered) {
-    redirect("/onboarding");
-  }
-
-  const { email, accountId } = settings;
+  const { email, accountId } = view.data;
 
   return (
     <div className="min-h-screen bg-background text-foreground px-4 pb-16 pt-24">

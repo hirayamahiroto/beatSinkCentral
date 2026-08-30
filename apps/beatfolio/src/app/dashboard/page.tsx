@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { Typography } from "@ui/design-system/components/atoms/Typography";
@@ -6,6 +6,8 @@ import { Card } from "@ui/design-system/components/atoms/Card";
 import { Button } from "@ui/design-system/components/atoms/Button";
 import { getSession } from "../../libs/auth0";
 import { getDashboard } from "../../fetchers/dashboard/getDashboard";
+import { DegradedScreen } from "../shared/DegradedScreen";
+import { resolveDashboardView } from "./resolveDashboardView";
 import { ProfilePublishClientAdapter } from "./ProfilePublishClientAdapter";
 
 export default async function DashboardPage() {
@@ -16,19 +18,17 @@ export default async function DashboardPage() {
   }
 
   const cookieHeader = (await headers()).get("cookie") ?? undefined;
-  const result = await getDashboard({ cookie: cookieHeader });
+  const view = resolveDashboardView(
+    await getDashboard({ cookie: cookieHeader }),
+  );
 
-  if (!result.ok) {
-    throw new Error(result.error.message);
+  if (view.kind === "redirect") redirect(view.to);
+  if (view.kind === "notFound") notFound();
+  if (view.kind === "degraded") {
+    return <DegradedScreen feedback={view.feedback} />;
   }
 
-  const dashboard = result.value;
-
-  if (!dashboard.registered) {
-    redirect("/onboarding");
-  }
-
-  const { artist } = dashboard;
+  const { artist } = view.data;
 
   return (
     <div className="min-h-screen bg-background text-foreground px-4 pb-16 pt-24">

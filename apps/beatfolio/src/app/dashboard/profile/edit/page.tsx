@@ -1,7 +1,9 @@
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { getSession } from "../../../../libs/auth0";
 import { getProfileEditScreen } from "../../../../fetchers/dashboard/getProfileEditScreen";
+import { DegradedScreen } from "../../../shared/DegradedScreen";
+import { resolveProfileEditView } from "./resolveProfileEditView";
 import { ProfileWizardClientAdapter } from "./ProfileWizardClientAdapter";
 
 export default async function ProfileEditPage() {
@@ -12,19 +14,17 @@ export default async function ProfileEditPage() {
   }
 
   const cookieHeader = (await headers()).get("cookie") ?? undefined;
-  const result = await getProfileEditScreen({ cookie: cookieHeader });
+  const view = resolveProfileEditView(
+    await getProfileEditScreen({ cookie: cookieHeader }),
+  );
 
-  if (!result.ok) {
-    throw new Error(result.error.message);
+  if (view.kind === "redirect") redirect(view.to);
+  if (view.kind === "notFound") notFound();
+  if (view.kind === "degraded") {
+    return <DegradedScreen feedback={view.feedback} />;
   }
 
-  const screen = result.value;
-
-  if (!screen.registered) {
-    redirect("/onboarding");
-  }
-
-  const { email, linkTypeOptions, defaultValues } = screen;
+  const { email, linkTypeOptions, defaultValues } = view.data;
 
   return (
     <div className="min-h-screen bg-background text-foreground px-4 pt-12 pb-16">

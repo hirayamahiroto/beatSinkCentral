@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { getPlayerDetail } from "./index";
-import { NETWORK_ERROR_MESSAGE } from "../../shared/error";
+import {
+  NETWORK_ERROR_MESSAGE,
+  SESSION_EXPIRED_MESSAGE,
+} from "../../shared/error";
 
 const { getMock } = vi.hoisted(() => ({ getMock: vi.fn() }));
 
@@ -80,6 +83,21 @@ describe("getPlayerDetail", () => {
     expect(result).toStrictEqual({
       ok: false,
       error: { kind: "unexpected", message: NETWORK_ERROR_MESSAGE },
+    });
+  });
+
+  it("BFF が 401 を返したら unauthorized を返す", async () => {
+    getMock.mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ error: "Unauthorized" }),
+    });
+
+    const result = await getPlayerDetail({ accountId: "saku" });
+
+    expect(result).toStrictEqual({
+      ok: false,
+      error: { kind: "unauthorized", message: SESSION_EXPIRED_MESSAGE },
     });
   });
 });
