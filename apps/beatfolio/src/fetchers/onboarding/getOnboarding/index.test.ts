@@ -12,25 +12,23 @@ const { getMock, createServerClientMock } = vi.hoisted(() => {
   };
 });
 
-vi.mock("../../../utils/client", () => ({
+vi.mock("../../../utils/client/server", () => ({
   createBeatfolioBffServerClient: createServerClientMock,
 }));
 
 describe("getOnboarding", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("cookie を引き継いで登録状態を ok で返す", async () => {
+  it("登録状態を ok で返す", async () => {
     getMock.mockResolvedValue({
       ok: true,
       status: 200,
       json: async () => ({ registered: false }),
     });
 
-    const result = await getOnboarding({ cookie: "appSession=abc" });
+    const result = await getOnboarding();
 
-    expect(createServerClientMock).toHaveBeenCalledWith({
-      cookie: "appSession=abc",
-    });
+    expect(createServerClientMock).toHaveBeenCalledTimes(1);
     expect(result).toStrictEqual({ ok: true, value: { registered: false } });
   });
 
@@ -41,7 +39,7 @@ describe("getOnboarding", () => {
       json: async () => ({ error: "Failed to fetch onboarding" }),
     });
 
-    const result = await getOnboarding({ cookie: "appSession=abc" });
+    const result = await getOnboarding();
 
     expect(result).toStrictEqual({
       ok: false,
@@ -55,7 +53,7 @@ describe("getOnboarding", () => {
   it("通信に失敗したら unexpected を返す", async () => {
     getMock.mockRejectedValue(new TypeError("Failed to fetch"));
 
-    const result = await getOnboarding({ cookie: "appSession=abc" });
+    const result = await getOnboarding();
 
     expect(result).toStrictEqual({
       ok: false,

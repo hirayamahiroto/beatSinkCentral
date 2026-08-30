@@ -1,13 +1,11 @@
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
 import { Typography } from "@ui/design-system/components/atoms/Typography";
 import { getSettings } from "../../../fetchers/dashboard/getSettings";
 import { EmailEditorClientAdapter } from "./EmailEditorClientAdapter";
 import { AccountIdEditorClientAdapter } from "./AccountIdEditorClientAdapter";
 
 export default async function SettingsPage() {
-  const cookieHeader = (await headers()).get("cookie") ?? undefined;
-  const result = await getSettings({ cookie: cookieHeader });
+  const result = await getSettings();
 
   if (!result.ok) {
     throw new Error(result.error.message);

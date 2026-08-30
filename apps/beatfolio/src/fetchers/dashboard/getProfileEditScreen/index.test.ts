@@ -12,7 +12,7 @@ const { getMock, createServerClientMock } = vi.hoisted(() => {
   };
 });
 
-vi.mock("../../../utils/client", () => ({
+vi.mock("../../../utils/client/server", () => ({
   createBeatfolioBffServerClient: createServerClientMock,
 }));
 
@@ -26,18 +26,16 @@ const screen = {
 describe("getProfileEditScreen", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("cookie を引き継いで画面用データを ok で返す", async () => {
+  it("画面用データを ok で返す", async () => {
     getMock.mockResolvedValue({
       ok: true,
       status: 200,
       json: async () => screen,
     });
 
-    const result = await getProfileEditScreen({ cookie: "appSession=abc" });
+    const result = await getProfileEditScreen();
 
-    expect(createServerClientMock).toHaveBeenCalledWith({
-      cookie: "appSession=abc",
-    });
+    expect(createServerClientMock).toHaveBeenCalledTimes(1);
     expect(result).toStrictEqual({ ok: true, value: screen });
   });
 
@@ -48,7 +46,7 @@ describe("getProfileEditScreen", () => {
       json: async () => ({ error: "Failed to fetch profile edit screen" }),
     });
 
-    const result = await getProfileEditScreen({ cookie: "appSession=abc" });
+    const result = await getProfileEditScreen();
 
     expect(result).toStrictEqual({
       ok: false,
@@ -62,7 +60,7 @@ describe("getProfileEditScreen", () => {
   it("通信に失敗したら unexpected を返す", async () => {
     getMock.mockRejectedValue(new TypeError("Failed to fetch"));
 
-    const result = await getProfileEditScreen({ cookie: "appSession=abc" });
+    const result = await getProfileEditScreen();
 
     expect(result).toStrictEqual({
       ok: false,

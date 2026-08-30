@@ -1,9 +1,9 @@
 import type { InferResponseType } from "hono/client";
-import { createBeatfolioBffServerClient } from "../../../utils/client";
+import { createBeatfolioBffServerClient } from "../../../utils/client/server";
 import { type Result, ok, err } from "../../../utils/result";
 import { type FetcherError, NETWORK_ERROR_MESSAGE } from "../../shared/error";
 
-type BffClient = ReturnType<typeof createBeatfolioBffServerClient>;
+type BffClient = Awaited<ReturnType<typeof createBeatfolioBffServerClient>>;
 
 export type SettingsScreen = InferResponseType<
   BffClient["api"]["dashboard"]["settings"]["$get"],
@@ -12,11 +12,11 @@ export type SettingsScreen = InferResponseType<
 
 const FALLBACK_MESSAGE = "アカウント設定の取得に失敗しました";
 
-export const getSettings = async (options: {
-  cookie?: string;
-}): Promise<Result<SettingsScreen, FetcherError>> => {
+export const getSettings = async (): Promise<
+  Result<SettingsScreen, FetcherError>
+> => {
   try {
-    const client = createBeatfolioBffServerClient({ cookie: options.cookie });
+    const client = await createBeatfolioBffServerClient();
     const res = await client.api.dashboard.settings.$get();
 
     if (!res.ok) {

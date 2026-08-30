@@ -1,9 +1,9 @@
 import type { InferResponseType } from "hono/client";
-import { createBeatfolioBffServerClient } from "../../../utils/client";
+import { createBeatfolioBffServerClient } from "../../../utils/client/server";
 import { type Result, ok, err } from "../../../utils/result";
 import { type FetcherError, NETWORK_ERROR_MESSAGE } from "../../shared/error";
 
-type BffClient = ReturnType<typeof createBeatfolioBffServerClient>;
+type BffClient = Awaited<ReturnType<typeof createBeatfolioBffServerClient>>;
 
 export type OnboardingScreen = InferResponseType<
   BffClient["api"]["onboarding"]["$get"],
@@ -12,11 +12,11 @@ export type OnboardingScreen = InferResponseType<
 
 const FALLBACK_MESSAGE = "オンボーディング状態の取得に失敗しました";
 
-export const getOnboarding = async (options: {
-  cookie?: string;
-}): Promise<Result<OnboardingScreen, FetcherError>> => {
+export const getOnboarding = async (): Promise<
+  Result<OnboardingScreen, FetcherError>
+> => {
   try {
-    const client = createBeatfolioBffServerClient({ cookie: options.cookie });
+    const client = await createBeatfolioBffServerClient();
     const res = await client.api.onboarding.$get();
 
     if (!res.ok) {

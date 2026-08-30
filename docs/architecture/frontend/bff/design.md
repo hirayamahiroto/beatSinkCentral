@@ -160,9 +160,8 @@ import { auth0 } from "../../libs/auth0";
 import { getDashboard } from "../../fetchers/dashboard/getDashboard";
 
 export default async function DashboardPage() {
-  // SSR から fetcher 経由で自分の BFF read ルートを呼ぶ（cookie を転送する自己 HTTP hop）
-  const cookie = (await headers()).get("cookie") ?? undefined;
-  const result = await getDashboard({ cookie });
+  // SSR から fetcher 経由で自分の BFF read ルートを呼ぶ（cookie の転送は client 生成側が担う）
+  const result = await getDashboard();
   if (!result.ok) throw new Error(result.error.message);
   const dashboard = result.value;
 
@@ -181,7 +180,7 @@ export default async function DashboardPage() {
 ```
 
 - **整形・集約・そぎ落としは read route が担う**。`page.tsx` は route が返した形をそのまま描画に使い、取得・整形ロジックを持たない。
-- **認証ガードは `page.tsx` に書かない**。認証境界の規範は [`authentication.md`「ミドルウェア構成」](../../authentication.md#ミドルウェア構成) に集約する。`page.tsx` が持つのは `headers()`（cookie 転送）と `redirect()` の**実行**だけで、**「どこへ redirect するか」の判定**（データ由来の遷移・エラー時の遷移先）は純粋関数へ出す（[テスタビリティ](#テスタビリティ-テストしやすさを分離できているかの指標にする) 参照）。
+- **認証ガードは `page.tsx` に書かない**。認証境界の規範は [`authentication.md`「ミドルウェア構成」](../../authentication.md#ミドルウェア構成) に集約する。`page.tsx` が持つのは `redirect()` の**実行**だけで（cookie 転送は `createBeatfolioBffServerClient` が担う）、**「どこへ redirect するか」の判定**（データ由来の遷移・エラー時の遷移先）は純粋関数へ出す（[テスタビリティ](#テスタビリティ-テストしやすさを分離できているかの指標にする) 参照）。
 - 例外: 画面が**セッションの中身**を必要とする場合（`onboarding` が `user.email` を登録に使う等）は、その値の有無を `page.tsx` で判定してよい。これは認証ガードではなくデータ要件の判定。
 - `page.tsx` 自身はマークアップを所有し、**編集可能な部分だけを colocated な ClientAdapter に必要な値だけ渡す**（`packages/ui` の Page/Template に丸ごと委譲する形ではない）。
 
@@ -245,7 +244,7 @@ if (result.ok) router.refresh();
 UI 層（`page.tsx` / hooks）は hono クライアントを直接生成しない。BFF `/api/*` への fetch は **`src/fetchers/` の関数だけ**が行い、UI はそれを呼ぶ。「どこで BFF が fetch されているか」を `src/fetchers/` の一覧だけで見渡せるようにするための集約点である。
 
 - **構成**: BFF エンドポイント1つにつき1モジュール。`src/fetchers/<BFF ルートの名前空間>/<操作名>/index.ts`（+ `index.test.ts`）。例: `fetchers/artists/updateMyAccountId/`、`fetchers/dashboard/getProfileEditScreen/`。
-- **責務**: クライアント生成（write = CSR は `createBeatfolioBffClient`、read = SSR は `createBeatfolioBffServerClient`。read は `cookie` を引数で受ける）・レスポンス解釈・エラー正規化。
+- **責務**: クライアント生成（write = CSR は `createBeatfolioBffClient`、read = SSR は `createBeatfolioBffServerClient`。受信リクエストの cookie は client 生成時に `headers()` から引き継ぐので、fetcher も `page.tsx` も cookie を扱わない）・レスポンス解釈・エラー正規化。
 - **契約**: `Promise<Result<T, FetcherError>>` を返し、**throw しない**（到達不能も catch して `unexpected` に正規化する）。`FetcherError` は `{ kind: "rejected" | "unexpected"; message: string }` — `rejected` はユーザー起因（400/409/422）でメッセージをそのまま画面に出せる、`unexpected` はそれ以外。共通処理は `fetchers/shared/error/` に置く。
 - **型は BFF AppType から導出する**（`InferRequestType` / `InferResponseType`）。fetchers 層でリクエスト・レスポンスの型を手書きしない。
 - **呼び出し側の責務**: hooks は状態管理（`isLoading` / `error` / `router.refresh`）に専念し、`page.tsx` は認証・`redirect`・描画に専念する。レスポンス解釈・エラー文言は fetchers 側にある。
@@ -257,15 +256,15 @@ write: hook     ──▶ fetchers（CSR クライアント生成 + Result 正�
 
 ### クライアントの使い分け
 
-| クライアント                     | 経路                            | 用途                                                                            |
-| -------------------------------- | ------------------------------- | ------------------------------------------------------------------------------- |
-| `createApiServerClient`          | サーバー → **api-server 直**    | BFF route（read / write）が `requestContext` 経由（`c.get("apiClient")`）で使う |
-| `createBeatfolioBffClient`       | クライアント → **BFF `/api/*`** | **`src/fetchers/` だけが生成する**（CSR の write fetcher）                      |
-| `createBeatfolioBffServerClient` | サーバー → **BFF `/api/*`**     | **`src/fetchers/` だけが生成する**（SSR の read fetcher。`cookie` を引き継ぐ）  |
+| クライアント                     | 経路                            | 用途                                                                                                                        |
+| -------------------------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `createApiServerClient`          | サーバー → **api-server 直**    | BFF route（read / write）が `requestContext` 経由（`c.get("apiClient")`）で使う                                             |
+| `createBeatfolioBffClient`       | クライアント → **BFF `/api/*`** | **`src/fetchers/` だけが生成する**（CSR の write fetcher）                                                                  |
+| `createBeatfolioBffServerClient` | サーバー → **BFF `/api/*`**     | **`src/fetchers/` だけが生成する**（SSR の read fetcher。`utils/client/server` に置き、`headers()` から cookie を引き継ぐ） |
 
 > **命名の注意**: `createApiServerClient` は **api-server を直接叩くクライアント**（`hc<AppType>`、`AppType` は api-server のもの）。BFF `/api/*` を叩くのは `createBeatfolioBffClient` / `createBeatfolioBffServerClient` の方。名前の `ApiServer` / `BeatfolioBff` が「叩く先」を表す。
 
-> **read の経路**: `page.tsx` は api-server を直接叩かず、**自分の BFF read ルート（`/api/*`）を HTTP で呼ぶ**。整形責務を route に集約し read/write の経路を対称に保つための設計で、自己 HTTP hop はその対価として受け入れる。SSR からの呼び出しは `createBeatfolioBffServerClient`（絶対 URL + cookie 転送）を使い、その生成は read fetcher（`src/fetchers/`）に閉じる。read / write とも全 BFF 呼び出しは fetchers 層経由に移行済み。
+> **read の経路**: `page.tsx` は api-server を直接叩かず、**自分の BFF read ルート（`/api/*`）を HTTP で呼ぶ**。整形責務を route に集約し read/write の経路を対称に保つための設計で、自己 HTTP hop はその対価として受け入れる。SSR からの呼び出しは `createBeatfolioBffServerClient`（絶対 URL + `headers()` からの cookie 転送。`next/headers` に依存するため CSR 向け client とは別モジュール `utils/client/server` に置く）を使い、その生成は read fetcher（`src/fetchers/`）に閉じる。read / write とも全 BFF 呼び出しは fetchers 層経由に移行済み。
 
 ### バリデーションの役割分担
 
@@ -346,7 +345,7 @@ export function resolveDashboardView(
 
 ```tsx
 // page.tsx は「判定の実行」だけ持つ（分岐ロジックは resolver 側）
-const res = await createBeatfolioBffClient({ cookie }).api.dashboard.$get();
+const res = await (await createBeatfolioBffServerClient()).api.dashboard.$get();
 const view = resolveDashboardView(
   res.ok ? { ok: true, data: await res.json() } : { ok: false },
 );

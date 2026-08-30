@@ -1,9 +1,9 @@
 import type { InferResponseType } from "hono/client";
-import { createBeatfolioBffServerClient } from "../../../utils/client";
+import { createBeatfolioBffServerClient } from "../../../utils/client/server";
 import { type Result, ok, err } from "../../../utils/result";
 import { type FetcherError, NETWORK_ERROR_MESSAGE } from "../../shared/error";
 
-type BffClient = ReturnType<typeof createBeatfolioBffServerClient>;
+type BffClient = Awaited<ReturnType<typeof createBeatfolioBffServerClient>>;
 
 export type PlayerDetailScreen = InferResponseType<
   BffClient["api"]["players"][":accountId"]["$get"],
@@ -17,7 +17,7 @@ export const getPlayerDetail = async (input: {
   accountId: string;
 }): Promise<Result<PlayerDetailScreen, FetcherError>> => {
   try {
-    const client = createBeatfolioBffServerClient();
+    const client = await createBeatfolioBffServerClient();
     const res = await client.api.players[":accountId"].$get({
       param: { accountId: input.accountId },
     });
