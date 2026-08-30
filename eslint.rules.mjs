@@ -114,7 +114,10 @@ const isSuccessGuard = (statement, resultName) => {
     isMemberOf(test.left, resultName, "success") &&
     test.right.type === "Literal" &&
     test.right.value === false;
-  return (isNegatedSuccess || isFalseCompare) && containsEarlyExit(statement.consequent);
+  return (
+    (isNegatedSuccess || isFalseCompare) &&
+    containsEarlyExit(statement.consequent)
+  );
 };
 
 const isSafeParseDeclaration = (statement, resultName) =>
@@ -324,7 +327,9 @@ const isCapabilityType = (typeNode, capabilityNames) => {
 const referencesCapabilityType = (node, capabilityNames) => {
   if (!node || typeof node !== "object") return false;
   if (Array.isArray(node)) {
-    return node.some((child) => referencesCapabilityType(child, capabilityNames));
+    return node.some((child) =>
+      referencesCapabilityType(child, capabilityNames),
+    );
   }
   if (capabilityNames.has(typeReferenceName(node))) return true;
 
@@ -496,4 +501,41 @@ export const usecaseCapabilityParameterExempt = (files) => ({
   rules: {
     "local/usecase-capability-parameter": "off",
   },
+});
+
+const ROUTE_STATUS_MESSAGE =
+  "BFF route で HTTP ステータスを決めない。失敗は型付きエラーを throw し、errorMap が翻訳する（docs/architecture/frontend/bff/design.md「エラー契約」）。成功系（2xx）の明示のみ許可。";
+
+const isSuccessStatusLiteral = (node) =>
+  node.type === "Literal" &&
+  typeof node.value === "number" &&
+  node.value >= 200 &&
+  node.value < 300;
+
+const routeStatusRule = {
+  meta: {
+    type: "problem",
+    docs: { description: ROUTE_STATUS_MESSAGE },
+    schema: [],
+  },
+  create(context) {
+    return {
+      'CallExpression[callee.object.name="c"][callee.property.name="json"][arguments.length>=2]'(
+        node,
+      ) {
+        const status = node.arguments[1];
+        if (isSuccessStatusLiteral(status)) return;
+        context.report({ node: status, message: ROUTE_STATUS_MESSAGE });
+      },
+    };
+  },
+};
+
+export const bffRouteStatusRules = (appDir) => ({
+  files: [`${appDir}/src/app/api/**/*.ts`],
+  ignores: [`${appDir}/src/app/api/**/*.test.ts`],
+  plugins: {
+    "local-bff": { rules: { "no-status-in-route": routeStatusRule } },
+  },
+  rules: { "local-bff/no-status-in-route": "error" },
 });
