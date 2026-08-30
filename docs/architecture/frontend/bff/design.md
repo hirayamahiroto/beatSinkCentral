@@ -196,7 +196,7 @@ export default async function DashboardPage() {
 
 - 配置: `src/app/api/[[...route]]/{resource}/{操作名}/index.ts`（例: `artists/me/updateMyAccountId/`。ディレクトリ構成の規約は [route の実装規約](#route-の実装規約は-api-server-と共有する) を参照）
 - 責務: 入力バリデーション（`validators/validateRequest`）→ 必要なら自分の `userId` / `artistId` を解決（`shared/resolveMyUserId` / `shared/resolveMyArtistId`、内部で `GET /users/me`。見つからなければ型付きエラーを throw）→ `apiClient` で api-server へ送信 → 成功なら結果を返し、失敗なら `throw await toUpstreamError(res)`（**薄いパススルー**。ステータスの決定は route ではなく `errorMap`）。ブラウザ向け URL は `me` のままでよい（セッション主体への読み替えは BFF の責務。api-server 側は `/:userId` / `/:artistId` でアドレスする）。
-- 認証 cookie: `requestContextMiddleware` がセッション cookie を付与した `apiClient`（= `createBffServerClient`）を `c.set("apiClient", ...)` する。ルートは `c.get("apiClient")` を使うだけ。
+- 認証 cookie: `requestContextMiddleware` がセッション cookie を付与した `apiClient`（= `createApiServerClient`）を `c.set("apiClient", ...)` する。ルートは `c.get("apiClient")` を使うだけ。
 
 ```ts
 // src/app/api/[[...route]]/artists/me/updateMyAccountId/index.ts
@@ -261,11 +261,11 @@ write: hook     ──▶ fetchers（CSR クライアント生成 + Result 正�
 
 | クライアント                     | 経路                            | 用途                                                                            |
 | -------------------------------- | ------------------------------- | ------------------------------------------------------------------------------- |
-| `createBffServerClient`          | サーバー → **api-server 直**    | BFF route（read / write）が `requestContext` 経由（`c.get("apiClient")`）で使う |
+| `createApiServerClient`          | サーバー → **api-server 直**    | BFF route（read / write）が `requestContext` 経由（`c.get("apiClient")`）で使う |
 | `createBeatfolioBffClient`       | クライアント → **BFF `/api/*`** | **`src/fetchers/` だけが生成する**（CSR の write fetcher）                      |
 | `createBeatfolioBffServerClient` | サーバー → **BFF `/api/*`**     | **`src/fetchers/` だけが生成する**（SSR の read fetcher。`cookie` を引き継ぐ）  |
 
-> **命名の注意**: `createBffServerClient` は名前に反して **api-server を直接叩くクライアント**である（`hc<AppType>`、`AppType` は api-server のもの）。BFF `/api/*` を叩くのは `createBeatfolioBffClient` の方。混同しないこと（将来 `createApiServerClient` 等へリネームを検討）。
+> **命名の注意**: `createApiServerClient` は **api-server を直接叩くクライアント**（`hc<AppType>`、`AppType` は api-server のもの）。BFF `/api/*` を叩くのは `createBeatfolioBffClient` / `createBeatfolioBffServerClient` の方。名前の `ApiServer` / `BeatfolioBff` が「叩く先」を表す。
 
 > **read の経路**: `page.tsx` は api-server を直接叩かず、**自分の BFF read ルート（`/api/*`）を HTTP で呼ぶ**。整形責務を route に集約し read/write の経路を対称に保つための設計で、自己 HTTP hop はその対価として受け入れる。SSR からの呼び出しは `createBeatfolioBffServerClient`（絶対 URL + cookie 転送）を使い、その生成は read fetcher（`src/fetchers/`）に閉じる。read / write とも全 BFF 呼び出しは fetchers 層経由に移行済み。
 
