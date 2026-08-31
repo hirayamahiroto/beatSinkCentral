@@ -181,7 +181,7 @@ export default async function DashboardPage() {
 ```
 
 - **整形・集約・そぎ落としは read route が担う**。`page.tsx` は route が返した形をそのまま描画に使い、取得・整形ロジックを持たない。
-- **認証ガードは `page.tsx` に書かない**。ログイン必須パスは `src/middleware.ts` の `SESSION_REQUIRED_PATHS`（`/dashboard/*` `/onboarding/*`）で一元管理し、`requireSessionMiddleware` がセッション無しを `/auth/login` へ redirect する（[`authentication.md`「ミドルウェア構成」](../../authentication.md#ミドルウェア構成)）。`page.tsx` が持つのは `headers()`（cookie 転送）と `redirect()` の**実行**だけで、**「どこへ redirect するか」の判定**（データ由来の遷移・エラー時の遷移先）は純粋関数へ出す（[テスタビリティ](#テスタビリティ-テストしやすさを分離できているかの指標にする) 参照）。
+- **認証ガードは `page.tsx` に書かない**。認証境界の規範は [`authentication.md`「ミドルウェア構成」](../../authentication.md#ミドルウェア構成) に集約する。`page.tsx` が持つのは `headers()`（cookie 転送）と `redirect()` の**実行**だけで、**「どこへ redirect するか」の判定**（データ由来の遷移・エラー時の遷移先）は純粋関数へ出す（[テスタビリティ](#テスタビリティ-テストしやすさを分離できているかの指標にする) 参照）。
 - 例外: 画面が**セッションの中身**を必要とする場合（`onboarding` が `user.email` を登録に使う等）は、その値の有無を `page.tsx` で判定してよい。これは認証ガードではなくデータ要件の判定。
 - `page.tsx` 自身はマークアップを所有し、**編集可能な部分だけを colocated な ClientAdapter に必要な値だけ渡す**（`packages/ui` の Page/Template に丸ごと委譲する形ではない）。
 
@@ -324,7 +324,7 @@ api-server はエラーを型付きエラーで分類し、`errorMap` で `{ err
 | read の整形・そぎ落とし・api-server エラー透過 | **BFF read route**（Hono ハンドラ） | mock した apiClient を渡し「api-server が X を返したら route は Y／エラーは透過」を単体テスト |
 | **「どこへ redirect／何を描く」の判定**        | **純粋関数（resolver）**            | データ → 遷移先の写像。Next 非依存なので入出力だけで網羅テストできる                          |
 | write の検証・パススルー                       | **BFF write route**                 | zod で弾く／api-server へ素通し、を route 単体でテスト                                        |
-| 認証ガード                                     | `src/middleware.ts`                 | パス表（`SESSION_REQUIRED_PATHS`）に対する合成テスト（`middleware.test.ts`）で担保            |
+| 認証ガード                                     | `src/middleware.ts`                 | 規範・テスト方針は [`authentication.md`](../../authentication.md#ミドルウェア構成) を参照     |
 | `redirect` の実行・描画                        | `page.tsx`（薄いグルー）            | Next API の副作用そのもの。分岐判断を持たないので単体テスト対象から外し、結合/e2e で担保      |
 
 **redirect 先（エラー時含む）は `page.tsx` の責務ではなく純粋関数の責務**にする。`page.tsx` は判定結果を受けて `redirect()` を「実行する」だけにとどめる。
@@ -354,7 +354,7 @@ if (view.kind === "redirect") redirect(view.to);
 return <DashboardScreen>{/* view.data を配る */}</DashboardScreen>;
 ```
 
-- 認証ガード（セッション無し → `/auth/login`）は `page.tsx` ではなく `middleware.ts` の責務。データ由来の遷移（`registered` 等）は純粋関数へ。
+- 認証ガードは `page.tsx` ではなく middleware の責務（[`authentication.md`](../../authentication.md#ミドルウェア構成)）。データ由来の遷移（`registered` 等）は純粋関数へ。
 - 単一の `if` で済む単純な画面なら resolver を作らずインラインでよい。**遷移条件に分岐が増え、テストしたくなった時点で resolver に切り出す**のが判断基準（過剰抽象を避ける）。
 
 ### ディレクトリ構造

@@ -115,7 +115,7 @@ if (!user) {
 
 beatfolio の認証境界は `apps/beatfolio/src/middleware.ts` の 1 箇所。Hono のチェーンとして合成し、`page.tsx` には認証判定を書かない。
 
-```
+```text
 src/middleware.ts（Next.js middleware = Hono app）
 ├── basicAuthMiddleware        /auth/* と /api/* を除く全パス（ENABLE_BASIC_AUTH 時のみ）
 ├── requireAuthMiddleware      Auth0 の middleware を実行
