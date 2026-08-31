@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
 import Link from "next/link";
 import { Typography } from "@ui/design-system/components/atoms/Typography";
 import { Card } from "@ui/design-system/components/atoms/Card";
@@ -8,8 +7,7 @@ import { getDashboard } from "../../fetchers/dashboard/getDashboard";
 import { ProfilePublishClientAdapter } from "./ProfilePublishClientAdapter";
 
 export default async function DashboardPage() {
-  const cookieHeader = (await headers()).get("cookie") ?? undefined;
-  const result = await getDashboard({ cookie: cookieHeader });
+  const result = await getDashboard();
 
   if (!result.ok) {
     throw new Error(result.error.message);

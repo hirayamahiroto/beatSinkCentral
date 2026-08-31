@@ -1,11 +1,9 @@
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
 import { getProfileEditScreen } from "../../../../fetchers/dashboard/getProfileEditScreen";
 import { ProfileWizardClientAdapter } from "./ProfileWizardClientAdapter";
 
 export default async function ProfileEditPage() {
-  const cookieHeader = (await headers()).get("cookie") ?? undefined;
-  const result = await getProfileEditScreen({ cookie: cookieHeader });
+  const result = await getProfileEditScreen();
 
   if (!result.ok) {
     throw new Error(result.error.message);
