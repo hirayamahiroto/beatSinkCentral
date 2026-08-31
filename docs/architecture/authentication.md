@@ -113,19 +113,22 @@ if (!user) {
 
 ## ミドルウェア構成
 
-```
-requireAuthMiddleware
-├── Auth0セッションの検証
-└── auth0Userをコンテキストに設定
+beatfolio の認証境界は `apps/beatfolio/src/middleware.ts` の 1 箇所。Hono のチェーンとして合成し、`page.tsx` には認証判定を書かない。
 
-requireVerifiedMiddleware（オプション）
-├── email_verifiedのチェック
-└── 未検証の場合は403
-
-requireRegisteredMiddleware（新規追加予定）
-├── DBにUserが存在するか確認
-└── 未登録の場合はリダイレクトまたは403
+```text
+src/middleware.ts（Next.js middleware = Hono app）
+├── basicAuthMiddleware        /auth/* と /api/* を除く全パス（ENABLE_BASIC_AUTH 時のみ）
+├── requireAuthMiddleware      Auth0 の middleware を実行
+│     ├── /auth/* または Auth0 がリダイレクト等を返した → その応答を返してチェーン終了
+│     └── 素通し応答（200）→ authResponse としてコンテキストに保持し next()
+├── requireSessionMiddleware   SESSION_REQUIRED_PATHS（/dashboard/* /onboarding/*）のみ
+│     └── セッション無し → /auth/login へ redirect
+└── 終端ハンドラ               authResponse（Auth0 が付けた Set-Cookie 等）を返す
 ```
+
+- **`requireAuthMiddleware` は `next()` を呼ぶ**。Auth0 の素通し応答を即 return するとチェーンがそこで終わり、後続の `requireSessionMiddleware` が実行されない（過去にこの形で guard が無効化されていた。`middleware.test.ts` で合成を担保する）。
+- 保護パスを増やすときは `SESSION_REQUIRED_PATHS` に足し、`middleware.test.ts` のケースを追加する。
+- 未登録ユーザーの `/onboarding` への誘導は認証ではなくデータ由来の遷移なので、middleware ではなく BFF read route の結果を見て `page.tsx` が `redirect` する（[`frontend/bff/design.md`](./frontend/bff/design.md)）。
 
 ## アプリのベース URL（appBaseUrl）の決定
 

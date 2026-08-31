@@ -7,13 +7,7 @@ import { OnboardingClientAdapter } from "./OnboardingClientAdapter";
 export default async function OnboardingPage() {
   const session = await getSession();
 
-  if (!session) {
-    redirect("/auth/login");
-  }
-
-  const { user } = session;
-
-  if (!user.email) {
+  if (!session || !session.user.email) {
     redirect("/auth/login");
   }
 
@@ -38,7 +32,7 @@ export default async function OnboardingPage() {
           </div>
 
           <div className="backdrop-blur-md bg-white/5 p-8 rounded-2xl border border-white/10">
-            <OnboardingClientAdapter email={user.email} />
+            <OnboardingClientAdapter email={session.user.email} />
           </div>
         </div>
       </div>

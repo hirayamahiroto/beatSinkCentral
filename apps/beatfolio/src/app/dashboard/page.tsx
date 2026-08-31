@@ -4,17 +4,10 @@ import Link from "next/link";
 import { Typography } from "@ui/design-system/components/atoms/Typography";
 import { Card } from "@ui/design-system/components/atoms/Card";
 import { Button } from "@ui/design-system/components/atoms/Button";
-import { getSession } from "../../libs/auth0";
 import { getDashboard } from "../../fetchers/dashboard/getDashboard";
 import { ProfilePublishClientAdapter } from "./ProfilePublishClientAdapter";
 
 export default async function DashboardPage() {
-  const session = await getSession();
-
-  if (!session) {
-    redirect("/auth/login");
-  }
-
   const cookieHeader = (await headers()).get("cookie") ?? undefined;
   const result = await getDashboard({ cookie: cookieHeader });
 
