@@ -7,12 +7,12 @@ import type {
 import type { UserAlreadyRegisteredError } from "../domain/users/errors/userAlreadyRegistered";
 import type { UserNotFoundError } from "../domain/users/errors/userNotFound";
 import type { EmailAlreadyTakenError } from "../domain/users/errors/emailAlreadyTaken";
-import type { AccountIdAlreadyTakenError } from "../domain/artists/errors/accountIdAlreadyTaken";
+import type { HandleAlreadyTakenError } from "../domain/artists/errors/handleAlreadyTaken";
 import type { ArtistNotFoundError } from "../domain/artists/errors/artistNotFound";
 import type { InvalidEmailFormatError } from "../domain/users/valueObjects/email";
 import type { InvalidSubFormatError } from "../domain/users/valueObjects/sub";
 import type { InvalidNameFormatError } from "../domain/users/valueObjects/name";
-import type { InvalidAccountIdFormatError } from "../domain/artists/valueObjects/accountId";
+import type { InvalidHandleFormatError } from "../domain/artists/valueObjects/handle";
 import type { InvalidArtistIdFormatError } from "../domain/artists/valueObjects/artistId";
 import type { ArtistProfileNotFoundError } from "../domain/artistProfiles/errors/artistProfileNotFound";
 import type { ProfileNotPublishableError } from "../domain/artistProfiles/policies/publishability";
@@ -51,14 +51,14 @@ export type AppError =
   | UserAlreadyRegisteredError
   | UserNotFoundError
   | EmailAlreadyTakenError
-  | AccountIdAlreadyTakenError
+  | HandleAlreadyTakenError
   | ArtistNotFoundError
   | ArtistProfileNotFoundError
   | ProfileNotPublishableError
   | InvalidEmailFormatError
   | InvalidSubFormatError
   | InvalidNameFormatError
-  | InvalidAccountIdFormatError
+  | InvalidHandleFormatError
   | InvalidArtistIdFormatError
   | InvalidProfileNameFormatError
   | InvalidTaglineFormatError
@@ -137,11 +137,11 @@ const errorMap: ErrorMap = {
     clientMessage: () => "Email already taken",
     logLevel: "info",
   },
-  AccountIdAlreadyTakenError: {
+  HandleAlreadyTakenError: {
     status: 409,
-    clientMessage: (error) => `Account ID already taken: ${error.accountId}`,
+    clientMessage: (error) => `Handle already taken: ${error.handle}`,
     logLevel: "info",
-    logFields: (error) => ({ accountId: error.accountId }),
+    logFields: (error) => ({ handle: error.handle }),
   },
   ArtistNotFoundError: {
     status: 404,
@@ -163,9 +163,9 @@ const errorMap: ErrorMap = {
     clientMessage: () => "Invalid name format",
     logLevel: "info",
   },
-  InvalidAccountIdFormatError: {
+  InvalidHandleFormatError: {
     status: 422,
-    clientMessage: () => "Invalid accountId format",
+    clientMessage: () => "Invalid handle format",
     logLevel: "info",
   },
   InvalidArtistIdFormatError: {

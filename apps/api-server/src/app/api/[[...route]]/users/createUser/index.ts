@@ -11,10 +11,10 @@ export const requestSchema = z.object({
     .string({ required_error: "email is required" })
     .min(1, "email is required")
     .email("Invalid email format"),
-  accountId: z
-    .string({ required_error: "accountId is required" })
-    .min(1, "accountId is required")
-    .max(255, "accountId must be 255 characters or less"),
+  handle: z
+    .string({ required_error: "handle is required" })
+    .min(1, "handle is required")
+    .max(255, "handle must be 255 characters or less"),
 });
 
 export type CreateUserRequestBody = z.infer<typeof requestSchema>;
@@ -32,7 +32,7 @@ const app = new Hono().post(
         createUser(caps, {
           subId: auth0User.sub,
           email: body.email,
-          accountId: body.accountId,
+          handle: body.handle,
         }),
     );
 

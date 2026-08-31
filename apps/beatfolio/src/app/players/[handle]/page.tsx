@@ -3,12 +3,12 @@ import { getPlayerDetail } from "../../../fetchers/players/getPlayerDetail";
 import { PlayerDetailClientAdapter } from "./PlayerDetailClientAdapter";
 
 type Props = {
-  params: Promise<{ accountId: string }>;
+  params: Promise<{ handle: string }>;
 };
 
 export default async function PlayerDetailPage({ params }: Props) {
-  const { accountId } = await params;
-  const result = await getPlayerDetail({ accountId });
+  const { handle } = await params;
+  const result = await getPlayerDetail({ handle });
 
   if (!result.ok) {
     if (result.error.kind === "notFound") {

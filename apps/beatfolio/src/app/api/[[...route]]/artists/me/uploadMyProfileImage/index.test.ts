@@ -50,7 +50,7 @@ describe("POST /artists/me/profile/image", () => {
         registered: true,
         userId: "user-1",
         email: "saku@example.com",
-        artist: { artistId: "artist-1", accountId: "saku", hasProfile: true },
+        artist: { artistId: "artist-1", handle: "saku", hasProfile: true },
       }),
     });
     imagePost.mockResolvedValue({

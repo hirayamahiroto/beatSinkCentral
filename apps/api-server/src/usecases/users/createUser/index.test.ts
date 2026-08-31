@@ -2,9 +2,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createUser, type CreateUserInput } from "./index";
 import { isUserAlreadyRegisteredError } from "../../../domain/users/errors/userAlreadyRegistered";
 import {
-  createAccountIdAlreadyTakenError,
-  isAccountIdAlreadyTakenError,
-} from "../../../domain/artists/errors/accountIdAlreadyTaken";
+  createHandleAlreadyTakenError,
+  isHandleAlreadyTakenError,
+} from "../../../domain/artists/errors/handleAlreadyTaken";
 import { reconstructUser } from "../../../domain/users/factories";
 import { reconstructArtist } from "../../../domain/artists/factories";
 import type { RegistrationCapabilities } from "../../capabilities";
@@ -26,18 +26,16 @@ const createCaps = () =>
     },
     artists: {
       findByUserId: vi.fn<IArtistReader["findByUserId"]>(async () => null),
-      findByAccountId: vi.fn<IArtistReader["findByAccountId"]>(
-        async () => null,
-      ),
+      findByHandle: vi.fn<IArtistReader["findByHandle"]>(async () => null),
       save: vi.fn<IArtistWriter["save"]>(),
-      updateAccountId: vi.fn<IArtistWriter["updateAccountId"]>(),
+      updateHandle: vi.fn<IArtistWriter["updateHandle"]>(),
     },
   }) satisfies RegistrationCapabilities;
 
 const validInput = {
   subId: "auth0|123456789",
   email: "test@example.com",
-  accountId: "test_account",
+  handle: "test_account",
 } satisfies CreateUserInput;
 
 describe("createUser", () => {
@@ -79,12 +77,12 @@ describe("createUser", () => {
     expect(caps.artists.save).not.toHaveBeenCalled();
   });
 
-  it("AccountIdが既に取られている場合はAccountIdAlreadyTakenErrorをerrで返す", async () => {
+  it("Handleが既に取られている場合はHandleAlreadyTakenErrorをerrで返す", async () => {
     const caps = createCaps();
-    caps.artists.findByAccountId.mockResolvedValue(
+    caps.artists.findByHandle.mockResolvedValue(
       reconstructArtist({
         artistId: "existing-artist-id",
-        accountId: validInput.accountId,
+        handle: validInput.handle,
         ownerUserId: "other-user-id",
         profile: null,
       }),
@@ -94,7 +92,7 @@ describe("createUser", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(isAccountIdAlreadyTakenError(result.error)).toBe(true);
+      expect(isHandleAlreadyTakenError(result.error)).toBe(true);
     }
     expect(caps.users.save).not.toHaveBeenCalled();
     expect(caps.artists.save).not.toHaveBeenCalled();
@@ -115,7 +113,7 @@ describe("createUser", () => {
 
   it("保存時の一意制約違反はそのまま伝播する", async () => {
     const caps = createCaps();
-    const takenError = createAccountIdAlreadyTakenError(validInput.accountId);
+    const takenError = createHandleAlreadyTakenError(validInput.handle);
     caps.artists.save.mockRejectedValue(takenError);
 
     await expect(createUser(caps, validInput)).rejects.toBe(takenError);
@@ -127,8 +125,6 @@ describe("createUser", () => {
     await createUser(caps, validInput);
 
     expect(caps.users.findBySub).toHaveBeenCalledWith(validInput.subId);
-    expect(caps.artists.findByAccountId).toHaveBeenCalledWith(
-      validInput.accountId,
-    );
+    expect(caps.artists.findByHandle).toHaveBeenCalledWith(validInput.handle);
   });
 });

@@ -7,7 +7,7 @@ type UseCreateUserParams = {
 };
 
 type SubmitData = {
-  accountId: string;
+  handle: string;
 };
 
 export const useCreateUser = ({ email }: UseCreateUserParams) => {
@@ -15,11 +15,11 @@ export const useCreateUser = ({ email }: UseCreateUserParams) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async ({ accountId }: SubmitData) => {
+  const handleSubmit = async ({ handle }: SubmitData) => {
     setIsLoading(true);
     setError(null);
 
-    const result = await createUser({ email, accountId });
+    const result = await createUser({ email, handle });
 
     if (result.ok) {
       router.push("/dashboard");

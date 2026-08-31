@@ -31,14 +31,14 @@ const app = new Hono<RequestContextEnv>().get("/", async (c) => {
   if (profile === null || missingPublishFields === null) {
     return c.json({
       registered: true as const,
-      artist: { accountId: me.artist.accountId, profile: null },
+      artist: { handle: me.artist.handle, profile: null },
     });
   }
 
   return c.json({
     registered: true as const,
     artist: {
-      accountId: me.artist.accountId,
+      handle: me.artist.handle,
       profile: {
         published: profile.published,
         missingPublishRequirements:

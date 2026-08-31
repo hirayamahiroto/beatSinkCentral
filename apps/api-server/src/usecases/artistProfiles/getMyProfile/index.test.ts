@@ -14,7 +14,7 @@ const actor: Actor = {
   }),
   artist: reconstructArtist({
     artistId: "artist-1",
-    accountId: "beatboxer_taro",
+    handle: "beatboxer_taro",
     ownerUserId: "550e8400-e29b-41d4-a716-446655440000",
     profile: null,
   }),
@@ -27,8 +27,8 @@ const createCaps = () =>
       findByArtistId: vi.fn<IArtistProfileReader["findByArtistId"]>(
         async () => null,
       ),
-      findPublishedByAccountId: vi.fn<
-        IArtistProfileReader["findPublishedByAccountId"]
+      findPublishedByHandle: vi.fn<
+        IArtistProfileReader["findPublishedByHandle"]
       >(async () => null),
       listPublishedSummaries: vi.fn<
         IArtistProfileReader["listPublishedSummaries"]
@@ -47,7 +47,7 @@ describe("getMyProfile", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.value).toEqual({
-        accountId: "beatboxer_taro",
+        handle: "beatboxer_taro",
         profile: null,
         missingPublishFields: null,
       });

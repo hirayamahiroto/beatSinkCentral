@@ -19,7 +19,7 @@ export const testUser = reconstructUser({
 
 export const testArtist = reconstructArtist({
   artistId: "artist-1",
-  accountId: "user_123",
+  handle: "user_123",
   ownerUserId: "user-1",
   profile: null,
 });
@@ -37,7 +37,7 @@ const unusedInAuthorizationTests = () => {
 
 const createArtistProfileReaderStub = (): IArtistProfileReader => ({
   findByArtistId: async () => null,
-  findPublishedByAccountId: async () => null,
+  findPublishedByHandle: async () => null,
   listPublishedSummaries: async () => [],
 });
 
@@ -58,9 +58,9 @@ const createRegistrationCapabilitiesStub = (): RegistrationCapabilities => ({
   },
   artists: {
     findByUserId: async () => null,
-    findByAccountId: async () => null,
+    findByHandle: async () => null,
     save: unusedInAuthorizationTests,
-    updateAccountId: unusedInAuthorizationTests,
+    updateHandle: unusedInAuthorizationTests,
   },
 });
 

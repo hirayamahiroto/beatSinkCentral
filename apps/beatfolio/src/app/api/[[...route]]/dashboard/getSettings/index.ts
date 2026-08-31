@@ -18,7 +18,7 @@ const app = new Hono<RequestContextEnv>().get("/", async (c) => {
   return c.json({
     registered: true as const,
     email: me.email,
-    accountId: me.artist ? me.artist.accountId : null,
+    handle: me.artist ? me.artist.handle : null,
   });
 });
 

@@ -43,8 +43,8 @@ export const Default: Story = {
 
 export const WithPrefix: Story = {
   args: {
-    label: "Account ID",
-    htmlFor: "accountId",
+    label: "Handle",
+    htmlFor: "handle",
     value: "dj_taro_123",
     prefix: "@",
   },

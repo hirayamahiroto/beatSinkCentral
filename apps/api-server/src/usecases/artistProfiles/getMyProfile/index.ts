@@ -7,7 +7,7 @@ import type { ArtistReadCapabilities } from "../../capabilities";
 import { type Result, ok } from "../../../utils/result";
 
 export type GetMyProfileOutput = {
-  accountId: string;
+  handle: string;
   profile: ArtistProfileView | null;
   missingPublishFields: PublishRequiredField[] | null;
 };
@@ -25,7 +25,7 @@ export const getMyProfile = async (
   );
 
   return ok({
-    accountId: caps.actor.artist.getAccountId(),
+    handle: caps.actor.artist.getHandle(),
     profile: profile ? profile.toView() : null,
     missingPublishFields: profile ? collectMissingPublishFields(profile) : null,
   });

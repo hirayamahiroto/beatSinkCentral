@@ -6,7 +6,7 @@ import { toUpstreamError } from "../../shared/toUpstreamError";
 import { readUpstreamJson } from "../../shared/readUpstreamJson";
 
 const requestSchema = z.object({
-  accountId: z.string().nonempty(),
+  handle: z.string().nonempty(),
   email: z.string().email(),
 });
 
@@ -18,7 +18,7 @@ const app = new Hono<RequestContextEnv>().post(
     const body = c.req.valid("json");
 
     const res = await apiClient.api.users.$post({
-      json: { accountId: body.accountId, email: body.email },
+      json: { handle: body.handle, email: body.email },
     });
     if (!res.ok) throw await toUpstreamError(res);
 

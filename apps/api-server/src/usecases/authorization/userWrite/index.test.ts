@@ -10,7 +10,7 @@ import {
   createEmailAlreadyTakenError,
   isEmailAlreadyTakenError,
 } from "../../../domain/users/errors/emailAlreadyTaken";
-import { createAccountIdAlreadyTakenError } from "../../../domain/artists/errors/accountIdAlreadyTaken";
+import { createHandleAlreadyTakenError } from "../../../domain/artists/errors/handleAlreadyTaken";
 import { ok } from "../../../utils/result";
 
 describe("withUserWriteCapabilitiesById", () => {
@@ -110,15 +110,15 @@ describe("withUserWriteCapabilitiesById", () => {
     }
   });
 
-  it("この権能では書けない accountId の衝突は変換せず伝播する", async () => {
+  it("この権能では書けない handle の衝突は変換せず伝播する", async () => {
     const { deps } = createCapabilityDepsStub({ status: "userOnly", user });
-    const accountIdConflict = createAccountIdAlreadyTakenError("taken");
+    const handleConflict = createHandleAlreadyTakenError("taken");
 
     await expect(
       withUserWriteCapabilitiesById(deps, "auth0|123", "user-1", async () => {
-        throw accountIdConflict;
+        throw handleConflict;
       }),
-    ).rejects.toBe(accountIdConflict);
+    ).rejects.toBe(handleConflict);
   });
 
   it("一意制約違反以外の例外はそのまま伝播する", async () => {

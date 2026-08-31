@@ -5,28 +5,28 @@ describe("Artist Factory", () => {
   describe("createArtist", () => {
     it("有効なパラメータでArtistを作成する", () => {
       const result = createArtist({
-        accountId: "user_123",
+        handle: "user_123",
         ownerUserId: "user-1",
       });
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value.getAccountId()).toBe("user_123");
+        expect(result.value.getHandle()).toBe("user_123");
         expect(result.value.getOwnerUserId()).toBe("user-1");
         expect(result.value.getArtistId()).toEqual(expect.any(String));
         expect(result.value.hasProfile()).toBe(false);
       }
     });
 
-    it("無効なaccountIdは InvalidAccountIdFormatError を err で返す", () => {
+    it("無効なhandleは InvalidHandleFormatError を err で返す", () => {
       const result = createArtist({
-        accountId: "invalid handle",
+        handle: "invalid handle",
         ownerUserId: "user-1",
       });
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
-        expect(result.error.type).toBe("InvalidAccountIdFormatError");
+        expect(result.error.type).toBe("InvalidHandleFormatError");
       }
     });
   });
@@ -34,7 +34,7 @@ describe("Artist Factory", () => {
   describe("reconstructArtist", () => {
     const baseParams = {
       artistId: "artist-1",
-      accountId: "user_123",
+      handle: "user_123",
       ownerUserId: "user-1",
       profile: null,
     };
@@ -43,7 +43,7 @@ describe("Artist Factory", () => {
       const artist = reconstructArtist(baseParams);
 
       expect(artist.getArtistId()).toBe("artist-1");
-      expect(artist.getAccountId()).toBe("user_123");
+      expect(artist.getHandle()).toBe("user_123");
       expect(artist.getProfile()).toBeNull();
       expect(artist.hasProfile()).toBe(false);
     });
@@ -60,7 +60,7 @@ describe("Artist Factory", () => {
 
     it("保存値が不正なら throw する（DB 復元の破綻は例外で落とす）", () => {
       expect(() =>
-        reconstructArtist({ ...baseParams, accountId: "invalid handle" }),
+        reconstructArtist({ ...baseParams, handle: "invalid handle" }),
       ).toThrow();
     });
   });

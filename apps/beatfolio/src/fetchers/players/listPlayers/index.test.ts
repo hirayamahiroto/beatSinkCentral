@@ -11,8 +11,8 @@ vi.mock("../../../utils/client", () => ({
 }));
 
 const players = [
-  { id: "artist-1", name: "SAKU", accountId: "saku" },
-  { id: "artist-2", name: "RIN", accountId: "rin" },
+  { id: "artist-1", name: "SAKU", handle: "saku" },
+  { id: "artist-2", name: "RIN", handle: "rin" },
 ];
 
 describe("listPlayers", () => {

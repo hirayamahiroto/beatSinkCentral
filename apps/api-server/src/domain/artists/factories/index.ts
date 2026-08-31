@@ -3,20 +3,20 @@ import {
   type InvalidArtistIdFormatError,
 } from "../valueObjects/artistId";
 import {
-  createAccountId,
-  type InvalidAccountIdFormatError,
-} from "../valueObjects/accountId";
+  createHandle,
+  type InvalidHandleFormatError,
+} from "../valueObjects/handle";
 import { createArtistBehaviors } from "../behaviors";
 import type { Artist, ArtistProfile, ArtistState } from "../entities";
 import { type Result, map, all, unwrapOrThrow } from "../../../utils/result";
 
 export type ArtistFieldError =
   | InvalidArtistIdFormatError
-  | InvalidAccountIdFormatError;
+  | InvalidHandleFormatError;
 
 type ArtistFields = {
   artistId: string;
-  accountId: string;
+  handle: string;
   ownerUserId: string;
   profile: ArtistProfile | null;
 };
@@ -27,7 +27,7 @@ const buildState = (
   map(
     all({
       artistId: createArtistId(fields.artistId),
-      accountId: createAccountId(fields.accountId),
+      handle: createHandle(fields.handle),
     }),
     (values) => ({
       ...values,
@@ -37,7 +37,7 @@ const buildState = (
   );
 
 export type CreateArtistParams = {
-  accountId: string;
+  handle: string;
   ownerUserId: string;
 };
 
@@ -47,7 +47,7 @@ export const createArtist = (
   map(
     buildState({
       artistId: crypto.randomUUID(),
-      accountId: params.accountId,
+      handle: params.handle,
       ownerUserId: params.ownerUserId,
       profile: null,
     }),

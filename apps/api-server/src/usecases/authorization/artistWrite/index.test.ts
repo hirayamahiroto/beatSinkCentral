@@ -8,9 +8,9 @@ import {
 import { isUserNotFoundError } from "../../../domain/users/errors/userNotFound";
 import { isArtistNotFoundError } from "../../../domain/artists/errors/artistNotFound";
 import {
-  createAccountIdAlreadyTakenError,
-  isAccountIdAlreadyTakenError,
-} from "../../../domain/artists/errors/accountIdAlreadyTaken";
+  createHandleAlreadyTakenError,
+  isHandleAlreadyTakenError,
+} from "../../../domain/artists/errors/handleAlreadyTaken";
 import {
   createEmailAlreadyTakenError,
   isEmailAlreadyTakenError,
@@ -94,7 +94,7 @@ describe("withArtistWriteCapabilitiesById", () => {
     expect(calls.artistWriteBoundaries).toBe(0);
   });
 
-  it("accountId の一意制約違反は AccountIdAlreadyTakenError の err に変換する", async () => {
+  it("handle の一意制約違反は HandleAlreadyTakenError の err に変換する", async () => {
     const { deps } = createCapabilityDepsStub({
       status: "complete",
       actor: { user, artist },
@@ -105,13 +105,13 @@ describe("withArtistWriteCapabilitiesById", () => {
       "auth0|123",
       "artist-1",
       async () => {
-        throw createAccountIdAlreadyTakenError("new_handle");
+        throw createHandleAlreadyTakenError("new_handle");
       },
     );
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(isAccountIdAlreadyTakenError(result.error)).toBe(true);
+      expect(isHandleAlreadyTakenError(result.error)).toBe(true);
     }
   });
 

@@ -18,7 +18,7 @@ const existingUser = reconstructUser({
 
 const existingArtist = reconstructArtist({
   artistId: "artist-1",
-  accountId: "beatboxer_taro",
+  handle: "beatboxer_taro",
   ownerUserId: existingUser.getId(),
   profile: null,
 });
@@ -50,8 +50,8 @@ const createCaps = () =>
       findByArtistId: vi.fn<IArtistProfileReader["findByArtistId"]>(
         async () => null,
       ),
-      findPublishedByAccountId: vi.fn<
-        IArtistProfileReader["findPublishedByAccountId"]
+      findPublishedByHandle: vi.fn<
+        IArtistProfileReader["findPublishedByHandle"]
       >(async () => null),
       listPublishedSummaries: vi.fn<
         IArtistProfileReader["listPublishedSummaries"]
@@ -78,7 +78,7 @@ describe("saveMyProfile", () => {
 
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.value.accountId).toBe("beatboxer_taro");
+      expect(result.value.handle).toBe("beatboxer_taro");
       expect(result.value.profile.name).toBe("Taro");
       expect(result.value.profile.genres).toEqual(["bass", "inward"]);
       expect(result.value.profile.published).toBe(false);

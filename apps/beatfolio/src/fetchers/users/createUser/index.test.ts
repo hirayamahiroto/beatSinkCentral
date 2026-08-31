@@ -22,11 +22,11 @@ describe("createUser", () => {
 
     const result = await createUser({
       email: "user@example.com",
-      accountId: "newbie",
+      handle: "newbie",
     });
 
     expect(postMock).toHaveBeenCalledWith({
-      json: { email: "user@example.com", accountId: "newbie" },
+      json: { email: "user@example.com", handle: "newbie" },
     });
     expect(result).toStrictEqual({ ok: true, value: undefined });
   });
@@ -40,7 +40,7 @@ describe("createUser", () => {
 
     const result = await createUser({
       email: "user@example.com",
-      accountId: "taken",
+      handle: "taken",
     });
 
     expect(result).toStrictEqual({
@@ -58,7 +58,7 @@ describe("createUser", () => {
 
     const result = await createUser({
       email: "user@example.com",
-      accountId: "newbie",
+      handle: "newbie",
     });
 
     expect(result).toStrictEqual({
@@ -76,7 +76,7 @@ describe("createUser", () => {
 
     const result = await createUser({
       email: "user@example.com",
-      accountId: "newbie",
+      handle: "newbie",
     });
 
     expect(result).toStrictEqual({
@@ -90,7 +90,7 @@ describe("createUser", () => {
 
     const result = await createUser({
       email: "user@example.com",
-      accountId: "newbie",
+      handle: "newbie",
     });
 
     expect(result).toStrictEqual({

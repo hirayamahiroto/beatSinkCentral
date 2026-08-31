@@ -4,23 +4,23 @@ import {
   type ArtistProfileNotFoundError,
 } from "../../../domain/artistProfiles/errors/artistProfileNotFound";
 import {
-  createAccountId,
-  type InvalidAccountIdFormatError,
-} from "../../../domain/artists/valueObjects/accountId";
+  createHandle,
+  type InvalidHandleFormatError,
+} from "../../../domain/artists/valueObjects/handle";
 import type { PublicReadCapabilities } from "../../capabilities";
 import { type Result, ok, err } from "../../../utils/result";
 
 export type GetPublicProfileInput = {
-  accountId: string;
+  handle: string;
 };
 
 export type GetPublicProfileOutput = {
-  accountId: string;
+  handle: string;
   profile: ArtistProfileView;
 };
 
 export type GetPublicProfileError =
-  | InvalidAccountIdFormatError
+  | InvalidHandleFormatError
   | ArtistProfileNotFoundError;
 
 type GetPublicProfileCaps = Pick<PublicReadCapabilities, "artistProfiles">;
@@ -29,17 +29,15 @@ export const getPublicProfile = async (
   caps: GetPublicProfileCaps,
   input: GetPublicProfileInput,
 ): Promise<Result<GetPublicProfileOutput, GetPublicProfileError>> => {
-  const parsed = createAccountId(input.accountId);
+  const parsed = createHandle(input.handle);
   if (!parsed.ok) return parsed;
-  const accountId = parsed.value;
+  const handle = parsed.value;
 
-  const profile = await caps.artistProfiles.findPublishedByAccountId(
-    accountId.value,
-  );
+  const profile = await caps.artistProfiles.findPublishedByHandle(handle.value);
   if (!profile) return err(createArtistProfileNotFoundError());
 
   return ok({
-    accountId: accountId.value,
+    handle: handle.value,
     profile: profile.toView(),
   });
 };

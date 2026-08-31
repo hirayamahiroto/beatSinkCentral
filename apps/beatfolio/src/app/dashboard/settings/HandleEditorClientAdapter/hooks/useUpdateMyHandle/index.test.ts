@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { useUpdateMyAccountId, type UpdateMyAccountIdResult } from "./index";
+import { useUpdateMyHandle, type UpdateMyHandleResult } from "./index";
 
 const refreshMock = vi.fn();
 
@@ -30,7 +30,7 @@ const buildNonJsonResponse = (status: number): Response =>
     headers: { "content-type": "text/html" },
   });
 
-describe("useUpdateMyAccountId", () => {
+describe("useUpdateMyHandle", () => {
   afterEach(() => {
     vi.clearAllMocks();
   });
@@ -38,14 +38,14 @@ describe("useUpdateMyAccountId", () => {
   it("更新に成功すると ok を返し、$post が json で呼ばれ、router.refresh が走る", async () => {
     postMock.mockResolvedValueOnce(buildJsonResponse({}));
 
-    const { result } = renderHook(() => useUpdateMyAccountId());
+    const { result } = renderHook(() => useUpdateMyHandle());
 
-    let returned: UpdateMyAccountIdResult | undefined;
+    let returned: UpdateMyHandleResult | undefined;
     await act(async () => {
-      returned = await result.current.update({ accountId: "new_id" });
+      returned = await result.current.update({ handle: "new_id" });
     });
 
-    expect(postMock).toHaveBeenCalledWith({ json: { accountId: "new_id" } });
+    expect(postMock).toHaveBeenCalledWith({ json: { handle: "new_id" } });
     expect(returned).toStrictEqual({ ok: true, value: undefined });
     expect(refreshMock).toHaveBeenCalledTimes(1);
     expect(result.current.isLoading).toBe(false);
@@ -53,19 +53,19 @@ describe("useUpdateMyAccountId", () => {
 
   it("4xx はサーバーのエラーメッセージを rejected として返す", async () => {
     postMock.mockResolvedValueOnce(
-      buildJsonResponse({ error: "Account ID already taken: taken" }, 409),
+      buildJsonResponse({ error: "Handle already taken: taken" }, 409),
     );
 
-    const { result } = renderHook(() => useUpdateMyAccountId());
+    const { result } = renderHook(() => useUpdateMyHandle());
 
-    let returned: UpdateMyAccountIdResult | undefined;
+    let returned: UpdateMyHandleResult | undefined;
     await act(async () => {
-      returned = await result.current.update({ accountId: "taken" });
+      returned = await result.current.update({ handle: "taken" });
     });
 
     expect(returned).toStrictEqual({
       ok: false,
-      error: { kind: "rejected", message: "Account ID already taken: taken" },
+      error: { kind: "rejected", message: "Handle already taken: taken" },
     });
     expect(refreshMock).not.toHaveBeenCalled();
     expect(result.current.isLoading).toBe(false);
@@ -74,16 +74,16 @@ describe("useUpdateMyAccountId", () => {
   it("エラー本文が無ければフォールバックメッセージを返す", async () => {
     postMock.mockResolvedValueOnce(buildJsonResponse({}, 400));
 
-    const { result } = renderHook(() => useUpdateMyAccountId());
+    const { result } = renderHook(() => useUpdateMyHandle());
 
-    let returned: UpdateMyAccountIdResult | undefined;
+    let returned: UpdateMyHandleResult | undefined;
     await act(async () => {
-      returned = await result.current.update({ accountId: "x" });
+      returned = await result.current.update({ handle: "x" });
     });
 
     expect(returned).toStrictEqual({
       ok: false,
-      error: { kind: "rejected", message: "Account ID の更新に失敗しました" },
+      error: { kind: "rejected", message: "Handle の更新に失敗しました" },
     });
     expect(refreshMock).not.toHaveBeenCalled();
   });
@@ -93,11 +93,11 @@ describe("useUpdateMyAccountId", () => {
       buildJsonResponse({ error: "Unauthorized" }, 401),
     );
 
-    const { result } = renderHook(() => useUpdateMyAccountId());
+    const { result } = renderHook(() => useUpdateMyHandle());
 
-    let returned: UpdateMyAccountIdResult | undefined;
+    let returned: UpdateMyHandleResult | undefined;
     await act(async () => {
-      returned = await result.current.update({ accountId: "x" });
+      returned = await result.current.update({ handle: "x" });
     });
 
     expect(returned).toStrictEqual({
@@ -109,16 +109,16 @@ describe("useUpdateMyAccountId", () => {
   it("5xx は unexpected として返す", async () => {
     postMock.mockResolvedValueOnce(buildNonJsonResponse(500));
 
-    const { result } = renderHook(() => useUpdateMyAccountId());
+    const { result } = renderHook(() => useUpdateMyHandle());
 
-    let returned: UpdateMyAccountIdResult | undefined;
+    let returned: UpdateMyHandleResult | undefined;
     await act(async () => {
-      returned = await result.current.update({ accountId: "x" });
+      returned = await result.current.update({ handle: "x" });
     });
 
     expect(returned).toStrictEqual({
       ok: false,
-      error: { kind: "unexpected", message: "Account ID の更新に失敗しました" },
+      error: { kind: "unexpected", message: "Handle の更新に失敗しました" },
     });
     expect(refreshMock).not.toHaveBeenCalled();
     expect(result.current.isLoading).toBe(false);
@@ -127,11 +127,11 @@ describe("useUpdateMyAccountId", () => {
   it("通信自体が失敗した場合も unexpected として返す", async () => {
     postMock.mockRejectedValueOnce(new Error("Failed to fetch"));
 
-    const { result } = renderHook(() => useUpdateMyAccountId());
+    const { result } = renderHook(() => useUpdateMyHandle());
 
-    let returned: UpdateMyAccountIdResult | undefined;
+    let returned: UpdateMyHandleResult | undefined;
     await act(async () => {
-      returned = await result.current.update({ accountId: "x" });
+      returned = await result.current.update({ handle: "x" });
     });
 
     expect(returned).toStrictEqual({
@@ -153,11 +153,11 @@ describe("useUpdateMyAccountId", () => {
         }),
     );
 
-    const { result } = renderHook(() => useUpdateMyAccountId());
+    const { result } = renderHook(() => useUpdateMyHandle());
 
-    let updatePromise: Promise<UpdateMyAccountIdResult>;
+    let updatePromise: Promise<UpdateMyHandleResult>;
     act(() => {
-      updatePromise = result.current.update({ accountId: "new_id" });
+      updatePromise = result.current.update({ handle: "new_id" });
     });
 
     await waitFor(() => {

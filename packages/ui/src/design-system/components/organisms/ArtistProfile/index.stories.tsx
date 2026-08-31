@@ -45,7 +45,7 @@ export const WithError: Story = {
   args: {
     email: "user@example.com",
     isLoading: false,
-    error: "このアカウントIDは既に使用されています",
+    error: "このハンドルは既に使用されています",
   },
 };
 

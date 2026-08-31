@@ -1,7 +1,7 @@
 import {
-  isAccountIdAlreadyTakenError,
-  type AccountIdAlreadyTakenError,
-} from "../../../domain/artists/errors/accountIdAlreadyTaken";
+  isHandleAlreadyTakenError,
+  type HandleAlreadyTakenError,
+} from "../../../domain/artists/errors/handleAlreadyTaken";
 import {
   isEmailAlreadyTakenError,
   type EmailAlreadyTakenError,
@@ -9,13 +9,13 @@ import {
 import { type Result, err } from "../../../utils/result";
 
 export type AlreadyTakenError =
-  | AccountIdAlreadyTakenError
+  | HandleAlreadyTakenError
   | EmailAlreadyTakenError;
 
 export const isAlreadyTakenError = (
   error: unknown,
 ): error is AlreadyTakenError =>
-  isAccountIdAlreadyTakenError(error) || isEmailAlreadyTakenError(error);
+  isHandleAlreadyTakenError(error) || isEmailAlreadyTakenError(error);
 
 export const catchAlreadyTaken = async <T, E, Conflict>(
   isConflict: (error: unknown) => error is Conflict,

@@ -75,18 +75,18 @@ describe("handleBffError", () => {
       createUpstreamRejectedError({
         status: 409,
         body: {
-          error: "Account ID already taken",
-          code: "AccountIdAlreadyTakenError",
-          details: { accountId: "taken_id" },
+          error: "Handle already taken",
+          code: "HandleAlreadyTakenError",
+          details: { handle: "taken_id" },
         },
       }),
     ).request("/");
 
     expect(res.status).toBe(409);
     expect(await res.json()).toStrictEqual({
-      error: "Account ID already taken",
-      code: "AccountIdAlreadyTakenError",
-      details: { accountId: "taken_id" },
+      error: "Handle already taken",
+      code: "HandleAlreadyTakenError",
+      details: { handle: "taken_id" },
     });
   });
 

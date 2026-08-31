@@ -3,22 +3,22 @@
 import { useState } from "react";
 import { InlineEditableField } from "@ui/design-system/components/molecules/InlineEditableField";
 import { toast } from "@ui/design-system/components/atoms/Toaster";
-import { useUpdateMyAccountId } from "./hooks/useUpdateMyAccountId";
+import { useUpdateMyHandle } from "./hooks/useUpdateMyHandle";
 
 type Props = {
-  accountId: string;
+  handle: string;
 };
 
-export const AccountIdEditorClientAdapter = ({ accountId }: Props) => {
-  const { update, isLoading } = useUpdateMyAccountId();
+export const HandleEditorClientAdapter = ({ handle }: Props) => {
+  const { update, isLoading } = useUpdateMyHandle();
   const [fieldError, setFieldError] = useState<string | null>(null);
 
   const save = async (newValue: string): Promise<boolean> => {
     setFieldError(null);
-    const result = await update({ accountId: newValue });
+    const result = await update({ handle: newValue });
 
     if (result.ok) {
-      toast.success("Account ID を更新しました");
+      toast.success("Handle を更新しました");
       return true;
     }
 
@@ -32,9 +32,9 @@ export const AccountIdEditorClientAdapter = ({ accountId }: Props) => {
 
   return (
     <InlineEditableField
-      label="Account ID"
-      htmlFor="accountId"
-      value={accountId}
+      label="Handle"
+      htmlFor="handle"
+      value={handle}
       prefix="@"
       isLoading={isLoading}
       error={fieldError}

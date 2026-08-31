@@ -548,7 +548,7 @@ Policyが担う判定の例:
 - 「このプロフィールは公開できる状態か（公開に必要な最小核は何か）」
 - 「この集約は削除可能な状態か（子リソースが存在しないか）」
 
-**単なる存在チェックにPolicyを作らない**: 「User が存在するか」「accountId が既に使われているか」は判定に業務知識がない。ルールを知っている呼び出し元が `if (!user) return err(createUserNotFoundError())` と書けば足り、間に関数を挟むと呼び出し箇所から条件が見えなくなる。
+**単なる存在チェックにPolicyを作らない**: 「User が存在するか」「handle が既に使われているか」は判定に業務知識がない。ルールを知っている呼び出し元が `if (!user) return err(createUserNotFoundError())` と書けば足り、間に関数を挟むと呼び出し箇所から条件が見えなくなる。
 
 **重要**: Policy自身はRepositoryに直接触れない。呼び出し元（Usecase）が値をfetchしてPolicyに渡す形にすることで、Policyは純粋関数のままにできる。
 
@@ -614,13 +614,11 @@ domain/
 export const registerNewUser = (
   input: RegisterNewUserInput,
   userIfRegistered: User | null,
-  artistIfAccountIdTaken: Artist | null,
+  artistIfHandleTaken: Artist | null,
 ): Result<RegisterNewUserResult, RegisterNewUserError> => {
   if (userIfRegistered) return err(createUserAlreadyRegisteredError());
-  if (artistIfAccountIdTaken) {
-    return err(
-      createAccountIdAlreadyTakenError(artistIfAccountIdTaken.getAccountId()),
-    );
+  if (artistIfHandleTaken) {
+    return err(createHandleAlreadyTakenError(artistIfHandleTaken.getHandle()));
   }
 
   const user = createUser({ subId: input.subId, email: input.email });
@@ -628,7 +626,7 @@ export const registerNewUser = (
 
   return map(
     createArtist({
-      accountId: input.accountId,
+      handle: input.handle,
       ownerUserId: user.value.getId(),
     }),
     (artist) => ({ user: user.value, artist }),
@@ -704,13 +702,13 @@ app/api/[[...route]]/
 ├── route.ts                    # basePath + 全体ミドルウェア + onError + トップ mount のみ
 ├── artists/
 │   ├── index.ts                # 公開 / 認証済みの2区画を合成するだけ（ミドルウェアなし）
-│   ├── public/                 # 公開（認証なし・可変ハンドル accountId）
+│   ├── public/                 # 公開（認証なし・可変ハンドル handle）
 │   │   ├── index.ts            # マウントテーブル
 │   │   ├── listArtists/        # GET /artists
-│   │   └── getArtist/          # GET /artists/:accountId
-│   └── [artistId]/             # ← ここが認証境界（不変 ID artistId。accountId とは別の鍵）
+│   │   └── getArtist/          # GET /artists/:handle
+│   └── [artistId]/             # ← ここが認証境界（不変 ID artistId。handle とは別の鍵）
 │       ├── index.ts            # requireAuthMiddleware + マウントテーブル
-│       ├── updateAccountId/    # POST /:artistId
+│       ├── updateHandle/    # POST /:artistId
 │       ├── getProfile/         # GET  /:artistId/profile
 │       ├── saveProfile/        # POST /:artistId/profile
 │       └── publishProfile/     # POST /:artistId/profile/publish
@@ -719,22 +717,22 @@ app/api/[[...route]]/
     └── get/                    # GET /link-types
 ```
 
-公開（認証なし・可変ハンドル `accountId`）と認証済み（不変 ID `artistId`）は同じ artist を指すが鍵も認可も別物なので、`artists/public/` と `artists/[artistId]/` に分けて並べる。こうしておくと、`artists/index.ts` の2行（`public` / `[artistId]`）がそのまま「公開・認証」の2区画になり、境界の `index.ts` を見れば全体像が分かる。将来公開ルートの名前空間を分離する場合も、`artists/public/` をディレクトリごと移してマウント先を変えるだけで済む。
+公開（認証なし・可変ハンドル `handle`）と認証済み（不変 ID `artistId`）は同じ artist を指すが鍵も認可も別物なので、`artists/public/` と `artists/[artistId]/` に分けて並べる。こうしておくと、`artists/index.ts` の2行（`public` / `[artistId]`）がそのまま「公開・認証」の2区画になり、境界の `index.ts` を見れば全体像が分かる。将来公開ルートの名前空間を分離する場合も、`artists/public/` をディレクトリごと移してマウント先を変えるだけで済む。
 
 階層 `index.ts` の責務は 2 つだけに限定する。
 
 1. 配下ユニットの合成（マウントテーブルとして path → ユニット を `.route()` で宣言）
 2. その階層に効くミドルウェアの適用
 
-ユニット（リーフ）は **1 ディレクトリ = 1 エンドポイント**を維持する。ディレクトリ名はアクションの意図を表す名前にする。HTTP メソッド名のディレクトリ（`get/` `post/`）や method を埋め込んだファイル名（`profile.publish.post.ts` 等）は使わない。動的セグメントは `[accountId]/` と表記する（`[[...route]]` 配下は Next.js のルート探索対象外なので、ルーティング解釈と衝突しない）。
+ユニット（リーフ）は **1 ディレクトリ = 1 エンドポイント**を維持する。ディレクトリ名はアクションの意図を表す名前にする。HTTP メソッド名のディレクトリ（`get/` `post/`）や method を埋め込んだファイル名（`profile.publish.post.ts` 等）は使わない。動的セグメントは `[handle]/` と表記する（`[[...route]]` 配下は Next.js のルート探索対象外なので、ルーティング解釈と衝突しない）。
 
 **認証はミドルウェアが変わる境界の `index.ts` で適用する。** トップでパス文字列を列挙しない。境界側で `.use("*", requireAuthMiddleware)` を一度書けば配下は構造的に保護されるため、リソース追加時の付け忘れが起きにくい（デフォルトが deny 側に倒れる）。境界はリソースの先頭に限らない。`artists/` は公開/認証が混在するため無防備なままで、認証境界は1階層下の `[artistId]/` にある。
 
-> **注意（`.use("*")` と同形の公開ルートが重なる場合はマウント順で解決する）**: `.use("*", mw)` は「ALL メソッド」に一致するため、境界の**裸のパス**（例: `/artists/:artistId`・POST・認証必須）と別リソースの公開ルート（例: `/artists/:accountId`・GET・公開）が同じ「1セグメントの動的パス」形状を共有しうる。ただし Hono はマッチした handler / middleware を**登録順に合成し、先に応答したハンドラで打ち切る**ため、親ルーターで**公開ルートを境界より先にマウントしていれば**、公開 GET は先に登録された公開ハンドラが応答し、境界の `use("*")` には到達しない。公開側に存在しないメソッド（POST 等）だけが境界に流れて認証される。したがって境界は素直に `.use("*", requireAuthMiddleware)` で全面適用してよい。
+> **注意（`.use("*")` と同形の公開ルートが重なる場合はマウント順で解決する）**: `.use("*", mw)` は「ALL メソッド」に一致するため、境界の**裸のパス**（例: `/artists/:artistId`・POST・認証必須）と別リソースの公開ルート（例: `/artists/:handle`・GET・公開）が同じ「1セグメントの動的パス」形状を共有しうる。ただし Hono はマッチした handler / middleware を**登録順に合成し、先に応答したハンドラで打ち切る**ため、親ルーターで**公開ルートを境界より先にマウントしていれば**、公開 GET は先に登録された公開ハンドラが応答し、境界の `use("*")` には到達しない。公開側に存在しないメソッド（POST 等）だけが境界に流れて認証される。したがって境界は素直に `.use("*", requireAuthMiddleware)` で全面適用してよい。
 >
 > 成立条件は「公開ルートを先にマウントする」の1点のみ（`artists/index.ts` の順序制約コメント参照）。逆順にすると TrieRouter フォールバック時に公開 GET が 401 になる（RegExpRouter は逆順でも公開側を優先するが、順序に依存しないことを保証する仕様ではない）。この順序は合成テストの「公開ルートは認証を要求しない」アサーションで担保する。
 >
-> **既知の制約（Hono ルーターのフォールバック）**: 同じ親パス配下に「リテラル segment + ワイルドカード」（例: `/artists/me/*`）と「動的パラメータ」（例: `/artists/:accountId`）が共存すると、Hono の `RegExpRouter` が `UnsupportedPathError` を投げ、`SmartRouter` が警告なしに `TrieRouter`（低速だが動作は正しい）へフォールバックする。`.route()` は子ルートを親の router へ完全にマージするため、この事象はアプリ全体の router に影響する。本プロジェクトではかつて `artists/me/*` と `:accountId` の組み合わせで発生していたが、`me` 系ルートの削除（contract 完了）により解消し、現在は `RegExpRouter` で動作している。リテラル segment + ワイルドカードを動的パラメータと同じ親配下に足すと再発するため、追加時は認識しておくこと。
+> **既知の制約（Hono ルーターのフォールバック）**: 同じ親パス配下に「リテラル segment + ワイルドカード」（例: `/artists/me/*`）と「動的パラメータ」（例: `/artists/:handle`）が共存すると、Hono の `RegExpRouter` が `UnsupportedPathError` を投げ、`SmartRouter` が警告なしに `TrieRouter`（低速だが動作は正しい）へフォールバックする。`.route()` は子ルートを親の router へ完全にマージするため、この事象はアプリ全体の router に影響する。本プロジェクトではかつて `artists/me/*` と `:handle` の組み合わせで発生していたが、`me` 系ルートの削除（contract 完了）により解消し、現在は `RegExpRouter` で動作している。リテラル segment + ワイルドカードを動的パラメータと同じ親配下に足すと再発するため、追加時は認識しておくこと。
 
 `AppType`（Hono RPC）の型推論を保つため、各 `index.ts` は `.route()` または `.get()`/`.post()` のメソッドチェーンを維持する。
 
@@ -766,15 +764,15 @@ export const createUser = async (
   caps: CreateUserCaps,
   input: CreateUserInput,
 ): Promise<Result<CreateUserOutput, CreateUserError>> => {
-  const [userIfRegistered, artistIfAccountIdTaken] = await Promise.all([
+  const [userIfRegistered, artistIfHandleTaken] = await Promise.all([
     caps.users.findBySub(input.subId),
-    caps.artists.findByAccountId(input.accountId),
+    caps.artists.findByHandle(input.handle),
   ]);
 
   const registered = registerNewUser(
     input,
     userIfRegistered,
-    artistIfAccountIdTaken,
+    artistIfHandleTaken,
   );
   if (!registered.ok) return registered;
 
@@ -967,11 +965,11 @@ export type ActorResolution =
 
 境界を張るヘルパは、一意制約違反として上がってきた型付きエラーを `err` へ変換する（詳細は [並行更新ポリシー](./database/concurrency.md)）。**変換する型は、その権能で書ける範囲に一致させる。**
 
-| ヘルパ                            | 変換する型                                              |
-| --------------------------------- | ------------------------------------------------------- |
-| `withUserWriteCapabilitiesById`   | `EmailAlreadyTakenError`                                |
-| `withArtistWriteCapabilitiesById` | `EmailAlreadyTakenError` / `AccountIdAlreadyTakenError` |
-| `withRegistrationCapabilities`    | `EmailAlreadyTakenError` / `AccountIdAlreadyTakenError` |
+| ヘルパ                            | 変換する型                                           |
+| --------------------------------- | ---------------------------------------------------- |
+| `withUserWriteCapabilitiesById`   | `EmailAlreadyTakenError`                             |
+| `withArtistWriteCapabilitiesById` | `EmailAlreadyTakenError` / `HandleAlreadyTakenError` |
+| `withRegistrationCapabilities`    | `EmailAlreadyTakenError` / `HandleAlreadyTakenError` |
 
 ### トランザクション境界
 
@@ -1191,8 +1189,8 @@ describe("reconstructUser", () => {
 | GET      | `/api/users/me`                          | 自分のユーザー情報取得         | 要   |
 | POST     | `/api/users/:userId`                     | メールアドレス更新             | 要   |
 | GET      | `/api/artists`                           | 公開プロフィール一覧           | 不要 |
-| GET      | `/api/artists/:accountId`                | 公開プロフィール詳細           | 不要 |
-| POST     | `/api/artists/:artistId`                 | accountId 更新                 | 要   |
+| GET      | `/api/artists/:handle`                   | 公開プロフィール詳細           | 不要 |
+| POST     | `/api/artists/:artistId`                 | handle 更新                    | 要   |
 | GET      | `/api/artists/:artistId/profile`         | プロフィール取得（下書き含む） | 要   |
 | POST     | `/api/artists/:artistId/profile`         | プロフィール保存               | 要   |
 | POST     | `/api/artists/:artistId/profile/publish` | 公開/非公開の切り替え          | 要   |

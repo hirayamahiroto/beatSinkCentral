@@ -42,11 +42,11 @@ describe("useCreateUser", () => {
     );
 
     await act(async () => {
-      await result.current.handleSubmit({ accountId: "newbie" });
+      await result.current.handleSubmit({ handle: "newbie" });
     });
 
     expect(postMock).toHaveBeenCalledWith({
-      json: { email: "user@example.com", accountId: "newbie" },
+      json: { email: "user@example.com", handle: "newbie" },
     });
     expect(pushMock).toHaveBeenCalledWith("/dashboard");
     expect(refreshMock).toHaveBeenCalledTimes(1);
@@ -57,7 +57,7 @@ describe("useCreateUser", () => {
   it("POST が non-ok JSON を返したら、error state にメッセージがセットされる", async () => {
     postMock.mockResolvedValueOnce(
       buildJsonResponse(
-        { error: "そのアカウントIDはすでに使用されています" },
+        { error: "そのハンドルはすでに使用されています" },
         { status: 409 },
       ),
     );
@@ -67,12 +67,10 @@ describe("useCreateUser", () => {
     );
 
     await act(async () => {
-      await result.current.handleSubmit({ accountId: "taken" });
+      await result.current.handleSubmit({ handle: "taken" });
     });
 
-    expect(result.current.error).toBe(
-      "そのアカウントIDはすでに使用されています",
-    );
+    expect(result.current.error).toBe("そのハンドルはすでに使用されています");
     expect(pushMock).not.toHaveBeenCalled();
     expect(refreshMock).not.toHaveBeenCalled();
     expect(result.current.isLoading).toBe(false);
@@ -86,7 +84,7 @@ describe("useCreateUser", () => {
     );
 
     await act(async () => {
-      await result.current.handleSubmit({ accountId: "newbie" });
+      await result.current.handleSubmit({ handle: "newbie" });
     });
 
     expect(result.current.error).not.toBeNull();
@@ -103,7 +101,7 @@ describe("useCreateUser", () => {
     );
 
     await act(async () => {
-      await result.current.handleSubmit({ accountId: "newbie" });
+      await result.current.handleSubmit({ handle: "newbie" });
     });
 
     expect(result.current.error).toBe(
@@ -128,7 +126,7 @@ describe("useCreateUser", () => {
 
     let submitPromise: Promise<void>;
     act(() => {
-      submitPromise = result.current.handleSubmit({ accountId: "newbie" });
+      submitPromise = result.current.handleSubmit({ handle: "newbie" });
     });
 
     await waitFor(() => {

@@ -37,7 +37,7 @@ const publishRequiredFieldSchema = z.enum([
 ]);
 
 const getProfileResponseSchema = z.object({
-  accountId: z.string(),
+  handle: z.string(),
   profile: artistProfileViewSchema.nullable(),
   missingPublishFields: z.array(publishRequiredFieldSchema).nullable(),
 });

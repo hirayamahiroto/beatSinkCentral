@@ -31,7 +31,7 @@ const jsonResponse = (
 describe("GET /dashboard/settings", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("設定画面が編集する email と accountId だけを返す", async () => {
+  it("設定画面が編集する email と handle だけを返す", async () => {
     meGet.mockResolvedValue(
       jsonResponse({
         registered: true,
@@ -39,7 +39,7 @@ describe("GET /dashboard/settings", () => {
         email: "saku@example.com",
         artist: {
           artistId: "artist-1",
-          accountId: "saku",
+          handle: "saku",
           hasProfile: true,
         },
       }),
@@ -51,11 +51,11 @@ describe("GET /dashboard/settings", () => {
     expect(await res.json()).toStrictEqual({
       registered: true,
       email: "saku@example.com",
-      accountId: "saku",
+      handle: "saku",
     });
   });
 
-  it("artist 未作成なら accountId は null で返す", async () => {
+  it("artist 未作成なら handle は null で返す", async () => {
     meGet.mockResolvedValue(
       jsonResponse({
         registered: true,
@@ -70,7 +70,7 @@ describe("GET /dashboard/settings", () => {
     expect(await res.json()).toStrictEqual({
       registered: true,
       email: "saku@example.com",
-      accountId: null,
+      handle: null,
     });
   });
 

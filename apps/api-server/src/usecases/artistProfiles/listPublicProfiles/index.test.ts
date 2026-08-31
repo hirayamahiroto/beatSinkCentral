@@ -9,8 +9,8 @@ const createCaps = () =>
       findByArtistId: vi.fn<IArtistProfileReader["findByArtistId"]>(
         async () => null,
       ),
-      findPublishedByAccountId: vi.fn<
-        IArtistProfileReader["findPublishedByAccountId"]
+      findPublishedByHandle: vi.fn<
+        IArtistProfileReader["findPublishedByHandle"]
       >(async () => null),
       listPublishedSummaries: vi.fn<
         IArtistProfileReader["listPublishedSummaries"]
@@ -24,8 +24,8 @@ describe("listPublicProfiles", () => {
   it("公開プロフィールの一覧を ok(profiles) で返す", async () => {
     const caps = createCaps();
     caps.artistProfiles.listPublishedSummaries.mockResolvedValue([
-      { accountId: "taro", name: "Taro", imageUrl: "https://e.com/a.png" },
-      { accountId: "hana", name: "Hana", imageUrl: null },
+      { handle: "taro", name: "Taro", imageUrl: "https://e.com/a.png" },
+      { handle: "hana", name: "Hana", imageUrl: null },
     ]);
 
     const result = await listPublicProfiles(caps);
@@ -33,7 +33,7 @@ describe("listPublicProfiles", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.value.profiles).toHaveLength(2);
-      expect(result.value.profiles[0].accountId).toBe("taro");
+      expect(result.value.profiles[0].handle).toBe("taro");
       expect(result.value.profiles[1].imageUrl).toBeNull();
     }
   });

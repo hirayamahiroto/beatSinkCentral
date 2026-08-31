@@ -247,13 +247,13 @@ export const Button = (props) => (
 
 // NG: a11y 連携を呼び出し側に委ねている
 <div>
-  <Label htmlFor="accountId">アカウントID</Label>
-  <Input id="accountId" aria-describedby="accountId-error" aria-invalid />
-  <p id="accountId-error">エラー文</p>
+  <Label htmlFor="handle">ハンドル</Label>
+  <Input id="handle" aria-describedby="handle-error" aria-invalid />
+  <p id="handle-error">エラー文</p>
 </div>;
 
 // OK: FormField が htmlFor / aria-* を内部で自動連携する
-<FormField label="アカウントID" htmlFor="accountId" error="エラー文">
+<FormField label="ハンドル" htmlFor="handle" error="エラー文">
   <Input />
 </FormField>;
 ```

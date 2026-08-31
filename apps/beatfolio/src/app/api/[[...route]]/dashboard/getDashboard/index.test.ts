@@ -38,7 +38,7 @@ const registeredMe = {
   registered: true,
   userId: "user-1",
   email: "saku@example.com",
-  artist: { artistId: "artist-1", accountId: "saku", hasProfile: true },
+  artist: { artistId: "artist-1", handle: "saku", hasProfile: true },
 };
 
 const profileView = {
@@ -59,7 +59,7 @@ describe("GET /dashboard", () => {
     meGet.mockResolvedValue(jsonResponse(registeredMe));
     profileGet.mockResolvedValue(
       jsonResponse({
-        accountId: "saku",
+        handle: "saku",
         profile: profileView,
         missingPublishFields: [],
       }),
@@ -74,7 +74,7 @@ describe("GET /dashboard", () => {
     expect(await res.json()).toStrictEqual({
       registered: true,
       artist: {
-        accountId: "saku",
+        handle: "saku",
         profile: { published: true, missingPublishRequirements: [] },
       },
     });
@@ -84,7 +84,7 @@ describe("GET /dashboard", () => {
     meGet.mockResolvedValue(jsonResponse(registeredMe));
     profileGet.mockResolvedValue(
       jsonResponse({
-        accountId: "saku",
+        handle: "saku",
         profile: { ...profileView, imageUrl: null, published: false },
         missingPublishFields: ["imageUrl", "links"],
       }),
@@ -95,7 +95,7 @@ describe("GET /dashboard", () => {
     expect(await res.json()).toStrictEqual({
       registered: true,
       artist: {
-        accountId: "saku",
+        handle: "saku",
         profile: {
           published: false,
           missingPublishRequirements: ["アーティスト写真", "SNS / 配信リンク"],
@@ -113,7 +113,7 @@ describe("GET /dashboard", () => {
     );
     profileGet.mockResolvedValue(
       jsonResponse({
-        accountId: "saku",
+        handle: "saku",
         profile: null,
         missingPublishFields: null,
       }),
@@ -123,7 +123,7 @@ describe("GET /dashboard", () => {
 
     expect(await res.json()).toStrictEqual({
       registered: true,
-      artist: { accountId: "saku", profile: null },
+      artist: { handle: "saku", profile: null },
     });
   });
 

@@ -40,7 +40,7 @@
 
 逆に LWW で問題ない典型例：
 
-- 自分のプロフィール（email / accountId / 表示名等）を自分で編集する
+- 自分のプロフィール（email / handle / 表示名等）を自分で編集する
 - 設定画面で複数項目を一括保存する（同一ユーザーの単発操作）
 - 連打や race condition は UI 側（保存中ボタン disabled 等）で防止する
 
@@ -76,7 +76,7 @@
 
 「事前に重複を SELECT で確認してから書く」形は、確認と書き込みの間に他リクエストが同じ値を確定させる余地が残る。一意制約は DB が最後の砦であり、**制約違反が上がってきた時に何が起きるか**まで決めておく。
 
-1. **Repository が翻訳する**: 制約名で一意制約違反（PostgreSQL の `23505`）を判別し、対応する型付きドメインエラー（例: `AccountIdAlreadyTakenError`）を throw する。PostgreSQL のエラーコードを知ってよいのは Infrastructure 層だけ
+1. **Repository が翻訳する**: 制約名で一意制約違反（PostgreSQL の `23505`）を判別し、対応する型付きドメインエラー（例: `HandleAlreadyTakenError`）を throw する。PostgreSQL のエラーコードを知ってよいのは Infrastructure 層だけ
 2. **トランザクション境界の外で `err` に戻す**: Drizzle の `transaction` は throw でしかロールバックしないため、例外はトランザクションの外まで抜けさせる。境界を張るヘルパ（`withUserWriteCapabilitiesById` / `withArtistWriteCapabilitiesById` / `withRegistrationCapabilities`）が型ガードで判別して `err` を返す。**判別する型はその権能で書ける範囲に一致させる**（`withUserWriteCapabilitiesById` は `users` しか書けないため `EmailAlreadyTakenError` のみ）。usecase 側に `try/catch` は置かない
 3. **usecase のエラー union は事前チェックと同じ型を使う**: 事前の SELECT で検出した場合も、制約違反で検出した場合も、クライアントから見た失敗は同じもの。同じ型に寄せることで HTTP 変換も自動的に揃う
 
@@ -84,16 +84,16 @@
 
 ## 既存 usecase の方針記録
 
-| Usecase             | 通常更新の方針 | 一意性の拒否経路                                  | 備考                                                                                                                                                      |
-| ------------------- | -------------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `createUser`        | LWW            | `accountId` / `email` を DB 一意制約で拒否（409） | 新規作成のみ。`accountId` は事前 SELECT あり、`email` は事前 SELECT なし（制約のみ）。いずれも `withRegistrationCapabilities` が `err` へ寄せる           |
-| `updateMyEmail`     | LWW            | `email` を DB 一意制約で拒否（409）               | 自分の email を自分で変更。事前 SELECT は置かず、`users_email_unique` 違反を `EmailAlreadyTakenError` に翻訳して `withUserWriteCapabilitiesById` が寄せる |
-| `updateMyAccountId` | LWW            | `accountId` を DB 一意制約で拒否（409）           | 自分の accountId を自分で変更。事前 SELECT は usecase、一意制約違反は `withArtistWriteCapabilitiesById` が寄せる                                          |
-| `saveMyProfile`     | LWW            | なし（一意な値を持たない）                        | 本人が自分のプロフィールを保存。単一主体の単発操作                                                                                                        |
-| `publishMyProfile`  | LWW            | なし（一意な値を持たない）                        | 本人が公開状態を切り替える。公開可否は `ensurePublishable` で判定                                                                                         |
+| Usecase            | 通常更新の方針 | 一意性の拒否経路                               | 備考                                                                                                                                                      |
+| ------------------ | -------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `createUser`       | LWW            | `handle` / `email` を DB 一意制約で拒否（409） | 新規作成のみ。`handle` は事前 SELECT あり、`email` は事前 SELECT なし（制約のみ）。いずれも `withRegistrationCapabilities` が `err` へ寄せる              |
+| `updateMyEmail`    | LWW            | `email` を DB 一意制約で拒否（409）            | 自分の email を自分で変更。事前 SELECT は置かず、`users_email_unique` 違反を `EmailAlreadyTakenError` に翻訳して `withUserWriteCapabilitiesById` が寄せる |
+| `updateMyHandle`   | LWW            | `handle` を DB 一意制約で拒否（409）           | 自分の handle を自分で変更。事前 SELECT は usecase、一意制約違反は `withArtistWriteCapabilitiesById` が寄せる                                             |
+| `saveMyProfile`    | LWW            | なし（一意な値を持たない）                     | 本人が自分のプロフィールを保存。単一主体の単発操作                                                                                                        |
+| `publishMyProfile` | LWW            | なし（一意な値を持たない）                     | 本人が公開状態を切り替える。公開可否は `ensurePublishable` で判定                                                                                         |
 
-LWW は競合を検出せず後の書き込みを採用する方式であり、一意な値（`accountId` / `email`）の重複はこれとは別経路で扱う。**重複を検出したら後勝ちにせず 409 で拒否する**（詳細は前節「一意制約違反の扱い」）。一意な値を書く usecase を追加する時は、通常更新の方針とは独立にこの拒否経路を実装する。
+LWW は競合を検出せず後の書き込みを採用する方式であり、一意な値（`handle` / `email`）の重複はこれとは別経路で扱う。**重複を検出したら後勝ちにせず 409 で拒否する**（詳細は前節「一意制約違反の扱い」）。一意な値を書く usecase を追加する時は、通常更新の方針とは独立にこの拒否経路を実装する。
 
-`EmailAlreadyTakenError` は衝突した email を**保持しない**。email は PII であり、`clientMessage` / ログに載せると errorMap 経由で漏れる（`AccountIdAlreadyTakenError` が `accountId` を持つのは、公開識別子であり代替案の提示に必要だから）。
+`EmailAlreadyTakenError` は衝突した email を**保持しない**。email は PII であり、`clientMessage` / ログに載せると errorMap 経由で漏れる（`HandleAlreadyTakenError` が `handle` を持つのは、公開識別子であり代替案の提示に必要だから）。
 
 新しい usecase を追加した時は、この表に方針を 1 行追記する。

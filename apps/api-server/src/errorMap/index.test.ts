@@ -6,12 +6,12 @@ import { validateRequest } from "../app/api/[[...route]]/validators/validateRequ
 import { createAppErrorHandler, handleAppError } from "./index";
 import type { LogFields, LogLevel, Logger } from "../utils/logger";
 import { createUserAlreadyRegisteredError } from "../domain/users/errors/userAlreadyRegistered";
-import { createAccountIdAlreadyTakenError } from "../domain/artists/errors/accountIdAlreadyTaken";
+import { createHandleAlreadyTakenError } from "../domain/artists/errors/handleAlreadyTaken";
 import { createEmailAlreadyTakenError } from "../domain/users/errors/emailAlreadyTaken";
 import { createInvalidEmailFormatError } from "../domain/users/valueObjects/email";
 import { createInvalidSubFormatError } from "../domain/users/valueObjects/sub";
 import { createInvalidNameFormatError } from "../domain/users/valueObjects/name";
-import { createInvalidAccountIdFormatError } from "../domain/artists/valueObjects/accountId";
+import { createInvalidHandleFormatError } from "../domain/artists/valueObjects/handle";
 import { createInvalidArtistIdFormatError } from "../domain/artists/valueObjects/artistId";
 import { createInvalidRequestFormatError } from "../app/api/[[...route]]/errors/invalidRequestFormat";
 import { createRequestBodyTooLargeError } from "../app/api/[[...route]]/errors/requestBodyTooLarge";
@@ -99,14 +99,14 @@ describe("createAppErrorHandler", () => {
       });
     });
 
-    it("AccountIdAlreadyTakenErrorを409とaccountId埋め込みメッセージに変換する", async () => {
+    it("HandleAlreadyTakenErrorを409とhandle埋め込みメッセージに変換する", async () => {
       expect(
-        await clientResponseOf(createAccountIdAlreadyTakenError("taken_id")),
+        await clientResponseOf(createHandleAlreadyTakenError("taken_id")),
       ).toStrictEqual({
         status: 409,
         body: {
-          error: "Account ID already taken: taken_id",
-          code: "AccountIdAlreadyTakenError",
+          error: "Handle already taken: taken_id",
+          code: "HandleAlreadyTakenError",
         },
       });
     });
@@ -172,9 +172,9 @@ describe("createAppErrorHandler", () => {
         "Invalid name format",
       ],
       [
-        "InvalidAccountIdFormatError",
-        createInvalidAccountIdFormatError,
-        "Invalid accountId format",
+        "InvalidHandleFormatError",
+        createInvalidHandleFormatError,
+        "Invalid handle format",
       ],
       [
         "InvalidArtistIdFormatError",
@@ -356,12 +356,12 @@ describe("createAppErrorHandler", () => {
 
     it("logFields を宣言したエラーは context に構造化して載せる", async () => {
       expect(
-        (await logOf(createAccountIdAlreadyTakenError("taken_id"))).fields,
+        (await logOf(createHandleAlreadyTakenError("taken_id"))).fields,
       ).toStrictEqual({
         ...REQUEST_FIELDS,
-        errorType: "AccountIdAlreadyTakenError",
+        errorType: "HandleAlreadyTakenError",
         status: 409,
-        context: { accountId: "taken_id" },
+        context: { handle: "taken_id" },
       });
     });
 
@@ -411,7 +411,7 @@ describe("createAppErrorHandler", () => {
 
     it("クライアントには内部ログ用のフィールドを返さない", async () => {
       const { body } = await clientResponseOf(
-        createAccountIdAlreadyTakenError("taken_id"),
+        createHandleAlreadyTakenError("taken_id"),
       );
 
       expect(body).not.toHaveProperty("errorType");
@@ -430,7 +430,7 @@ describe("createAppErrorHandler", () => {
       const { logger, logs } = createRecordingLogger();
       await new Hono()
         .use("*", requestContextMiddleware)
-        .get("/artists/:accountId", () => {
+        .get("/artists/:handle", () => {
           throw error;
         })
         .onError(createAppErrorHandler(logger))
@@ -451,7 +451,7 @@ describe("createAppErrorHandler", () => {
         requestId: "req-1",
         traceId,
         method: "GET",
-        route: "/artists/:accountId",
+        route: "/artists/:handle",
         errorType: "UnauthorizedError",
         status: 401,
       });
@@ -460,7 +460,7 @@ describe("createAppErrorHandler", () => {
     it("route はパス値ではなくルートパターンを載せる", async () => {
       const log = await requestWithContext(createUnauthorizedError(), {});
 
-      expect(log.fields.route).toBe("/artists/:accountId");
+      expect(log.fields.route).toBe("/artists/:handle");
       expect(JSON.stringify(log.fields)).not.toContain("beatboxer_taro");
     });
 

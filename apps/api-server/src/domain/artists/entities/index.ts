@@ -1,5 +1,5 @@
 import type { ArtistId } from "../valueObjects/artistId";
-import type { AccountId } from "../valueObjects/accountId";
+import type { Handle } from "../valueObjects/handle";
 
 export type ArtistProfile = {
   readonly name: string;
@@ -7,24 +7,24 @@ export type ArtistProfile = {
 
 export type ArtistState = {
   readonly artistId: ArtistId;
-  readonly accountId: AccountId;
+  readonly handle: Handle;
   readonly ownerUserId: string;
   readonly profile: ArtistProfile | null;
 };
 
 export type ArtistPersistenceData = {
   id: string;
-  accountId: string;
+  handle: string;
   ownerUserId: string;
 };
 
 export type Artist = {
   getArtistId: () => string;
-  getAccountId: () => string;
+  getHandle: () => string;
   getOwnerUserId: () => string;
   getProfile: () => ArtistProfile | null;
   hasProfile: () => boolean;
-  hasAccountId: (accountId: AccountId) => boolean;
-  changeAccountId: (newAccountId: AccountId) => Artist;
+  hasHandle: (handle: Handle) => boolean;
+  changeHandle: (newHandle: Handle) => Artist;
   toPersistence: () => ArtistPersistenceData;
 };

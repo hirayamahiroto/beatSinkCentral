@@ -15,7 +15,7 @@ const existingUser = reconstructUser({
 
 const existingArtist = reconstructArtist({
   artistId: "artist-1",
-  accountId: "beatboxer_taro",
+  handle: "beatboxer_taro",
   ownerUserId: existingUser.getId(),
   profile: null,
 });

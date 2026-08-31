@@ -7,7 +7,7 @@ import {
 import type {
   IArtistReader,
   IArtistWriter,
-  ArtistUpdateAccountIdData,
+  ArtistUpdateHandleData,
 } from "../../../domain/artists/repositories";
 import type {
   Artist,
@@ -15,28 +15,28 @@ import type {
 } from "../../../domain/artists/entities";
 import { reconstructArtist } from "../../../domain/artists/factories";
 import { createArtistNotFoundError } from "../../../domain/artists/errors/artistNotFound";
-import { createAccountIdAlreadyTakenError } from "../../../domain/artists/errors/accountIdAlreadyTaken";
+import { createHandleAlreadyTakenError } from "../../../domain/artists/errors/handleAlreadyTaken";
 import { isUniqueViolation } from "../../database/uniqueViolation";
 import type { Executor } from "../../transaction";
 
-const ACCOUNT_ID_UNIQUE_CONSTRAINT = "artists_account_id_unique";
+const HANDLE_UNIQUE_CONSTRAINT = "artists_handle_unique";
 
 const artistColumns = {
   artistId: artistsTable.id,
-  accountId: artistsTable.accountId,
+  handle: artistsTable.handle,
   ownerUserId: artistOwnersTable.userId,
   profileName: artistProfilesTable.name,
 };
 
-const rejectTakenAccountId = async <T>(
-  accountId: string,
+const rejectTakenHandle = async <T>(
+  handle: string,
   write: () => Promise<T>,
 ): Promise<T> => {
   try {
     return await write();
   } catch (error) {
-    if (isUniqueViolation(error, ACCOUNT_ID_UNIQUE_CONSTRAINT)) {
-      throw createAccountIdAlreadyTakenError(accountId);
+    if (isUniqueViolation(error, HANDLE_UNIQUE_CONSTRAINT)) {
+      throw createHandleAlreadyTakenError(handle);
     }
     throw error;
   }
@@ -62,13 +62,13 @@ export const createArtistReader = (executor: Executor): IArtistReader => ({
     const row = results[0];
     return reconstructArtist({
       artistId: row.artistId,
-      accountId: row.accountId,
+      handle: row.handle,
       ownerUserId: row.ownerUserId,
       profile: row.profileName ? { name: row.profileName } : null,
     });
   },
 
-  async findByAccountId(accountId: string) {
+  async findByHandle(handle: string) {
     const results = await executor
       .select(artistColumns)
       .from(artistsTable)
@@ -80,7 +80,7 @@ export const createArtistReader = (executor: Executor): IArtistReader => ({
         artistProfilesTable,
         eq(artistsTable.id, artistProfilesTable.artistId),
       )
-      .where(eq(artistsTable.accountId, accountId))
+      .where(eq(artistsTable.handle, handle))
       .limit(1);
 
     if (results.length === 0) {
@@ -90,7 +90,7 @@ export const createArtistReader = (executor: Executor): IArtistReader => ({
     const row = results[0];
     return reconstructArtist({
       artistId: row.artistId,
-      accountId: row.accountId,
+      handle: row.handle,
       ownerUserId: row.ownerUserId,
       profile: row.profileName ? { name: row.profileName } : null,
     });
@@ -99,13 +99,13 @@ export const createArtistReader = (executor: Executor): IArtistReader => ({
 
 export const createArtistWriter = (executor: Executor): IArtistWriter => ({
   async save(data: ArtistPersistenceData): Promise<Artist> {
-    const [artistRow] = await rejectTakenAccountId(data.accountId, () =>
+    const [artistRow] = await rejectTakenHandle(data.handle, () =>
       executor
         .insert(artistsTable)
-        .values({ id: data.id, accountId: data.accountId })
+        .values({ id: data.id, handle: data.handle })
         .returning({
           id: artistsTable.id,
-          accountId: artistsTable.accountId,
+          handle: artistsTable.handle,
         }),
     );
 
@@ -116,21 +116,21 @@ export const createArtistWriter = (executor: Executor): IArtistWriter => ({
 
     return reconstructArtist({
       artistId: artistRow.id,
-      accountId: artistRow.accountId,
+      handle: artistRow.handle,
       ownerUserId: data.ownerUserId,
       profile: null,
     });
   },
 
-  async updateAccountId(data: ArtistUpdateAccountIdData): Promise<Artist> {
-    const [artistRow] = await rejectTakenAccountId(data.accountId, () =>
+  async updateHandle(data: ArtistUpdateHandleData): Promise<Artist> {
+    const [artistRow] = await rejectTakenHandle(data.handle, () =>
       executor
         .update(artistsTable)
-        .set({ accountId: data.accountId })
+        .set({ handle: data.handle })
         .where(eq(artistsTable.id, data.artistId))
         .returning({
           id: artistsTable.id,
-          accountId: artistsTable.accountId,
+          handle: artistsTable.handle,
         }),
     );
     if (!artistRow) throw createArtistNotFoundError();
@@ -150,10 +150,10 @@ export const createArtistWriter = (executor: Executor): IArtistWriter => ({
 
     return reconstructArtist({
       artistId: artistRow.id,
-      accountId: artistRow.accountId,
+      handle: artistRow.handle,
       ownerUserId: ownerRow.userId,
       // name は下書き許容で nullable 化したため、name 有無で profile 有無を判定する
-      // （findByUserId / findByAccountId と同じ扱い。プロフィール本体は artistProfiles 集約が担う）。
+      // （findByUserId / findByHandle と同じ扱い。プロフィール本体は artistProfiles 集約が担う）。
       profile: profileRow?.name ? { name: profileRow.name } : null,
     });
   },

@@ -7,12 +7,12 @@ import {
   waitFor,
   cleanup,
 } from "@testing-library/react";
-import { AccountIdEditorClientAdapter } from "./index";
+import { HandleEditorClientAdapter } from "./index";
 
 const updateMock = vi.fn();
 
-vi.mock("./hooks/useUpdateMyAccountId", () => ({
-  useUpdateMyAccountId: () => ({
+vi.mock("./hooks/useUpdateMyHandle", () => ({
+  useUpdateMyHandle: () => ({
     update: updateMock,
     isLoading: false,
   }),
@@ -28,7 +28,7 @@ vi.mock("@ui/design-system/components/atoms/Toaster", () => ({
   },
 }));
 
-const saveNewAccountId = (value: string) => {
+const saveNewHandle = (value: string) => {
   fireEvent.click(screen.getByRole("button", { name: "変更" }));
   fireEvent.change(screen.getByDisplayValue("dj_taro"), {
     target: { value },
@@ -36,39 +36,37 @@ const saveNewAccountId = (value: string) => {
   fireEvent.click(screen.getByRole("button", { name: "保存" }));
 };
 
-describe("AccountIdEditorClientAdapter", () => {
+describe("HandleEditorClientAdapter", () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
   });
 
-  it("初期表示で渡された accountId を prefix 付きで表示する", () => {
-    render(<AccountIdEditorClientAdapter accountId="dj_taro" />);
+  it("初期表示で渡された handle を prefix 付きで表示する", () => {
+    render(<HandleEditorClientAdapter handle="dj_taro" />);
 
     expect(screen.getByText("@dj_taro")).toBeInTheDocument();
   });
 
-  it("値を編集して保存すると、新しい accountId で update が呼ばれる", async () => {
+  it("値を編集して保存すると、新しい handle で update が呼ばれる", async () => {
     updateMock.mockResolvedValueOnce({ ok: true, value: undefined });
-    render(<AccountIdEditorClientAdapter accountId="dj_taro" />);
+    render(<HandleEditorClientAdapter handle="dj_taro" />);
 
-    saveNewAccountId("dj_jiro");
+    saveNewHandle("dj_jiro");
 
     await waitFor(() => {
-      expect(updateMock).toHaveBeenCalledWith({ accountId: "dj_jiro" });
+      expect(updateMock).toHaveBeenCalledWith({ handle: "dj_jiro" });
     });
   });
 
   it("成功したら成功トーストを出す", async () => {
     updateMock.mockResolvedValueOnce({ ok: true, value: undefined });
-    render(<AccountIdEditorClientAdapter accountId="dj_taro" />);
+    render(<HandleEditorClientAdapter handle="dj_taro" />);
 
-    saveNewAccountId("dj_jiro");
+    saveNewHandle("dj_jiro");
 
     await waitFor(() => {
-      expect(toastSuccessMock).toHaveBeenCalledWith(
-        "Account ID を更新しました",
-      );
+      expect(toastSuccessMock).toHaveBeenCalledWith("Handle を更新しました");
     });
     expect(toastErrorMock).not.toHaveBeenCalled();
   });
@@ -76,15 +74,15 @@ describe("AccountIdEditorClientAdapter", () => {
   it("入力値が拒否されたら、トーストではなく入力欄にエラーを出す", async () => {
     updateMock.mockResolvedValueOnce({
       ok: false,
-      error: { kind: "rejected", message: "Account ID already taken: dj_jiro" },
+      error: { kind: "rejected", message: "Handle already taken: dj_jiro" },
     });
-    render(<AccountIdEditorClientAdapter accountId="dj_taro" />);
+    render(<HandleEditorClientAdapter handle="dj_taro" />);
 
-    saveNewAccountId("dj_jiro");
+    saveNewHandle("dj_jiro");
 
     await waitFor(() => {
       expect(
-        screen.getByText("Account ID already taken: dj_jiro"),
+        screen.getByText("Handle already taken: dj_jiro"),
       ).toBeInTheDocument();
     });
     expect(toastErrorMock).not.toHaveBeenCalled();
@@ -99,9 +97,9 @@ describe("AccountIdEditorClientAdapter", () => {
         message: "通信に失敗しました。時間をおいて再度お試しください",
       },
     });
-    render(<AccountIdEditorClientAdapter accountId="dj_taro" />);
+    render(<HandleEditorClientAdapter handle="dj_taro" />);
 
-    saveNewAccountId("dj_jiro");
+    saveNewHandle("dj_jiro");
 
     await waitFor(() => {
       expect(toastErrorMock).toHaveBeenCalledWith(
@@ -119,16 +117,16 @@ describe("AccountIdEditorClientAdapter", () => {
         ok: false,
         error: {
           kind: "rejected",
-          message: "Account ID already taken: dj_jiro",
+          message: "Handle already taken: dj_jiro",
         },
       })
       .mockResolvedValueOnce({ ok: true, value: undefined });
-    render(<AccountIdEditorClientAdapter accountId="dj_taro" />);
+    render(<HandleEditorClientAdapter handle="dj_taro" />);
 
-    saveNewAccountId("dj_jiro");
+    saveNewHandle("dj_jiro");
     await waitFor(() => {
       expect(
-        screen.getByText("Account ID already taken: dj_jiro"),
+        screen.getByText("Handle already taken: dj_jiro"),
       ).toBeInTheDocument();
     });
 
@@ -139,7 +137,7 @@ describe("AccountIdEditorClientAdapter", () => {
 
     await waitFor(() => {
       expect(
-        screen.queryByText("Account ID already taken: dj_jiro"),
+        screen.queryByText("Handle already taken: dj_jiro"),
       ).not.toBeInTheDocument();
     });
   });

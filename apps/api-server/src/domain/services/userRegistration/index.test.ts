@@ -6,7 +6,7 @@ import { reconstructArtist } from "../../artists/factories";
 const validInput = {
   subId: "auth0|123456789",
   email: "test@example.com",
-  accountId: "test_account",
+  handle: "test_account",
 } satisfies RegisterNewUserInput;
 
 const existingUser = reconstructUser({
@@ -17,20 +17,20 @@ const existingUser = reconstructUser({
 
 const existingArtist = reconstructArtist({
   artistId: "artist-1",
-  accountId: validInput.accountId,
+  handle: validInput.handle,
   ownerUserId: "other-user",
   profile: null,
 });
 
 describe("registerNewUser", () => {
-  it("未登録かつaccountId未使用ならUserとArtistを生成する", () => {
+  it("未登録かつhandle未使用ならUserとArtistを生成する", () => {
     const result = registerNewUser(validInput, null, null);
 
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.value.user.getSub()).toBe(validInput.subId);
       expect(result.value.user.getEmail()).toBe(validInput.email);
-      expect(result.value.artist.getAccountId()).toBe(validInput.accountId);
+      expect(result.value.artist.getHandle()).toBe(validInput.handle);
     }
   });
 
@@ -54,25 +54,25 @@ describe("registerNewUser", () => {
     }
   });
 
-  it("accountIdが使用済みなら AccountIdAlreadyTakenError を err で返す", () => {
+  it("handleが使用済みなら HandleAlreadyTakenError を err で返す", () => {
     const result = registerNewUser(validInput, null, existingArtist);
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error.type).toBe("AccountIdAlreadyTakenError");
+      expect(result.error.type).toBe("HandleAlreadyTakenError");
     }
   });
 
-  it("AccountIdAlreadyTakenError には衝突したaccountIdが入る", () => {
+  it("HandleAlreadyTakenError には衝突したhandleが入る", () => {
     const result = registerNewUser(validInput, null, existingArtist);
 
     expect(result.ok).toBe(false);
-    if (!result.ok && result.error.type === "AccountIdAlreadyTakenError") {
-      expect(result.error.accountId).toBe(validInput.accountId);
+    if (!result.ok && result.error.type === "HandleAlreadyTakenError") {
+      expect(result.error.handle).toBe(validInput.handle);
     }
   });
 
-  it("登録済み判定はaccountId重複判定より先に評価される", () => {
+  it("登録済み判定はhandle重複判定より先に評価される", () => {
     const result = registerNewUser(validInput, existingUser, existingArtist);
 
     expect(result.ok).toBe(false);
@@ -94,16 +94,16 @@ describe("registerNewUser", () => {
     }
   });
 
-  it("accountIdが不正なら InvalidAccountIdFormatError を err で返す", () => {
+  it("handleが不正なら InvalidHandleFormatError を err で返す", () => {
     const result = registerNewUser(
-      { ...validInput, accountId: "invalid handle" },
+      { ...validInput, handle: "invalid handle" },
       null,
       null,
     );
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error.type).toBe("InvalidAccountIdFormatError");
+      expect(result.error.type).toBe("InvalidHandleFormatError");
     }
   });
 });

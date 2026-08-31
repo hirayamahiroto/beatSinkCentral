@@ -6,7 +6,7 @@ const { getMock } = vi.hoisted(() => ({ getMock: vi.fn() }));
 
 vi.mock("../../../utils/client", () => ({
   createBeatfolioBffServerClient: () => ({
-    api: { players: { ":accountId": { $get: getMock } } },
+    api: { players: { ":handle": { $get: getMock } } },
   }),
 }));
 
@@ -23,16 +23,16 @@ const player = {
 describe("getPlayerDetail", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("accountId を BFF へ渡し、成功したら画面用データを ok で返す", async () => {
+  it("handle を BFF へ渡し、成功したら画面用データを ok で返す", async () => {
     getMock.mockResolvedValue({
       ok: true,
       status: 200,
       json: async () => player,
     });
 
-    const result = await getPlayerDetail({ accountId: "saku" });
+    const result = await getPlayerDetail({ handle: "saku" });
 
-    expect(getMock).toHaveBeenCalledWith({ param: { accountId: "saku" } });
+    expect(getMock).toHaveBeenCalledWith({ param: { handle: "saku" } });
     expect(result).toStrictEqual({ ok: true, value: player });
   });
 
@@ -43,7 +43,7 @@ describe("getPlayerDetail", () => {
       json: async () => ({ error: "Player profile not found" }),
     });
 
-    const result = await getPlayerDetail({ accountId: "unknown" });
+    const result = await getPlayerDetail({ handle: "unknown" });
 
     expect(result).toStrictEqual({
       ok: false,
@@ -61,7 +61,7 @@ describe("getPlayerDetail", () => {
       json: async () => ({ error: "Failed to fetch player profile" }),
     });
 
-    const result = await getPlayerDetail({ accountId: "saku" });
+    const result = await getPlayerDetail({ handle: "saku" });
 
     expect(result).toStrictEqual({
       ok: false,
@@ -75,7 +75,7 @@ describe("getPlayerDetail", () => {
   it("通信自体が失敗したら unexpected を返す", async () => {
     getMock.mockRejectedValue(new TypeError("fetch failed"));
 
-    const result = await getPlayerDetail({ accountId: "saku" });
+    const result = await getPlayerDetail({ handle: "saku" });
 
     expect(result).toStrictEqual({
       ok: false,

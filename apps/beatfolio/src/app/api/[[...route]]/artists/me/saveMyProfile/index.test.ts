@@ -46,13 +46,13 @@ describe("POST /artists/me/profile", () => {
         registered: true,
         userId: "user-1",
         email: "saku@example.com",
-        artist: { artistId: "artist-1", accountId: "saku", hasProfile: true },
+        artist: { artistId: "artist-1", handle: "saku", hasProfile: true },
       }),
     });
     profilePost.mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => ({ accountId: "saku", profile: { name: "SAKU" } }),
+      json: async () => ({ handle: "saku", profile: { name: "SAKU" } }),
     });
   });
 

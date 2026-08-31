@@ -8,7 +8,7 @@ import { Typography } from "@ui/design-system/components/atoms/Typography";
 import { Stack } from "@ui/design-system/components/atoms/Stack";
 
 type Player = {
-  accountId: string;
+  handle: string;
   name: string;
   imageUrl: string | null;
 };
@@ -20,7 +20,7 @@ type PlayersPageProps = {
 };
 
 const PlayerCard = ({ player }: { player: Player }) => (
-  <AtomLink href={`/players/${player.accountId}`}>
+  <AtomLink href={`/players/${player.handle}`}>
     <Card className="group overflow-hidden p-0">
       <div className="relative">
         {player.imageUrl ? (
@@ -94,7 +94,7 @@ const PlayersPage = ({ players }: PlayersPageProps) => {
               ) : (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {visiblePlayers.map((player) => (
-                    <PlayerCard key={player.accountId} player={player} />
+                    <PlayerCard key={player.handle} player={player} />
                   ))}
                 </div>
               )}
