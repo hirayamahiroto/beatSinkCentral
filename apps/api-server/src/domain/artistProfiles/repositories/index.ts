@@ -10,7 +10,7 @@ export type ArtistProfileSetPublishedData = {
 };
 
 export type PublishedProfileSummary = {
-  accountId: string;
+  handle: string;
   name: string;
   imageUrl: string | null;
 };
@@ -21,7 +21,7 @@ export type ListPublishedSummariesInput = {
 
 export interface IArtistProfileReader {
   findByArtistId(artistId: string): Promise<ArtistProfile | null>;
-  findPublishedByAccountId(accountId: string): Promise<ArtistProfile | null>;
+  findPublishedByHandle(handle: string): Promise<ArtistProfile | null>;
   listPublishedSummaries(
     input: ListPublishedSummariesInput,
   ): Promise<PublishedProfileSummary[]>;

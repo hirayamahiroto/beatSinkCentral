@@ -26,7 +26,7 @@ beatfolio における実体は **アーティストの公開プロフィール*
 
 | 種別         | 表現       | 例                        |
 | ------------ | ---------- | ------------------------- |
-| 実体         | 名詞       | `/players/[accountId]`    |
+| 実体         | 名詞       | `/players/[handle]`       |
 | 実体への操作 | 動詞を追加 | `/dashboard/profile/edit` |
 
 名詞だけの URL に編集画面を置かない。`/dashboard/profile` のように名詞で終わる URL は「閲覧」を期待させ、実体が編集ウィザードだと URL と中身が食い違う。
@@ -35,9 +35,9 @@ beatfolio における実体は **アーティストの公開プロフィール*
 
 ### 原則3: 詳細は一覧の下に置く
 
-一覧が `/players` なら詳細は `/players/[accountId]` とする。
+一覧が `/players` なら詳細は `/players/[handle]` とする。
 
-ルート直下に `/[accountId]` を置く形（GitHub / Zenn 型）は採らない。`/about` `/event` `/admin` `/dashboard` 等の既存パスと衝突し、**予約語リストの管理という恒久的な負債**を負うため。一覧配下なら衝突は原理的に起きない。
+ルート直下に `/[handle]` を置く形（GitHub / Zenn 型）は採らない。`/about` `/event` `/admin` `/dashboard` 等の既存パスと衝突し、**予約語リストの管理という恒久的な負債**を負うため。一覧配下なら衝突は原理的に起きない。
 
 ### 原則4: 認証境界を階層で表す
 
@@ -49,7 +49,7 @@ beatfolio における実体は **アーティストの公開プロフィール*
 
 | 対象                     | 性質                         | 置き場                    |
 | ------------------------ | ---------------------------- | ------------------------- |
-| email / accountId        | User 集約のアカウント設定    | `/dashboard/settings`     |
+| email / handle           | User 集約のアカウント設定    | `/dashboard/settings`     |
 | アーティストプロフィール | 公開物（ArtistProfile 集約） | `/dashboard/profile/edit` |
 
 `/dashboard` 直下は**ログイン後ホーム（概況と導線）**であり、設定項目を直接置く場所ではない。

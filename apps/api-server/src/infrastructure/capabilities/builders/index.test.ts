@@ -24,18 +24,18 @@ vi.mock("../../repositories/userRepository", () => ({
 vi.mock("../../repositories/artistRepository", () => ({
   createArtistReader: vi.fn(() => ({
     findByUserId: vi.fn(),
-    findByAccountId: vi.fn(),
+    findByHandle: vi.fn(),
   })),
   createArtistWriter: vi.fn(() => ({
     save: vi.fn(),
-    updateAccountId: vi.fn(),
+    updateHandle: vi.fn(),
   })),
 }));
 
 vi.mock("../../repositories/artistProfileRepository", () => ({
   createArtistProfileReader: vi.fn(() => ({
     findByArtistId: vi.fn(),
-    findPublishedByAccountId: vi.fn(),
+    findPublishedByHandle: vi.fn(),
     listPublishedSummaries: vi.fn(),
   })),
   createArtistProfileWriter: vi.fn(() => ({
@@ -58,7 +58,7 @@ const user = reconstructUser({
 
 const artist = reconstructArtist({
   artistId: "artist-1",
-  accountId: "user_123",
+  handle: "user_123",
   ownerUserId: "user-1",
   profile: null,
 });

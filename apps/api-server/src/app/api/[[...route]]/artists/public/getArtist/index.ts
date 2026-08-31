@@ -7,7 +7,7 @@ import { handleAppError } from "../../../../../../errorMap";
 import { createResponseContractViolationError } from "../../../errors/responseContractViolation";
 
 const paramSchema = z.object({
-  accountId: z.string().min(1).max(255),
+  handle: z.string().min(1).max(255),
 });
 
 const publicProfileSchema = z.object({
@@ -30,7 +30,7 @@ const publicProfileSchema = z.object({
 });
 
 const getArtistResponseSchema = z.object({
-  accountId: z.string(),
+  handle: z.string(),
   profile: publicProfileSchema,
 });
 
@@ -38,10 +38,10 @@ const app = new Hono().get(
   "/",
   validateRequest("param", paramSchema),
   async (c) => {
-    const { accountId } = c.req.valid("param");
+    const { handle } = c.req.valid("param");
     const caps = getCapabilityDeps().buildPublicReadCapabilities();
 
-    const result = await getPublicProfile(caps, { accountId });
+    const result = await getPublicProfile(caps, { handle });
 
     if (!result.ok) {
       return handleAppError(result.error, c);

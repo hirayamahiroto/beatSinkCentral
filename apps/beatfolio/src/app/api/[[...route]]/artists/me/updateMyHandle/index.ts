@@ -6,13 +6,13 @@ import { resolveMyArtistId } from "../../../shared/resolveMyArtistId";
 import { toUpstreamError } from "../../../shared/toUpstreamError";
 import { readUpstreamJson } from "../../../shared/readUpstreamJson";
 
-const updateAccountIdRequestSchema = z.object({
-  accountId: z.string().nonempty(),
+const updateHandleRequestSchema = z.object({
+  handle: z.string().nonempty(),
 });
 
 const app = new Hono<RequestContextEnv>().post(
   "/",
-  validateRequest("json", updateAccountIdRequestSchema),
+  validateRequest("json", updateHandleRequestSchema),
   async (c) => {
     const apiClient = c.get("apiClient");
     const body = c.req.valid("json");
@@ -21,7 +21,7 @@ const app = new Hono<RequestContextEnv>().post(
 
     const res = await apiClient.api.artists[":artistId"].$post({
       param: { artistId },
-      json: { accountId: body.accountId },
+      json: { handle: body.handle },
     });
     if (!res.ok) throw await toUpstreamError(res);
 

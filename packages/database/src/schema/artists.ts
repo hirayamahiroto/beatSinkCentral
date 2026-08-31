@@ -7,7 +7,7 @@ import {
 
 export const artistsTable = pgTable("artists", {
   id: uuid("id").primaryKey().defaultRandom(),
-  accountId: varchar("account_id", { length: 255 }).notNull().unique(),
+  handle: varchar("handle", { length: 255 }).notNull().unique(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

@@ -4,19 +4,19 @@ import {
   requestContextMiddleware,
   type RequestContextEnv,
 } from "../../../../../../middlewares/requestContext";
-import updateMyAccountId from "./index";
+import updateMyHandle from "./index";
 import { handleBffError } from "../../../../../../errorMap";
 
-const { meGet, accountIdPost } = vi.hoisted(() => ({
+const { meGet, handlePost } = vi.hoisted(() => ({
   meGet: vi.fn(),
-  accountIdPost: vi.fn(),
+  handlePost: vi.fn(),
 }));
 
 vi.mock("../../../../../../utils/client", () => ({
   createApiServerClient: () => ({
     api: {
       users: { me: { $get: meGet } },
-      artists: { ":artistId": { $post: accountIdPost } },
+      artists: { ":artistId": { $post: handlePost } },
     },
   }),
 }));
@@ -24,7 +24,7 @@ vi.mock("../../../../../../utils/client", () => ({
 const createApp = () => {
   const app = new Hono<RequestContextEnv>();
   app.use("*", requestContextMiddleware);
-  app.route("/", updateMyAccountId);
+  app.route("/", updateMyHandle);
   app.onError(handleBffError);
   return app;
 };
@@ -46,31 +46,31 @@ describe("POST /artists/me", () => {
         registered: true,
         userId: "user-1",
         email: "saku@example.com",
-        artist: { artistId: "artist-1", accountId: "saku", hasProfile: true },
+        artist: { artistId: "artist-1", handle: "saku", hasProfile: true },
       }),
     });
-    accountIdPost.mockResolvedValue({
+    handlePost.mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => ({ artistId: "artist-1", accountId: "saku_new" }),
+      json: async () => ({ artistId: "artist-1", handle: "saku_new" }),
     });
   });
 
-  it("検証を通った accountId を自分の artistId 宛てで api-server へ渡す", async () => {
-    const res = await request({ accountId: "saku_new" });
+  it("検証を通った handle を自分の artistId 宛てで api-server へ渡す", async () => {
+    const res = await request({ handle: "saku_new" });
 
-    expect(accountIdPost).toHaveBeenCalledWith({
+    expect(handlePost).toHaveBeenCalledWith({
       param: { artistId: "artist-1" },
-      json: { accountId: "saku_new" },
+      json: { handle: "saku_new" },
     });
     expect(res.status).toBe(200);
   });
 
-  it("accountId が空なら api-server へ渡さず 400 を返す", async () => {
-    const res = await request({ accountId: "" });
+  it("handle が空なら api-server へ渡さず 400 を返す", async () => {
+    const res = await request({ handle: "" });
 
     expect(res.status).toBe(400);
-    expect(accountIdPost).not.toHaveBeenCalled();
+    expect(handlePost).not.toHaveBeenCalled();
   });
 
   it("artist 未登録なら api-server へ渡さず 404 を返す", async () => {
@@ -80,39 +80,39 @@ describe("POST /artists/me", () => {
       json: async () => ({ registered: false }),
     });
 
-    const res = await request({ accountId: "saku_new" });
+    const res = await request({ handle: "saku_new" });
 
     expect(res.status).toBe(404);
-    expect(accountIdPost).not.toHaveBeenCalled();
+    expect(handlePost).not.toHaveBeenCalled();
   });
 
   it("api-server のエラーはステータスごと透過する", async () => {
-    accountIdPost.mockResolvedValue({
+    handlePost.mockResolvedValue({
       ok: false,
       status: 409,
       json: async () => ({
-        error: "accountId already taken",
-        code: "AccountIdAlreadyTakenError",
+        error: "handle already taken",
+        code: "HandleAlreadyTakenError",
       }),
     });
 
-    const res = await request({ accountId: "saku_new" });
+    const res = await request({ handle: "saku_new" });
 
     expect(res.status).toBe(409);
     expect(await res.json()).toStrictEqual({
-      error: "accountId already taken",
-      code: "AccountIdAlreadyTakenError",
+      error: "handle already taken",
+      code: "HandleAlreadyTakenError",
     });
   });
 
   it("code の無い 4xx は契約違反として 502 にする", async () => {
-    accountIdPost.mockResolvedValue({
+    handlePost.mockResolvedValue({
       ok: false,
       status: 409,
-      json: async () => ({ error: "accountId already taken" }),
+      json: async () => ({ error: "handle already taken" }),
     });
 
-    const res = await request({ accountId: "saku_new" });
+    const res = await request({ handle: "saku_new" });
 
     expect(res.status).toBe(502);
     expect(await res.json()).toStrictEqual({

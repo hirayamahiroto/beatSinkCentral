@@ -48,7 +48,7 @@ const profileColumns = {
 // Drizzle の isNotNull は取得行の型を絞らないため、null を落として契約の name: string を満たす
 const toPublishedSummaries = (
   rows: {
-    accountId: string;
+    handle: string;
     name: string | null;
     imageUrl: string | null;
   }[],
@@ -179,9 +179,7 @@ export const createArtistProfileReader = (
     return toEntity(row, genres, links);
   },
 
-  async findPublishedByAccountId(
-    accountId: string,
-  ): Promise<ArtistProfile | null> {
+  async findPublishedByHandle(handle: string): Promise<ArtistProfile | null> {
     const [row] = await executor
       .select(profileColumns)
       .from(artistProfilesTable)
@@ -191,7 +189,7 @@ export const createArtistProfileReader = (
       )
       .where(
         and(
-          eq(artistsTable.accountId, accountId),
+          eq(artistsTable.handle, handle),
           eq(artistProfilesTable.published, true),
           isNull(artistProfilesTable.deletedAt),
         ),
@@ -208,7 +206,7 @@ export const createArtistProfileReader = (
   }: ListPublishedSummariesInput): Promise<PublishedProfileSummary[]> {
     const rows = await executor
       .select({
-        accountId: artistsTable.accountId,
+        handle: artistsTable.handle,
         name: artistProfilesTable.name,
         imageUrl: artistProfilesTable.imageUrl,
       })
@@ -224,10 +222,7 @@ export const createArtistProfileReader = (
           isNotNull(artistProfilesTable.name),
         ),
       )
-      .orderBy(
-        desc(artistProfilesTable.publishedAt),
-        asc(artistsTable.accountId),
-      )
+      .orderBy(desc(artistProfilesTable.publishedAt), asc(artistsTable.handle))
       .limit(limit);
 
     return toPublishedSummaries(rows);

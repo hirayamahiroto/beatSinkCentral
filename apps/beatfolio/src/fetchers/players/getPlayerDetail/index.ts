@@ -6,7 +6,7 @@ import { type FetcherError, NETWORK_ERROR_MESSAGE } from "../../shared/error";
 type BffClient = Awaited<ReturnType<typeof createBeatfolioBffServerClient>>;
 
 export type PlayerDetailScreen = InferResponseType<
-  BffClient["api"]["players"][":accountId"]["$get"],
+  BffClient["api"]["players"][":handle"]["$get"],
   200
 >;
 
@@ -14,12 +14,12 @@ const FALLBACK_MESSAGE = "プレイヤーの取得に失敗しました";
 const NOT_FOUND_MESSAGE = "このプレイヤーは見つかりませんでした";
 
 export const getPlayerDetail = async (input: {
-  accountId: string;
+  handle: string;
 }): Promise<Result<PlayerDetailScreen, FetcherError>> => {
   try {
     const client = await createBeatfolioBffServerClient();
-    const res = await client.api.players[":accountId"].$get({
-      param: { accountId: input.accountId },
+    const res = await client.api.players[":handle"].$get({
+      param: { handle: input.handle },
     });
 
     if (res.status === 404) {

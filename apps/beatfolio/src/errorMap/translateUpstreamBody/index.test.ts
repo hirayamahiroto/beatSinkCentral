@@ -27,7 +27,7 @@ describe("translateUpstreamBody", () => {
   });
 
   it("他の code は上流ボディをそのまま返す", () => {
-    const body = { error: "taken", code: "AccountIdAlreadyTakenError" };
+    const body = { error: "taken", code: "HandleAlreadyTakenError" };
 
     expect(translateUpstreamBody(body)).toBe(body);
   });

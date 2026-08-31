@@ -45,7 +45,7 @@ export default async function DashboardPage() {
                 </Button>
                 {artist.profile?.published && (
                   <Button asChild variant="outline">
-                    <Link href={`/players/${artist.accountId}`}>
+                    <Link href={`/players/${artist.handle}`}>
                       公開ページを見る
                     </Link>
                   </Button>
@@ -66,7 +66,7 @@ export default async function DashboardPage() {
           <div className="flex flex-col gap-3">
             <Typography variant="h4">アカウント設定</Typography>
             <Typography variant="small" tone="muted">
-              メールアドレスとアカウントIDを変更できます。
+              メールアドレスとハンドルを変更できます。
             </Typography>
             <div>
               <Button asChild variant="outline">

@@ -1,27 +1,27 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { updateMyAccountId } from "../../../../../../fetchers/artists/updateMyAccountId";
+import { updateMyHandle } from "../../../../../../fetchers/artists/updateMyHandle";
 import type { FetcherError } from "../../../../../../fetchers/shared/error";
 import type { Result } from "../../../../../../utils/result";
 
 type UpdateData = {
-  accountId: string;
+  handle: string;
 };
 
-export type UpdateMyAccountIdError = FetcherError;
+export type UpdateMyHandleError = FetcherError;
 
-export type UpdateMyAccountIdResult = Result<void, UpdateMyAccountIdError>;
+export type UpdateMyHandleResult = Result<void, UpdateMyHandleError>;
 
-export const useUpdateMyAccountId = () => {
+export const useUpdateMyHandle = () => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
   const update = async ({
-    accountId,
-  }: UpdateData): Promise<UpdateMyAccountIdResult> => {
+    handle,
+  }: UpdateData): Promise<UpdateMyHandleResult> => {
     setIsLoading(true);
 
-    const result = await updateMyAccountId({ accountId });
+    const result = await updateMyHandle({ handle });
 
     if (result.ok) {
       router.refresh();

@@ -36,7 +36,7 @@ export const saveProfileRequestSchema = z.object({
 export type SaveProfileRequestBody = z.infer<typeof saveProfileRequestSchema>;
 
 const saveProfileResponseSchema = z.object({
-  accountId: z.string(),
+  handle: z.string(),
   profile: z.object({
     name: z.string().nullable(),
     tagline: z.string().nullable(),

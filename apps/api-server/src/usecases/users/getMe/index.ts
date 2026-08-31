@@ -11,7 +11,7 @@ type GetMeOutputRegistered = {
   email: string;
   artist: {
     artistId: string;
-    accountId: string;
+    handle: string;
     hasProfile: boolean;
   } | null;
 };
@@ -44,7 +44,7 @@ export const getMe = async (
         email: resolution.actor.user.getEmail(),
         artist: {
           artistId: resolution.actor.artist.getArtistId(),
-          accountId: resolution.actor.artist.getAccountId(),
+          handle: resolution.actor.artist.getHandle(),
           hasProfile: resolution.actor.artist.hasProfile(),
         },
       });

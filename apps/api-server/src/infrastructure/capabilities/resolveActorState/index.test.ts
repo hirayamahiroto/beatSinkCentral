@@ -11,7 +11,7 @@ const user = reconstructUser({
 
 const artist = reconstructArtist({
   artistId: "artist-1",
-  accountId: "user_123",
+  handle: "user_123",
   ownerUserId: "user-1",
   profile: null,
 });
@@ -20,7 +20,7 @@ const createReaders = (): ActorStateReaders => ({
   users: { findBySub: vi.fn(async () => null) },
   artists: {
     findByUserId: vi.fn(async () => null),
-    findByAccountId: vi.fn(async () => null),
+    findByHandle: vi.fn(async () => null),
   },
 });
 

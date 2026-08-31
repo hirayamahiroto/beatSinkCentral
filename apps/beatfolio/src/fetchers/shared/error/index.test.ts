@@ -16,10 +16,10 @@ describe("toErrorKind", () => {
 
 describe("readErrorMessage", () => {
   it("エラーボディの error メッセージを返す", async () => {
-    const res = { json: async () => ({ error: "accountId already taken" }) };
+    const res = { json: async () => ({ error: "handle already taken" }) };
 
     expect(await readErrorMessage(res, "fallback")).toBe(
-      "accountId already taken",
+      "handle already taken",
     );
   });
 

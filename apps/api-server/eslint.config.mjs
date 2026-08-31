@@ -36,7 +36,7 @@ const eslintConfig = [
     "src/app/api/\\[\\[...route\\]\\]/users/me/post/index.ts",
     "src/app/api/\\[\\[...route\\]\\]/users/post/index.ts",
     "src/app/api/\\[\\[...route\\]\\]/users/me/get/index.ts",
-    "src/app/api/\\[\\[...route\\]\\]/artists/\\[accountId\\]/get/index.ts",
+    "src/app/api/\\[\\[...route\\]\\]/artists/\\[handle\\]/get/index.ts",
     "src/app/api/\\[\\[...route\\]\\]/artists/get/index.ts",
     "src/app/api/\\[\\[...route\\]\\]/artists/me/post/index.ts",
     "src/app/api/\\[\\[...route\\]\\]/artists/me/profile/post/index.ts",

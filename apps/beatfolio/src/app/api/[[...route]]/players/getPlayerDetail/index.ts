@@ -5,12 +5,12 @@ import { toUpstreamError } from "../../shared/toUpstreamError";
 import { readUpstreamJson } from "../../shared/readUpstreamJson";
 import { createPlayerNotFoundError } from "../../errors/playerNotFound";
 
-const app = new Hono<RequestContextEnv>().get("/:accountId", async (c) => {
+const app = new Hono<RequestContextEnv>().get("/:handle", async (c) => {
   const apiClient = c.get("apiClient");
-  const accountId = c.req.param("accountId");
+  const handle = c.req.param("handle");
 
   const [profileRes, linkTypesRes] = await Promise.all([
-    apiClient.api.artists[":accountId"].$get({ param: { accountId } }),
+    apiClient.api.artists[":handle"].$get({ param: { handle } }),
     apiClient.api["link-types"].$get(),
   ]);
 

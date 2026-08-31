@@ -12,7 +12,7 @@ import { type Result, ok, err } from "../../../utils/result";
 export type SaveMyProfileInput = ArtistProfileContent;
 
 export type SaveMyProfileOutput = {
-  accountId: string;
+  handle: string;
   profile: ArtistProfileView;
 };
 
@@ -45,7 +45,7 @@ export const saveMyProfile = async (
   );
 
   return ok({
-    accountId: caps.actor.artist.getAccountId(),
+    handle: caps.actor.artist.getHandle(),
     profile: saved.toView(),
   });
 };

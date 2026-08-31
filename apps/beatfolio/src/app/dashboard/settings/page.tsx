@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { Typography } from "@ui/design-system/components/atoms/Typography";
 import { getSettings } from "../../../fetchers/dashboard/getSettings";
 import { EmailEditorClientAdapter } from "./EmailEditorClientAdapter";
-import { AccountIdEditorClientAdapter } from "./AccountIdEditorClientAdapter";
+import { HandleEditorClientAdapter } from "./HandleEditorClientAdapter";
 
 export default async function SettingsPage() {
   const result = await getSettings();
@@ -17,7 +17,7 @@ export default async function SettingsPage() {
     redirect("/onboarding");
   }
 
-  const { email, accountId } = settings;
+  const { email, handle } = settings;
 
   return (
     <div className="min-h-screen bg-background text-foreground px-4 pb-16 pt-24">
@@ -26,7 +26,7 @@ export default async function SettingsPage() {
 
         <EmailEditorClientAdapter email={email} />
 
-        {accountId && <AccountIdEditorClientAdapter accountId={accountId} />}
+        {handle && <HandleEditorClientAdapter handle={handle} />}
       </div>
     </div>
   );

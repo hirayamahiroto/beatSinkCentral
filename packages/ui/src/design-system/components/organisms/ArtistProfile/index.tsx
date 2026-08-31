@@ -11,10 +11,10 @@ import { Typography } from "@ui/design-system/components/atoms/Typography";
 import { FormField } from "@ui/design-system/components/molecules/FormField";
 
 const artistProfileSchema = z.object({
-  accountId: z
+  handle: z
     .string()
     .trim()
-    .min(1, "アカウントIDを入力してください")
+    .min(1, "ハンドルを入力してください")
     .max(255, "255文字以内で入力してください")
     .regex(/^[a-zA-Z0-9_]+$/, "英数字とアンダースコア(_)のみ使用できます"),
 });
@@ -41,11 +41,11 @@ export const ArtistProfile = ({
   } = useForm<FormValues>({
     resolver: zodResolver(artistProfileSchema),
     mode: "onTouched",
-    defaultValues: { accountId: "" },
+    defaultValues: { handle: "" },
   });
 
-  const accountIdError = errors.accountId?.message;
-  const hasValidationError = accountIdError !== undefined;
+  const handleError = errors.handle?.message;
+  const hasValidationError = handleError !== undefined;
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate>
@@ -57,15 +57,15 @@ export const ArtistProfile = ({
 
         <Card>
           <FormField
-            label="アカウントID"
-            htmlFor="accountId"
+            label="ハンドル"
+            htmlFor="handle"
             hint="英数字とアンダースコア(_)、1〜255文字。後から変更できません"
-            error={accountIdError}
+            error={handleError}
           >
             <Input
               type="text"
               placeholder="例: dj_taro_123"
-              {...register("accountId")}
+              {...register("handle")}
             />
           </FormField>
         </Card>

@@ -5,7 +5,7 @@ import { handleAppError } from "../../../../errorMap";
 
 const mockArtistProfiles = {
   findByArtistId: vi.fn(),
-  findPublishedByAccountId: vi.fn(),
+  findPublishedByHandle: vi.fn(),
   listPublishedSummaries: vi.fn(),
 };
 
@@ -34,7 +34,7 @@ describe("/artists ルーターの合成", () => {
   it("配下のエンドポイントを実 URL として公開する", () => {
     expect(routeSurface()).toEqual([
       "GET /",
-      "GET /:accountId",
+      "GET /:handle",
       "ALL /:artistId/*",
       "POST /:artistId",
       "GET /:artistId/profile",
@@ -53,7 +53,7 @@ describe("/artists ルーターの合成", () => {
   });
 
   it("公開プロフィール詳細は認証を要求しない", async () => {
-    mockArtistProfiles.findPublishedByAccountId.mockResolvedValue(null);
+    mockArtistProfiles.findPublishedByHandle.mockResolvedValue(null);
 
     const res = await createApp().request("/artists/taro", { method: "GET" });
 

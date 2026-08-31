@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { updateMyAccountId } from "./index";
+import { updateMyHandle } from "./index";
 import { NETWORK_ERROR_MESSAGE } from "../../shared/error";
 
 const { postMock } = vi.hoisted(() => ({ postMock: vi.fn() }));
@@ -10,7 +10,7 @@ vi.mock("../../../utils/client", () => ({
   }),
 }));
 
-describe("updateMyAccountId", () => {
+describe("updateMyHandle", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("成功したら ok を返す", async () => {
@@ -20,9 +20,9 @@ describe("updateMyAccountId", () => {
       json: async () => ({}),
     });
 
-    const result = await updateMyAccountId({ accountId: "new_id" });
+    const result = await updateMyHandle({ handle: "new_id" });
 
-    expect(postMock).toHaveBeenCalledWith({ json: { accountId: "new_id" } });
+    expect(postMock).toHaveBeenCalledWith({ json: { handle: "new_id" } });
     expect(result).toStrictEqual({ ok: true, value: undefined });
   });
 
@@ -30,14 +30,14 @@ describe("updateMyAccountId", () => {
     postMock.mockResolvedValue({
       ok: false,
       status: 409,
-      json: async () => ({ error: "accountId already taken" }),
+      json: async () => ({ error: "handle already taken" }),
     });
 
-    const result = await updateMyAccountId({ accountId: "taken" });
+    const result = await updateMyHandle({ handle: "taken" });
 
     expect(result).toStrictEqual({
       ok: false,
-      error: { kind: "rejected", message: "accountId already taken" },
+      error: { kind: "rejected", message: "handle already taken" },
     });
   });
 
@@ -48,13 +48,13 @@ describe("updateMyAccountId", () => {
       json: async () => ({}),
     });
 
-    const result = await updateMyAccountId({ accountId: "new_id" });
+    const result = await updateMyHandle({ handle: "new_id" });
 
     expect(result).toStrictEqual({
       ok: false,
       error: {
         kind: "unexpected",
-        message: "Account ID の更新に失敗しました",
+        message: "Handle の更新に失敗しました",
       },
     });
   });
@@ -62,7 +62,7 @@ describe("updateMyAccountId", () => {
   it("通信に失敗したら unexpected を返す", async () => {
     postMock.mockRejectedValue(new TypeError("Failed to fetch"));
 
-    const result = await updateMyAccountId({ accountId: "new_id" });
+    const result = await updateMyHandle({ handle: "new_id" });
 
     expect(result).toStrictEqual({
       ok: false,

@@ -199,16 +199,16 @@
 
 ### ドメインの知識範囲
 
-| 項目                                       | ドメインは知る | ドメインは知らない |
-| ------------------------------------------ | -------------- | ------------------ |
-| どの条件でエラーになるか（ルール）         | ✓              |                    |
-| どの型のエラーを返すか（discriminator）    | ✓              |                    |
-| 構造化コンテキスト（accountId, userId 等） | ✓              |                    |
-| クライアントに見せる文言                   |                | ✓                  |
-| HTTP ステータスコード                      |                | ✓                  |
-| ログフォーマット                           |                | ✓                  |
-| 国際化・多言語                             |                | ✓                  |
-| レスポンスの JSON 構造                     |                | ✓                  |
+| 項目                                    | ドメインは知る | ドメインは知らない |
+| --------------------------------------- | -------------- | ------------------ |
+| どの条件でエラーになるか（ルール）      | ✓              |                    |
+| どの型のエラーを返すか（discriminator） | ✓              |                    |
+| 構造化コンテキスト（handle, userId 等） | ✓              |                    |
+| クライアントに見せる文言                |                | ✓                  |
+| HTTP ステータスコード                   |                | ✓                  |
+| ログフォーマット                        |                | ✓                  |
+| 国際化・多言語                          |                | ✓                  |
+| レスポンスの JSON 構造                  |                | ✓                  |
 
 ドメイン側にあるのは「何のルールが、どういう状況で破られたか」という **情報の発信者としての最小限の知識** だけ。その情報をどう整形して誰に届けるかは、ドメインの外側（errorMap）の責任。
 
@@ -216,20 +216,20 @@
 
 ```typescript
 // domain 側: 何のルールに違反したか、状況の手がかりは何か、だけを表明
-return err(createAccountIdAlreadyTakenError(accountId));
+return err(createHandleAlreadyTakenError(handle));
 ```
 
 ```typescript
 // errorMap 側: 宛先ごとの作法に翻訳する（クライアント向け / 内部ログ向け）
-AccountIdAlreadyTakenError: {
+HandleAlreadyTakenError: {
   status: 409,
-  clientMessage: (error) => `Account ID already taken: ${error.accountId}`,
+  clientMessage: (error) => `Handle already taken: ${error.handle}`,
   logLevel: "info",
-  logFields: (error) => ({ accountId: error.accountId }),
+  logFields: (error) => ({ handle: error.handle }),
 },
 ```
 
-ドメインが返す `err` には HTTP ステータスも文言もログレベルも含まれない。errorMap はドメインの発信した「型 + context」を受け取って、**宛先ごとに** プレゼンテーションの作法に翻訳する。同じ `accountId` が、クライアントには文言の一部として、ログには集計可能なフィールドとして現れる。
+ドメインが返す `err` には HTTP ステータスも文言もログレベルも含まれない。errorMap はドメインの発信した「型 + context」を受け取って、**宛先ごとに** プレゼンテーションの作法に翻訳する。同じ `handle` が、クライアントには文言の一部として、ログには集計可能なフィールドとして現れる。
 
 ### この分離が効いてくる場面
 
@@ -241,15 +241,15 @@ CLI / バッチ / Worker から同じ domain を使うとき、HTTP status や J
 
 #### 2. メッセージ文言の変更
 
-「Account ID already taken」→「アカウントIDは既に使用されています」という変更は、errorMap の1行だけ書き換えれば完結する。domain / policy / VO のコードは**触らない**。
+「Handle already taken」→「ハンドルは既に使用されています」という変更は、errorMap の1行だけ書き換えれば完結する。domain / policy / VO のコードは**触らない**。
 
 文言変更が業務ルールの変更ではないのに、両方のレイヤーに書き換えが及ぶなら責務が混ざっている証拠。
 
 #### 3. 同じエラーに対して異なるプレゼンテーション
 
-同じ `AccountIdAlreadyTakenError` に対して:
+同じ `HandleAlreadyTakenError` に対して:
 
-- **API レスポンス**: `{ error: "Account ID already taken: xxx" }`（簡潔）
+- **API レスポンス**: `{ error: "Handle already taken: xxx" }`（簡潔）
 - **内部管理画面**: バリデーション詳細まで表示
 - **Slack通知**: 絵文字付きで警告
 - **監視アラート**: 構造化ログから集計
@@ -267,14 +267,14 @@ CLI / バッチ / Worker から同じ domain を使うとき、HTTP status や J
 
 ### ドメインが「知っていい」ギリギリの線
 
-構造化コンテキスト（例: `AccountIdAlreadyTakenError` の `accountId` フィールド）はドメインが知っていて **OK**。なぜなら:
+構造化コンテキスト（例: `HandleAlreadyTakenError` の `handle` フィールド）はドメインが知っていて **OK**。なぜなら:
 
-- `accountId` は **ドメインの語彙**（ビジネスの用語）
-- 「どのアカウントIDで衝突したか」という情報はドメインルール違反の**実体そのもの**
+- `handle` は **ドメインの語彙**（ビジネスの用語）
+- 「どのハンドルで衝突したか」という情報はドメインルール違反の**実体そのもの**
 
 一方、ドメインが持ってはいけないのは:
 
-- `"Account ID already taken: xxx"` というフレーズ（英語という選択、人間向け整形）
+- `"Handle already taken: xxx"` というフレーズ（英語という選択、人間向け整形）
 - `409` という数値（HTTP の作法）
 - `{ error: "...", issues: [...] }` という構造（JSON レスポンス形式）
 

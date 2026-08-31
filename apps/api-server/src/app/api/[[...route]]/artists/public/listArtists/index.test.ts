@@ -4,7 +4,7 @@ import listArtistsRoute from "./index";
 
 const mockArtistProfiles = {
   findByArtistId: vi.fn(),
-  findPublishedByAccountId: vi.fn(),
+  findPublishedByHandle: vi.fn(),
   listPublishedSummaries: vi.fn(),
 };
 
@@ -27,7 +27,7 @@ describe("GET /artists", () => {
 
   it("公開プロフィールの一覧を返す", async () => {
     mockArtistProfiles.listPublishedSummaries.mockResolvedValue([
-      { accountId: "taro", name: "Taro", imageUrl: "https://e.com/a.png" },
+      { handle: "taro", name: "Taro", imageUrl: "https://e.com/a.png" },
     ]);
 
     const res = await createApp().request("/", { method: "GET" });
@@ -35,7 +35,7 @@ describe("GET /artists", () => {
 
     expect(res.status).toBe(200);
     expect(body.profiles).toEqual([
-      { accountId: "taro", name: "Taro", imageUrl: "https://e.com/a.png" },
+      { handle: "taro", name: "Taro", imageUrl: "https://e.com/a.png" },
     ]);
   });
 

@@ -1,16 +1,16 @@
 import type { Artist, ArtistPersistenceData } from "../entities";
 
-export type ArtistUpdateAccountIdData = {
+export type ArtistUpdateHandleData = {
   artistId: string;
-  accountId: string;
+  handle: string;
 };
 
 export interface IArtistReader {
   findByUserId(userId: string): Promise<Artist | null>;
-  findByAccountId(accountId: string): Promise<Artist | null>;
+  findByHandle(handle: string): Promise<Artist | null>;
 }
 
 export interface IArtistWriter {
   save(data: ArtistPersistenceData): Promise<Artist>;
-  updateAccountId(data: ArtistUpdateAccountIdData): Promise<Artist>;
+  updateHandle(data: ArtistUpdateHandleData): Promise<Artist>;
 }

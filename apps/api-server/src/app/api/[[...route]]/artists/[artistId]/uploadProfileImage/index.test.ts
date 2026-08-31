@@ -17,7 +17,7 @@ const actor = {
   }),
   artist: reconstructArtist({
     artistId: "artist-1",
-    accountId: "beatboxer_taro",
+    handle: "beatboxer_taro",
     ownerUserId: "user-1",
     profile: null,
   }),

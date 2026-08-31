@@ -18,7 +18,7 @@ vi.mock("../../../utils/client/server", () => ({
 
 const screen = {
   registered: true,
-  artist: { accountId: "saku", hasProfile: true },
+  artist: { handle: "saku", hasProfile: true },
 };
 
 describe("getDashboard", () => {

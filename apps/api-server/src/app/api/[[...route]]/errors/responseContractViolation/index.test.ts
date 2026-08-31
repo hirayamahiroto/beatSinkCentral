@@ -3,8 +3,8 @@ import { z } from "zod";
 import { createResponseContractViolationError } from "./index";
 
 const buildIssues = () => {
-  const schema = z.object({ accountId: z.string() });
-  const result = schema.safeParse({ accountId: 1 });
+  const schema = z.object({ handle: z.string() });
+  const result = schema.safeParse({ handle: 1 });
   if (result.success) {
     throw new Error("test setup: schema should have failed");
   }

@@ -36,13 +36,13 @@ TypeScript は戻り値を捨てる呼び出し自体は防げないため、「
 
 ```typescript
 // usecases/authorization
-const catchTakenAccountId = async <T, E>(
+const catchTakenHandle = async <T, E>(
   run: () => Promise<Result<T, E>>,
-): Promise<Result<T, E | AccountIdAlreadyTakenError>> => {
+): Promise<Result<T, E | HandleAlreadyTakenError>> => {
   try {
     return await run();
   } catch (error) {
-    if (isAccountIdAlreadyTakenError(error)) return err(error);
+    if (isHandleAlreadyTakenError(error)) return err(error);
     throw error;
   }
 };
@@ -154,19 +154,19 @@ export const isUserAlreadyRegisteredError = (
 if (userIfRegistered) return err(createUserAlreadyRegisteredError());
 ```
 
-コンテキスト情報を型に載せたい場合（例: `accountId` を文言やログフィールドに使いたい）は、該当フィールドを type に追加して factory が受け取る形にする。宛先ごとの使い分けは errorMap 側で決めるので、ドメインは「どんな文脈だったか」だけを持たせる。
+コンテキスト情報を型に載せたい場合（例: `handle` を文言やログフィールドに使いたい）は、該当フィールドを type に追加して factory が受け取る形にする。宛先ごとの使い分けは errorMap 側で決めるので、ドメインは「どんな文脈だったか」だけを持たせる。
 
 ```typescript
-// domain/artists/errors/accountIdAlreadyTaken/index.ts（コンテキスト付きの例）
-export type AccountIdAlreadyTakenError = Error & {
-  readonly type: "AccountIdAlreadyTakenError";
-  readonly accountId: string;
+// domain/artists/errors/handleAlreadyTaken/index.ts（コンテキスト付きの例）
+export type HandleAlreadyTakenError = Error & {
+  readonly type: "HandleAlreadyTakenError";
+  readonly handle: string;
 };
 
-export const createAccountIdAlreadyTakenError = (
-  accountId: string,
-): AccountIdAlreadyTakenError =>
-  createTypedError("AccountIdAlreadyTakenError", { accountId });
+export const createHandleAlreadyTakenError = (
+  handle: string,
+): HandleAlreadyTakenError =>
+  createTypedError("HandleAlreadyTakenError", { handle });
 ```
 
 ### Value Object のテンプレート
@@ -259,9 +259,9 @@ type ErrorMapping<SpecificError extends AppError> = {
 ```typescript
 // apps/api-server/src/errorMap/index.ts
 import type { UserAlreadyRegisteredError } from "../domain/users/errors/userAlreadyRegistered";
-import type { AccountIdAlreadyTakenError } from "../domain/artists/errors/accountIdAlreadyTaken";
+import type { HandleAlreadyTakenError } from "../domain/artists/errors/handleAlreadyTaken";
 
-export type AppError = UserAlreadyRegisteredError | AccountIdAlreadyTakenError;
+export type AppError = UserAlreadyRegisteredError | HandleAlreadyTakenError;
 
 const errorMap: ErrorMap = {
   UserAlreadyRegisteredError: {
@@ -269,11 +269,11 @@ const errorMap: ErrorMap = {
     clientMessage: () => "User already registered",
     logLevel: "info",
   },
-  AccountIdAlreadyTakenError: {
+  HandleAlreadyTakenError: {
     status: 409,
-    clientMessage: (error) => `Account ID already taken: ${error.accountId}`,
+    clientMessage: (error) => `Handle already taken: ${error.handle}`,
     logLevel: "info",
-    logFields: (error) => ({ accountId: error.accountId }),
+    logFields: (error) => ({ handle: error.handle }),
   },
 };
 
@@ -320,7 +320,7 @@ export const handleAppError = createAppErrorHandler(createConsoleLogger());
 ### 設計ポイント
 
 - `AppError` は union 型。**新しいエラーを追加したら union に足す → errorMap のキー補完が効く** ので、マッピングの漏れを型で防げる
-- `clientMessage` / `logFields` を関数にしておくと、エラーのコンテキスト情報（`accountId` 等）を宛先ごとに差し込める
+- `clientMessage` / `logFields` を関数にしておくと、エラーのコンテキスト情報（`handle` 等）を宛先ごとに差し込める
 - `logLevel` は**必須**。新しいエラーを追加する時点で「これは監視上どの重さか」を必ず考える形にしている
 - ログに出るのは **`logFields` で明示的に宣言したフィールドだけ**（ホワイトリスト方式）。エラーオブジェクトを丸ごと spread しないため、後からエラー型にセンシティブな値を足しても勝手にログへ漏れない
 - ログには `clientMessage` を含めない。文言はプレゼンテーションの都合で変わるが、集計軸は `errorType` で足りる
@@ -342,7 +342,7 @@ const result = await withArtistWriteCapabilitiesById(
   getCapabilityDeps(),
   auth0User.sub,
   artistId,
-  (caps) => updateMyAccountId(caps, { accountId: body.accountId }),
+  (caps) => updateMyHandle(caps, { handle: body.handle }),
 );
 
 if (!result.ok) {
@@ -423,10 +423,10 @@ import { handleAppError } from "../../../../../errorMap";
 
 const requestSchema = z.object({
   email: z.string().min(1, "email is required").email("Invalid email format"),
-  accountId: z
+  handle: z
     .string()
-    .min(1, "accountId is required")
-    .max(255, "accountId must be 255 characters or less"),
+    .min(1, "handle is required")
+    .max(255, "handle must be 255 characters or less"),
 });
 
 const app = new Hono().post(
@@ -442,7 +442,7 @@ const app = new Hono().post(
         createUser(caps, {
           subId: auth0User.sub,
           email: body.email,
-          accountId: body.accountId,
+          handle: body.handle,
         }),
     );
 

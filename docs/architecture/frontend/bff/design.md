@@ -97,7 +97,7 @@ BFF も api-server と同じ Hono で実装するため、**「Hono の使い方
 | 観点               | 規範（api-server と共通）                                                                                                                  | 出典                                                                                  |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
 | ルート合成         | 境界の `index.ts` がマウントテーブル。ディレクトリを掘るのは**リソースの境目とミドルウェアが変わる境目だけ**。URL セグメントごとに掘らない | [`architecture.md`「ルーティングは階層ごとに合成する」](../../server/architecture.md) |
-| ユニット命名       | `{操作名}/index.ts`（`getDashboard/` `updateMyAccountId/`）。HTTP メソッド名のディレクトリ（`get/` `post/`）は使わない                     | [`api-design-guidelines.md`「ファイル構成」](../../server/api-design-guidelines.md)   |
+| ユニット命名       | `{操作名}/index.ts`（`getDashboard/` `updateMyHandle/`）。HTTP メソッド名のディレクトリ（`get/` `post/`）は使わない                        | [`api-design-guidelines.md`「ファイル構成」](../../server/api-design-guidelines.md)   |
 | リクエスト検証     | `validators/validateRequest` が型付きエラーを throw。route 内で 400 を組み立てない                                                         | 同上                                                                                  |
 | エラー定義の置き場 | エントリポイント固有のエラーは `[[...route]]/errors/{errorName}/`                                                                          | [`error-handling/implementation.md`](../../server/error-handling/implementation.md)   |
 | HTTP への翻訳      | `errorMap` + `route.ts` の `.onError` で一括。route はステータスを書かない                                                                 | [エラー契約](#エラー契約)                                                             |
@@ -144,7 +144,7 @@ const app = new Hono<RequestContextEnv>().get("/", async (c) => {
     registered: me.registered,
     email: me.email,
     artist: me.artist
-      ? { accountId: me.artist.accountId, hasProfile: me.artist.hasProfile }
+      ? { handle: me.artist.handle, hasProfile: me.artist.hasProfile }
       : null,
   });
 });
@@ -172,7 +172,7 @@ export default async function DashboardPage() {
     <DashboardScreen>
       <EmailEditorClientAdapter email={dashboard.email} />
       {dashboard.artist && (
-        <AccountIdEditorClientAdapter accountId={dashboard.artist.accountId} />
+        <HandleEditorClientAdapter handle={dashboard.artist.handle} />
       )}
     </DashboardScreen>
   );
@@ -185,25 +185,25 @@ export default async function DashboardPage() {
 - `page.tsx` 自身はマークアップを所有し、**編集可能な部分だけを colocated な ClientAdapter に必要な値だけ渡す**（`packages/ui` の Page/Template に丸ごと委譲する形ではない）。
 
 > **「整形」と「描画のための prop 配布」を混同しない**
-> 上の例で `page.tsx` が `dashboard.email` や `dashboard.artist.accountId` といったフィールドへアクセスして子へ渡すのは、**整形ではなく描画のための prop 配布**である。整形（集約・命名変換・そぎ落とし・算出）は route 側で完了しており、`page.tsx` は「すでに画面用に整形された値を、対応する子コンポーネントに配る」だけ。`{...dashboard}` を丸渡しせず必要な値だけ渡すのは、各 ClientAdapter に不要データを渡さない（そぎ落とし）ためで、むしろ望ましい。
+> 上の例で `page.tsx` が `dashboard.email` や `dashboard.artist.handle` といったフィールドへアクセスして子へ渡すのは、**整形ではなく描画のための prop 配布**である。整形（集約・命名変換・そぎ落とし・算出）は route 側で完了しており、`page.tsx` は「すでに画面用に整形された値を、対応する子コンポーネントに配る」だけ。`{...dashboard}` を丸渡しせず必要な値だけ渡すのは、各 ClientAdapter に不要データを渡さない（そぎ落とし）ためで、むしろ望ましい。
 >
 > 逆に、`page.tsx` 内で**複数フィールドを合成・改名・算出し始めたら**（例: `` `${d.firstName} ${d.lastName}` `` や `d.plan === "pro" && d.active`）、それは整形の漏れ出しなので route 側へ戻す。`page.tsx` は「受け取った値を配るだけ」に保つ。
 
 ### write の実装: HTTP ルート（`/api/*`）
 
-- 配置: `src/app/api/[[...route]]/{resource}/{操作名}/index.ts`（例: `artists/me/updateMyAccountId/`。ディレクトリ構成の規約は [route の実装規約](#route-の実装規約は-api-server-と共有する) を参照）
+- 配置: `src/app/api/[[...route]]/{resource}/{操作名}/index.ts`（例: `artists/me/updateMyHandle/`。ディレクトリ構成の規約は [route の実装規約](#route-の実装規約は-api-server-と共有する) を参照）
 - 責務: 入力バリデーション（`validators/validateRequest`）→ 必要なら自分の `userId` / `artistId` を解決（`shared/resolveMyUserId` / `shared/resolveMyArtistId`、内部で `GET /users/me`。見つからなければ型付きエラーを throw）→ `apiClient` で api-server へ送信 → 成功なら結果を返し、失敗なら `throw await toUpstreamError(res)`（**薄いパススルー**。ステータスの決定は route ではなく `errorMap`）。ブラウザ向け URL は `me` のままでよい（セッション主体への読み替えは BFF の責務。api-server 側は `/:userId` / `/:artistId` でアドレスする）。
 - 認証 cookie: `requestContextMiddleware` がセッション cookie を付与した `apiClient`（= `createApiServerClient`）を `c.set("apiClient", ...)` する。ルートは `c.get("apiClient")` を使うだけ。
 
 ```ts
-// src/app/api/[[...route]]/artists/me/updateMyAccountId/index.ts
-const updateAccountIdRequestSchema = z.object({
-  accountId: z.string().nonempty(),
+// src/app/api/[[...route]]/artists/me/updateMyHandle/index.ts
+const updateHandleRequestSchema = z.object({
+  handle: z.string().nonempty(),
 });
 
 const app = new Hono<RequestContextEnv>().post(
   "/",
-  validateRequest("json", updateAccountIdRequestSchema), // 失敗は InvalidRequestFormatError を throw
+  validateRequest("json", updateHandleRequestSchema), // 失敗は InvalidRequestFormatError を throw
   async (c) => {
     const apiClient = c.get("apiClient");
     const body = c.req.valid("json");
@@ -212,7 +212,7 @@ const app = new Hono<RequestContextEnv>().post(
 
     const res = await apiClient.api.artists[":artistId"].$post({
       param: { artistId },
-      json: { accountId: body.accountId },
+      json: { handle: body.handle },
     });
     if (!res.ok) throw await toUpstreamError(res); // 4xx は同じステータス・ボディで透過、5xx は 502
 
@@ -233,9 +233,9 @@ JSON と同じく**薄いパススルー**で扱う。BFF はファイルの中�
 - 実装例: `src/app/api/[[...route]]/artists/me/uploadMyProfileImage/index.ts`
 
 ```tsx
-// src/app/dashboard/AccountIdEditorClientAdapter/hooks/useUpdateMyAccountId/index.ts
-// CSR: hook → fetchers/artists/updateMyAccountId → /api/artists/me（write ルート）
-const result = await updateMyAccountId({ accountId });
+// src/app/dashboard/HandleEditorClientAdapter/hooks/useUpdateMyHandle/index.ts
+// CSR: hook → fetchers/artists/updateMyHandle → /api/artists/me（write ルート）
+const result = await updateMyHandle({ handle });
 if (result.ok) router.refresh();
 ```
 
@@ -243,7 +243,7 @@ if (result.ok) router.refresh();
 
 UI 層（`page.tsx` / hooks）は hono クライアントを直接生成しない。BFF `/api/*` への fetch は **`src/fetchers/` の関数だけ**が行い、UI はそれを呼ぶ。「どこで BFF が fetch されているか」を `src/fetchers/` の一覧だけで見渡せるようにするための集約点である。
 
-- **構成**: BFF エンドポイント1つにつき1モジュール。`src/fetchers/<BFF ルートの名前空間>/<操作名>/index.ts`（+ `index.test.ts`）。例: `fetchers/artists/updateMyAccountId/`、`fetchers/dashboard/getProfileEditScreen/`。
+- **構成**: BFF エンドポイント1つにつき1モジュール。`src/fetchers/<BFF ルートの名前空間>/<操作名>/index.ts`（+ `index.test.ts`）。例: `fetchers/artists/updateMyHandle/`、`fetchers/dashboard/getProfileEditScreen/`。
 - **責務**: クライアント生成（write = CSR は `createBeatfolioBffClient`、read = SSR は `createBeatfolioBffServerClient`。受信リクエストの cookie は client 生成時に `headers()` から引き継ぐので、fetcher も `page.tsx` も cookie を扱わない）・レスポンス解釈・エラー正規化。
 - **契約**: `Promise<Result<T, FetcherError>>` を返し、**throw しない**（到達不能も catch して `unexpected` に正規化する）。`FetcherError` は `{ kind: "rejected" | "unexpected"; message: string }` — `rejected` はユーザー起因（400/409/422）でメッセージをそのまま画面に出せる、`unexpected` はそれ以外。共通処理は `fetchers/shared/error/` に置く。
 - **型は BFF AppType から導出する**（`InferRequestType` / `InferResponseType`）。fetchers 層でリクエスト・レスポンスの型を手書きしない。
@@ -291,16 +291,16 @@ api-server はエラーを型付きエラーで分類し、`errorMap` で `{ err
 
 #### 失敗の分類（`shared/toUpstreamError` が 1 箇所で行う）
 
-| 上流の状態                                       | 検知する層                                            | 型付きエラー                                    | HTTP                               | ログ  |
-| ------------------------------------------------ | ----------------------------------------------------- | ----------------------------------------------- | ---------------------------------- | ----- |
-| 到達できない（DNS / 接続拒否 / timeout）         | `createApiServerClient`（fetch の reject を捕捉）     | `UpstreamUnavailableError`                      | 502                                | warn  |
-| 5xx を返した                                     | `toUpstreamError`（ボディは読まない）                 | `UpstreamServerError`                           | 502                                | warn  |
-| 4xx を返し、ボディに `code` がある               | `toUpstreamError`                                     | `UpstreamRejectedError`                         | **上流のステータス・ボディを透過** | info  |
-| 4xx を返したが `code` が無い / ボディが解析不能  | `toUpstreamError`                                     | `UpstreamContractViolationError`                | 502                                | error |
-| 成功応答のボディが解析できない                   | `shared/readUpstreamJson`                             | `UpstreamContractViolationError`                | 502                                | error |
-| セッション主体が未登録 / artist 不在             | `shared/resolveMyUserId` / `shared/resolveMyArtistId` | `MyUserNotFoundError` / `MyArtistNotFoundError` | 404                                | info  |
-| 画面の対象が不在（未公開・存在しない accountId） | 各 read route                                         | `PlayerNotFoundError` 等                        | 404                                | info  |
-| BFF へのリクエスト形式が不正                     | `validators/validateRequest`                          | `InvalidRequestFormatError`                     | 400 + `issues`                     | info  |
+| 上流の状態                                      | 検知する層                                            | 型付きエラー                                    | HTTP                               | ログ  |
+| ----------------------------------------------- | ----------------------------------------------------- | ----------------------------------------------- | ---------------------------------- | ----- |
+| 到達できない（DNS / 接続拒否 / timeout）        | `createApiServerClient`（fetch の reject を捕捉）     | `UpstreamUnavailableError`                      | 502                                | warn  |
+| 5xx を返した                                    | `toUpstreamError`（ボディは読まない）                 | `UpstreamServerError`                           | 502                                | warn  |
+| 4xx を返し、ボディに `code` がある              | `toUpstreamError`                                     | `UpstreamRejectedError`                         | **上流のステータス・ボディを透過** | info  |
+| 4xx を返したが `code` が無い / ボディが解析不能 | `toUpstreamError`                                     | `UpstreamContractViolationError`                | 502                                | error |
+| 成功応答のボディが解析できない                  | `shared/readUpstreamJson`                             | `UpstreamContractViolationError`                | 502                                | error |
+| セッション主体が未登録 / artist 不在            | `shared/resolveMyUserId` / `shared/resolveMyArtistId` | `MyUserNotFoundError` / `MyArtistNotFoundError` | 404                                | info  |
+| 画面の対象が不在（未公開・存在しない handle）   | 各 read route                                         | `PlayerNotFoundError` 等                        | 404                                | info  |
+| BFF へのリクエスト形式が不正                    | `validators/validateRequest`                          | `InvalidRequestFormatError`                     | 400 + `issues`                     | info  |
 
 - **到達不能の検知は route ではなく client 層**が担う。route ごとに `try/catch` を重ねない。
 - **route の失敗パスは `if (!res.ok) throw await toUpstreamError(res);` の 1 行**。成功応答の読み取りは `await readUpstreamJson(res)`。`route.ts` の `.onError(handleBffError)` が `errorMap` で HTTP へ変換する。
@@ -364,7 +364,7 @@ apps/beatfolio/src/
 │       ├── {screen}/index.ts              # read:  境界のマウントテーブル（画面名。例: dashboard/）
 │       ├── {screen}/{操作名}/index.ts     #        read ルート本体（例: dashboard/getDashboard/ getSettings/ getProfileEditScreen/）
 │       ├── {resource}/index.ts            # write: 境界のマウントテーブル（例: artists/ → /me）
-│       ├── {resource}/me/{操作名}/index.ts #       write ルート本体（例: artists/me/updateMyAccountId/ saveMyProfile/）
+│       ├── {resource}/me/{操作名}/index.ts #       write ルート本体（例: artists/me/updateMyHandle/ saveMyProfile/）
 │       ├── errors/{errorName}/index.ts    # BFF エントリポイント固有の型付きエラー（upstreamRejected 等）
 │       ├── validators/validateRequest/    # zValidator を InvalidRequestFormatError の throw に統一
 │       └── shared/                        # route 横断の helper（toUpstreamError / readUpstreamJson / resolveMy*）

@@ -40,7 +40,7 @@ describe("createArtistReader / createArtistWriter", () => {
       mockDb.limit.mockResolvedValue([
         {
           artistId: "artist-1",
-          accountId: "user_123",
+          handle: "user_123",
           profileName: "Test Artist",
         },
       ]);
@@ -49,7 +49,7 @@ describe("createArtistReader / createArtistWriter", () => {
 
       expect(result).not.toBeNull();
       expect(result?.getArtistId()).toBe("artist-1");
-      expect(result?.getAccountId()).toBe("user_123");
+      expect(result?.getHandle()).toBe("user_123");
       expect(result?.getProfile()).toStrictEqual({ name: "Test Artist" });
       expect(result?.hasProfile()).toBe(true);
     });
@@ -58,7 +58,7 @@ describe("createArtistReader / createArtistWriter", () => {
       mockDb.limit.mockResolvedValue([
         {
           artistId: "artist-1",
-          accountId: "user_123",
+          handle: "user_123",
           profileName: null,
         },
       ]);
@@ -91,22 +91,22 @@ describe("createArtistReader / createArtistWriter", () => {
     });
   });
 
-  describe("findByAccountId", () => {
+  describe("findByHandle", () => {
     it("該当するartistを返す", async () => {
       mockDb.limit.mockResolvedValue([
         {
           artistId: "artist-1",
-          accountId: "user_123",
+          handle: "user_123",
           ownerUserId: "user-1",
           profileName: "Test Artist",
         },
       ]);
 
-      const result = await reader.findByAccountId("user_123");
+      const result = await reader.findByHandle("user_123");
 
       expect(result).not.toBeNull();
       expect(result?.getArtistId()).toBe("artist-1");
-      expect(result?.getAccountId()).toBe("user_123");
+      expect(result?.getHandle()).toBe("user_123");
       expect(result?.getOwnerUserId()).toBe("user-1");
       expect(result?.getProfile()).toStrictEqual({ name: "Test Artist" });
     });
@@ -114,15 +114,15 @@ describe("createArtistReader / createArtistWriter", () => {
     it("見つからない場合はnullを返す", async () => {
       mockDb.limit.mockResolvedValue([]);
 
-      const result = await reader.findByAccountId("unknown_account");
+      const result = await reader.findByHandle("unknown_account");
 
       expect(result).toBeNull();
     });
 
-    it("artistsを起点にartistOwners/artistProfilesを結合してaccountIdで1件取得する", async () => {
+    it("artistsを起点にartistOwners/artistProfilesを結合してhandleで1件取得する", async () => {
       mockDb.limit.mockResolvedValue([]);
 
-      await reader.findByAccountId("user_123");
+      await reader.findByHandle("user_123");
 
       expect(mockDb.select).toHaveBeenCalledTimes(1);
       expect(mockDb.from).toHaveBeenCalledTimes(1);
@@ -133,57 +133,57 @@ describe("createArtistReader / createArtistWriter", () => {
     });
   });
 
-  describe("updateAccountId", () => {
-    it("accountId 更新後の Artist を返す（profile あり）", async () => {
+  describe("updateHandle", () => {
+    it("handle 更新後の Artist を返す（profile あり）", async () => {
       mockDb.returning.mockResolvedValue([
-        { id: "artist-1", accountId: "new_handle" },
+        { id: "artist-1", handle: "new_handle" },
       ]);
       mockDb.limit
         .mockResolvedValueOnce([{ userId: "user-1" }])
         .mockResolvedValueOnce([{ name: "Test Artist" }]);
 
-      const result = await writer.updateAccountId({
+      const result = await writer.updateHandle({
         artistId: "artist-1",
-        accountId: "new_handle",
+        handle: "new_handle",
       });
 
-      expect(mockDb.set).toHaveBeenCalledWith({ accountId: "new_handle" });
+      expect(mockDb.set).toHaveBeenCalledWith({ handle: "new_handle" });
       expect(result.getArtistId()).toBe("artist-1");
-      expect(result.getAccountId()).toBe("new_handle");
+      expect(result.getHandle()).toBe("new_handle");
       expect(result.getOwnerUserId()).toBe("user-1");
       expect(result.getProfile()).toStrictEqual({ name: "Test Artist" });
     });
 
     it("profile が無い場合は profile:null で返す", async () => {
       mockDb.returning.mockResolvedValue([
-        { id: "artist-1", accountId: "new_handle" },
+        { id: "artist-1", handle: "new_handle" },
       ]);
       mockDb.limit
         .mockResolvedValueOnce([{ userId: "user-1" }])
         .mockResolvedValueOnce([]);
 
-      const result = await writer.updateAccountId({
+      const result = await writer.updateHandle({
         artistId: "artist-1",
-        accountId: "new_handle",
+        handle: "new_handle",
       });
 
       expect(result.hasProfile()).toBe(false);
       expect(result.getProfile()).toBeNull();
     });
 
-    it("accountId の一意制約違反を AccountIdAlreadyTakenError に変換して throw する", async () => {
+    it("handle の一意制約違反を HandleAlreadyTakenError に変換して throw する", async () => {
       mockDb.returning.mockRejectedValue(
-        createUniqueViolation("artists_account_id_unique"),
+        createUniqueViolation("artists_handle_unique"),
       );
 
       await expect(
-        writer.updateAccountId({
+        writer.updateHandle({
           artistId: "artist-1",
-          accountId: "taken_handle",
+          handle: "taken_handle",
         }),
       ).rejects.toMatchObject({
-        type: "AccountIdAlreadyTakenError",
-        accountId: "taken_handle",
+        type: "HandleAlreadyTakenError",
+        handle: "taken_handle",
       });
     });
 
@@ -192,29 +192,29 @@ describe("createArtistReader / createArtistWriter", () => {
       mockDb.returning.mockRejectedValue(connectionError);
 
       await expect(
-        writer.updateAccountId({
+        writer.updateHandle({
           artistId: "artist-1",
-          accountId: "new_handle",
+          handle: "new_handle",
         }),
       ).rejects.toBe(connectionError);
     });
   });
 
   describe("save", () => {
-    it("accountId の一意制約違反を AccountIdAlreadyTakenError に変換して throw する", async () => {
+    it("handle の一意制約違反を HandleAlreadyTakenError に変換して throw する", async () => {
       mockDb.returning.mockRejectedValue(
-        createUniqueViolation("artists_account_id_unique"),
+        createUniqueViolation("artists_handle_unique"),
       );
 
       await expect(
         writer.save({
           id: "artist-1",
-          accountId: "taken_handle",
+          handle: "taken_handle",
           ownerUserId: "user-1",
         }),
       ).rejects.toMatchObject({
-        type: "AccountIdAlreadyTakenError",
-        accountId: "taken_handle",
+        type: "HandleAlreadyTakenError",
+        handle: "taken_handle",
       });
     });
   });
@@ -235,7 +235,7 @@ describe("artists の executor 束ね", () => {
       limit: vi.fn().mockResolvedValue([
         {
           artistId: "artist-1",
-          accountId: "user_123",
+          handle: "user_123",
           ownerUserId: "user-1",
           profileName: null,
         },
@@ -255,17 +255,17 @@ describe("artists の executor 束ね", () => {
       values: vi.fn().mockReturnThis(),
       returning: vi
         .fn()
-        .mockResolvedValue([{ id: "artist-1", accountId: "user_123" }]),
+        .mockResolvedValue([{ id: "artist-1", handle: "user_123" }]),
     };
 
     const result = await createArtistWriter(tx as never).save({
       id: "artist-1",
-      accountId: "user_123",
+      handle: "user_123",
       ownerUserId: "user-1",
     });
 
     expect(tx.insert).toHaveBeenCalledTimes(2);
     expect(mockDb.insert).not.toHaveBeenCalled();
-    expect(result.getAccountId()).toBe("user_123");
+    expect(result.getHandle()).toBe("user_123");
   });
 });

@@ -15,7 +15,7 @@ const actor = {
   }),
   artist: reconstructArtist({
     artistId: "artist-1",
-    accountId: "beatboxer_taro",
+    handle: "beatboxer_taro",
     ownerUserId: "user-1",
     profile: null,
   }),
@@ -23,7 +23,7 @@ const actor = {
 
 const mockArtistProfiles = {
   findByArtistId: vi.fn(),
-  findPublishedByAccountId: vi.fn(),
+  findPublishedByHandle: vi.fn(),
   upsert: vi.fn(),
   setPublished: vi.fn(),
 };
@@ -74,7 +74,7 @@ describe("POST /artists/:artistId/profile", () => {
     const body = await res.json();
 
     expect(res.status).toBe(200);
-    expect(body.accountId).toBe("beatboxer_taro");
+    expect(body.handle).toBe("beatboxer_taro");
     expect(body.profile.name).toBe("Taro");
     expect(mockArtistProfiles.upsert).toHaveBeenCalledTimes(1);
   });

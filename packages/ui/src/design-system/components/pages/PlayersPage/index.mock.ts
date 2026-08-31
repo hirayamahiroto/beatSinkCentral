@@ -8,22 +8,22 @@ const imageUrl = (fileName: string): string =>
 
 export const players: Player[] = [
   {
-    accountId: "hiroto",
+    handle: "hiroto",
     name: "HIROTO",
     imageUrl: imageUrl("image1.jpeg"),
   },
   {
-    accountId: "kazuki",
+    handle: "kazuki",
     name: "Kazuki",
     imageUrl: imageUrl("image2.jpeg"),
   },
   {
-    accountId: "yuto",
+    handle: "yuto",
     name: "Yuto",
     imageUrl: imageUrl("image3.jpeg"),
   },
   {
-    accountId: "no_image",
+    handle: "no_image",
     name: "写真未登録のプレイヤー",
     imageUrl: null,
   },

@@ -24,8 +24,8 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
-    label: "アカウントID",
-    htmlFor: "accountId",
+    label: "ハンドル",
+    htmlFor: "handle",
     children: <Input placeholder="例: dj_taro_123" />,
   },
   parameters: {
@@ -40,8 +40,8 @@ export const Default: Story = {
 
 export const WithHint: Story = {
   args: {
-    label: "アカウントID",
-    htmlFor: "accountId",
+    label: "ハンドル",
+    htmlFor: "handle",
     hint: "英数字とアンダースコア(_)、1〜255文字。後から変更できません",
     children: <Input placeholder="例: dj_taro_123" />,
   },
@@ -58,8 +58,8 @@ export const WithHint: Story = {
 
 export const WithError: Story = {
   args: {
-    label: "アカウントID",
-    htmlFor: "accountId",
+    label: "ハンドル",
+    htmlFor: "handle",
     error: "英数字とアンダースコア(_)のみ使用できます",
     children: <Input defaultValue="invalid value!" />,
   },

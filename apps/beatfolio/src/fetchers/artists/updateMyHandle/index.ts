@@ -7,10 +7,10 @@ import {
   NETWORK_ERROR_MESSAGE,
 } from "../../shared/error";
 
-const FALLBACK_MESSAGE = "Account ID の更新に失敗しました";
+const FALLBACK_MESSAGE = "Handle の更新に失敗しました";
 
-export const updateMyAccountId = async (input: {
-  accountId: string;
+export const updateMyHandle = async (input: {
+  handle: string;
 }): Promise<Result<void, FetcherError>> => {
   try {
     const client = createBeatfolioBffClient();

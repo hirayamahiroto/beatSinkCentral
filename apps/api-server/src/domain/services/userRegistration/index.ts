@@ -7,15 +7,15 @@ import {
   type UserAlreadyRegisteredError,
 } from "../../users/errors/userAlreadyRegistered";
 import {
-  createAccountIdAlreadyTakenError,
-  type AccountIdAlreadyTakenError,
-} from "../../artists/errors/accountIdAlreadyTaken";
+  createHandleAlreadyTakenError,
+  type HandleAlreadyTakenError,
+} from "../../artists/errors/handleAlreadyTaken";
 import { type Result, err, map } from "../../../utils/result";
 
 export type RegisterNewUserInput = {
   subId: string;
   email: string;
-  accountId: string;
+  handle: string;
 };
 
 export type RegisterNewUserResult = {
@@ -25,20 +25,18 @@ export type RegisterNewUserResult = {
 
 export type RegisterNewUserError =
   | UserAlreadyRegisteredError
-  | AccountIdAlreadyTakenError
+  | HandleAlreadyTakenError
   | UserFieldError
   | ArtistFieldError;
 
 export const registerNewUser = (
   input: RegisterNewUserInput,
   userIfRegistered: User | null,
-  artistIfAccountIdTaken: Artist | null,
+  artistIfHandleTaken: Artist | null,
 ): Result<RegisterNewUserResult, RegisterNewUserError> => {
   if (userIfRegistered) return err(createUserAlreadyRegisteredError());
-  if (artistIfAccountIdTaken) {
-    return err(
-      createAccountIdAlreadyTakenError(artistIfAccountIdTaken.getAccountId()),
-    );
+  if (artistIfHandleTaken) {
+    return err(createHandleAlreadyTakenError(artistIfHandleTaken.getHandle()));
   }
 
   const user = createUser({
@@ -49,7 +47,7 @@ export const registerNewUser = (
 
   return map(
     createArtist({
-      accountId: input.accountId,
+      handle: input.handle,
       ownerUserId: user.value.getId(),
     }),
     (artist) => ({ user: user.value, artist }),

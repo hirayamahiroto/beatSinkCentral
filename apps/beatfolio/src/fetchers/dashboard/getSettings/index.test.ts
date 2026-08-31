@@ -19,7 +19,7 @@ vi.mock("../../../utils/client/server", () => ({
 const screen = {
   registered: true,
   email: "saku@example.com",
-  accountId: "saku",
+  handle: "saku",
 };
 
 describe("getSettings", () => {

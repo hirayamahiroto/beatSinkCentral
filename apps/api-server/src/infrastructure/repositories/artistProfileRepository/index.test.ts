@@ -85,45 +85,45 @@ describe("artistProfileRepository", () => {
     });
   });
 
-  describe("findPublishedByAccountId", () => {
+  describe("findPublishedByHandle", () => {
     it("公開行が無ければ null を返す", async () => {
       mock.enqueue([]);
       const reader = createArtistProfileReader(mock.db as never);
 
-      const result = await reader.findPublishedByAccountId("beatboxer_taro");
+      const result = await reader.findPublishedByHandle("beatboxer_taro");
 
       expect(result).toBeNull();
     });
   });
 
   describe("listPublishedSummaries", () => {
-    it("accountId / name / imageUrl の要約を返し、件数上限を渡す", async () => {
+    it("handle / name / imageUrl の要約を返し、件数上限を渡す", async () => {
       mock.enqueue([
-        { accountId: "taro", name: "Taro", imageUrl: "https://e.com/a.png" },
-        { accountId: "hana", name: "Hana", imageUrl: null },
+        { handle: "taro", name: "Taro", imageUrl: "https://e.com/a.png" },
+        { handle: "hana", name: "Hana", imageUrl: null },
       ]);
       const reader = createArtistProfileReader(mock.db as never);
 
       const result = await reader.listPublishedSummaries({ limit: 100 });
 
       expect(result).toEqual([
-        { accountId: "taro", name: "Taro", imageUrl: "https://e.com/a.png" },
-        { accountId: "hana", name: "Hana", imageUrl: null },
+        { handle: "taro", name: "Taro", imageUrl: "https://e.com/a.png" },
+        { handle: "hana", name: "Hana", imageUrl: null },
       ]);
       expect(mock.spy("limit")).toHaveBeenCalledWith(100);
     });
 
     it("name が欠けた行は除外する", async () => {
       mock.enqueue([
-        { accountId: "taro", name: "Taro", imageUrl: null },
-        { accountId: "noname", name: null, imageUrl: null },
+        { handle: "taro", name: "Taro", imageUrl: null },
+        { handle: "noname", name: null, imageUrl: null },
       ]);
       const reader = createArtistProfileReader(mock.db as never);
 
       const result = await reader.listPublishedSummaries({ limit: 100 });
 
       expect(result).toEqual([
-        { accountId: "taro", name: "Taro", imageUrl: null },
+        { handle: "taro", name: "Taro", imageUrl: null },
       ]);
     });
 

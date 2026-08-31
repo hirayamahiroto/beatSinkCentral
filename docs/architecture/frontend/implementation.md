@@ -69,11 +69,11 @@ dashboard/
 │       └── useUpdateMyEmail/
 │           ├── index.ts       # この Adapter 専用の hook
 │           └── index.test.ts  # hook のテスト
-└── AccountIdEditorClientAdapter/
+└── HandleEditorClientAdapter/
     ├── index.tsx
     ├── index.test.tsx
     └── hooks/
-        └── useUpdateMyAccountId/
+        └── useUpdateMyHandle/
             ├── index.ts
             └── index.test.ts
 ```

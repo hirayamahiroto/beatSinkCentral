@@ -8,7 +8,7 @@ import { type Result, ok } from "../../../utils/result";
 export type CreateUserInput = {
   subId: string;
   email: string;
-  accountId: string;
+  handle: string;
 };
 
 export type CreateUserOutput = {
@@ -24,15 +24,15 @@ export const createUser = async (
   caps: CreateUserCaps,
   input: CreateUserInput,
 ): Promise<Result<CreateUserOutput, CreateUserError>> => {
-  const [userIfRegistered, artistIfAccountIdTaken] = await Promise.all([
+  const [userIfRegistered, artistIfHandleTaken] = await Promise.all([
     caps.users.findBySub(input.subId),
-    caps.artists.findByAccountId(input.accountId),
+    caps.artists.findByHandle(input.handle),
   ]);
 
   const registered = registerNewUser(
     input,
     userIfRegistered,
-    artistIfAccountIdTaken,
+    artistIfHandleTaken,
   );
   if (!registered.ok) return registered;
 

@@ -43,11 +43,11 @@ describe("GET /players", () => {
       jsonResponse({
         profiles: [
           {
-            accountId: "saku",
+            handle: "saku",
             name: "SAKU",
             imageUrl: "https://example.com/saku.jpg",
           },
-          { accountId: "rei", name: "REI", imageUrl: null },
+          { handle: "rei", name: "REI", imageUrl: null },
         ],
       }),
     );
@@ -58,11 +58,11 @@ describe("GET /players", () => {
     expect(await res.json()).toStrictEqual({
       players: [
         {
-          accountId: "saku",
+          handle: "saku",
           name: "SAKU",
           imageUrl: "https://example.com/saku.jpg",
         },
-        { accountId: "rei", name: "REI", imageUrl: null },
+        { handle: "rei", name: "REI", imageUrl: null },
       ],
     });
   });

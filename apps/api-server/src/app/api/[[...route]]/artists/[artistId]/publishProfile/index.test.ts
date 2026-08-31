@@ -14,7 +14,7 @@ const actor = {
   }),
   artist: reconstructArtist({
     artistId: "artist-1",
-    accountId: "beatboxer_taro",
+    handle: "beatboxer_taro",
     ownerUserId: "user-1",
     profile: null,
   }),
@@ -22,7 +22,7 @@ const actor = {
 
 const mockArtistProfiles = {
   findByArtistId: vi.fn(),
-  findPublishedByAccountId: vi.fn(),
+  findPublishedByHandle: vi.fn(),
   upsert: vi.fn(),
   setPublished: vi.fn(),
 };

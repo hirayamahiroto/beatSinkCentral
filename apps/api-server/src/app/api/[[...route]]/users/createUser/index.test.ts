@@ -15,8 +15,8 @@ const mockUsers = {
 const mockArtists = {
   save: vi.fn(),
   findByUserId: vi.fn(),
-  findByAccountId: vi.fn(),
-  updateAccountId: vi.fn(),
+  findByHandle: vi.fn(),
+  updateHandle: vi.fn(),
 };
 
 vi.mock("../../../../../infrastructure/capabilities", () => ({
@@ -51,7 +51,7 @@ describe("User Create API", () => {
     it("正しい形式でも認証なしなら201を返さない", async () => {
       const payload = {
         email: "test@example.com",
-        accountId: "test_account",
+        handle: "test_account",
       } satisfies CreateUserRequestBody;
 
       const res = await app.request("/", {
@@ -66,7 +66,7 @@ describe("User Create API", () => {
     it("emailが空文字列の場合は400を返す", async () => {
       const invalidPayload: CreateUserRequestBody = {
         email: "",
-        accountId: "test_account",
+        handle: "test_account",
       };
 
       const res = await app.request("/", {
@@ -78,10 +78,10 @@ describe("User Create API", () => {
       expect(res.status).toBe(400);
     });
 
-    it("accountIdが空文字列の場合は400を返す", async () => {
+    it("handleが空文字列の場合は400を返す", async () => {
       const invalidPayload: CreateUserRequestBody = {
         email: "test@example.com",
-        accountId: "",
+        handle: "",
       };
 
       const res = await app.request("/", {
@@ -107,7 +107,7 @@ describe("User Create API", () => {
       const res = await app.request("/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: 123, accountId: 456 }),
+        body: JSON.stringify({ email: 123, handle: 456 }),
       });
 
       expect(res.status).toBe(400);
@@ -116,7 +116,7 @@ describe("User Create API", () => {
     it("emailの形式が不正な場合は400と Invalid email format メッセージを返す", async () => {
       const invalidPayload: CreateUserRequestBody = {
         email: "not-an-email",
-        accountId: "test_account",
+        handle: "test_account",
       };
 
       const res = await app.request("/", {
@@ -137,10 +137,10 @@ describe("User Create API", () => {
       });
     });
 
-    it("accountIdが256文字以上の場合は400と長さ超過メッセージを返す", async () => {
+    it("handleが256文字以上の場合は400と長さ超過メッセージを返す", async () => {
       const invalidPayload: CreateUserRequestBody = {
         email: "test@example.com",
-        accountId: "a".repeat(256),
+        handle: "a".repeat(256),
       };
 
       const res = await app.request("/", {
@@ -153,8 +153,8 @@ describe("User Create API", () => {
       expect(await res.json()).toMatchObject({
         details: expect.arrayContaining([
           expect.objectContaining({
-            path: ["accountId"],
-            message: "accountId must be 255 characters or less",
+            path: ["handle"],
+            message: "handle must be 255 characters or less",
           }),
         ]),
       });
@@ -163,7 +163,7 @@ describe("User Create API", () => {
     it("emailが空文字列の場合は email is required メッセージを返す", async () => {
       const invalidPayload: CreateUserRequestBody = {
         email: "",
-        accountId: "test_account",
+        handle: "test_account",
       };
 
       const res = await app.request("/", {
@@ -187,13 +187,13 @@ describe("User Create API", () => {
   describe("POST / - ドメインの失敗をHTTPへ変換する", () => {
     const validPayload = {
       email: "test@example.com",
-      accountId: "test_account",
+      handle: "test_account",
     } satisfies CreateUserRequestBody;
 
     beforeEach(() => {
       vi.clearAllMocks();
       mockUsers.findBySub.mockResolvedValue(null);
-      mockArtists.findByAccountId.mockResolvedValue(null);
+      mockArtists.findByHandle.mockResolvedValue(null);
       mockUsers.save.mockResolvedValue(undefined);
       mockArtists.save.mockResolvedValue(undefined);
     });
@@ -227,11 +227,11 @@ describe("User Create API", () => {
       expect(mockUsers.save).not.toHaveBeenCalled();
     });
 
-    it("accountIdが使用済みなら409と衝突したaccountIdを含むメッセージを返す", async () => {
-      mockArtists.findByAccountId.mockResolvedValue(
+    it("handleが使用済みなら409と衝突したhandleを含むメッセージを返す", async () => {
+      mockArtists.findByHandle.mockResolvedValue(
         reconstructArtist({
           artistId: "artist-1",
-          accountId: validPayload.accountId,
+          handle: validPayload.handle,
           ownerUserId: "other-user",
           profile: null,
         }),
@@ -241,7 +241,7 @@ describe("User Create API", () => {
 
       expect(res.status).toBe(409);
       expect(await res.json()).toMatchObject({
-        error: expect.stringContaining(validPayload.accountId),
+        error: expect.stringContaining(validPayload.handle),
       });
       expect(mockArtists.save).not.toHaveBeenCalled();
     });
@@ -259,16 +259,16 @@ describe("User Create API", () => {
       expect(mockArtists.save).not.toHaveBeenCalled();
     });
 
-    it("accountIdがVOの形式に反する場合は422を返し、保存しない", async () => {
+    it("handleがVOの形式に反する場合は422を返し、保存しない", async () => {
       const res = await postCreate({
         ...validPayload,
-        accountId: "invalid handle",
+        handle: "invalid handle",
       });
 
       expect(res.status).toBe(422);
       expect(await res.json()).toStrictEqual({
-        error: "Invalid accountId format",
-        code: "InvalidAccountIdFormatError",
+        error: "Invalid handle format",
+        code: "InvalidHandleFormatError",
       });
       expect(mockArtists.save).not.toHaveBeenCalled();
     });

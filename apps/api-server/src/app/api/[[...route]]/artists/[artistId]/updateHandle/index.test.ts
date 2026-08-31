@@ -3,13 +3,13 @@ import { Hono } from "hono";
 import { reconstructUser } from "../../../../../../domain/users/factories";
 import { reconstructArtist } from "../../../../../../domain/artists/factories";
 import { handleAppError } from "../../../../../../errorMap";
-import updateAccountIdRoute from "./index";
+import updateHandleRoute from "./index";
 
 const mockArtists = {
   save: vi.fn(),
   findByUserId: vi.fn(),
-  findByAccountId: vi.fn(),
-  updateAccountId: vi.fn(),
+  findByHandle: vi.fn(),
+  updateHandle: vi.fn(),
 };
 
 const mockResolveActorState = vi.fn();
@@ -32,7 +32,7 @@ const owner = reconstructUser({
 
 const ownedArtist = reconstructArtist({
   artistId: "artist-1",
-  accountId: "old_handle",
+  handle: "old_handle",
   ownerUserId: owner.getId(),
   profile: null,
 });
@@ -43,7 +43,7 @@ const createApp = () => {
     c.set("auth0User", { sub: "auth0|123" });
     await next();
   });
-  app.route("/:artistId", updateAccountIdRoute);
+  app.route("/:artistId", updateHandleRoute);
   app.onError(handleAppError);
   return app;
 };
@@ -62,43 +62,43 @@ describe("POST /artists/:artistId", () => {
       status: "complete",
       actor: { user: owner, artist: ownedArtist },
     });
-    mockArtists.updateAccountId.mockImplementation(async () =>
+    mockArtists.updateHandle.mockImplementation(async () =>
       reconstructArtist({
         artistId: "artist-1",
-        accountId: "new_handle",
+        handle: "new_handle",
         ownerUserId: owner.getId(),
         profile: null,
       }),
     );
   });
 
-  it("Actor と一致する artistId なら accountId を更新する", async () => {
-    const res = await request("artist-1", { accountId: "new_handle" });
+  it("Actor と一致する artistId なら handle を更新する", async () => {
+    const res = await request("artist-1", { handle: "new_handle" });
 
     expect(res.status).toBe(200);
-    expect(mockArtists.updateAccountId).toHaveBeenCalledTimes(1);
+    expect(mockArtists.updateHandle).toHaveBeenCalledTimes(1);
   });
 
   it("Actor と一致しない artistId は 404 を返し、更新しない", async () => {
-    const res = await request("other-artist", { accountId: "new_handle" });
+    const res = await request("other-artist", { handle: "new_handle" });
 
     expect(res.status).toBe(404);
-    expect(mockArtists.updateAccountId).not.toHaveBeenCalled();
+    expect(mockArtists.updateHandle).not.toHaveBeenCalled();
   });
 
   it("actor が解決できなければ 404 を返す", async () => {
     mockResolveActorState.mockResolvedValue({ status: "unregistered" });
 
-    const res = await request("artist-1", { accountId: "new_handle" });
+    const res = await request("artist-1", { handle: "new_handle" });
 
     expect(res.status).toBe(404);
-    expect(mockArtists.updateAccountId).not.toHaveBeenCalled();
+    expect(mockArtists.updateHandle).not.toHaveBeenCalled();
   });
 
-  it("accountId が空なら 400 を返し、更新しない", async () => {
-    const res = await request("artist-1", { accountId: "" });
+  it("handle が空なら 400 を返し、更新しない", async () => {
+    const res = await request("artist-1", { handle: "" });
 
     expect(res.status).toBe(400);
-    expect(mockArtists.updateAccountId).not.toHaveBeenCalled();
+    expect(mockArtists.updateHandle).not.toHaveBeenCalled();
   });
 });

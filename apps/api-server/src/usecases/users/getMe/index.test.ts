@@ -11,7 +11,7 @@ const user = reconstructUser({
 
 const artist = reconstructArtist({
   artistId: "artist-1",
-  accountId: "user_123",
+  handle: "user_123",
   ownerUserId: "user-1",
   profile: { name: "Test" },
 });
@@ -55,7 +55,7 @@ describe("getMe", () => {
         email: "test@example.com",
         artist: {
           artistId: "artist-1",
-          accountId: "user_123",
+          handle: "user_123",
           hasProfile: true,
         },
       });

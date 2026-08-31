@@ -11,7 +11,7 @@ const FALLBACK_MESSAGE = "ユーザー作成に失敗しました";
 
 export const createUser = async (input: {
   email: string;
-  accountId: string;
+  handle: string;
 }): Promise<Result<void, FetcherError>> => {
   try {
     const client = createBeatfolioBffClient();

@@ -2,9 +2,9 @@ import { describe, it, expect } from "vitest";
 import { withRegistrationCapabilities } from "./index";
 import { createCapabilityDepsStub } from "../testDoubles";
 import {
-  createAccountIdAlreadyTakenError,
-  isAccountIdAlreadyTakenError,
-} from "../../../domain/artists/errors/accountIdAlreadyTaken";
+  createHandleAlreadyTakenError,
+  isHandleAlreadyTakenError,
+} from "../../../domain/artists/errors/handleAlreadyTaken";
 import {
   createEmailAlreadyTakenError,
   isEmailAlreadyTakenError,
@@ -26,16 +26,16 @@ describe("withRegistrationCapabilities", () => {
     expect(calls.resolvedSubIds).toEqual([]);
   });
 
-  it("accountId の衝突は AccountIdAlreadyTakenError の err に変換する", async () => {
+  it("handle の衝突は HandleAlreadyTakenError の err に変換する", async () => {
     const { deps } = createCapabilityDepsStub({ status: "unregistered" });
 
     const result = await withRegistrationCapabilities(deps, async () => {
-      throw createAccountIdAlreadyTakenError("test_account");
+      throw createHandleAlreadyTakenError("test_account");
     });
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(isAccountIdAlreadyTakenError(result.error)).toBe(true);
+      expect(isHandleAlreadyTakenError(result.error)).toBe(true);
     }
   });
 

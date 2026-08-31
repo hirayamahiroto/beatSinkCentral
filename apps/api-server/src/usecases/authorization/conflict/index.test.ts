@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { catchAlreadyTaken, isAlreadyTakenError } from "./index";
 import {
-  createAccountIdAlreadyTakenError,
-  isAccountIdAlreadyTakenError,
-} from "../../../domain/artists/errors/accountIdAlreadyTaken";
+  createHandleAlreadyTakenError,
+  isHandleAlreadyTakenError,
+} from "../../../domain/artists/errors/handleAlreadyTaken";
 import {
   createEmailAlreadyTakenError,
   isEmailAlreadyTakenError,
@@ -11,8 +11,8 @@ import {
 import { ok } from "../../../utils/result";
 
 describe("isAlreadyTakenError", () => {
-  it("accountId / email の衝突を判別する", () => {
-    expect(isAlreadyTakenError(createAccountIdAlreadyTakenError("taken"))).toBe(
+  it("handle / email の衝突を判別する", () => {
+    expect(isAlreadyTakenError(createHandleAlreadyTakenError("taken"))).toBe(
       true,
     );
     expect(isAlreadyTakenError(createEmailAlreadyTakenError())).toBe(true);
@@ -44,14 +44,14 @@ describe("catchAlreadyTaken", () => {
   });
 
   it("判別対象でない衝突は変換せず伝播する", async () => {
-    const accountIdConflict = createAccountIdAlreadyTakenError("taken");
+    const handleConflict = createHandleAlreadyTakenError("taken");
 
     await expect(
       catchAlreadyTaken(isEmailAlreadyTakenError, () => {
-        throw accountIdConflict;
+        throw handleConflict;
       }),
-    ).rejects.toBe(accountIdConflict);
-    expect(isAccountIdAlreadyTakenError(accountIdConflict)).toBe(true);
+    ).rejects.toBe(handleConflict);
+    expect(isHandleAlreadyTakenError(handleConflict)).toBe(true);
   });
 
   it("衝突以外の例外はそのまま伝播する", async () => {

@@ -9,7 +9,7 @@ const linkTypesGet = vi.fn();
 
 const apiClient = {
   api: {
-    artists: { ":accountId": { $get: profileGet } },
+    artists: { ":handle": { $get: profileGet } },
     "link-types": { $get: linkTypesGet },
   },
 };
@@ -55,18 +55,18 @@ const linkTypes = [
   { type: "other", label: "その他" },
 ];
 
-describe("GET /players/:accountId", () => {
+describe("GET /players/:handle", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     linkTypesGet.mockResolvedValue(jsonResponse({ linkTypes }));
   });
 
-  it("accountId を api-server へ渡し、リンクのラベルを解決して返す", async () => {
+  it("handle を api-server へ渡し、リンクのラベルを解決して返す", async () => {
     profileGet.mockResolvedValue(jsonResponse(publishedProfile));
 
     const res = await createApp().request("/saku", { method: "GET" });
 
-    expect(profileGet).toHaveBeenCalledWith({ param: { accountId: "saku" } });
+    expect(profileGet).toHaveBeenCalledWith({ param: { handle: "saku" } });
     expect(res.status).toBe(200);
     expect(await res.json()).toStrictEqual({
       name: "SAKU",
@@ -92,10 +92,10 @@ describe("GET /players/:accountId", () => {
     expect(res.status).toBe(404);
   });
 
-  it("書式不正な accountId で api-server が 422 なら 404 を返す", async () => {
+  it("書式不正な handle で api-server が 422 なら 404 を返す", async () => {
     profileGet.mockResolvedValue(
       jsonResponse(
-        { error: "Invalid accountId format" },
+        { error: "Invalid handle format" },
         { ok: false, status: 422 },
       ),
     );
