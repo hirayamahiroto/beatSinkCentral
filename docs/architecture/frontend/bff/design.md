@@ -335,20 +335,17 @@ type DashboardView =
   | { kind: "render"; data: DashboardData };
 
 export function resolveDashboardView(
-  result: { ok: true; data: DashboardData } | { ok: false },
+  result: Result<DashboardData, FetcherError>,
 ): DashboardView {
   if (!result.ok) return { kind: "redirect", to: "/error" };
-  if (!result.data.registered) return { kind: "redirect", to: "/onboarding" };
-  return { kind: "render", data: result.data };
+  if (!result.value.registered) return { kind: "redirect", to: "/onboarding" };
+  return { kind: "render", data: result.value };
 }
 ```
 
 ```tsx
-// page.tsx は「判定の実行」だけ持つ（分岐ロジックは resolver 側）
-const res = await (await createBeatfolioBffServerClient()).api.dashboard.$get();
-const view = resolveDashboardView(
-  res.ok ? { ok: true, data: await res.json() } : { ok: false },
-);
+// page.tsx は「判定の実行」だけ持つ（分岐ロジックは resolver 側。BFF 呼び出しは fetcher 経由）
+const view = resolveDashboardView(await getDashboard());
 if (view.kind === "redirect") redirect(view.to);
 return <DashboardScreen>{/* view.data を配る */}</DashboardScreen>;
 ```
