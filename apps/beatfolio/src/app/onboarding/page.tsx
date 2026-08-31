@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
 import { getSession } from "../../libs/auth0";
 import { getOnboarding } from "../../fetchers/onboarding/getOnboarding";
 import { OnboardingClientAdapter } from "./OnboardingClientAdapter";
@@ -11,8 +10,7 @@ export default async function OnboardingPage() {
     redirect("/auth/login");
   }
 
-  const cookieHeader = (await headers()).get("cookie") ?? undefined;
-  const result = await getOnboarding({ cookie: cookieHeader });
+  const result = await getOnboarding();
 
   if (result.ok && result.value.registered) {
     redirect("/dashboard");

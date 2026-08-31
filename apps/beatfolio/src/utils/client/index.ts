@@ -1,7 +1,7 @@
 import { hc } from "hono/client";
 import type { AppType as ApiServerAppType } from "./../../../../api-server/src/app/api/[[...route]]/route";
 import type { AppType as BeatfolioBffAppType } from "../../app/api/[[...route]]/route";
-import { apiServerConfig, beatfolioBffConfig } from "../config";
+import { apiServerConfig } from "../config";
 import { createUpstreamUnavailableError } from "./errors/upstreamUnavailable";
 
 type ClientOptions = {
@@ -24,12 +24,6 @@ export const createApiServerClient = (options?: ClientOptions) => {
   return hc<ApiServerAppType>(apiServerConfig.baseUrl, {
     headers: options?.cookie ? { cookie: options.cookie } : undefined,
     fetch: upstreamFetch,
-  });
-};
-
-export const createBeatfolioBffServerClient = (options?: ClientOptions) => {
-  return hc<BeatfolioBffAppType>(beatfolioBffConfig.baseUrl, {
-    headers: options?.cookie ? { cookie: options.cookie } : undefined,
   });
 };
 

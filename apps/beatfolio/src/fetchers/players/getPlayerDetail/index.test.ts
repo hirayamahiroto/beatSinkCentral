@@ -4,7 +4,7 @@ import { NETWORK_ERROR_MESSAGE } from "../../shared/error";
 
 const { getMock } = vi.hoisted(() => ({ getMock: vi.fn() }));
 
-vi.mock("../../../utils/client", () => ({
+vi.mock("../../../utils/client/server", () => ({
   createBeatfolioBffServerClient: () => ({
     api: { players: { ":handle": { $get: getMock } } },
   }),
