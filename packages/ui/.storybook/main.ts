@@ -6,6 +6,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const config: StorybookConfig = {
   stories: ["./../src/design-system/**/*.stories.@(js|jsx|mjs|ts|tsx)"],
+  staticDirs: ["./assets/images"],
   addons: [
     getAbsolutePath("@storybook/addon-links"),
     getAbsolutePath("@storybook/addon-docs"),

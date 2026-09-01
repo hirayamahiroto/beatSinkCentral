@@ -64,7 +64,7 @@ const supportLinks = [
 const baseArgs = {
   name: "SAKU",
   tagline: "口ひとつで、フロアを揺らす。",
-  imageUrl: "/image1.jpeg",
+  imageUrl: "/image2.jpeg",
   genres: ["Beatbox", "Bass"],
   storyChapters,
   translation:

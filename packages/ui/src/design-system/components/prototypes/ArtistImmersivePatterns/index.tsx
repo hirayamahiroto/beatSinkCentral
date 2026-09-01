@@ -28,7 +28,7 @@ export type { ImmersiveChapter, ImmersiveArtist };
 export const sampleArtist: ImmersiveArtist = {
   name: "SAKU",
   tagline: "口ひとつで、フロアを揺らす。",
-  heroImageUrl: "/image1.jpeg",
+  heroImageUrl: "/image5.jpeg",
   genres: ["Beatbox", "Bass"],
   activityInfo: "東京 / ソロ",
   chapters: [
@@ -38,10 +38,10 @@ export const sampleArtist: ImmersiveArtist = {
       question: "どうして始めたのか",
       hook: "鏡の前で、\n全然鳴らなかった夜。",
       body: "中学2年の帰り道、友達のスマホで見た動画が全部だった。機材も楽器もないのに、音が鳴っていた。\n\nその日の夜、洗面所の鏡の前で真似をして、全然鳴らなくて、それが悔しくて続いた。",
-      imageUrl: "/image2.jpeg",
-      pos: "50% 20%",
+      imageUrl: "/image3.jpeg",
+      pos: "30% 35%",
       filter: "grayscale(1) contrast(1.15)",
-      focus: { x: "30%", y: "30%" },
+      focus: { x: "32%", y: "26%" },
     },
     {
       key: "turn",
@@ -49,10 +49,10 @@ export const sampleArtist: ImmersiveArtist = {
       question: "変わった瞬間",
       hook: "初戦負けの帰り道、\nイヤホンの中で全部わかった。",
       body: "初めて出た大会は一回戦で負けた。帰りの電車で自分の録音を聴いたら、音が「速い」だけで「重く」なかった。\n\nその日から低音だけを一年やった。技の数を増やすのをやめた。",
-      imageUrl: "/image3.jpeg",
-      pos: "50% 55%",
+      imageUrl: "/image7.jpeg",
+      pos: "58% 35%",
       filter: "grayscale(0.5) contrast(1.1)",
-      focus: { x: "62%", y: "45%" },
+      focus: { x: "46%", y: "42%" },
     },
     {
       key: "now",
@@ -61,9 +61,9 @@ export const sampleArtist: ImmersiveArtist = {
       hook: "知らない人の前で、\n音だけで勝負したい。",
       body: "ビートボックスを「見せ物」ではなく「音楽」として聴いてもらう場所を、自分でつくりたい。\n\nまずは10月に、初めてのワンマンをやる。",
       imageUrl: "/image4.jpeg",
-      pos: "40% 75%",
+      pos: "40% 45%",
       filter: "grayscale(0) contrast(1.1) saturate(1.35)",
-      focus: { x: "50%", y: "62%" },
+      focus: { x: "62%", y: "54%" },
     },
   ],
   primaryAction: {
@@ -333,7 +333,9 @@ export const PatternZoomDive = ({ artist }: { artist: ImmersiveArtist }) => {
             style={{
               transform: `scale(${scale})`,
               filter: `grayscale(${grayscale}) contrast(1.1)`,
-              objectPosition: chapter ? chapter.pos : "50% 24%",
+              objectPosition: chapter
+                ? `${chapter.focus.x} ${chapter.focus.y}`
+                : "32% 24%",
               transition: "object-position 1.2s ease-out",
             }}
           />
@@ -415,7 +417,7 @@ export const PatternSpotlight = ({ artist }: { artist: ImmersiveArtist }) => {
     ? { x: chapter.focus.x, y: chapter.focus.y, size: 340 }
     : isCta
       ? { x: "50%", y: "50%", size: 2400 }
-      : { x: "50%", y: "28%", size: 260 };
+      : { x: "32%", y: "26%", size: 260 };
   return (
     <div className="relative min-h-screen overflow-hidden bg-black text-white">
       <ImmersiveStyle />
@@ -561,7 +563,7 @@ export const PatternEditorial = ({ artist }: { artist: ImmersiveArtist }) => {
           alt=""
           className="imm-drift absolute inset-0 h-full w-full object-cover opacity-70"
           style={{
-            objectPosition: "50% 25%",
+            objectPosition: "35% 25%",
             filter: "grayscale(0.8) contrast(1.15)",
           }}
         />
