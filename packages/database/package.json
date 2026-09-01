@@ -8,6 +8,7 @@
     "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
     "db:migrate": "drizzle-kit migrate --config=drizzle.config.ts",
     "db:seed": "tsx src/seed.ts",
+    "check-types": "tsc --noEmit",
     "lint": "eslint \"**/*.ts\"",
     "test": "vitest",
     "test:watch": "vitest --watch"
