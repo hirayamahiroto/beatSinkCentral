@@ -148,17 +148,24 @@ cd apps/api-server && npx next lint       # lint
 ### Step 4b. 意図適合をレビューする（機械検証では拾えない）
 
 `tsc` / lint / test は構造適合しか見ない。`.claude/rules/code-review-checklist.md` の🔴項目のうち、
-スコープ条件の徹底（§3）・権限/機密情報の露出防止（§4）・トランザクション境界（§10）は、
-クエリや権限モデルの意味を理解しないと判定できず、機械検証では検知できない。
+スコープ条件の徹底（§3）・権限/機密情報の露出防止（§4）は、クエリや権限モデルの意味を理解しないと
+判定できず、機械検証では検知できない（理由は §3/§4 本文を参照。RLS は api-server の経路では効かず、
+スコープの実体がリソースごとに異なる関連テーブル越しの検証のため、汎用ルール化できない）。
+🟡のレイヤー間の責務境界（§9）も、usecase-capability-boundary が防ぐ範囲（usecaseからDBへの直接到達）
+の外側（route/repositoryへの責務の漏れ出し等）は同様に機械検証できない。
+
+**トランザクション境界（§10）はここでの確認対象ではない。** `runWith*Capabilities` が境界を持ち、
+executor は権能の生成時にバインドされるため、usecase 側で「張り忘れる」操作自体が存在しない
+（`docs/architecture/server/architecture.md`「トランザクション境界」参照）。
 
 **`Agent` を1本立てて diff を敵対的にレビューさせる。** 自分の実装を自分で見ると、意図が見えているぶん盲点が残る。
 `code-review-checklist.md` を照らし合わせて実行する。
 
 **次のいずれかに触れた変更では必須**（省略しない）:
 
-- repository / usecase（クエリを書く・呼ぶ層）
-- policy / capabilities（権限判定に関わる層）
-- route の認証スコープ・errorMap
+- repository / usecase（クエリを書く・呼ぶ層）— §3/§4/§9
+- policy / capabilities（権限判定に関わる層）— §4/§9
+- route の認証スコープ・errorMap — §4/§9
 
 ## Step 5. 報告する
 

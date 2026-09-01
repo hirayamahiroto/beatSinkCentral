@@ -252,6 +252,15 @@ async function checkDeletable({ teamId, userId, itemId }: Args) {
 }
 ```
 
+### beatSinkCentral での適用（機械検知できない理由）
+
+このプロジェクトに `teamId` は存在しない。スコープの実体は `userId` / `artistId` で、
+Artist データは `artistOwners` / `artistMembers` という中間テーブル越しの所有・メンバーシップ検証になる
+（リソース種別ごとに関連の張り方が異なる）。加えて RLS は `SUPABASE_SERVICE_ROLE_KEY` で実行する
+api-server の経路をバイパスするため（`docs/architecture/server/database/storage.md`）、DB側の構造的な
+強制も効かない。汎用ASTルールでの機械検知は誤検知リスクが高いため見送り、実装skill（`api-server-feature`
+Step 4b）でのAgentレビュー必須化で対応する。
+
 ---
 
 ## 4. 権限・機密情報の露出防止（階層連鎖・ログマスク含む） 🔴 ブロッキング
@@ -327,6 +336,12 @@ logger.info(`login: ${email} token=${accessToken}`);
 throw createUserNotFoundError(); // message に sub/email を含めない
 logger.info("login", { userId, email: maskEmail(email) });
 ```
+
+### beatSinkCentral での適用（機械検知できない理由）
+
+§3 と同じ理由（RLSはapi-server経路をバイパスする、スコープが関連テーブル越しの検証になる）で、
+4-1/4-2 の権限の連鎖的遮断も汎用ASTルールでは機械検知できない。`api-server-feature` Step 4b で
+のAgentレビュー必須化で対応する。4-3（ログマスク）は文字列パターンなので将来的にlint化の余地がある。
 
 ---
 
@@ -538,23 +553,45 @@ function canDeleteAsset(inaccessibleCount: number): boolean {
 
 ## 10. トランザクション境界 🔴 ブロッキング
 
-- 「原子的に作られ/更新されねばならない」複数の書き込みは **1 つのトランザクション境界**（`txRunner.run` 等）にまとめる。途中失敗で中途半端な状態を残さない。
+- 「原子的に作られ/更新されねばならない」複数の書き込みは **1 つのトランザクション境界**にまとめる。途中失敗で中途半端な状態を残さない。
 - **集約境界 ≠ トランザクション境界**。別集約でも業務要件上まとめて確定が必要ならまたいで張ってよい。
 - トランザクションは短く保つ。境界の中で外部API呼び出しや重い計算をしない（ロック時間が延びる）。
 - 入力バリデーション・VO の形式検証はトランザクション開始**前**に済ませる（不正入力で無駄に begin しない）。
-- リポジトリは `tx?` を受け取り `const executor = tx ?? db` で境界の有無どちらにも対応する。
+- **リポジトリのメソッドに `tx?: TransactionContext` のような optional 引数を置かない。** 渡し忘れが
+  コンパイルもテストも通したまま「トランザクション外の書き込み」を静かに残す。executor（db / トランザクション）は
+  リポジトリの**生成時**に注入し、呼び出し側が境界の有無を意識できないようにする。
 
 ```typescript
 // NG: User と Artist を別々に保存（途中失敗で User だけ残り不整合）
 await userRepository.save(user.toPersistence());
 await artistRepository.save(artist.toPersistence()); // ここで失敗すると User だけ残る
 
-// OK: 原子的にまとめる
-await txRunner.run(async (tx) => {
-  await userRepository.save(user.toPersistence(), tx);
-  await artistRepository.save(artist.toPersistence(), tx);
+// NG: tx? を optional 引数で受け取る（渡し忘れが静かに db 直参照になる）
+async function save(data: UserSaveData, tx?: TransactionContext) {
+  const executor = tx ?? db;
+  return executor.insert(usersTable).values(data);
+}
+
+// OK: 原子的な操作をまとめる境界ヘルパを用意し、リポジトリはそこで組み立てた
+// executor を生成時に受け取る（呼び出し側は境界の有無を意識しない）
+const createUserWriter = (executor: Executor): IUserWriter => ({
+  save: (data) => executor.insert(usersTable).values(data),
+});
+
+await runWithRegistrationCapabilities(async (caps) => {
+  await caps.userWriter.save(user.toPersistence());
+  await caps.artistWriter.save(artist.toPersistence());
 });
 ```
+
+### beatSinkCentral での適用
+
+このプロジェクトはこのパターンを実装済み。`docs/architecture/server/architecture.md`
+「トランザクション境界」「Composition Root の分割」が規範。`runWithUserWriteCapabilities` /
+`runWithArtistWriteCapabilities` / `runWithRegistrationCapabilities` が境界を持ち、usecase は
+`tx` を受け取らず「原子的に書かれること」を前提にしてよい（境界を張る責務を負わない）。新規実装で
+この規範から外れて `tx?` を復活させていないかだけ確認すればよく、Step 4b での能動的なレビュー対象では
+ない（`api-server-feature` skill参照）。
 
 ---
 
