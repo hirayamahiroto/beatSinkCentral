@@ -25,13 +25,18 @@ describe("recordEvent", () => {
 
     expect(result.ok).toBe(true);
     expect(record).toHaveBeenCalledTimes(1);
-    expect(record).toHaveBeenCalledWith(
-      expect.objectContaining({
-        eventType: "profile_view",
-        artistId: "artist-1",
-        from: "announce",
-      }),
-    );
+    expect(record).toHaveBeenCalledWith({
+      id: expect.any(String),
+      eventType: "profile_view",
+      artistId: "artist-1",
+      anonId: "anon-1",
+      sessionId: "session-1",
+      path: "/players/handle",
+      referrer: null,
+      from: "announce",
+      props: null,
+      occurredAt: expect.any(Date),
+    });
   });
 
   it("未知のeventTypeはrecordを呼ばずerrを返す", async () => {

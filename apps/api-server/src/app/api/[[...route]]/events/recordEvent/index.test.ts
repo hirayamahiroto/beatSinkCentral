@@ -48,13 +48,18 @@ describe("POST /events", () => {
 
     expect(res.status).toBe(204);
     expect(mockRecord).toHaveBeenCalledTimes(1);
-    expect(mockRecord).toHaveBeenCalledWith(
-      expect.objectContaining({
-        eventType: "profile_view",
-        artistId: validProfileViewBody.artistId,
-        from: "announce",
-      }),
-    );
+    expect(mockRecord).toHaveBeenCalledWith({
+      id: expect.any(String),
+      eventType: "profile_view",
+      artistId: validProfileViewBody.artistId,
+      anonId: validProfileViewBody.anonId,
+      sessionId: validProfileViewBody.sessionId,
+      path: validProfileViewBody.path,
+      referrer: null,
+      from: "announce",
+      props: null,
+      occurredAt: expect.any(Date),
+    });
   });
 
   it("未知のevent_typeは400を返し、DBに到達しない", async () => {

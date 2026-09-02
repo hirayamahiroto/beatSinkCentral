@@ -24,6 +24,27 @@ describe("createAnalyticsEvent", () => {
     expect(result.value.getId()).toBeTruthy();
   });
 
+  it("anonId/sessionId/path/referrer/artistIdを入れ替えずそのまま永続化データへ渡す", () => {
+    const result = createAnalyticsEvent(
+      buildInput({
+        artistId: "artist-1",
+        anonId: "anon-1",
+        sessionId: "session-1",
+        path: "/players/handle",
+        referrer: "https://example.com",
+      }),
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const data = result.value.toPersistence();
+    expect(data.artistId).toBe("artist-1");
+    expect(data.anonId).toBe("anon-1");
+    expect(data.sessionId).toBe("session-1");
+    expect(data.path).toBe("/players/handle");
+    expect(data.referrer).toBe("https://example.com");
+  });
+
   it("profile_viewはpropsのfromを実カラムへ昇格し、propsから取り除く", () => {
     const result = createAnalyticsEvent(buildInput());
 

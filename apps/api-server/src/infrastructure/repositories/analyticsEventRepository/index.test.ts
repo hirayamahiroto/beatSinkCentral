@@ -30,18 +30,12 @@ describe("createAnalyticsEventWriter", () => {
 
   it("生成時に渡したexecutorでinsertする", async () => {
     const executor = createExecutor();
+    const data = buildData();
 
-    await createAnalyticsEventWriter(executor as never).record(buildData());
+    await createAnalyticsEventWriter(executor as never).record(data);
 
     expect(executor.insert).toHaveBeenCalledTimes(1);
-    expect(executor.values).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: "event-1",
-        eventType: "profile_view",
-        artistId: "artist-1",
-        from: "announce",
-      }),
-    );
+    expect(executor.values).toHaveBeenCalledWith(data);
   });
 
   it("何も返さない（fire-and-forget）", async () => {
