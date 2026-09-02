@@ -26,10 +26,12 @@ export default async function PlayerDetailPage({ params }: Props) {
           name={player.name}
           tagline={player.tagline}
           imageUrl={player.imageUrl}
-          story={player.story}
-          activityInfo={player.activityInfo}
           genres={player.genres}
-          links={player.links}
+          storyChapters={player.storyChapters}
+          translation={player.translation}
+          listeningPoint={player.listeningPoint}
+          offer={player.offer}
+          supportLinks={player.supportLinks}
         />
       </div>
     </div>
