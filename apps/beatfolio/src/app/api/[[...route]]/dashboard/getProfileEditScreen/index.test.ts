@@ -52,6 +52,12 @@ const linkTypes = [
   { type: "x", label: "X" },
 ];
 
+const storyQuestions = [
+  { code: "beginning", label: "始まり", required: true },
+  { code: "turning_point", label: "転機", required: false },
+  { code: "concept", label: "何を表現したいのか", required: false },
+];
+
 describe("GET /dashboard/profile/edit", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -59,14 +65,14 @@ describe("GET /dashboard/profile/edit", () => {
     linkTypesGet.mockResolvedValue(jsonResponse({ linkTypes }));
   });
 
-  it("email・選択肢・ウィザード初期値を1つの画面用データにまとめて返す", async () => {
+  it("email・選択肢・問いマスタ・ウィザード初期値を1つの画面用データにまとめて返す", async () => {
     profileGet.mockResolvedValue(
       jsonResponse({
         profile: {
           name: "SAKU",
           tagline: "口ひとつで、フロアを揺らす。",
           imageUrl: "https://example.com/saku.jpg",
-          story: "始めたきっかけ。",
+          chapters: [{ questionCode: "beginning", body: "始めたきっかけ。" }],
           activityInfo: "拠点: 東京 / 形態: ソロ",
           genres: ["Beatbox"],
           links: [
@@ -74,6 +80,8 @@ describe("GET /dashboard/profile/edit", () => {
           ],
           published: true,
         },
+        missingPublishFields: [],
+        storyQuestions,
       }),
     );
 
@@ -87,12 +95,13 @@ describe("GET /dashboard/profile/edit", () => {
       registered: true,
       email: "saku@example.com",
       linkTypeOptions: linkTypes,
+      storyQuestions,
       defaultValues: {
         name: "SAKU",
         imageUrl: "https://example.com/saku.jpg",
         tagline: "口ひとつで、フロアを揺らす。",
         genres: ["Beatbox"],
-        storyOrigin: "始めたきっかけ。",
+        chapters: { beginning: "始めたきっかけ。" },
         location: "東京",
         activityForm: "solo",
         links: [{ type: "youtube", url: "https://youtube.com/@saku" }],
@@ -100,8 +109,14 @@ describe("GET /dashboard/profile/edit", () => {
     });
   });
 
-  it("プロフィール未作成なら defaultValues は null で返す", async () => {
-    profileGet.mockResolvedValue(jsonResponse({ profile: null }));
+  it("プロフィール未作成でも問いマスタは返し、defaultValues は null で返す", async () => {
+    profileGet.mockResolvedValue(
+      jsonResponse({
+        profile: null,
+        missingPublishFields: null,
+        storyQuestions,
+      }),
+    );
 
     const res = await createApp().request("/", { method: "GET" });
 
@@ -109,13 +124,20 @@ describe("GET /dashboard/profile/edit", () => {
       registered: true,
       email: "saku@example.com",
       linkTypeOptions: linkTypes,
+      storyQuestions,
       defaultValues: null,
     });
   });
 
   it("未登録なら registered:false だけを返す", async () => {
     meGet.mockResolvedValue(jsonResponse({ registered: false }));
-    profileGet.mockResolvedValue(jsonResponse({ profile: null }));
+    profileGet.mockResolvedValue(
+      jsonResponse({
+        profile: null,
+        missingPublishFields: null,
+        storyQuestions,
+      }),
+    );
 
     const res = await createApp().request("/", { method: "GET" });
 

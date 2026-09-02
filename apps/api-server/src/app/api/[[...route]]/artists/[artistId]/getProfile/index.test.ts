@@ -25,6 +25,14 @@ const mockArtistProfiles = {
   findPublishedByHandle: vi.fn(),
 };
 
+const mockStoryQuestions = {
+  findAll: vi.fn(async () => [
+    { code: "beginning", label: "始まり" },
+    { code: "turning_point", label: "転機" },
+    { code: "concept", label: "何を表現したいのか" },
+  ]),
+};
+
 const mockResolveActorState = vi.fn();
 
 vi.mock("../../../../../../infrastructure/capabilities", () => ({
@@ -33,6 +41,7 @@ vi.mock("../../../../../../infrastructure/capabilities", () => ({
     buildArtistReadCapabilities: (a: unknown) => ({
       actor: a,
       artistProfiles: mockArtistProfiles,
+      storyQuestions: mockStoryQuestions,
     }),
   }),
 }));

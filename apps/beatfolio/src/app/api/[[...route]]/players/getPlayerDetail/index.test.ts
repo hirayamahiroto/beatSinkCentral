@@ -39,7 +39,10 @@ const publishedProfile = {
     name: "SAKU",
     tagline: "口ひとつで、フロアを揺らす。",
     imageUrl: "https://example.com/saku.jpg",
-    story: "始めたきっかけ。",
+    chapters: [
+      { questionCode: "beginning", body: "始めたきっかけ。" },
+      { questionCode: "concept", body: "表現したいこと。" },
+    ],
     activityInfo: "拠点: 東京 / 形態: ソロ",
     genres: ["Beatbox"],
     links: [
@@ -61,7 +64,7 @@ describe("GET /players/:handle", () => {
     linkTypesGet.mockResolvedValue(jsonResponse({ linkTypes }));
   });
 
-  it("handle を api-server へ渡し、§5-2 契約（AudienceArtistProfile props）へ整形して返す", async () => {
+  it("handle を api-server へ渡し、§5-2 契約（AudienceArtistProfile props）へ整形して返す（章は暫定で1本のテキストに結合）", async () => {
     profileGet.mockResolvedValue(jsonResponse(publishedProfile));
 
     const res = await createApp().request("/saku", { method: "GET" });
@@ -73,7 +76,9 @@ describe("GET /players/:handle", () => {
       tagline: "口ひとつで、フロアを揺らす。",
       imageUrl: "https://example.com/saku.jpg",
       genres: ["Beatbox"],
-      storyChapters: [{ question: "Story", body: "始めたきっかけ。" }],
+      storyChapters: [
+        { question: "Story", body: "始めたきっかけ。\n\n表現したいこと。" },
+      ],
       translation: null,
       listeningPoint: null,
       offer: null,

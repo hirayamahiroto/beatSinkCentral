@@ -12,6 +12,7 @@ import type {
 } from "../../domain/artists/repositories";
 import type { ILinkTypeReader } from "../../domain/linkTypes/repositories";
 import type { IAnalyticsEventWriter } from "../../domain/analyticsEvents/repositories";
+import type { IStoryQuestionReader } from "../../domain/storyQuestions/repositories";
 import type { UserNotFoundError } from "../../domain/users/errors/userNotFound";
 import type { ArtistNotFoundError } from "../../domain/artists/errors/artistNotFound";
 import type { Result } from "../../utils/result";
@@ -42,6 +43,7 @@ export type PublicReadCapabilities = {
 export type ArtistReadCapabilities = {
   actor: Actor;
   artistProfiles: IArtistProfileReader;
+  storyQuestions: IStoryQuestionReader;
 };
 
 export type PublicWriteCapabilities = {

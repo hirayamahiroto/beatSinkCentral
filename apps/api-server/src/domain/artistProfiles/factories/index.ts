@@ -11,9 +11,12 @@ import {
   type InvalidImageUrlFormatError,
 } from "../valueObjects/imageUrl";
 import {
-  createStory,
-  type InvalidStoryFormatError,
-} from "../valueObjects/story";
+  createStoryChapter,
+  createInvalidStoryChapterFormatError,
+  type InvalidStoryChapterFormatError,
+  type StoryChapter,
+  type StoryChapterInput,
+} from "../valueObjects/storyChapter";
 import {
   createActivityInfo,
   type InvalidActivityInfoFormatError,
@@ -34,6 +37,7 @@ import type { ArtistProfile, ArtistProfileState } from "../entities";
 import {
   type Result,
   ok,
+  err,
   map,
   all,
   traverse,
@@ -44,7 +48,7 @@ export type ArtistProfileContentError =
   | InvalidProfileNameFormatError
   | InvalidTaglineFormatError
   | InvalidImageUrlFormatError
-  | InvalidStoryFormatError
+  | InvalidStoryChapterFormatError
   | InvalidActivityInfoFormatError
   | InvalidGenreFormatError
   | CreateProfileLinkError;
@@ -79,11 +83,23 @@ const toLinks = (
   );
 };
 
+const toChapters = (
+  values: StoryChapterInput[] | undefined,
+): Result<StoryChapter[], InvalidStoryChapterFormatError> => {
+  if (values === undefined) return ok([]);
+  const withBody = values.filter((value) => value.body.trim().length > 0);
+  const codes = withBody.map((value) => value.questionCode);
+  if (new Set(codes).size !== codes.length) {
+    return err(createInvalidStoryChapterFormatError());
+  }
+  return traverse(withBody, createStoryChapter);
+};
+
 export type ArtistProfileContent = {
   name?: string | null;
   tagline?: string | null;
   imageUrl?: string | null;
-  story?: string | null;
+  chapters?: StoryChapterInput[];
   activityInfo?: string | null;
   genres?: string[];
   links?: ProfileLinkInput[];
@@ -104,7 +120,7 @@ const buildState = (
       name: optional(content.name, createProfileName),
       tagline: optional(content.tagline, createTagline),
       imageUrl: optional(content.imageUrl, createImageUrl),
-      story: optional(content.story, createStory),
+      chapters: toChapters(content.chapters),
       activityInfo: optional(content.activityInfo, createActivityInfo),
       genres: toGenres(content.genres),
       links: toLinks(content.links),

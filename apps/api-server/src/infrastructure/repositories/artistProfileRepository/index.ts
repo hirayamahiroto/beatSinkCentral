@@ -5,6 +5,8 @@ import {
   artistProfileGenresTable,
   artistProfileLinksTable,
   linkTypesTable,
+  storyChaptersTable,
+  storyQuestionsTable,
 } from "../../../../../../packages/database/src/utils/createClient";
 import type {
   IArtistProfileReader,
@@ -17,10 +19,12 @@ import type {
 import type {
   ArtistProfile,
   ProfileLinkData,
+  StoryChapterData,
 } from "../../../domain/artistProfiles/entities";
 import { reconstructArtistProfile } from "../../../domain/artistProfiles/factories";
 import { createArtistProfileNotFoundError } from "../../../domain/artistProfiles/errors/artistProfileNotFound";
 import { createInvalidProfileLinkFormatError } from "../../../domain/artistProfiles/valueObjects/profileLink";
+import { createInvalidStoryChapterFormatError } from "../../../domain/artistProfiles/valueObjects/storyChapter";
 import type { Executor } from "../../transaction";
 
 type ProfileRow = {
@@ -29,7 +33,6 @@ type ProfileRow = {
   name: string | null;
   tagline: string | null;
   imageUrl: string | null;
-  story: string | null;
   activityInfo: string | null;
   published: boolean;
 };
@@ -40,7 +43,6 @@ const profileColumns = {
   name: artistProfilesTable.name,
   tagline: artistProfilesTable.tagline,
   imageUrl: artistProfilesTable.imageUrl,
-  story: artistProfilesTable.story,
   activityInfo: artistProfilesTable.activityInfo,
   published: artistProfilesTable.published,
 };
@@ -58,7 +60,7 @@ const toPublishedSummaries = (
   );
 
 const loadChildren = async (executor: Executor, profileId: string) => {
-  const [genreRows, linkRows] = await Promise.all([
+  const [genreRows, linkRows, chapterRows] = await Promise.all([
     executor
       .select({ genre: artistProfileGenresTable.genre })
       .from(artistProfileGenresTable)
@@ -77,10 +79,23 @@ const loadChildren = async (executor: Executor, profileId: string) => {
       )
       .where(eq(artistProfileLinksTable.artistProfileId, profileId))
       .orderBy(asc(artistProfileLinksTable.sortOrder)),
+    executor
+      .select({
+        questionCode: storyQuestionsTable.code,
+        body: storyChaptersTable.body,
+      })
+      .from(storyChaptersTable)
+      .innerJoin(
+        storyQuestionsTable,
+        eq(storyChaptersTable.storyQuestionId, storyQuestionsTable.id),
+      )
+      .where(eq(storyChaptersTable.artistProfileId, profileId))
+      .orderBy(asc(storyQuestionsTable.sortOrder)),
   ]);
   return {
     genres: genreRows.map((row) => row.genre),
     links: linkRows,
+    chapters: chapterRows,
   };
 };
 
@@ -88,6 +103,7 @@ const toEntity = (
   row: ProfileRow,
   genres: string[],
   links: ProfileLinkData[],
+  chapters: StoryChapterData[],
 ): ArtistProfile =>
   reconstructArtistProfile({
     id: row.id,
@@ -96,7 +112,7 @@ const toEntity = (
     name: row.name,
     tagline: row.tagline,
     imageUrl: row.imageUrl,
-    story: row.story,
+    chapters,
     activityInfo: row.activityInfo,
     genres,
     links,
@@ -114,11 +130,24 @@ const resolveLinkTypeIds = async (
   return new Map(rows.map((row) => [row.code, row.id]));
 };
 
+const resolveStoryQuestionIds = async (
+  executor: Executor,
+  chapters: StoryChapterData[],
+): Promise<Map<string, number>> => {
+  const codes = [...new Set(chapters.map((chapter) => chapter.questionCode))];
+  const rows = await executor
+    .select({ id: storyQuestionsTable.id, code: storyQuestionsTable.code })
+    .from(storyQuestionsTable)
+    .where(inArray(storyQuestionsTable.code, codes));
+  return new Map(rows.map((row) => [row.code, row.id]));
+};
+
 const replaceChildren = async (
   executor: Executor,
   profileId: string,
   genres: string[],
   links: ProfileLinkData[],
+  chapters: StoryChapterData[],
 ) => {
   await Promise.all([
     executor
@@ -127,6 +156,9 @@ const replaceChildren = async (
     executor
       .delete(artistProfileLinksTable)
       .where(eq(artistProfileLinksTable.artistProfileId, profileId)),
+    executor
+      .delete(storyChaptersTable)
+      .where(eq(storyChaptersTable.artistProfileId, profileId)),
   ]);
 
   if (genres.length > 0) {
@@ -157,6 +189,23 @@ const replaceChildren = async (
       }),
     );
   }
+
+  if (chapters.length > 0) {
+    const idByCode = await resolveStoryQuestionIds(executor, chapters);
+    await executor.insert(storyChaptersTable).values(
+      chapters.map((chapter) => {
+        const storyQuestionId = idByCode.get(chapter.questionCode);
+        if (storyQuestionId === undefined) {
+          throw createInvalidStoryChapterFormatError();
+        }
+        return {
+          artistProfileId: profileId,
+          storyQuestionId,
+          body: chapter.body,
+        };
+      }),
+    );
+  }
 };
 
 export const createArtistProfileReader = (
@@ -175,8 +224,8 @@ export const createArtistProfileReader = (
       .limit(1);
     if (!row) return null;
 
-    const { genres, links } = await loadChildren(executor, row.id);
-    return toEntity(row, genres, links);
+    const { genres, links, chapters } = await loadChildren(executor, row.id);
+    return toEntity(row, genres, links, chapters);
   },
 
   async findPublishedByHandle(handle: string): Promise<ArtistProfile | null> {
@@ -197,8 +246,8 @@ export const createArtistProfileReader = (
       .limit(1);
     if (!row) return null;
 
-    const { genres, links } = await loadChildren(executor, row.id);
-    return toEntity(row, genres, links);
+    const { genres, links, chapters } = await loadChildren(executor, row.id);
+    return toEntity(row, genres, links, chapters);
   },
 
   async listPublishedSummaries({
@@ -241,7 +290,6 @@ export const createArtistProfileWriter = (
         name: data.name,
         tagline: data.tagline,
         imageUrl: data.imageUrl,
-        story: data.story,
         activityInfo: data.activityInfo,
         published: data.published,
       })
@@ -251,15 +299,20 @@ export const createArtistProfileWriter = (
           name: data.name,
           tagline: data.tagline,
           imageUrl: data.imageUrl,
-          story: data.story,
           activityInfo: data.activityInfo,
           updatedAt: new Date(),
         },
       })
       .returning(profileColumns);
 
-    await replaceChildren(executor, row.id, data.genres, data.links);
-    return toEntity(row, data.genres, data.links);
+    await replaceChildren(
+      executor,
+      row.id,
+      data.genres,
+      data.links,
+      data.chapters,
+    );
+    return toEntity(row, data.genres, data.links, data.chapters);
   },
 
   async setPublished(
@@ -281,7 +334,7 @@ export const createArtistProfileWriter = (
       .returning(profileColumns);
     if (!row) throw createArtistProfileNotFoundError();
 
-    const { genres, links } = await loadChildren(executor, row.id);
-    return toEntity(row, genres, links);
+    const { genres, links, chapters } = await loadChildren(executor, row.id);
+    return toEntity(row, genres, links, chapters);
   },
 });

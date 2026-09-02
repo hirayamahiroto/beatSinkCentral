@@ -25,7 +25,7 @@ import type {
   EmptyImageFileError,
 } from "../domain/artistProfiles/valueObjects/profileImage";
 import type { ProfileImageUploadFailedError } from "../domain/artistProfiles/errors/profileImageUploadFailed";
-import type { InvalidStoryFormatError } from "../domain/artistProfiles/valueObjects/story";
+import type { InvalidStoryChapterFormatError } from "../domain/artistProfiles/valueObjects/storyChapter";
 import type { InvalidActivityInfoFormatError } from "../domain/artistProfiles/valueObjects/activityInfo";
 import type { InvalidGenreFormatError } from "../domain/artistProfiles/valueObjects/genre";
 import type { InvalidSnsUrlFormatError } from "../domain/artistProfiles/valueObjects/snsUrl";
@@ -64,7 +64,7 @@ export type AppError =
   | InvalidProfileNameFormatError
   | InvalidTaglineFormatError
   | InvalidImageUrlFormatError
-  | InvalidStoryFormatError
+  | InvalidStoryChapterFormatError
   | InvalidActivityInfoFormatError
   | InvalidGenreFormatError
   | InvalidSnsUrlFormatError
@@ -203,9 +203,9 @@ const errorMap: ErrorMap = {
     clientMessage: () => "Invalid imageUrl format",
     logLevel: "info",
   },
-  InvalidStoryFormatError: {
+  InvalidStoryChapterFormatError: {
     status: 422,
-    clientMessage: () => "Invalid story format",
+    clientMessage: () => "Invalid story chapter format",
     logLevel: "info",
   },
   InvalidActivityInfoFormatError: {

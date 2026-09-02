@@ -6,6 +6,8 @@ export * from "./artistProfiles";
 export * from "./artistProfileGenres";
 export * from "./linkTypes";
 export * from "./artistProfileLinks";
+export * from "./storyQuestions";
+export * from "./storyChapters";
 export * from "./artistStatusMasters";
 export * from "./artistStatuses";
 export * from "./artistIdHistories";

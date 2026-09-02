@@ -17,11 +17,16 @@ const profileLinkSchema = z.object({
   label: z.string().nullable(),
 });
 
+const storyChapterSchema = z.object({
+  questionCode: z.string(),
+  body: z.string(),
+});
+
 const artistProfileViewSchema = z.object({
   name: z.string().nullable(),
   tagline: z.string().nullable(),
   imageUrl: z.string().nullable(),
-  story: z.string().nullable(),
+  chapters: z.array(storyChapterSchema),
   activityInfo: z.string().nullable(),
   genres: z.array(z.string()),
   links: z.array(profileLinkSchema),
@@ -36,10 +41,17 @@ const publishRequiredFieldSchema = z.enum([
   "links",
 ]);
 
+const storyQuestionSchema = z.object({
+  code: z.string(),
+  label: z.string(),
+  required: z.boolean(),
+});
+
 const getProfileResponseSchema = z.object({
   handle: z.string(),
   profile: artistProfileViewSchema.nullable(),
   missingPublishFields: z.array(publishRequiredFieldSchema).nullable(),
+  storyQuestions: z.array(storyQuestionSchema),
 });
 
 const app = new Hono().get(

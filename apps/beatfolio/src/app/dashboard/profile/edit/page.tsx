@@ -15,7 +15,7 @@ export default async function ProfileEditPage() {
     redirect("/onboarding");
   }
 
-  const { email, linkTypeOptions, defaultValues } = screen;
+  const { email, linkTypeOptions, storyQuestions, defaultValues } = screen;
 
   return (
     <div className="min-h-screen bg-background text-foreground px-4 pt-12 pb-16">
@@ -23,6 +23,7 @@ export default async function ProfileEditPage() {
         <ProfileWizardClientAdapter
           email={email}
           linkTypeOptions={linkTypeOptions}
+          storyQuestions={storyQuestions}
           defaultValues={defaultValues ?? undefined}
         />
       </div>

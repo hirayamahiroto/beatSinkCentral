@@ -45,7 +45,7 @@ const profileView = {
   name: "SAKU",
   tagline: null,
   imageUrl: "https://example.com/saku.jpg",
-  story: "始めたきっかけ。",
+  chapters: [{ questionCode: "beginning", body: "始めたきっかけ。" }],
   activityInfo: null,
   genres: ["Beatbox"],
   links: [{ type: "youtube", url: "https://youtube.com/@saku", label: null }],

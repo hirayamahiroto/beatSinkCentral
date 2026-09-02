@@ -24,14 +24,14 @@ describe("createArtistProfile", () => {
       createArtistProfile({
         artistId: "artist-1",
         name: "  ",
-        story: "",
+        chapters: [{ questionCode: "beginning", body: "" }],
         genres: ["", "  "],
         links: [],
       }),
     );
 
     expect(profile.getName()).toBeNull();
-    expect(profile.getStory()).toBeNull();
+    expect(profile.getChapters()).toEqual([]);
     expect(profile.getGenres()).toEqual([]);
     expect(profile.getLinks()).toEqual([]);
   });
@@ -43,7 +43,7 @@ describe("createArtistProfile", () => {
         name: "Beatboxer Taro",
         tagline: "音で世界を旅する",
         imageUrl: "https://example.com/a.png",
-        story: "幼少期から…",
+        chapters: [{ questionCode: "beginning", body: "幼少期から…" }],
         activityInfo: "東京 / ソロ",
         genres: ["bass", "inward"],
         links: [{ type: "x", url: "https://x.com/taro" }],
@@ -53,9 +53,31 @@ describe("createArtistProfile", () => {
     expect(profile.getName()).toBe("Beatboxer Taro");
     expect(profile.getTagline()).toBe("音で世界を旅する");
     expect(profile.getImageUrl()).toBe("https://example.com/a.png");
+    expect(profile.getChapters()).toEqual([
+      { questionCode: "beginning", body: "幼少期から…" },
+    ]);
     expect(profile.getGenres()).toEqual(["bass", "inward"]);
     expect(profile.getLinks()).toEqual([
       { type: "x", url: "https://x.com/taro", label: null },
+    ]);
+  });
+
+  it("複数章を渡すと問いの固定順で並べ替えて保持する", () => {
+    const profile = expectOk(
+      createArtistProfile({
+        artistId: "artist-1",
+        chapters: [
+          { questionCode: "concept", body: "表現したいこと" },
+          { questionCode: "beginning", body: "始まり" },
+          { questionCode: "turning_point", body: "転機" },
+        ],
+      }),
+    );
+
+    expect(profile.getChapters()).toEqual([
+      { questionCode: "beginning", body: "始まり" },
+      { questionCode: "turning_point", body: "転機" },
+      { questionCode: "concept", body: "表現したいこと" },
     ]);
   });
 
@@ -93,6 +115,33 @@ describe("createArtistProfile", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error.type).toBe("InvalidSnsUrlFormatError");
+    }
+  });
+
+  it("未知の questionCode は err(InvalidStoryChapterFormatError) を返す", () => {
+    const result = createArtistProfile({
+      artistId: "artist-1",
+      chapters: [{ questionCode: "unknown", body: "本文" }],
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.type).toBe("InvalidStoryChapterFormatError");
+    }
+  });
+
+  it("同じ questionCode が重複する場合は err を返す", () => {
+    const result = createArtistProfile({
+      artistId: "artist-1",
+      chapters: [
+        { questionCode: "beginning", body: "1つ目" },
+        { questionCode: "beginning", body: "2つ目" },
+      ],
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.type).toBe("InvalidStoryChapterFormatError");
     }
   });
 });
@@ -171,7 +220,7 @@ describe("reconstructArtistProfile", () => {
       name: "Taro",
       tagline: null,
       imageUrl: null,
-      story: null,
+      chapters: [],
       activityInfo: null,
       genres: ["bass", "inward"],
       links: [{ type: "x", url: "https://x.com/taro", label: null }],

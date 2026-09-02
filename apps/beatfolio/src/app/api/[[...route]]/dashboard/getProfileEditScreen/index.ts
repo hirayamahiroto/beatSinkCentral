@@ -27,13 +27,14 @@ const app = new Hono<RequestContextEnv>().get("/", async (c) => {
   });
   if (!profileRes.ok) throw await toUpstreamError(profileRes);
 
-  const { profile } = await readUpstreamJson(profileRes);
+  const { profile, storyQuestions } = await readUpstreamJson(profileRes);
   const { linkTypes } = await readUpstreamJson(linkTypesRes);
 
   return c.json({
     registered: true as const,
     email: me.email,
     linkTypeOptions: linkTypes,
+    storyQuestions,
     defaultValues: profile ? toWizardValues(profile) : null,
   });
 });

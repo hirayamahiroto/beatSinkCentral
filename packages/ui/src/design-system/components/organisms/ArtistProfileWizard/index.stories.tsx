@@ -23,6 +23,15 @@ const meta = {
       { type: "tiktok", label: "TikTok" },
       { type: "other", label: "その他" },
     ],
+    storyQuestions: [
+      {
+        code: "beginning",
+        label: "なぜビートボックスを始めたのか",
+        required: true,
+      },
+      { code: "turning_point", label: "転機になった出来事", required: false },
+      { code: "concept", label: "何を表現したいのか", required: false },
+    ],
     onSubmit: (data) => console.log("submit", data),
     onSaveDraft: (data) => console.log("draft", data),
     onUploadImage: async (file) => {

@@ -28,7 +28,7 @@ const actor: Actor = { user: existingUser, artist: existingArtist };
 const publishableContent = {
   name: "Taro",
   imageUrl: "https://example.com/taro.png",
-  story: "私の歩み",
+  chapters: [{ questionCode: "beginning", body: "私の歩み" }],
   genres: ["bass"],
   links: [{ type: "x", url: "https://x.com/taro" }],
 };
@@ -71,7 +71,7 @@ describe("saveMyProfile", () => {
 
     const result = await saveMyProfile(caps, {
       name: "Taro",
-      story: "私の歩み",
+      chapters: [{ questionCode: "beginning", body: "私の歩み" }],
       genres: ["bass", "inward"],
       links: [{ type: "x", url: "https://x.com/taro" }],
     });

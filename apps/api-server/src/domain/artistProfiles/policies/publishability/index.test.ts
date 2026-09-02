@@ -14,7 +14,7 @@ const fullContent = {
   published: false,
   name: "Taro",
   imageUrl: "https://example.com/a.png",
-  story: "私の歩み",
+  chapters: [{ questionCode: "beginning", body: "私の歩み" }],
   genres: ["bass"],
   links: [{ type: "x", url: "https://x.com/taro" }],
 };
@@ -29,11 +29,29 @@ describe("collectMissingPublishFields", () => {
   it("不足しているフィールド名を列挙する", () => {
     const profile = reconstructArtistProfile({
       ...fullContent,
-      story: "",
+      chapters: [],
       links: [],
     });
 
     expect(collectMissingPublishFields(profile)).toEqual(["story", "links"]);
+  });
+
+  it("始まりの章が無く転機・コンセプトのみでは不足扱いになる", () => {
+    const profile = reconstructArtistProfile({
+      ...fullContent,
+      chapters: [{ questionCode: "turning_point", body: "転機" }],
+    });
+
+    expect(collectMissingPublishFields(profile)).toEqual(["story"]);
+  });
+
+  it("転機・コンセプトが無くても始まりの章があれば不足扱いにならない", () => {
+    const profile = reconstructArtistProfile({
+      ...fullContent,
+      chapters: [{ questionCode: "beginning", body: "私の歩み" }],
+    });
+
+    expect(collectMissingPublishFields(profile)).toEqual([]);
   });
 
   it("タグライン・活動情報は公開ゲート対象外", () => {
@@ -56,7 +74,7 @@ describe("ensurePublishable", () => {
 
   it("不足があれば不足フィールドを載せた err を返す", () => {
     const result = ensurePublishable(
-      reconstructArtistProfile({ ...fullContent, story: "", links: [] }),
+      reconstructArtistProfile({ ...fullContent, chapters: [], links: [] }),
     );
 
     expect(result.ok).toBe(false);

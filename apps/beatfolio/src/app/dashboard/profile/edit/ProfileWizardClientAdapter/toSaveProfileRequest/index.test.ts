@@ -7,9 +7,11 @@ const baseValues: WizardValues = {
   imageUrl: "https://example.com/saku.jpg",
   tagline: "口ひとつで、フロアを揺らす。",
   genres: ["Beatbox", "Bass"],
-  storyOrigin: "中学のときに動画を見て衝撃を受けた。",
-  storyTurning: "初めての大会で負けて火がついた。",
-  storyNow: "シーンを盛り上げたい。",
+  chapters: {
+    beginning: "中学のときに動画を見て衝撃を受けた。",
+    turning_point: "初めての大会で負けて火がついた。",
+    concept: "シーンを盛り上げたい。",
+  },
   location: "東京",
   activityForm: "solo",
   affiliation: "独立",
@@ -33,22 +35,38 @@ describe("toSaveProfileRequest", () => {
     ]);
   });
 
-  it("Story の3問を空行区切りで1つの本文に合成する", () => {
+  it("Story の3問をそれぞれ questionCode 付きの章として渡す", () => {
     const result = toSaveProfileRequest(baseValues);
 
-    expect(result.story).toBe(
-      "中学のときに動画を見て衝撃を受けた。\n\n初めての大会で負けて火がついた。\n\nシーンを盛り上げたい。",
-    );
+    expect(result.chapters).toEqual([
+      {
+        questionCode: "beginning",
+        body: "中学のときに動画を見て衝撃を受けた。",
+      },
+      {
+        questionCode: "turning_point",
+        body: "初めての大会で負けて火がついた。",
+      },
+      { questionCode: "concept", body: "シーンを盛り上げたい。" },
+    ]);
   });
 
-  it("Story の任意項目が空なら詰めて合成する", () => {
+  it("未回答（空白のみ）の問いは章として送らない", () => {
     const result = toSaveProfileRequest({
       ...baseValues,
-      storyTurning: "",
-      storyNow: undefined,
+      chapters: {
+        beginning: "中学のときに動画を見て衝撃を受けた。",
+        turning_point: "",
+        concept: "   ",
+      },
     });
 
-    expect(result.story).toBe("中学のときに動画を見て衝撃を受けた。");
+    expect(result.chapters).toEqual([
+      {
+        questionCode: "beginning",
+        body: "中学のときに動画を見て衝撃を受けた。",
+      },
+    ]);
   });
 
   it("活動情報を拠点 / 形態 / 所属のラベル付き文字列に合成する", () => {

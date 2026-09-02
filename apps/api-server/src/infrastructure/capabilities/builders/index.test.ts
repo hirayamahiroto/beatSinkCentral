@@ -15,6 +15,7 @@ import {
 } from "../../repositories/artistProfileRepository";
 import { createLinkTypeReader } from "../../repositories/linkTypeRepository";
 import { createAnalyticsEventWriter } from "../../repositories/analyticsEventRepository";
+import { createStoryQuestionReader } from "../../repositories/storyQuestionRepository";
 import { reconstructUser } from "../../../domain/users/factories";
 import { reconstructArtist } from "../../../domain/artists/factories";
 
@@ -52,6 +53,10 @@ vi.mock("../../repositories/linkTypeRepository", () => ({
 
 vi.mock("../../repositories/analyticsEventRepository", () => ({
   createAnalyticsEventWriter: vi.fn(() => ({ record: vi.fn() })),
+}));
+
+vi.mock("../../repositories/storyQuestionRepository", () => ({
+  createStoryQuestionReader: vi.fn(() => ({ findAll: vi.fn() })),
 }));
 
 const executor = { marker: "executor" } as never;
@@ -110,10 +115,15 @@ describe("buildArtistReadCapabilities", () => {
   it("Actor と Reader だけを渡し、Writer は渡さない", () => {
     const caps = buildArtistReadCapabilities(actor)(executor);
 
-    expect(Object.keys(caps).sort()).toStrictEqual(["actor", "artistProfiles"]);
+    expect(Object.keys(caps).sort()).toStrictEqual([
+      "actor",
+      "artistProfiles",
+      "storyQuestions",
+    ]);
     expect(caps.actor).toBe(actor);
     expect(createArtistProfileReader).toHaveBeenCalledWith(executor);
     expect(createArtistProfileWriter).not.toHaveBeenCalled();
+    expect(createStoryQuestionReader).toHaveBeenCalledWith(executor);
   });
 });
 
