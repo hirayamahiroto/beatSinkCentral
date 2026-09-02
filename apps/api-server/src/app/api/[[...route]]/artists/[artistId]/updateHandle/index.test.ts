@@ -74,9 +74,14 @@ describe("POST /artists/:artistId", () => {
 
   it("Actor と一致する artistId なら handle を更新する", async () => {
     const res = await request("artist-1", { handle: "new_handle" });
+    const body = await res.json();
 
     expect(res.status).toBe(200);
-    expect(mockArtists.updateHandle).toHaveBeenCalledTimes(1);
+    expect(body).toEqual({ artistId: "artist-1", handle: "new_handle" });
+    expect(mockArtists.updateHandle).toHaveBeenCalledWith({
+      artistId: "artist-1",
+      handle: "new_handle",
+    });
   });
 
   it("Actor と一致しない artistId は 404 を返し、更新しない", async () => {
