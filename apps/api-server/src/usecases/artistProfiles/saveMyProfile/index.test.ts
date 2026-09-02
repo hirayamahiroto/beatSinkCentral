@@ -80,10 +80,16 @@ describe("saveMyProfile", () => {
     if (result.ok) {
       expect(result.value.handle).toBe("beatboxer_taro");
       expect(result.value.profile.name).toBe("Taro");
+      expect(result.value.profile.chapters).toEqual([
+        { questionCode: "beginning", body: "私の歩み" },
+      ]);
       expect(result.value.profile.genres).toEqual(["bass", "inward"]);
       expect(result.value.profile.published).toBe(false);
     }
     expect(caps.artistProfiles.upsert).toHaveBeenCalledTimes(1);
+    expect(caps.artistProfiles.upsert.mock.calls[0][0].chapters).toEqual([
+      { questionCode: "beginning", body: "私の歩み" },
+    ]);
   });
 
   it("actor の artistId で既存プロフィールを引く", async () => {

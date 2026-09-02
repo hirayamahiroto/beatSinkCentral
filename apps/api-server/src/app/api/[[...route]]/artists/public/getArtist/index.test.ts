@@ -47,6 +47,9 @@ describe("GET /artists/:handle", () => {
     expect(res.status).toBe(200);
     expect(body.handle).toBe("beatboxer_taro");
     expect(body.profile.name).toBe("Taro");
+    expect(body.profile.chapters).toStrictEqual([
+      { questionCode: "beginning", body: "私の歩み" },
+    ]);
     expect(mockArtistProfiles.findPublishedByHandle).toHaveBeenCalledWith(
       "beatboxer_taro",
     );
