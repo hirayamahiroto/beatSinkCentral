@@ -1,9 +1,18 @@
 "use client";
 
-import { PublicArtistProfile } from "@ui/design-system/components/organisms/PublicArtistProfile";
+import { AudienceArtistProfile } from "@ui/design-system/components/organisms/AudienceArtistProfile";
 
-type Props = React.ComponentProps<typeof PublicArtistProfile>;
+type Props = Omit<
+  React.ComponentProps<typeof AudienceArtistProfile>,
+  "onStoryExpand" | "onOfferClick" | "onSupportClick" | "onNotifySubscribe"
+>;
 
 export const PlayerDetailClientAdapter = (props: Props) => (
-  <PublicArtistProfile {...props} />
+  <AudienceArtistProfile
+    {...props}
+    onStoryExpand={() => {}}
+    onOfferClick={() => {}}
+    onSupportClick={() => {}}
+    onNotifySubscribe={() => {}}
+  />
 );

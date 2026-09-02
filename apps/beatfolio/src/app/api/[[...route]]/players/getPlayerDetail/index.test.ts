@@ -61,7 +61,7 @@ describe("GET /players/:handle", () => {
     linkTypesGet.mockResolvedValue(jsonResponse({ linkTypes }));
   });
 
-  it("handle を api-server へ渡し、リンクのラベルを解決して返す", async () => {
+  it("handle を api-server へ渡し、§5-2 契約（AudienceArtistProfile props）へ整形して返す", async () => {
     profileGet.mockResolvedValue(jsonResponse(publishedProfile));
 
     const res = await createApp().request("/saku", { method: "GET" });
@@ -72,10 +72,12 @@ describe("GET /players/:handle", () => {
       name: "SAKU",
       tagline: "口ひとつで、フロアを揺らす。",
       imageUrl: "https://example.com/saku.jpg",
-      story: "始めたきっかけ。",
-      activityInfo: "拠点: 東京 / 形態: ソロ",
       genres: ["Beatbox"],
-      links: [
+      storyChapters: [{ question: "Story", body: "始めたきっかけ。" }],
+      translation: null,
+      listeningPoint: null,
+      offer: null,
+      supportLinks: [
         { url: "https://youtube.com/@saku", label: "YouTube" },
         { url: "https://example.com/me", label: "個人HP" },
       ],

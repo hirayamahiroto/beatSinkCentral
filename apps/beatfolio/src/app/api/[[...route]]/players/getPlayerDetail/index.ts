@@ -5,6 +5,8 @@ import { toUpstreamError } from "../../shared/toUpstreamError";
 import { readUpstreamJson } from "../../shared/readUpstreamJson";
 import { createPlayerNotFoundError } from "../../errors/playerNotFound";
 
+const CURRENT_STORY_CHAPTER_QUESTION = "Story";
+
 const app = new Hono<RequestContextEnv>().get("/:handle", async (c) => {
   const apiClient = c.get("apiClient");
   const handle = c.req.param("handle");
@@ -27,10 +29,14 @@ const app = new Hono<RequestContextEnv>().get("/:handle", async (c) => {
     name: profile.name,
     tagline: profile.tagline,
     imageUrl: profile.imageUrl,
-    story: profile.story,
-    activityInfo: profile.activityInfo,
     genres: profile.genres,
-    links: resolveLinkLabels(profile.links, linkTypes),
+    storyChapters: [
+      { question: CURRENT_STORY_CHAPTER_QUESTION, body: profile.story },
+    ],
+    translation: null,
+    listeningPoint: null,
+    offer: null,
+    supportLinks: resolveLinkLabels(profile.links, linkTypes),
   });
 });
 
