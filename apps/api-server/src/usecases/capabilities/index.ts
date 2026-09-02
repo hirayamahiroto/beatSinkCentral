@@ -11,6 +11,7 @@ import type {
   IArtistWriter,
 } from "../../domain/artists/repositories";
 import type { ILinkTypeReader } from "../../domain/linkTypes/repositories";
+import type { IAnalyticsEventWriter } from "../../domain/analyticsEvents/repositories";
 import type { UserNotFoundError } from "../../domain/users/errors/userNotFound";
 import type { ArtistNotFoundError } from "../../domain/artists/errors/artistNotFound";
 import type { Result } from "../../utils/result";
@@ -43,6 +44,10 @@ export type ArtistReadCapabilities = {
   artistProfiles: IArtistProfileReader;
 };
 
+export type PublicWriteCapabilities = {
+  analyticsEvents: IAnalyticsEventWriter;
+};
+
 export type UserWriteCapabilities = {
   user: User;
   users: IUserReader & IUserWriter;
@@ -69,6 +74,8 @@ export type CapabilityDeps = {
   resolveActorState(subId: string): Promise<ActorResolution>;
 
   buildPublicReadCapabilities(): PublicReadCapabilities;
+
+  buildPublicWriteCapabilities(): PublicWriteCapabilities;
 
   buildArtistReadCapabilities(actor: Actor): ArtistReadCapabilities;
 

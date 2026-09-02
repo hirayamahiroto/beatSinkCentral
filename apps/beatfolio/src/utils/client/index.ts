@@ -6,6 +6,7 @@ import { createUpstreamUnavailableError } from "./errors/upstreamUnavailable";
 
 type ClientOptions = {
   cookie?: string;
+  userAgent?: string;
 };
 
 const upstreamFetch: typeof fetch = async (input, init) => {
@@ -21,8 +22,12 @@ export const createApiServerClient = (options?: ClientOptions) => {
     throw new Error("API_SERVER_BASE_URL is not set");
   }
 
+  const headers: Record<string, string> = {};
+  if (options?.cookie) headers.cookie = options.cookie;
+  if (options?.userAgent) headers["x-forwarded-user-agent"] = options.userAgent;
+
   return hc<ApiServerAppType>(apiServerConfig.baseUrl, {
-    headers: options?.cookie ? { cookie: options.cookie } : undefined,
+    headers: Object.keys(headers).length > 0 ? headers : undefined,
     fetch: upstreamFetch,
   });
 };

@@ -4,6 +4,7 @@ import test from "./test";
 import users from "./users";
 import artists from "./artists";
 import linkTypes from "./link-types";
+import events from "./events";
 import { requestContextMiddleware } from "../../../middlewares/requestContext";
 import { handleAppError } from "../../../errorMap";
 
@@ -14,6 +15,7 @@ const app = new Hono()
   .route("/users", users)
   .route("/artists", artists)
   .route("/link-types", linkTypes)
+  .route("/events", events)
   .onError(handleAppError);
 
 export type AppType = typeof app;

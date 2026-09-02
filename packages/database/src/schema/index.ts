@@ -9,3 +9,4 @@ export * from "./artistProfileLinks";
 export * from "./artistStatusMasters";
 export * from "./artistStatuses";
 export * from "./artistIdHistories";
+export * from "./analyticsEvents";
