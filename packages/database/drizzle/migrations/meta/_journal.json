@@ -43,6 +43,13 @@
       "when": 1788184043853,
       "tag": "0005_elite_abomination",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788330694027,
+      "tag": "0006_fluffy_thunderbolts",
+      "breakpoints": true
     }
   ]
 }

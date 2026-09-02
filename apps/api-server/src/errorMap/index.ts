@@ -30,6 +30,7 @@ import type { InvalidActivityInfoFormatError } from "../domain/artistProfiles/va
 import type { InvalidGenreFormatError } from "../domain/artistProfiles/valueObjects/genre";
 import type { InvalidSnsUrlFormatError } from "../domain/artistProfiles/valueObjects/snsUrl";
 import type { InvalidProfileLinkFormatError } from "../domain/artistProfiles/valueObjects/profileLink";
+import type { InvalidEventTypeFormatError } from "../domain/analyticsEvents/valueObjects/eventType";
 import type { InvalidRequestFormatError } from "../app/api/[[...route]]/errors/invalidRequestFormat";
 import {
   createMalformedRequestBodyError,
@@ -68,6 +69,7 @@ export type AppError =
   | InvalidGenreFormatError
   | InvalidSnsUrlFormatError
   | InvalidProfileLinkFormatError
+  | InvalidEventTypeFormatError
   | UnsupportedImageTypeError
   | ImageTooLargeError
   | EmptyImageFileError
@@ -224,6 +226,11 @@ const errorMap: ErrorMap = {
   InvalidProfileLinkFormatError: {
     status: 422,
     clientMessage: () => "Invalid profile link format",
+    logLevel: "info",
+  },
+  InvalidEventTypeFormatError: {
+    status: 422,
+    clientMessage: () => "Invalid event type",
     logLevel: "info",
   },
   UnsupportedImageTypeError: {

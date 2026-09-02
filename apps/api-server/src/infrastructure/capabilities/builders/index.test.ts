@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   buildPublicReadCapabilities,
+  buildPublicWriteCapabilities,
   buildArtistReadCapabilities,
   buildRegistrationCapabilities,
   buildUserWriteCapabilities,
@@ -13,6 +14,7 @@ import {
   createArtistProfileWriter,
 } from "../../repositories/artistProfileRepository";
 import { createLinkTypeReader } from "../../repositories/linkTypeRepository";
+import { createAnalyticsEventWriter } from "../../repositories/analyticsEventRepository";
 import { reconstructUser } from "../../../domain/users/factories";
 import { reconstructArtist } from "../../../domain/artists/factories";
 
@@ -48,6 +50,10 @@ vi.mock("../../repositories/linkTypeRepository", () => ({
   createLinkTypeReader: vi.fn(() => ({ findAll: vi.fn() })),
 }));
 
+vi.mock("../../repositories/analyticsEventRepository", () => ({
+  createAnalyticsEventWriter: vi.fn(() => ({ record: vi.fn() })),
+}));
+
 const executor = { marker: "executor" } as never;
 
 const user = reconstructUser({
@@ -80,6 +86,19 @@ describe("buildPublicReadCapabilities", () => {
     expect(createArtistProfileReader).toHaveBeenCalledWith(executor);
     expect(createLinkTypeReader).toHaveBeenCalledWith(executor);
     expect(createArtistProfileWriter).not.toHaveBeenCalled();
+  });
+});
+
+describe("buildPublicWriteCapabilities", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("analyticsEventsのWriterだけを渡した executor で組み立てる", () => {
+    const caps = buildPublicWriteCapabilities(executor);
+
+    expect(Object.keys(caps).sort()).toStrictEqual(["analyticsEvents"]);
+    expect(createAnalyticsEventWriter).toHaveBeenCalledWith(executor);
   });
 });
 

@@ -7,6 +7,7 @@ import { createProfileImageStorage } from "../repositories/profileImageStorage";
 import { resolveActorState } from "./resolveActorState";
 import {
   buildPublicReadCapabilities,
+  buildPublicWriteCapabilities,
   buildArtistReadCapabilities,
   buildRegistrationCapabilities,
   buildUserWriteCapabilities,
@@ -32,6 +33,8 @@ export const getCapabilityDeps = (() => {
           resolveActorState(actorStateReaders, subId),
 
         buildPublicReadCapabilities: () => buildPublicReadCapabilities(db),
+
+        buildPublicWriteCapabilities: () => buildPublicWriteCapabilities(db),
 
         buildArtistReadCapabilities: (actor) =>
           buildArtistReadCapabilities(actor)(db),

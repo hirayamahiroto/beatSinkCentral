@@ -58,6 +58,23 @@ describe("createApiServerClient", () => {
     expect(await res.json()).toStrictEqual({ registered: false });
   });
 
+  it("cookieとuserAgentをapi-serverへ転送する", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(Response.json({ registered: false }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await createApiServerClient({
+      cookie: "session=abc",
+      userAgent: "Mozilla/5.0",
+    }).api.users.me.$get();
+
+    const [, init] = fetchMock.mock.calls[0];
+    const headers = new Headers(init.headers);
+    expect(headers.get("cookie")).toBe("session=abc");
+    expect(headers.get("x-forwarded-user-agent")).toBe("Mozilla/5.0");
+  });
+
   it("onError と組み合わせると route 無修正で 502 になる", async () => {
     vi.stubGlobal(
       "fetch",

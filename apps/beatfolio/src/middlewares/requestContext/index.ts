@@ -10,7 +10,8 @@ export type RequestContextEnv = {
 export const requestContextMiddleware = createMiddleware<RequestContextEnv>(
   async (c, next) => {
     const cookie = c.req.header("cookie");
-    c.set("apiClient", createApiServerClient({ cookie }));
+    const userAgent = c.req.header("user-agent");
+    c.set("apiClient", createApiServerClient({ cookie, userAgent }));
     await next();
   },
 );
