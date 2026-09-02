@@ -747,6 +747,50 @@ type Props = { linkTypeOptions: { code: string; label: string; iconKey: string }
 
 ---
 
+## 15. テストが request/response・引数の変更を検知できる状態か 🔴 ブロッキング
+
+- request/response のフィールドが変わった（型変更・追加・削除・リネーム）とき、そのフィールドを直接 assert しているテストケースが存在するか確認する。**「`index.test.ts` が存在する」だけでは不十分**（差分カバレッジで見る）
+- 成功パスのテストは、response body の主要フィールド（少なくとも契約上重要なもの）を assert する。status code だけで済ませない
+- mock/spy への呼び出し引数を検証する際、`expect.objectContaining({...})` で一部フィールドだけ見る書き方は、見ていないフィールド（特に同じ型が並ぶもの: `anonId`/`sessionId`、`createdAt`/`updatedAt` 等）の取り違えを検知できない。フィールドを入れ替えても検知できないなら不十分
+- `tsc --noEmit` / lint / 既存テスト green は「壊れていないか」しか検知できず、「新しい振る舞い・変更されたフィールドがテストで担保されているか」は別軸で確認しないと保証されない
+
+```typescript
+// NG: story → chapters に変更されたのに、既存テストがどちらにも触れていないため
+// 新旧どちらの契約でも green で通ってしまう（変更を検知できない）
+it("保存する", async () => {
+  const res = await request("artist-1", { name: "Taro" });
+  expect(res.status).toBe(200);
+  expect(body.profile.name).toBe("Taro"); // chapters は一度も見ていない
+});
+
+// NG: objectContaining で一部フィールドだけ確認 → anonId/sessionId を
+// 入れ替えて代入するバグがあっても気づけない（どちらも string 型なので型検査もすり抜ける）
+expect(record).toHaveBeenCalledWith(
+  expect.objectContaining({ eventType: "profile_view", artistId: "artist-1" }),
+);
+
+// OK: 変更されたフィールドを含めて完全一致で検証する
+expect(record).toHaveBeenCalledWith({
+  id: expect.any(String),
+  eventType: "profile_view",
+  artistId: "artist-1",
+  anonId: "anon-1",
+  sessionId: "session-1",
+  path: "/players/handle",
+  referrer: null,
+  props: null,
+  occurredAt: expect.any(Date),
+});
+```
+
+### チェックポイント
+
+- スキーマ・型定義にフィールドの追加/変更/削除/リネームが入ったとき、既存テストがそれを検知できるか（そのフィールドを送信/assert しているか）を都度確認する
+- 成功ケースのテストが response body・mock 呼び出し引数を `objectContaining` 等の部分一致だけで済ませていないか
+- 同じ型が並ぶフィールド（`anonId`/`sessionId` 等）の取り違えを、テストが検知できる構造になっているか
+
+---
+
 ## チェック実施タイミング
 
 - 新しい関数やAPIエンドポイントを実装したとき（特に 🔴: スコープ条件・権限露出・トランザクション・型安全）
@@ -760,3 +804,4 @@ type Props = { linkTypeOptions: { code: string; label: string; iconKey: string }
 - `?? 既定値` を書こうとしたとき（その値は必須か任意か）
 - 種別・媒体・分類を扱うとき（マスタ参照にできないか／種別を保存しているか・推定で復元していないか）
 - UI に表示語彙（ラベル・選択肢・アイコン）を出すとき（DB 由来か／フロントにハードコードしていないか）
+- request/response・引数のフィールドを追加/変更/削除/リネームしたとき（既存テストがその変更を検知できるか）
