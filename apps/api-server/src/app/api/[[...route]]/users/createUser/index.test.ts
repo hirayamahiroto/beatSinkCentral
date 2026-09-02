@@ -200,12 +200,27 @@ describe("User Create API", () => {
 
     it("新規登録に成功すると201とuserId/artistIdを返す", async () => {
       const res = await postCreate(validPayload);
+      const body = await res.json();
 
       expect(res.status).toBe(201);
-      expect(await res.json()).toMatchObject({
+      expect(body).toMatchObject({
         userId: expect.any(String),
         artistId: expect.any(String),
       });
+      expect(mockUsers.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: body.userId,
+          subId: "auth0|123",
+          email: validPayload.email,
+        }),
+      );
+      expect(mockArtists.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: body.artistId,
+          handle: validPayload.handle,
+          ownerUserId: body.userId,
+        }),
+      );
     });
 
     it("既に登録済みなら409を返し、保存しない", async () => {

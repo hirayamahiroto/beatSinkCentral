@@ -49,12 +49,19 @@ describe("createUser", () => {
     const result = await createUser(caps, validInput);
 
     expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(typeof result.value.userId).toBe("string");
-      expect(typeof result.value.artistId).toBe("string");
-    }
-    expect(caps.users.save).toHaveBeenCalledTimes(1);
-    expect(caps.artists.save).toHaveBeenCalledTimes(1);
+    if (!result.ok) return;
+    expect(typeof result.value.userId).toBe("string");
+    expect(typeof result.value.artistId).toBe("string");
+    expect(caps.users.save).toHaveBeenCalledWith({
+      id: result.value.userId,
+      subId: validInput.subId,
+      email: validInput.email,
+    });
+    expect(caps.artists.save).toHaveBeenCalledWith({
+      id: result.value.artistId,
+      handle: validInput.handle,
+      ownerUserId: result.value.userId,
+    });
   });
 
   it("既存ユーザーの場合はUserAlreadyRegisteredErrorをerrで返す", async () => {

@@ -93,6 +93,14 @@ describe("publishMyProfile", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(isProfileNotPublishableError(result.error)).toBe(true);
+      if (isProfileNotPublishableError(result.error)) {
+        expect(result.error.missingFields).toEqual([
+          "imageUrl",
+          "story",
+          "genres",
+          "links",
+        ]);
+      }
     }
     expect(caps.artistProfiles.setPublished).not.toHaveBeenCalled();
   });

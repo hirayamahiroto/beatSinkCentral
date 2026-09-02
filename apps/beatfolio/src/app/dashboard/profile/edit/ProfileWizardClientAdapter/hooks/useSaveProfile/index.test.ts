@@ -92,7 +92,17 @@ describe("useSaveProfile", () => {
       await result.current.saveDraft(values);
     });
 
-    expect(saveMock).toHaveBeenCalledTimes(1);
+    expect(saveMock).toHaveBeenCalledWith({
+      json: {
+        name: "SAKU",
+        imageUrl: "https://example.com/saku.jpg",
+        tagline: "口ひとつで、フロアを揺らす。",
+        story: "始めたきっかけ。",
+        activityInfo: "拠点: 東京 / 形態: ソロ",
+        genres: ["Beatbox"],
+        links: [{ type: "youtube", url: "https://youtube.com/@saku" }],
+      },
+    });
     expect(publishMock).not.toHaveBeenCalled();
     expect(refreshMock).toHaveBeenCalledTimes(1);
     expect(pushMock).not.toHaveBeenCalled();
