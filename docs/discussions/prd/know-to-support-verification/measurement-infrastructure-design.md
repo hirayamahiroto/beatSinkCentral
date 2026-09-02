@@ -61,26 +61,35 @@
 
 常に絞る軸は実カラム、イベント種別で変わる部分のみ `props`(jsonb)。
 
-| カラム                         | 説明                                                             |
-| ------------------------------ | ---------------------------------------------------------------- |
-| `id` / `event_type`            | PK / `profile_view`・`story_expand`・`story_scroll`・`sns_click` |
-| `artist_id` (fk→artists, null) | JOIN 軸                                                          |
-| `anon_id` / `session_id`       | 匿名識別子（PII なし）/ 離脱・深度の連結単位                     |
-| `path` / `referrer`            | どの画面 / 入口                                                  |
-| `props` (jsonb)                | `story_scroll`→`{depth}`、`sns_click`→`{platform}`               |
-| `occurred_at` / `created_at`   | 発生時刻 / 受信時刻                                              |
+| カラム                         | 説明                                                                                                                                                                                            |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id` / `event_type`            | PK / §5-2 の 9 種（`profile_view`・`story_expand`・`story_scroll`・`offer_click`・`support_click`・`listening_point_play`・`notify_subscribe`・`survey_answer`・`invite_open`/`invite_signup`） |
+| `artist_id` (fk→artists, null) | JOIN 軸                                                                                                                                                                                         |
+| `anon_id` / `session_id`       | 匿名識別子（PII なし）/ 離脱・深度の連結単位                                                                                                                                                    |
+| `path` / `referrer`            | どの画面 / 入口                                                                                                                                                                                 |
+| `props` (jsonb)                | イベントごとの付帯情報。§5-2 の props 列を参照                                                                                                                                                  |
+| `occurred_at` / `created_at`   | 発生時刻 / 受信時刻                                                                                                                                                                             |
 
 - index: `(artist_id, event_type, occurred_at)`, `(session_id)`。
 - migration は [`database-migration.md`](../../../architecture/server/database/migration.md) の手順（`db:generate`→`db:migrate`）。
 
+**props / 実カラム昇格の線引き（T00 確定）**: 「イベント種別を問わず全クエリで絞り込み・JOIN・集計に使う軸」だけを実カラムにする（`artist_id`・`anon_id`・`session_id`・`event_type`・`occurred_at`・`path`・`referrer`）。特定イベント種別だけが持つ付帯情報は `props` に置く。ある `props` のキーが複数イベント種別で共通に必要になり、かつそれで頻繁に絞り込む/集計する運用が実際に出てきた時点で、その時点のキーだけを実カラムへ昇格する（先回りして昇格しない）。
+
 ### 5-2. イベントと発火点（UI 層のみ）
 
-| イベント       | 発火点                    | 意図   |
-| -------------- | ------------------------- | ------ |
-| `profile_view` | 詳細表示（セッション1回） | ①      |
-| `story_expand` | 「もっと読む」展開        | ②③     |
-| `story_scroll` | Story 25/50/75/100% 到達  | ③      |
-| `sns_click`    | SNS リンククリック        | ③/応援 |
+検証ベータ PRD §6-1 の追記込みで確定（T00, 2026-09-02）。`sns_click` は `support_click`（SNS・フォロー等を包括）に統合。
+
+| イベント                        | 発火点                    | props                                                                   | 意図     |
+| ------------------------------- | ------------------------- | ----------------------------------------------------------------------- | -------- |
+| `profile_view`                  | 詳細表示（セッション1回） | `from`（`announce` / `share` / `search` / `invite` / `none`）           | ①/H2     |
+| `story_expand`                  | 「続きを読む」展開        | —                                                                       | ②③/H3    |
+| `story_scroll`                  | Story 25/50/75/100% 到達  | `{depth}`                                                               | ③/H3     |
+| `offer_click`                   | オファーのボタン          | `position`（`hero` / `after-story`）                                    | H3       |
+| `support_click`                 | SNS・フォロー等           | `platform`, `position`                                                  | 先行指標 |
+| `listening_point_play`          | 聴きどころの再生          | `position`                                                              | H3       |
+| `notify_subscribe`              | 告知受信の登録            | —                                                                       | H5       |
+| `survey_answer`                 | 一問アンケート            | `is_beatboxer: boolean`（詳細ページ）/ `questionCode, answer`（その他） | H2       |
+| `invite_open` / `invite_signup` | 招待リンク                | `inviter_artist_id`                                                     | H6       |
 
 - `story_scroll` は **IntersectionObserver**、送信は **`sendBeacon`**（離脱取りこぼし防止）。
 
@@ -102,15 +111,15 @@ zod 検証 → `analytics_events` へ insert するだけ。集計/整形は持�
 
 ---
 
-## 6. 規範との差分（要確認）
+## 6. 規範との差分（T00 で確定）
 
-| 論点             | 現行規範                     | 本書                                              |
-| ---------------- | ---------------------------- | ------------------------------------------------- |
-| 計測 API         | §5「専用 API は作らない」    | 薄い取り込みルートを**エントリ層**に置く          |
-| 主軸ツール       | Vercel WA + カスタムイベント | WA は補助(①)に降格、主軸を自前テーブル(orPostHog) |
-| フロント側に置く | ドメイン/データ層に混ぜない  | **踏襲**（発火=UI層、取り込み=エントリ層）        |
+| 論点             | 現行規範                     | 本書                                                                     |
+| ---------------- | ---------------------------- | ------------------------------------------------------------------------ |
+| 計測 API         | §5「専用 API は作らない」    | 薄い取り込みルートを**エントリ層**に置く（**確定**）                     |
+| 主軸ツール       | Vercel WA + カスタムイベント | WA は補助(①)に降格、主軸を**自前テーブル**（**確定**。PostHog は不採用） |
+| フロント側に置く | ドメイン/データ層に混ぜない  | **踏襲**（発火=UI層、取り込み=エントリ層）                               |
 
-→ 取り込みルートは原則の**精神には反しない**（検証/送信のみ）。文言改定の可否と L2 の選択（自前 / PostHog）が確認事項。CLAUDE.md に従い勝手に実装へ落とさず合意後に規範を更新する。
+→ 取り込みルートは原則の**精神には反しない**（検証/送信のみ）。L2 は**自前 `analytics_events`** に確定（T00, 2026-09-02）。理由: 意図が探索ゆえ生データ自由度が最優先・トラフィック小で自前の弱点が出ない・既存資産（Supabase/Drizzle/Hono）と一直線。
 
 ---
 
@@ -126,12 +135,12 @@ zod 検証 → `analytics_events` へ insert するだけ。集計/整形は持�
 
 ---
 
-## 8. 未決事項
+## 8. 決定事項（T00, 2026-09-02）
 
-- 規範差分（§6）の可否、L2 を自前 / PostHog のどちらにするか。
-- `props`(jsonb) と実カラム昇格の線引き。
-- `anon_id`/`session_id` の生成・保持方式と同意表示の要否。
-- bot/運営自身のアクセス除外。
+- 規範差分（§6）は確定。L2 は**自前 `analytics_events`**（PostHog は不採用）。
+- `props`(jsonb) と実カラム昇格の線引き: §5-1 に記載の基準で確定。
+- `anon_id`/`session_id` の生成・保持方式: どちらもランダム UUID をクライアント Cookie に保持。`anon_id` は長期（1年、初回アクセス時に発行）、`session_id` は短期（30分の非アクティブでローテーション）。PII を含まない機能 Cookie（大衆向け・未ログイン閲覧の計測に必須）であり、広告・第三者トラッキングではないため同意バナーは不要。プライバシーポリシーに計測目的を明記する（運用タスク、コード変更ではない）。
+- bot/運営自身のアクセス除外: 取り込みルート（`POST /events`）で User-Agent が既知の bot/crawler パターンに一致するリクエストを破棄する（DB へ insert しない）。運営自身のアクセスは、内部確認用 URL（`?internal=1` 等）でセットする長期 Cookie を取り込みルートが検知して除外する。IP allowlist は運用コストに見合わないため採用しない。
 
 ---
 

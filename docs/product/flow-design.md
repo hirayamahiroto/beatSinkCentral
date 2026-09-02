@@ -42,6 +42,8 @@ roadmap.md の「先に確定すべき意思決定」3 つに対する Phase 1 �
   - プレイヤー側の運用負荷も最小（既存 SNS をそのまま使える）
   - 自プロダクトでフォローを抱える前に、まず「認知拡大」が機能するかを検証する
 
+> **検証ベータ（T00, 2026-09-02）での更新**: 応援の到達地点を「外部 SNS」→「来場」に変更する。SNS 遷移は先行指標に降格し、オファー経由の来場が北極星の指標になる。「次の告知を受け取る」（再訪のための受信登録）を最小実装で追加する（[`know-to-support-verification/prd.md`](../discussions/prd/know-to-support-verification/prd.md) §3・§6）。
+
 ### 2-2. 再訪導線
 
 **決定: Phase 1 のスコープに含めない**
@@ -81,6 +83,8 @@ roadmap.md の「先に確定すべき意思決定」3 つに対する Phase 1 �
 | 次への遷移条件 | プレイヤー名 or アーティスト写真をクリックして「知る」へ                              |
 | 離脱の許容     | 許容（流入元が広いため、ターゲット外の離脱は当然発生する）                            |
 | 完了判定       | 一覧ページ or プレイヤー詳細ページに到達したか                                        |
+
+> **検証ベータ（T00, 2026-09-02）での追加**: 「アーティスト自身の告知（`from=announce`）」を主入口として追加する。計測 `props.from` で `announce` / `share` / `search` / `invite` / `none` を区別する（[`know-to-support-verification/prd.md`](../discussions/prd/know-to-support-verification/prd.md) §6-1）。
 
 ### 3-2. 知る（一覧 / トップ）
 
