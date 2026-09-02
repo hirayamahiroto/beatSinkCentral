@@ -86,8 +86,10 @@ describe("POST /artists/:artistId/profile/publish", () => {
 
   it("Actor と一致する artistId なら公開状態を切り替える", async () => {
     const res = await request("artist-1", { published: true });
+    const body = await res.json();
 
     expect(res.status).toBe(200);
+    expect(body).toStrictEqual({ published: true });
     expect(mockArtistProfiles.setPublished).toHaveBeenCalledWith({
       artistId: "artist-1",
       published: true,

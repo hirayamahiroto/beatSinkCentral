@@ -112,6 +112,9 @@ describe("withArtistWriteCapabilitiesById", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(isHandleAlreadyTakenError(result.error)).toBe(true);
+      if (isHandleAlreadyTakenError(result.error)) {
+        expect(result.error.handle).toBe("new_handle");
+      }
     }
   });
 
