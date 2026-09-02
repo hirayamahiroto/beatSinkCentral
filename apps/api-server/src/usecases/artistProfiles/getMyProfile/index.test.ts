@@ -4,6 +4,7 @@ import { reconstructArtist } from "../../../domain/artists/factories";
 import { reconstructArtistProfile } from "../../../domain/artistProfiles/factories";
 import { getMyProfile } from "./index";
 import type { IArtistProfileReader } from "../../../domain/artistProfiles/repositories";
+import type { IStoryQuestionReader } from "../../../domain/storyQuestions/repositories";
 import type { Actor, ArtistReadCapabilities } from "../../capabilities";
 
 const actor: Actor = {
@@ -20,6 +21,12 @@ const actor: Actor = {
   }),
 };
 
+const storyQuestions = [
+  { code: "beginning", label: "始まり" },
+  { code: "turning_point", label: "転機" },
+  { code: "concept", label: "何を表現したいのか" },
+];
+
 const createCaps = () =>
   ({
     actor,
@@ -34,12 +41,17 @@ const createCaps = () =>
         IArtistProfileReader["listPublishedSummaries"]
       >(async () => []),
     },
+    storyQuestions: {
+      findAll: vi.fn<IStoryQuestionReader["findAll"]>(
+        async () => storyQuestions,
+      ),
+    },
   }) satisfies ArtistReadCapabilities;
 
 describe("getMyProfile", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("プロフィール未作成なら profile と missingPublishFields を null で返す", async () => {
+  it("プロフィール未作成なら profile と missingPublishFields を null で返し、問いマスタは返す", async () => {
     const caps = createCaps();
 
     const result = await getMyProfile(caps);
@@ -50,6 +62,11 @@ describe("getMyProfile", () => {
         handle: "beatboxer_taro",
         profile: null,
         missingPublishFields: null,
+        storyQuestions: [
+          { code: "beginning", label: "始まり", required: true },
+          { code: "turning_point", label: "転機", required: false },
+          { code: "concept", label: "何を表現したいのか", required: false },
+        ],
       });
     }
   });
@@ -83,7 +100,7 @@ describe("getMyProfile", () => {
         artistId: "artist-1",
         published: false,
         name: "Taro",
-        story: "始めたきっかけ。",
+        chapters: [{ questionCode: "beginning", body: "始めたきっかけ。" }],
         genres: ["Beatbox"],
       }),
     );
@@ -108,7 +125,7 @@ describe("getMyProfile", () => {
         published: true,
         name: "Taro",
         imageUrl: "https://example.com/taro.jpg",
-        story: "始めたきっかけ。",
+        chapters: [{ questionCode: "beginning", body: "始めたきっかけ。" }],
         genres: ["Beatbox"],
         links: [{ type: "youtube", url: "https://youtube.com/@taro" }],
       }),

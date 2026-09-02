@@ -5,19 +5,19 @@ export type SaveProfileRequest = {
   name: string;
   tagline: string | null;
   imageUrl: string;
-  story: string;
+  chapters: { questionCode: string; body: string }[];
   activityInfo: string;
   genres: string[];
   links: { type: string; url: string }[];
 };
 
-const joinStory = (values: WizardValues): string =>
-  [values.storyOrigin, values.storyTurning, values.storyNow]
-    .flatMap((part) => {
-      const trimmed = part?.trim();
-      return trimmed ? [trimmed] : [];
-    })
-    .join("\n\n");
+const toChapters = (
+  values: WizardValues,
+): { questionCode: string; body: string }[] =>
+  Object.entries(values.chapters).flatMap(([questionCode, body]) => {
+    const trimmed = body.trim();
+    return trimmed.length > 0 ? [{ questionCode, body: trimmed }] : [];
+  });
 
 export const toSaveProfileRequest = (
   values: WizardValues,
@@ -25,7 +25,7 @@ export const toSaveProfileRequest = (
   name: values.name,
   tagline: values.tagline?.trim() ? values.tagline : null,
   imageUrl: values.imageUrl,
-  story: joinStory(values),
+  chapters: toChapters(values),
   activityInfo: composeActivityInfo(values),
   genres: values.genres,
   links: values.links.map(({ type, url }) => ({ type, url })),

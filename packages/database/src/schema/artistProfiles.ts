@@ -22,7 +22,6 @@ export const artistProfilesTable = pgTable("artist_profiles", {
   name: varchar("name", { length: 255 }),
   tagline: varchar("tagline", { length: 255 }),
   imageUrl: text("image_url"),
-  story: text("story"),
   activityInfo: varchar("activity_info", { length: 1000 }),
   published: boolean("published").notNull().default(false),
   publishedAt: timestamp("published_at"),

@@ -3,6 +3,7 @@
 import {
   ArtistProfileWizard,
   type LinkTypeOption,
+  type StoryQuestionOption,
   type WizardValues,
 } from "@ui/design-system/components/organisms/ArtistProfileWizard";
 import { useSaveProfile } from "./hooks/useSaveProfile";
@@ -11,6 +12,7 @@ import { uploadMyProfileImage } from "../../../../../fetchers/artists/uploadMyPr
 type Props = {
   email: string;
   linkTypeOptions: LinkTypeOption[];
+  storyQuestions: StoryQuestionOption[];
   defaultValues?: Partial<WizardValues>;
 };
 
@@ -25,6 +27,7 @@ const uploadImage = async (file: File): Promise<string> => {
 export const ProfileWizardClientAdapter = ({
   email,
   linkTypeOptions,
+  storyQuestions,
   defaultValues,
 }: Props) => {
   const { submit, saveDraft, isLoading, error } = useSaveProfile();
@@ -33,6 +36,7 @@ export const ProfileWizardClientAdapter = ({
     <ArtistProfileWizard
       email={email}
       linkTypeOptions={linkTypeOptions}
+      storyQuestions={storyQuestions}
       defaultValues={defaultValues}
       isLoading={isLoading}
       error={error}

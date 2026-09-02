@@ -9,16 +9,22 @@ import { createResponseContractViolationError } from "../../../errors/responseCo
 
 const MAX_GENRES = 20;
 const MAX_LINKS = 20;
+const MAX_CHAPTERS = 3;
 
 const paramSchema = z.object({
   artistId: z.string().min(1).max(255),
+});
+
+const storyChapterRequestSchema = z.object({
+  questionCode: z.string(),
+  body: z.string(),
 });
 
 export const saveProfileRequestSchema = z.object({
   name: z.string().nullable().optional(),
   tagline: z.string().nullable().optional(),
   imageUrl: z.string().nullable().optional(),
-  story: z.string().nullable().optional(),
+  chapters: z.array(storyChapterRequestSchema).max(MAX_CHAPTERS).optional(),
   activityInfo: z.string().nullable().optional(),
   genres: z.array(z.string()).max(MAX_GENRES).optional(),
   links: z
@@ -35,13 +41,18 @@ export const saveProfileRequestSchema = z.object({
 
 export type SaveProfileRequestBody = z.infer<typeof saveProfileRequestSchema>;
 
+const storyChapterResponseSchema = z.object({
+  questionCode: z.string(),
+  body: z.string(),
+});
+
 const saveProfileResponseSchema = z.object({
   handle: z.string(),
   profile: z.object({
     name: z.string().nullable(),
     tagline: z.string().nullable(),
     imageUrl: z.string().nullable(),
-    story: z.string().nullable(),
+    chapters: z.array(storyChapterResponseSchema),
     activityInfo: z.string().nullable(),
     genres: z.array(z.string()),
     links: z.array(

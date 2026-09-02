@@ -14,15 +14,15 @@ import { TagInput } from "@ui/design-system/components/molecules/TagInput";
 
 const IMAGE_MAX_SIZE_BYTES = 5 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const CHAPTER_BODY_PLACEHOLDER =
+  "自由に書いてください。うまく書こうとしなくて大丈夫。";
 
-const wizardSchema = z.object({
+const baseWizardSchema = z.object({
   name: z.string().trim().min(1, "活動名を入力してください").max(255),
   imageUrl: z.string().trim().url("画像をアップロードしてください"),
   tagline: z.string().trim().max(60, "60文字以内で入力してください").optional(),
   genres: z.array(z.string()).min(1, "ジャンルを1つ以上追加してください"),
-  storyOrigin: z.string().trim().min(1, "この問いに答えてください"),
-  storyTurning: z.string().trim().optional(),
-  storyNow: z.string().trim().optional(),
+  chapters: z.record(z.string(), z.string()),
   location: z.string().trim().optional(),
   activityForm: z.enum(["solo", "unit", "crew"]),
   affiliation: z.string().trim().optional(),
@@ -36,9 +36,31 @@ const wizardSchema = z.object({
     .min(1, "SNS / 配信リンクを1つ以上登録してください"),
 });
 
-type WizardValues = z.infer<typeof wizardSchema>;
+type WizardValues = z.infer<typeof baseWizardSchema>;
 
 export type { WizardValues };
+
+const hasAnsweredRequiredChapter = (
+  chapters: Record<string, string>,
+  requiredChapterCode: string,
+): boolean => {
+  const body = chapters[requiredChapterCode];
+  return body !== undefined && body.trim().length > 0;
+};
+
+const buildWizardSchema = (requiredChapterCode: string | undefined) =>
+  baseWizardSchema.refine(
+    (value) =>
+      requiredChapterCode === undefined ||
+      hasAnsweredRequiredChapter(value.chapters, requiredChapterCode),
+    {
+      message: "この問いに答えてください",
+      path:
+        requiredChapterCode === undefined
+          ? ["chapters"]
+          : ["chapters", requiredChapterCode],
+    },
+  );
 
 type LinkTypeOption = {
   type: string;
@@ -47,9 +69,29 @@ type LinkTypeOption = {
 
 export type { LinkTypeOption };
 
+type StoryQuestionOption = {
+  code: string;
+  label: string;
+  required: boolean;
+};
+
+export type { StoryQuestionOption };
+
+const toDefaultChapters = (
+  storyQuestions: StoryQuestionOption[],
+  existing: Record<string, string> | undefined,
+): Record<string, string> =>
+  Object.fromEntries(
+    storyQuestions.map((question) => {
+      const body = existing?.[question.code];
+      return [question.code, body === undefined ? "" : body];
+    }),
+  );
+
 type ArtistProfileWizardProps = {
   email: string;
   linkTypeOptions: LinkTypeOption[];
+  storyQuestions: StoryQuestionOption[];
   defaultValues?: Partial<WizardValues>;
   onSubmit: (data: WizardValues) => Promise<void> | void;
   onUploadImage: (file: File) => Promise<string>;
@@ -63,7 +105,7 @@ const TOTAL = STEP_LABELS.length;
 
 const STEP_FIELDS: Record<number, (keyof WizardValues)[]> = {
   1: ["name", "imageUrl", "tagline", "genres"],
-  2: ["storyOrigin"],
+  2: ["chapters"],
   3: [],
   4: ["links"],
   5: [],
@@ -75,6 +117,7 @@ const nativeSelectClass =
 export const ArtistProfileWizard = ({
   email,
   linkTypeOptions,
+  storyQuestions,
   defaultValues,
   onSubmit,
   onUploadImage,
@@ -88,6 +131,13 @@ export const ArtistProfileWizard = ({
     null,
   );
   const [defaultLinkType] = linkTypeOptions;
+  const requiredChapterCode = storyQuestions.find(
+    (question) => question.required,
+  )?.code;
+  const wizardSchema = React.useMemo(
+    () => buildWizardSchema(requiredChapterCode),
+    [requiredChapterCode],
+  );
 
   const {
     register,
@@ -105,9 +155,7 @@ export const ArtistProfileWizard = ({
       imageUrl: "",
       tagline: "",
       genres: [],
-      storyOrigin: "",
-      storyTurning: "",
-      storyNow: "",
+      chapters: toDefaultChapters(storyQuestions, defaultValues?.chapters),
       location: "",
       activityForm: "solo",
       affiliation: "",
@@ -277,33 +325,24 @@ export const ArtistProfileWizard = ({
                 </Typography>
               </div>
 
-              <FormField
-                label="なぜビートボックスを始めたのか"
-                htmlFor="storyOrigin"
-                error={errors.storyOrigin?.message}
-              >
-                <Textarea
-                  rows={4}
-                  placeholder="きっかけや原体験を、思い出すままに。"
-                  {...register("storyOrigin")}
-                />
-              </FormField>
-
-              <FormField label="転機になった出来事" htmlFor="storyTurning">
-                <Textarea
-                  rows={4}
-                  placeholder="続ける理由が変わった瞬間、悔しかったこと、嬉しかったこと。"
-                  {...register("storyTurning")}
-                />
-              </FormField>
-
-              <FormField label="今、目指していること" htmlFor="storyNow">
-                <Textarea
-                  rows={4}
-                  placeholder="これからどうなりたいか。どんなシーンを作りたいか。"
-                  {...register("storyNow")}
-                />
-              </FormField>
+              {storyQuestions.map((question) => (
+                <FormField
+                  key={question.code}
+                  label={
+                    question.required
+                      ? question.label
+                      : `${question.label}（任意）`
+                  }
+                  htmlFor={`chapters.${question.code}`}
+                  error={errors.chapters?.[question.code]?.message}
+                >
+                  <Textarea
+                    rows={4}
+                    placeholder={CHAPTER_BODY_PLACEHOLDER}
+                    {...register(`chapters.${question.code}` as const)}
+                  />
+                </FormField>
+              ))}
             </div>
           </Card>
         )}

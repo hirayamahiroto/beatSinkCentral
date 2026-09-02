@@ -12,6 +12,7 @@ import {
 } from "../../repositories/artistProfileRepository";
 import { createLinkTypeReader } from "../../repositories/linkTypeRepository";
 import { createAnalyticsEventWriter } from "../../repositories/analyticsEventRepository";
+import { createStoryQuestionReader } from "../../repositories/storyQuestionRepository";
 import type { Executor } from "../../transaction";
 import type { User } from "../../../domain/users/entities";
 import type { IProfileImageStorage } from "../../../domain/artistProfiles/repositories";
@@ -57,6 +58,7 @@ export const buildArtistReadCapabilities =
   (executor: Executor): ArtistReadCapabilities => ({
     actor,
     artistProfiles: createArtistProfileReader(executor),
+    storyQuestions: createStoryQuestionReader(executor),
   });
 
 export const buildUserWriteCapabilities =

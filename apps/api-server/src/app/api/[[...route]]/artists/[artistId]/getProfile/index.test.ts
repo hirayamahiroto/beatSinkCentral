@@ -25,6 +25,14 @@ const mockArtistProfiles = {
   findPublishedByHandle: vi.fn(),
 };
 
+const mockStoryQuestions = {
+  findAll: vi.fn(async () => [
+    { code: "beginning", label: "始まり" },
+    { code: "turning_point", label: "転機" },
+    { code: "concept", label: "何を表現したいのか" },
+  ]),
+};
+
 const mockResolveActorState = vi.fn();
 
 vi.mock("../../../../../../infrastructure/capabilities", () => ({
@@ -33,6 +41,7 @@ vi.mock("../../../../../../infrastructure/capabilities", () => ({
     buildArtistReadCapabilities: (a: unknown) => ({
       actor: a,
       artistProfiles: mockArtistProfiles,
+      storyQuestions: mockStoryQuestions,
     }),
   }),
 }));
@@ -57,13 +66,14 @@ describe("GET /artists/:artistId/profile", () => {
     mockResolveActorState.mockResolvedValue({ status: "complete", actor });
   });
 
-  it("Actor と一致する artistId ならプロフィールを返す", async () => {
+  it("Actor と一致する artistId ならプロフィールと問いマスタを返す", async () => {
     mockArtistProfiles.findByArtistId.mockResolvedValue(
       reconstructArtistProfile({
         id: "p1",
         artistId: "artist-1",
         published: false,
         name: "Taro",
+        chapters: [{ questionCode: "beginning", body: "私の歩み" }],
       }),
     );
 
@@ -72,11 +82,18 @@ describe("GET /artists/:artistId/profile", () => {
 
     expect(res.status).toBe(200);
     expect(body.profile.name).toBe("Taro");
+    expect(body.profile.chapters).toStrictEqual([
+      { questionCode: "beginning", body: "私の歩み" },
+    ]);
     expect(body.missingPublishFields).toStrictEqual([
       "imageUrl",
-      "story",
       "genres",
       "links",
+    ]);
+    expect(body.storyQuestions).toStrictEqual([
+      { code: "beginning", label: "始まり", required: true },
+      { code: "turning_point", label: "転機", required: false },
+      { code: "concept", label: "何を表現したいのか", required: false },
     ]);
     expect(mockArtistProfiles.findByArtistId).toHaveBeenCalledWith("artist-1");
   });

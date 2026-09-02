@@ -3,10 +3,23 @@ import type {
   ArtistProfileState,
   ArtistProfilePersistenceData,
   ArtistProfileView,
+  StoryChapterData,
 } from "../entities";
+import type { StoryChapter } from "../valueObjects/storyChapter";
+import { STORY_QUESTION_CODES } from "../valueObjects/storyChapter";
 
 const valueOrNull = (vo: { readonly value: string } | null): string | null =>
   vo === null ? null : vo.value;
+
+const toOrderedChapters = (
+  chapters: readonly StoryChapter[],
+): StoryChapterData[] =>
+  STORY_QUESTION_CODES.flatMap((code) => {
+    const chapter = chapters.find((entry) => entry.questionCode === code);
+    return chapter
+      ? [{ questionCode: chapter.questionCode, body: chapter.body }]
+      : [];
+  });
 
 export const createArtistProfileBehaviors = (
   state: ArtistProfileState,
@@ -22,7 +35,7 @@ export const createArtistProfileBehaviors = (
     name: valueOrNull(state.name),
     tagline: valueOrNull(state.tagline),
     imageUrl: valueOrNull(state.imageUrl),
-    story: valueOrNull(state.story),
+    chapters: toOrderedChapters(state.chapters),
     activityInfo: valueOrNull(state.activityInfo),
     genres: state.genres.map((genre) => genre.value),
     links: toLinks(),
@@ -35,7 +48,7 @@ export const createArtistProfileBehaviors = (
     getName: () => valueOrNull(state.name),
     getTagline: () => valueOrNull(state.tagline),
     getImageUrl: () => valueOrNull(state.imageUrl),
-    getStory: () => valueOrNull(state.story),
+    getChapters: () => toOrderedChapters(state.chapters),
     getActivityInfo: () => valueOrNull(state.activityInfo),
     getGenres: () => state.genres.map((genre) => genre.value),
     getLinks: toLinks,

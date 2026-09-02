@@ -101,4 +101,39 @@ describe("POST /artists/:artistId/profile", () => {
     expect(res.status).toBe(422);
     expect(mockArtistProfiles.upsert).not.toHaveBeenCalled();
   });
+
+  it("chapters を渡すと保存され、response の profile.chapters に反映される", async () => {
+    const res = await request("artist-1", {
+      name: "Taro",
+      chapters: [
+        { questionCode: "beginning", body: "始めたきっかけ" },
+        { questionCode: "turning_point", body: "転機" },
+      ],
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.profile.chapters).toStrictEqual([
+      { questionCode: "beginning", body: "始めたきっかけ" },
+      { questionCode: "turning_point", body: "転機" },
+    ]);
+    expect(mockArtistProfiles.upsert.mock.calls[0][0].chapters).toEqual([
+      { questionCode: "beginning", body: "始めたきっかけ" },
+      { questionCode: "turning_point", body: "転機" },
+    ]);
+  });
+
+  it("MAX_CHAPTERS（3件）を超える chapters はリクエストスキーマ違反として 400 を返し、保存しない", async () => {
+    const res = await request("artist-1", {
+      chapters: [
+        { questionCode: "beginning", body: "始めたきっかけ" },
+        { questionCode: "turning_point", body: "転機" },
+        { questionCode: "concept", body: "コンセプト" },
+        { questionCode: "beginning", body: "4つ目" },
+      ],
+    });
+
+    expect(res.status).toBe(400);
+    expect(mockArtistProfiles.upsert).not.toHaveBeenCalled();
+  });
 });

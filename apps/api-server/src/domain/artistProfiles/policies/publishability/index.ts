@@ -1,4 +1,5 @@
 import type { ArtistProfile } from "../../entities";
+import { REQUIRED_STORY_QUESTION_CODE } from "../../valueObjects/storyChapter";
 import { createTypedError } from "../../../../utils/errors/createTypedError";
 import { type Result, ok, err } from "../../../../utils/result";
 
@@ -26,13 +27,18 @@ export const isProfileNotPublishableError = (
   "type" in error &&
   error.type === "ProfileNotPublishableError";
 
+const hasRequiredStoryChapter = (profile: ArtistProfile): boolean =>
+  profile
+    .getChapters()
+    .some((chapter) => chapter.questionCode === REQUIRED_STORY_QUESTION_CODE);
+
 export const collectMissingPublishFields = (
   profile: ArtistProfile,
 ): PublishRequiredField[] => {
   const missing: PublishRequiredField[] = [];
   if (!profile.getName()) missing.push("name");
   if (!profile.getImageUrl()) missing.push("imageUrl");
-  if (!profile.getStory()) missing.push("story");
+  if (!hasRequiredStoryChapter(profile)) missing.push("story");
   if (profile.getGenres().length === 0) missing.push("genres");
   if (profile.getLinks().length === 0) missing.push("links");
   return missing;

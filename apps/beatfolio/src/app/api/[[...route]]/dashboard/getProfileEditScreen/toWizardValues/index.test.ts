@@ -5,7 +5,10 @@ const publishedProfile: ProfileView = {
   name: "SAKU",
   tagline: "口ひとつで、フロアを揺らす。",
   imageUrl: "https://example.com/saku.jpg",
-  story: "始めたきっかけ。",
+  chapters: [
+    { questionCode: "beginning", body: "始めたきっかけ。" },
+    { questionCode: "turning_point", body: "転機。" },
+  ],
   activityInfo: "拠点: 東京 / 形態: ソロ / 所属: 独立",
   genres: ["Beatbox"],
   links: [
@@ -16,13 +19,16 @@ const publishedProfile: ProfileView = {
 };
 
 describe("toWizardValues", () => {
-  it("属性・story・activityInfo・リンクをウィザードの初期値へ変換する", () => {
+  it("属性・Story章・activityInfo・リンクをウィザードの初期値へ変換する", () => {
     expect(toWizardValues(publishedProfile)).toStrictEqual({
       name: "SAKU",
       imageUrl: "https://example.com/saku.jpg",
       tagline: "口ひとつで、フロアを揺らす。",
       genres: ["Beatbox"],
-      storyOrigin: "始めたきっかけ。",
+      chapters: {
+        beginning: "始めたきっかけ。",
+        turning_point: "転機。",
+      },
       location: "東京",
       activityForm: "solo",
       affiliation: "独立",
@@ -44,13 +50,13 @@ describe("toWizardValues", () => {
     ).toStrictEqual([{ type: "other", url: "https://example.com/me" }]);
   });
 
-  it("null フィールドはキーを含めず、ウィザードの既定値に委ねる", () => {
+  it("Story章が無ければ chapters キーを含めない", () => {
     expect(
       toWizardValues({
         name: null,
         tagline: null,
         imageUrl: null,
-        story: null,
+        chapters: [],
         activityInfo: null,
         genres: [],
         links: [],

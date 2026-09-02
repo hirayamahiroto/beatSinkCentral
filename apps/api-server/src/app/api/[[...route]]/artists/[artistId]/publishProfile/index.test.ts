@@ -64,7 +64,7 @@ const publishableProfile = () =>
     published: false,
     name: "Taro",
     imageUrl: "https://example.com/a.jpg",
-    story: "story",
+    chapters: [{ questionCode: "beginning", body: "story" }],
     genres: ["bass"],
     links: [{ type: "x", url: "https://x.com/taro" }],
   });

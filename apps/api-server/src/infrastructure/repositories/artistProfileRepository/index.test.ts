@@ -43,7 +43,6 @@ const profileRow = {
   name: "Taro",
   tagline: null,
   imageUrl: "https://example.com/a.png",
-  story: "私の歩み",
   activityInfo: null,
   published: true,
 };
@@ -66,11 +65,12 @@ describe("artistProfileRepository", () => {
       expect(result).toBeNull();
     });
 
-    it("プロフィールと子（ジャンル / リンク）を組み立てて返す", async () => {
+    it("プロフィールと子（ジャンル / リンク / Story章）を組み立てて返す", async () => {
       mock.enqueue(
         [profileRow],
         [{ genre: "bass" }, { genre: "inward" }],
         [{ type: "x", url: "https://x.com/taro", label: null }],
+        [{ questionCode: "beginning", body: "私の歩み" }],
       );
       const reader = createArtistProfileReader(mock.db as never);
 
@@ -80,6 +80,9 @@ describe("artistProfileRepository", () => {
       expect(result?.getGenres()).toEqual(["bass", "inward"]);
       expect(result?.getLinks()).toEqual([
         { type: "x", url: "https://x.com/taro", label: null },
+      ]);
+      expect(result?.getChapters()).toEqual([
+        { questionCode: "beginning", body: "私の歩み" },
       ]);
       expect(result?.isPublished()).toBe(true);
     });
@@ -139,14 +142,17 @@ describe("artistProfileRepository", () => {
   });
 
   describe("upsert", () => {
-    it("保存内容を反映した Entity を返し、子テーブルを置換する", async () => {
+    it("保存内容を反映した Entity を返し、子テーブル（ジャンル / リンク / Story章）を置換する", async () => {
       mock.enqueue(
-        [profileRow],
-        undefined,
-        undefined,
-        undefined,
-        [{ id: 1, code: "x" }],
-        undefined,
+        [profileRow], // insert ... returning
+        undefined, // delete genres
+        undefined, // delete links
+        undefined, // delete chapters
+        undefined, // insert genres
+        [{ id: 1, code: "x" }], // resolveLinkTypeIds select
+        undefined, // insert links
+        [{ id: 1, code: "beginning" }], // resolveStoryQuestionIds select
+        undefined, // insert chapters
       );
       const writer = createArtistProfileWriter(mock.db as never);
 
@@ -156,7 +162,7 @@ describe("artistProfileRepository", () => {
         name: "Taro",
         tagline: null,
         imageUrl: "https://example.com/a.png",
-        story: "私の歩み",
+        chapters: [{ questionCode: "beginning", body: "私の歩み" }],
         activityInfo: null,
         genres: ["bass"],
         links: [{ type: "x", url: "https://x.com/taro", label: null }],
@@ -164,9 +170,38 @@ describe("artistProfileRepository", () => {
       });
 
       expect(mock.spy("insert")).toHaveBeenCalled();
-      expect(mock.spy("delete")).toHaveBeenCalledTimes(2);
+      expect(mock.spy("delete")).toHaveBeenCalledTimes(3);
       expect(result.getName()).toBe("Taro");
       expect(result.getGenres()).toEqual(["bass"]);
+      expect(result.getChapters()).toEqual([
+        { questionCode: "beginning", body: "私の歩み" },
+      ]);
+    });
+
+    it("未知の questionCode の章は InvalidStoryChapterFormatError を投げる（データ破損防御）", async () => {
+      mock.enqueue(
+        [profileRow], // insert ... returning
+        undefined, // delete genres
+        undefined, // delete links
+        undefined, // delete chapters
+        [], // resolveStoryQuestionIds select（該当コード無し）
+      );
+      const writer = createArtistProfileWriter(mock.db as never);
+
+      await expect(
+        writer.upsert({
+          id: "profile-1",
+          artistId: "artist-1",
+          name: "Taro",
+          tagline: null,
+          imageUrl: null,
+          chapters: [{ questionCode: "beginning", body: "私の歩み" }],
+          activityInfo: null,
+          genres: [],
+          links: [],
+          published: false,
+        }),
+      ).rejects.toThrow();
     });
   });
 
