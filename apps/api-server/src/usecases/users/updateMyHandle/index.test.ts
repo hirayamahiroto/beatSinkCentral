@@ -61,7 +61,7 @@ describe("updateMyHandle", () => {
         handle: "new_handle",
       });
     }
-    expect(caps.artists.updateHandle).toHaveBeenCalledWith({
+    expect(caps.artists.updateHandle).toHaveBeenCalledExactlyOnceWith({
       artistId: artist.getArtistId(),
       handle: "new_handle",
     });

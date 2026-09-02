@@ -92,7 +92,7 @@ describe("useSaveProfile", () => {
       await result.current.saveDraft(values);
     });
 
-    expect(saveMock).toHaveBeenCalledWith({
+    expect(saveMock).toHaveBeenCalledExactlyOnceWith({
       json: {
         name: "SAKU",
         imageUrl: "https://example.com/saku.jpg",

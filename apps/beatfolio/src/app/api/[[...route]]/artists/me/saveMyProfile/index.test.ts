@@ -111,7 +111,7 @@ describe("POST /artists/me/profile", () => {
     const res = await request({ genres, links });
 
     expect(res.status).toBe(200);
-    expect(profilePost).toHaveBeenCalledWith({
+    expect(profilePost).toHaveBeenCalledExactlyOnceWith({
       param: { artistId: "artist-1" },
       json: { genres, links },
     });
