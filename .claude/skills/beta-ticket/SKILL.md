@@ -21,7 +21,7 @@ description: 「知る → 応援する」検証ベータ（統合 Issue #270）
 
 ## 使うタイミング
 
-統合 Issue [#270](https://github.com/hirayamahiroto/beatSinkCentral/issues/270) 配下の sub-issue（#255〜#269）に着手するとき。
+統合 Issue [#270](https://github.com/hirayamahiroto/beatSinkCentral/issues/270) 配下の sub-issue（#271〜#284）に着手するとき。
 
 ## 手順
 
@@ -31,7 +31,7 @@ description: 「知る → 応援する」検証ベータ（統合 Issue #270）
 2. `docs/plans/know-to-support-beta/plan.md` で依存と PR 分割を確認する
    - 依存先チケットが未完了なら着手しない（ユーザーに報告する）
    - L チケット（T04/T05/T08）は「今回のセッションはどの PR か」を先に確定する
-3. **「着手前に決めること」に未決があれば、実装せずユーザーに確認する**。特に T00（#255）が未完了の間、T01 以降は着手できない
+3. **「着手前に決めること」に未決があれば、実装せずユーザーに確認する**。特に T00（#271）が未完了の間、実装チケットには着手できない
 
 ### Step 1: 契約を凍結する
 
