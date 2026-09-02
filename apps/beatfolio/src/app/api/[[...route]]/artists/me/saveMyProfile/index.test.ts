@@ -66,6 +66,10 @@ describe("POST /artists/me/profile", () => {
       json: body,
     });
     expect(res.status).toBe(200);
+    expect(await res.json()).toStrictEqual({
+      handle: "saku",
+      profile: { name: "SAKU" },
+    });
   });
 
   it("artist 未登録なら api-server へ渡さず 404 を返す", async () => {
@@ -98,13 +102,19 @@ describe("POST /artists/me/profile", () => {
   });
 
   it("上限ちょうどの genres / links は api-server へ渡す", async () => {
-    const res = await request({
-      genres: Array(20).fill("Beatbox"),
-      links: Array(20).fill({ type: "youtube", url: "https://youtube.com/@s" }),
+    const genres = Array(20).fill("Beatbox");
+    const links = Array(20).fill({
+      type: "youtube",
+      url: "https://youtube.com/@s",
     });
 
+    const res = await request({ genres, links });
+
     expect(res.status).toBe(200);
-    expect(profilePost).toHaveBeenCalledTimes(1);
+    expect(profilePost).toHaveBeenCalledExactlyOnceWith({
+      param: { artistId: "artist-1" },
+      json: { genres, links },
+    });
   });
 
   it("api-server のエラーはステータスごと透過する", async () => {

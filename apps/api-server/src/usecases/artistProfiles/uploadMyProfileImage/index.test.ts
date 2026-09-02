@@ -103,6 +103,9 @@ describe("uploadMyProfileImage", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error.type).toBe("ProfileImageUploadFailedError");
+      if (result.error.type === "ProfileImageUploadFailedError") {
+        expect(result.error.reason).toBe("Bucket not found");
+      }
     }
   });
 });

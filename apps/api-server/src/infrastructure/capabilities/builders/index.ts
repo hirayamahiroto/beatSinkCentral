@@ -11,12 +11,14 @@ import {
   createArtistProfileWriter,
 } from "../../repositories/artistProfileRepository";
 import { createLinkTypeReader } from "../../repositories/linkTypeRepository";
+import { createAnalyticsEventWriter } from "../../repositories/analyticsEventRepository";
 import type { Executor } from "../../transaction";
 import type { User } from "../../../domain/users/entities";
 import type { IProfileImageStorage } from "../../../domain/artistProfiles/repositories";
 import type {
   Actor,
   PublicReadCapabilities,
+  PublicWriteCapabilities,
   ArtistReadCapabilities,
   RegistrationCapabilities,
   UserWriteCapabilities,
@@ -42,6 +44,12 @@ export const buildPublicReadCapabilities = (
 ): PublicReadCapabilities => ({
   artistProfiles: createArtistProfileReader(executor),
   linkTypes: createLinkTypeReader(executor),
+});
+
+export const buildPublicWriteCapabilities = (
+  executor: Executor,
+): PublicWriteCapabilities => ({
+  analyticsEvents: createAnalyticsEventWriter(executor),
 });
 
 export const buildArtistReadCapabilities =

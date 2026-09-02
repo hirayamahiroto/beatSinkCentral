@@ -61,7 +61,10 @@ describe("updateMyHandle", () => {
         handle: "new_handle",
       });
     }
-    expect(caps.artists.updateHandle).toHaveBeenCalledTimes(1);
+    expect(caps.artists.updateHandle).toHaveBeenCalledExactlyOnceWith({
+      artistId: artist.getArtistId(),
+      handle: "new_handle",
+    });
   });
 
   it("現在の handle と同じ値の場合は更新せず early return する", async () => {
@@ -96,6 +99,9 @@ describe("updateMyHandle", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(isHandleAlreadyTakenError(result.error)).toBe(true);
+      if (isHandleAlreadyTakenError(result.error)) {
+        expect(result.error.handle).toBe("new_handle");
+      }
     }
     expect(caps.artists.updateHandle).not.toHaveBeenCalled();
   });

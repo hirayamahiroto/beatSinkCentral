@@ -85,6 +85,10 @@ export const createCapabilityDepsStub = (
       linkTypes: { findAll: async () => [] },
     }),
 
+    buildPublicWriteCapabilities: () => ({
+      analyticsEvents: { record: unusedInAuthorizationTests },
+    }),
+
     buildArtistReadCapabilities: (actor) => ({
       actor,
       artistProfiles: createArtistProfileReaderStub(),
