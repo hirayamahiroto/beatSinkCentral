@@ -99,5 +99,5 @@ PRD §2-4 の「公式の条件」4 つ（本人が定義した自分がある�
 ## 関連
 
 - [`prd.md`](./prd.md) — 一次検証の定義（本メモの上流）
-- [`tickets/README.md`](./tickets/README.md) — 実装チケット（T05 の「消さない設計」が §3-2 の担保）
+- [`plan.md`](../../../plans/know-to-support-beta/plan.md) — 実行計画（チケットは統合 Issue #270 配下の sub-issue。T05＝#260 の「消さない設計」が §3-2 の担保）
 - [`../../../product/design-core.md`](../../../product/design-core.md) — ジョブ三層・フライホイール（§2・§3 の根拠）

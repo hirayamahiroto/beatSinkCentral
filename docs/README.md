@@ -80,6 +80,7 @@ DB まわり — [`architecture/server/database/`](./architecture/server/databas
 | ドキュメント                                                | 内容                     |
 | ----------------------------------------------------------- | ------------------------ |
 | [Phase 1: プレイヤー紹介](./plans/phase1-player-introduction/roadmap.md) | MVP のロードマップと実装計画 |
+| [know-to-support ベータ実行計画](./plans/know-to-support-beta/plan.md) | 検証ベータのチケット・粒度規約・進行（統合 Issue #270） |
 
 ---
 
