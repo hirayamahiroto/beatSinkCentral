@@ -50,6 +50,7 @@ describe("GET /artists/:handle", () => {
     expect(body.profile.story.chapters).toStrictEqual([
       { key: "beginning", body: "私の歩み" },
     ]);
+    expect(body.profile.presentation).toStrictEqual({ patternCode: null });
     expect(mockArtistProfiles.findPublishedByHandle).toHaveBeenCalledWith(
       "beatboxer_taro",
     );

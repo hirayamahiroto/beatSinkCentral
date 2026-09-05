@@ -5,6 +5,7 @@ import { Card } from "@ui/design-system/components/atoms/Card";
 import { Button } from "@ui/design-system/components/atoms/Button";
 import { getDashboard } from "../../fetchers/dashboard/getDashboard";
 import { ProfilePublishClientAdapter } from "./ProfilePublishClientAdapter";
+import { PresentationPatternClientAdapter } from "./PresentationPatternClientAdapter";
 
 export default async function DashboardPage() {
   const result = await getDashboard();
@@ -59,6 +60,18 @@ export default async function DashboardPage() {
           <ProfilePublishClientAdapter
             published={artist.profile.published}
             missingRequirements={artist.profile.missingPublishRequirements}
+          />
+        )}
+
+        {artist?.profile && (
+          <PresentationPatternClientAdapter
+            options={artist.profile.presentation.options}
+            selectedCode={artist.profile.presentation.patternCode}
+            previewHref={
+              artist.profile.published
+                ? `/players/${artist.handle}/concept`
+                : null
+            }
           />
         )}
 

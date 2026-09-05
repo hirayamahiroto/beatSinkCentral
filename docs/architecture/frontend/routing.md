@@ -39,6 +39,17 @@ beatfolio における実体は **アーティストの公開プロフィール*
 
 ルート直下に `/[handle]` を置く形（GitHub / Zenn 型）は採らない。`/about` `/event` `/admin` `/dashboard` 等の既存パスと衝突し、**予約語リストの管理という恒久的な負債**を負うため。一覧配下なら衝突は原理的に起きない。
 
+### 原則3-b: 同じ実体の別の見せ方は名詞のサブパスに置く
+
+同じ公開プロフィールを別の表現で見せる画面は、実体の URL の下に**見せ方を表す名詞**を足す。
+
+```
+/players/[handle]          → 公開プロフィール（区画を順に読む標準表示）
+/players/[handle]/concept  → 同じプロフィールを Story に没入させて読むコンセプトページ
+```
+
+別の実体ではなく同じ実体の投影なので、ルート直下に新しい名詞（`/concepts/[handle]` 等）を作らない。どの見せ方で描くかはアーティスト本人が選び、DB（`presentation_patterns` マスタへの参照）に記録する。BFF の read route は原則6 に従い `/api/players/[handle]/concept` に一致させる。
+
 ### 原則4: 認証境界を階層で表す
 
 ログイン必須の画面は原則 `/dashboard` 配下に集約する。初回登録の `/onboarding` は例外として保護する。URL を見れば認証が要るか判別でき、認証境界を **`src/middleware.ts` の `SESSION_REQUIRED_PATHS`（`/dashboard/*` `/onboarding/*`）1 箇所**で表せる。`page.tsx` は認証を判定しない（[`bff/design.md`](./bff/design.md)）。新しいログイン必須画面は `/dashboard` 配下に置くだけで保護される。

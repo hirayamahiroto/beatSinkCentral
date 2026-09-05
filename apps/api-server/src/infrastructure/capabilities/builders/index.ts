@@ -13,6 +13,7 @@ import {
 import { createLinkTypeReader } from "../../repositories/linkTypeRepository";
 import { createAnalyticsEventWriter } from "../../repositories/analyticsEventRepository";
 import { createStoryQuestionReader } from "../../repositories/storyQuestionRepository";
+import { createPresentationPatternReader } from "../../repositories/presentationPatternRepository";
 import type { Executor } from "../../transaction";
 import type { User } from "../../../domain/users/entities";
 import type { IProfileImageStorage } from "../../../domain/artistProfiles/repositories";
@@ -46,6 +47,7 @@ export const buildPublicReadCapabilities = (
   artistProfiles: createArtistProfileReader(executor),
   linkTypes: createLinkTypeReader(executor),
   storyQuestions: createStoryQuestionReader(executor),
+  presentationPatterns: createPresentationPatternReader(executor),
 });
 
 export const buildPublicWriteCapabilities = (

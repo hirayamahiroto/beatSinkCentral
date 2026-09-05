@@ -32,6 +32,10 @@ import {
   type ProfileLink,
   type ProfileLinkInput,
 } from "../valueObjects/profileLink";
+import {
+  createPresentationPatternCode,
+  type InvalidPresentationPatternError,
+} from "../valueObjects/presentationPattern";
 import { createArtistProfileBehaviors } from "../behaviors";
 import type {
   ArtistProfile,
@@ -115,13 +119,15 @@ export type ArtistProfileContent = ArtistProfileAttributesContent & {
   imageUrl?: string | null;
   chapters?: StoryChapterInput[];
   links?: ProfileLinkInput[];
+  presentationPatternCode?: string | null;
 };
 
 export type ArtistProfileContentError =
   | ArtistProfileAttributesError
   | InvalidImageUrlFormatError
   | InvalidStoryChapterFormatError
-  | CreateProfileLinkError;
+  | CreateProfileLinkError
+  | InvalidPresentationPatternError;
 
 type ProfileIdentity = {
   id: string;
@@ -142,8 +148,12 @@ const buildState = (
         content.links === undefined
           ? ok([])
           : createProfileLinks(content.links),
+      presentationPattern: optional(
+        content.presentationPatternCode,
+        createPresentationPatternCode,
+      ),
     }),
-    ({ attributes, imageUrl, chapters, links }) => ({
+    ({ attributes, imageUrl, chapters, links, presentationPattern }) => ({
       id: base.id,
       artistId: base.artistId,
       published: base.published,
@@ -151,6 +161,7 @@ const buildState = (
       imageUrl,
       chapters,
       links,
+      presentationPattern,
     }),
   );
 
@@ -172,6 +183,7 @@ export const createDraftArtistProfile = (
     activityInfo: null,
     genres: [],
     links: [],
+    presentationPattern: null,
   });
 
 export type ReconstructArtistProfileParams = ArtistProfileContent & {

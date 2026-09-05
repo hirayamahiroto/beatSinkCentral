@@ -16,6 +16,7 @@ import {
 import { createLinkTypeReader } from "../../repositories/linkTypeRepository";
 import { createAnalyticsEventWriter } from "../../repositories/analyticsEventRepository";
 import { createStoryQuestionReader } from "../../repositories/storyQuestionRepository";
+import { createPresentationPatternReader } from "../../repositories/presentationPatternRepository";
 import { reconstructUser } from "../../../domain/users/factories";
 import { reconstructArtist } from "../../../domain/artists/factories";
 
@@ -59,6 +60,10 @@ vi.mock("../../repositories/storyQuestionRepository", () => ({
   createStoryQuestionReader: vi.fn(() => ({ findAll: vi.fn() })),
 }));
 
+vi.mock("../../repositories/presentationPatternRepository", () => ({
+  createPresentationPatternReader: vi.fn(() => ({ findAll: vi.fn() })),
+}));
+
 const executor = { marker: "executor" } as never;
 
 const user = reconstructUser({
@@ -87,11 +92,13 @@ describe("buildPublicReadCapabilities", () => {
     expect(Object.keys(caps).sort()).toStrictEqual([
       "artistProfiles",
       "linkTypes",
+      "presentationPatterns",
       "storyQuestions",
     ]);
     expect(createArtistProfileReader).toHaveBeenCalledWith(executor);
     expect(createLinkTypeReader).toHaveBeenCalledWith(executor);
     expect(createStoryQuestionReader).toHaveBeenCalledWith(executor);
+    expect(createPresentationPatternReader).toHaveBeenCalledWith(executor);
     expect(createArtistProfileWriter).not.toHaveBeenCalled();
   });
 });

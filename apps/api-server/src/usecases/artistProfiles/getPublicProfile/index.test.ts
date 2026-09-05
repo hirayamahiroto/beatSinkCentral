@@ -42,6 +42,9 @@ describe("getPublicProfile", () => {
       expect(result.value.handle).toBe("beatboxer_taro");
       expect(result.value.profile.attributes.name).toBe("Taro");
       expect(result.value.profile.published).toBe(true);
+      expect(result.value.profile.presentation).toStrictEqual({
+        patternCode: null,
+      });
     }
     expect(caps.artistProfiles.findPublishedByHandle).toHaveBeenCalledWith(
       "beatboxer_taro",

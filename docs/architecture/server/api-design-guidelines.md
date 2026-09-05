@@ -165,6 +165,7 @@ app/api/[[...route]]/
       updateAttributes/index.ts   → POST /:artistId/attributes
       writeStoryChapter/index.ts  → POST /:artistId/story/chapters/:chapterKey
       replaceLinks/index.ts       → POST /:artistId/links
+      choosePresentationPattern/index.ts → POST /:artistId/presentation
       publishProfile/index.ts     → POST /:artistId/profile/publish
       uploadProfileImage/index.ts → POST /:artistId/profile/image
   users/                           ← 全ルート認証（境界は users/ 直下）

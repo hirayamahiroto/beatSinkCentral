@@ -5,6 +5,7 @@ import users from "./users";
 import artists from "./artists";
 import linkTypes from "./link-types";
 import storyQuestions from "./story-questions";
+import presentationPatterns from "./presentation-patterns";
 import events from "./events";
 import { requestContextMiddleware } from "../../../middlewares/requestContext";
 import { handleAppError } from "../../../errorMap";
@@ -17,6 +18,7 @@ const app = new Hono()
   .route("/artists", artists)
   .route("/link-types", linkTypes)
   .route("/story-questions", storyQuestions)
+  .route("/presentation-patterns", presentationPatterns)
   .route("/events", events)
   .onError(handleAppError);
 
