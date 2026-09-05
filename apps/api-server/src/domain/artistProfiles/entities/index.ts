@@ -8,6 +8,7 @@ import type {
 import type { ActivityInfo } from "../valueObjects/activityInfo";
 import type { Genre } from "../valueObjects/genre";
 import type { ProfileLink } from "../valueObjects/profileLink";
+import type { PresentationPatternCode } from "../valueObjects/presentationPattern";
 
 export type ProfileLinkData = {
   linkTypeCode: string;
@@ -29,6 +30,7 @@ export type ArtistProfileState = {
   readonly activityInfo: ActivityInfo | null;
   readonly genres: readonly Genre[];
   readonly links: readonly ProfileLink[];
+  readonly presentationPattern: PresentationPatternCode | null;
   readonly published: boolean;
 };
 
@@ -47,6 +49,7 @@ export type ArtistProfilePersistenceData = {
   activityInfo: string | null;
   genres: string[];
   links: ProfileLinkData[];
+  presentationPatternCode: string | null;
   published: boolean;
 };
 
@@ -67,10 +70,15 @@ export type ArtistProfileStoryView = {
   chapters: StoryChapterView[];
 };
 
+export type ArtistProfilePresentationView = {
+  patternCode: string | null;
+};
+
 export type ArtistProfileView = {
   attributes: ArtistProfileAttributesView;
   story: ArtistProfileStoryView;
   links: ProfileLinkData[];
+  presentation: ArtistProfilePresentationView;
   published: boolean;
 };
 
@@ -84,6 +92,7 @@ export type ArtistProfile = {
   getActivityInfo: () => string | null;
   getGenres: () => string[];
   getLinks: () => ProfileLinkData[];
+  getPresentationPatternCode: () => string | null;
   isPublished: () => boolean;
   publish: () => ArtistProfile;
   unpublish: () => ArtistProfile;
@@ -91,6 +100,9 @@ export type ArtistProfile = {
   writeStoryChapter: (chapter: StoryChapter) => ArtistProfile;
   clearStoryChapter: (questionCode: StoryQuestionCode) => ArtistProfile;
   replaceLinks: (links: readonly ProfileLink[]) => ArtistProfile;
+  choosePresentationPattern: (
+    pattern: PresentationPatternCode,
+  ) => ArtistProfile;
   changeImage: (imageUrl: ImageUrl) => ArtistProfile;
   toPersistence: () => ArtistProfilePersistenceData;
   toView: () => ArtistProfileView;

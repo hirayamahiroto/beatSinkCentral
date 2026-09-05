@@ -4,6 +4,7 @@ import {
   varchar,
   text,
   boolean,
+  integer,
   timestamp,
 } from "drizzle-orm/pg-core";
 import {
@@ -12,6 +13,7 @@ import {
   createUpdateSchema,
 } from "drizzle-zod";
 import { artistsTable } from "./artists";
+import { presentationPatternsTable } from "./presentationPatterns";
 
 export const artistProfilesTable = pgTable("artist_profiles", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -23,6 +25,9 @@ export const artistProfilesTable = pgTable("artist_profiles", {
   tagline: varchar("tagline", { length: 255 }),
   imageUrl: text("image_url"),
   activityInfo: varchar("activity_info", { length: 1000 }),
+  presentationPatternId: integer("presentation_pattern_id").references(
+    () => presentationPatternsTable.id,
+  ),
   published: boolean("published").notNull().default(false),
   publishedAt: timestamp("published_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

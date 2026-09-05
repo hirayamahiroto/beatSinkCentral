@@ -24,6 +24,7 @@ const publicProfileSchema = z.object({
   links: z
     .array(z.object({ linkTypeCode: z.string(), url: z.string() }))
     .min(1),
+  presentation: z.object({ patternCode: z.string().nullable() }),
   published: z.literal(true),
 });
 

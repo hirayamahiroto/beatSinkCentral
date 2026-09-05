@@ -83,6 +83,7 @@ describe("getMyProfile", () => {
         },
         story: { chapters: [{ key: "beginning", body: "始めたきっかけ。" }] },
         links: [{ linkTypeCode: "youtube", url: "https://youtube.com/@taro" }],
+        presentation: { patternCode: null },
         published: false,
       });
     }

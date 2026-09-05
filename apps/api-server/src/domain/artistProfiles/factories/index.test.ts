@@ -121,6 +121,7 @@ describe("createDraftArtistProfile", () => {
       },
       story: { chapters: [] },
       links: [],
+      presentation: { patternCode: null },
       published: false,
     });
   });
@@ -222,8 +223,28 @@ describe("reconstructArtistProfile", () => {
       activityInfo: null,
       genres: ["bass", "inward"],
       links: [{ linkTypeCode: "x", url: "https://x.com/taro" }],
+      presentationPatternCode: null,
       published: false,
     });
+  });
+
+  it("presentationPatternCode を復元し、未知のコードは復元失敗として throw する", () => {
+    const profile = reconstructArtistProfile({
+      id: "profile-1",
+      artistId: "artist-1",
+      published: false,
+      presentationPatternCode: "spotlight",
+    });
+
+    expect(profile.getPresentationPatternCode()).toBe("spotlight");
+    expect(() =>
+      reconstructArtistProfile({
+        id: "profile-1",
+        artistId: "artist-1",
+        published: false,
+        presentationPatternCode: "carousel",
+      }),
+    ).toThrow();
   });
 
   it("publish() は published を true にした新しい Entity を返す", () => {

@@ -52,6 +52,7 @@ const profileRow = {
   tagline: null,
   imageUrl: "https://example.com/a.png",
   activityInfo: null,
+  presentationPatternCode: null,
   published: true,
 };
 
@@ -93,6 +94,22 @@ describe("artistProfileRepository", () => {
         { questionCode: "beginning", body: "私の歩み" },
       ]);
       expect(result?.isPublished()).toBe(true);
+      expect(result?.getPresentationPatternCode()).toBeNull();
+    });
+
+    it("表現パターンはマスタを leftJoin してコードで返す", async () => {
+      mock.enqueue(
+        [{ ...profileRow, presentationPatternCode: "editorial" }],
+        [],
+        [],
+        [],
+      );
+      const reader = createArtistProfileReader(mock.db as never);
+
+      const result = await reader.findByArtistId("artist-1");
+
+      expect(mock.spy("leftJoin")).toHaveBeenCalledTimes(1);
+      expect(result?.getPresentationPatternCode()).toBe("editorial");
     });
   });
 
@@ -227,6 +244,7 @@ describe("artistProfileRepository", () => {
         activityInfo: null,
         genres: ["bass"],
         links: [{ linkTypeCode: "x", url: "https://x.com/taro" }],
+        presentationPatternCode: null,
         published: false,
       });
 
@@ -261,10 +279,12 @@ describe("artistProfileRepository", () => {
         activityInfo: null,
         genres: [],
         links: [],
+        presentationPatternCode: null,
         published: false,
       });
 
       const { set } = mock.spy("onConflictDoUpdate").mock.calls[0][0];
+      expect(set.presentationPatternId).toBeNull();
       expect(set.published).toBeInstanceOf(SQL);
       expect(set.publishedAt).toBeInstanceOf(SQL);
       expect(toSqlText(set.published)).toBe(
@@ -296,13 +316,98 @@ describe("artistProfileRepository", () => {
           activityInfo: null,
           genres: [],
           links: [],
+          presentationPatternCode: null,
           published: false,
         }),
       ).rejects.toThrow();
     });
+
+    it("presentationPatternCode はマスタで id に解決して保存し、Entity にはコードのまま戻す", async () => {
+      mock.enqueue(
+        [{ id: 3 }], // resolvePresentationPatternId select
+        [profileRow], // insert ... returning
+        undefined, // delete genres
+        undefined, // delete links
+        undefined, // delete chapters
+      );
+      const writer = createArtistProfileWriter(mock.db as never);
+
+      const result = await writer.upsert({
+        id: "profile-1",
+        artistId: "artist-1",
+        name: "Taro",
+        tagline: null,
+        imageUrl: null,
+        chapters: [],
+        activityInfo: null,
+        genres: [],
+        links: [],
+        presentationPatternCode: "spotlight",
+        published: false,
+      });
+
+      expect(mock.spy("values").mock.calls[0][0]).toStrictEqual({
+        id: "profile-1",
+        artistId: "artist-1",
+        name: "Taro",
+        tagline: null,
+        imageUrl: null,
+        activityInfo: null,
+        presentationPatternId: 3,
+        published: false,
+      });
+      expect(
+        mock.spy("onConflictDoUpdate").mock.calls[0][0].set
+          .presentationPatternId,
+      ).toBe(3);
+      expect(result.getPresentationPatternCode()).toBe("spotlight");
+    });
+
+    it("未知の presentationPatternCode は InvalidPresentationPatternError を投げ、保存しない", async () => {
+      mock.enqueue([]); // resolvePresentationPatternId select（該当コード無し）
+      const writer = createArtistProfileWriter(mock.db as never);
+
+      await expect(
+        writer.upsert({
+          id: "profile-1",
+          artistId: "artist-1",
+          name: "Taro",
+          tagline: null,
+          imageUrl: null,
+          chapters: [],
+          activityInfo: null,
+          genres: [],
+          links: [],
+          presentationPatternCode: "carousel",
+          published: false,
+        }),
+      ).rejects.toMatchObject({ type: "InvalidPresentationPatternError" });
+      expect(mock.spy("insert")).not.toHaveBeenCalled();
+    });
   });
 
   describe("setPublished", () => {
+    it("公開状態を更新し、子テーブルと表現パターンを読み戻した Entity を返す", async () => {
+      mock.enqueue(
+        [{ ...profileRow, published: true }], // update ... returning
+        [{ genre: "bass" }], // genres
+        [], // links
+        [], // chapters
+        [{ code: "editorial" }], // presentation pattern code
+      );
+      const writer = createArtistProfileWriter(mock.db as never);
+
+      const result = await writer.setPublished({
+        artistId: "artist-1",
+        published: true,
+      });
+
+      expect(mock.spy("update")).toHaveBeenCalledTimes(1);
+      expect(result.isPublished()).toBe(true);
+      expect(result.getGenres()).toEqual(["bass"]);
+      expect(result.getPresentationPatternCode()).toBe("editorial");
+    });
+
     it("対象が無ければ ArtistProfileNotFoundError をスローする", async () => {
       mock.enqueue([]);
       const writer = createArtistProfileWriter(mock.db as never);
