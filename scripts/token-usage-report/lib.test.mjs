@@ -317,6 +317,38 @@ test("aggregate はブランチで絞り、requestId で usage を統合（各�
   );
 });
 
+test("aggregate は別ブランチで出した指示に続く対象ブランチの呼出を、その指示の turn として数える", () => {
+  const records = [
+    user("ブランチを切って進めて", { gitBranch: "main" }),
+    assistant({
+      requestId: "r1",
+      gitBranch: "main",
+      usage: usage(0, 0, 500, 5),
+    }),
+    assistant({
+      requestId: "r2",
+      gitBranch: "feat/x",
+      usage: usage(0, 0, 1000, 10),
+    }),
+    user("次", { gitBranch: "feat/x" }),
+  ];
+  const report = aggregate([{ sessionId: "s1", records }], {
+    branch: "feat/x",
+  });
+  assert.equal(report.totals.prompts, 1);
+  assert.equal(report.totals.calls, 1);
+  assert.equal(report.totals.contextTokens, 1000);
+  assert.deepEqual(
+    report.turns.map((turn) => [
+      turn.index,
+      turn.text,
+      turn.calls,
+      turn.contextTokens,
+    ]),
+    [[1, "ブランチを切って進めて", 1, 1000]],
+  );
+});
+
 test("aggregate は branch 未指定なら全ブランチを対象にし、未登録モデルを数える", () => {
   const records = [
     user("a"),

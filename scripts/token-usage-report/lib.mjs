@@ -161,7 +161,6 @@ function collectCalls(records, branch) {
   const turns = [];
   let currentTurn = null;
   for (const record of records) {
-    if (branch !== null && record.gitBranch !== branch) continue;
     const prompt = promptText(record);
     if (prompt !== null) {
       currentTurn = {
@@ -173,6 +172,7 @@ function collectCalls(records, branch) {
       continue;
     }
     if (record.type !== "assistant") continue;
+    if (branch !== null && record.gitBranch !== branch) continue;
     const requestId = record.requestId ?? record.uuid;
     const toolUses = (record.message?.content ?? [])
       .filter((block) => block?.type === "tool_use")
@@ -216,7 +216,7 @@ export function aggregate(sessions, { branch = null } = {}) {
       session.records,
       branch,
     );
-    if (calls.length === 0 && sessionTurns.length === 0) continue;
+    if (calls.length === 0) continue;
     totals.sessions += 1;
     const turnStats = new Map(
       sessionTurns.map((turn) => [turn.index, { ...turn, ...emptyBucket() }]),
@@ -265,8 +265,11 @@ export function aggregate(sessions, { branch = null } = {}) {
         addTo(byTool, toolUse.name, share);
       }
     }
-    totals.prompts += sessionTurns.length;
-    turns.push(...turnStats.values());
+    const activeTurns = [...turnStats.values()].filter(
+      (turn) => turn.calls > 0,
+    );
+    totals.prompts += activeTurns.length;
+    turns.push(...activeTurns);
   }
 
   const toRows = (map) =>
