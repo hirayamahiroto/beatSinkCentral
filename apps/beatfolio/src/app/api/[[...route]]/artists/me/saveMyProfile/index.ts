@@ -3,7 +3,19 @@ import { z } from "zod";
 import type { RequestContextEnv } from "../../../../../../middlewares/requestContext";
 import { validateRequest } from "../../../validators/validateRequest";
 import { resolveMyArtistId } from "../../../shared/resolveMyArtistId";
-import { toUpstreamError } from "../../../shared/toUpstreamError";
+import {
+  toUpstreamError,
+  type UpstreamResponse,
+} from "../../../shared/toUpstreamError";
+import {
+  createPartialSaveFailedError,
+  type UpstreamFailure,
+} from "../../../errors/partialSaveFailed";
+import { isUpstreamUnavailableError } from "../../../../../../utils/client/errors/upstreamUnavailable";
+import {
+  chapterStep,
+  type SaveStep,
+} from "../../../../../../libs/saveProfileProgress";
 
 const MAX_GENRES = 20;
 const MAX_LINKS = 20;
@@ -22,6 +34,36 @@ const saveProfileRequestSchema = z.object({
     .max(MAX_LINKS),
 });
 
+type StepResponse = UpstreamResponse & { ok: boolean };
+
+const createSaveSteps = () => {
+  const saved: SaveStep[] = [];
+
+  const run = async (
+    step: SaveStep,
+    send: () => Promise<StepResponse>,
+  ): Promise<void> => {
+    const fail = (upstream: UpstreamFailure) =>
+      createPartialSaveFailedError({
+        saved: [...saved],
+        failedAt: step,
+        upstream,
+      });
+
+    let res: StepResponse;
+    try {
+      res = await send();
+    } catch (error) {
+      if (isUpstreamUnavailableError(error)) throw fail(error);
+      throw error;
+    }
+    if (!res.ok) throw fail(await toUpstreamError(res));
+    saved.push(step);
+  };
+
+  return { run };
+};
+
 const app = new Hono<RequestContextEnv>().post(
   "/",
   validateRequest("json", saveProfileRequestSchema),
@@ -31,36 +73,40 @@ const app = new Hono<RequestContextEnv>().post(
 
     const artistId = await resolveMyArtistId(apiClient);
     const artist = apiClient.api.artists[":artistId"];
+    const steps = createSaveSteps();
 
-    const attributesRes = await artist.attributes.$post({
-      param: { artistId },
-      json: {
-        name: body.name,
-        tagline: body.tagline,
-        genres: body.genres,
-        activityInfo: body.activityInfo,
-      },
-    });
-    if (!attributesRes.ok) throw await toUpstreamError(attributesRes);
+    await steps.run("attributes", () =>
+      artist.attributes.$post({
+        param: { artistId },
+        json: {
+          name: body.name,
+          tagline: body.tagline,
+          genres: body.genres,
+          activityInfo: body.activityInfo,
+        },
+      }),
+    );
 
     for (const chapter of body.chapters) {
-      const chapterRes = await artist.story.chapters[":chapterKey"].$post({
-        param: { artistId, chapterKey: chapter.questionCode },
-        json: { body: chapter.body },
-      });
-      if (!chapterRes.ok) throw await toUpstreamError(chapterRes);
+      await steps.run(chapterStep(chapter.questionCode), () =>
+        artist.story.chapters[":chapterKey"].$post({
+          param: { artistId, chapterKey: chapter.questionCode },
+          json: { body: chapter.body },
+        }),
+      );
     }
 
-    const linksRes = await artist.links.$post({
-      param: { artistId },
-      json: {
-        links: body.links.map((link) => ({
-          linkTypeCode: link.type,
-          url: link.url,
-        })),
-      },
-    });
-    if (!linksRes.ok) throw await toUpstreamError(linksRes);
+    await steps.run("links", () =>
+      artist.links.$post({
+        param: { artistId },
+        json: {
+          links: body.links.map((link) => ({
+            linkTypeCode: link.type,
+            url: link.url,
+          })),
+        },
+      }),
+    );
 
     return c.body(null, 204);
   },

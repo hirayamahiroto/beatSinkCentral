@@ -6,6 +6,7 @@ import {
 } from "../../../../../../middlewares/requestContext";
 import saveMyProfile from "./index";
 import { handleBffError } from "../../../../../../errorMap";
+import { createUpstreamUnavailableError } from "../../../../../../utils/client/errors/upstreamUnavailable";
 
 const { meGet, attributesPost, chapterPost, linksPost } = vi.hoisted(() => ({
   meGet: vi.fn(),
@@ -173,7 +174,7 @@ describe("POST /artists/me/profile", () => {
     expect(attributesPost.mock.calls[0][0].json).not.toHaveProperty("imageUrl");
   });
 
-  it("属性の更新が失敗したら章・リンクは送らず、ステータスごと透過する", async () => {
+  it("属性の更新が失敗したら章・リンクは送らず、ステータスごと透過し、保存済みは空で返す", async () => {
     attributesPost.mockResolvedValue(
       jsonResponse(
         { error: "Invalid name format", code: "InvalidProfileNameFormatError" },
@@ -187,12 +188,14 @@ describe("POST /artists/me/profile", () => {
     expect(await res.json()).toStrictEqual({
       error: "Invalid name format",
       code: "InvalidProfileNameFormatError",
+      saved: [],
+      failedAt: "attributes",
     });
     expect(chapterPost).not.toHaveBeenCalled();
     expect(linksPost).not.toHaveBeenCalled();
   });
 
-  it("章の更新が失敗したら残りの章とリンクは送らず、ステータスごと透過する", async () => {
+  it("章の更新が失敗したら残りの章とリンクは送らず、保存済みの属性と失敗した章を返す", async () => {
     chapterPost.mockResolvedValueOnce(
       jsonResponse(
         {
@@ -206,7 +209,57 @@ describe("POST /artists/me/profile", () => {
     const res = await request(fullBody);
 
     expect(res.status).toBe(422);
+    expect(await res.json()).toStrictEqual({
+      error: "Invalid story chapter format",
+      code: "InvalidStoryChapterFormatError",
+      saved: ["attributes"],
+      failedAt: "chapter:beginning",
+    });
     expect(chapterPost).toHaveBeenCalledTimes(1);
     expect(linksPost).not.toHaveBeenCalled();
+  });
+
+  it("リンクの更新が 5xx なら 502 に畳み、属性と全章を保存済みとして返す", async () => {
+    linksPost.mockResolvedValue(
+      jsonResponse(
+        { error: "Internal Server Error" },
+        { ok: false, status: 500 },
+      ),
+    );
+
+    const res = await request(fullBody);
+
+    expect(res.status).toBe(502);
+    expect(await res.json()).toStrictEqual({
+      error: "Upstream request failed",
+      code: "UpstreamServerError",
+      saved: ["attributes", "chapter:beginning", "chapter:turning_point"],
+      failedAt: "links",
+    });
+  });
+
+  it("途中で api-server に到達できなくなっても、そこまでの保存済みステップを返す", async () => {
+    linksPost.mockRejectedValue(
+      createUpstreamUnavailableError(new TypeError("fetch failed")),
+    );
+
+    const res = await request(fullBody);
+
+    expect(res.status).toBe(502);
+    expect(await res.json()).toStrictEqual({
+      error: "Upstream request failed",
+      code: "UpstreamUnavailableError",
+      saved: ["attributes", "chapter:beginning", "chapter:turning_point"],
+      failedAt: "links",
+    });
+  });
+
+  it("上流由来でない例外はそのまま投げ、保存進捗で包まない", async () => {
+    linksPost.mockRejectedValue(new Error("programming error"));
+
+    const res = await request(fullBody);
+
+    expect(res.status).toBe(500);
+    expect(await res.json()).toStrictEqual({ error: "Internal Server Error" });
   });
 });

@@ -68,3 +68,15 @@ export const WithError: Story = {
     error: "保存に失敗しました。時間をおいて再度お試しください。",
   },
 };
+
+export const WithPartialSaveFailure: Story = {
+  args: {
+    email: "saku@example.com",
+    isLoading: false,
+    error: "Invalid snsUrl format",
+    saveProgress: {
+      savedSections: ["attributes", "chapters"],
+      failedSection: "links",
+    },
+  },
+};

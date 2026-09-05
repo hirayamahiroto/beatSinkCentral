@@ -291,18 +291,20 @@ api-server はエラーを型付きエラーで分類し、`errorMap` で `{ err
 
 #### 失敗の分類（`shared/toUpstreamError` が 1 箇所で行う）
 
-| 上流の状態                                      | 検知する層                                            | 型付きエラー                                    | HTTP                               | ログ  |
-| ----------------------------------------------- | ----------------------------------------------------- | ----------------------------------------------- | ---------------------------------- | ----- |
-| 到達できない（DNS / 接続拒否 / timeout）        | `createApiServerClient`（fetch の reject を捕捉）     | `UpstreamUnavailableError`                      | 502                                | warn  |
-| 5xx を返した                                    | `toUpstreamError`（ボディは読まない）                 | `UpstreamServerError`                           | 502                                | warn  |
-| 4xx を返し、ボディに `code` がある              | `toUpstreamError`                                     | `UpstreamRejectedError`                         | **上流のステータス・ボディを透過** | info  |
-| 4xx を返したが `code` が無い / ボディが解析不能 | `toUpstreamError`                                     | `UpstreamContractViolationError`                | 502                                | error |
-| 成功応答のボディが解析できない                  | `shared/readUpstreamJson`                             | `UpstreamContractViolationError`                | 502                                | error |
-| セッション主体が未登録 / artist 不在            | `shared/resolveMyUserId` / `shared/resolveMyArtistId` | `MyUserNotFoundError` / `MyArtistNotFoundError` | 404                                | info  |
-| 画面の対象が不在（未公開・存在しない handle）   | 各 read route                                         | `PlayerNotFoundError` 等                        | 404                                | info  |
-| BFF へのリクエスト形式が不正                    | `validators/validateRequest`                          | `InvalidRequestFormatError`                     | 400 + `issues`                     | info  |
+| 上流の状態                                      | 検知する層                                            | 型付きエラー                                    | HTTP                                          | ログ       |
+| ----------------------------------------------- | ----------------------------------------------------- | ----------------------------------------------- | --------------------------------------------- | ---------- |
+| 到達できない（DNS / 接続拒否 / timeout）        | `createApiServerClient`（fetch の reject を捕捉）     | `UpstreamUnavailableError`                      | 502                                           | warn       |
+| 5xx を返した                                    | `toUpstreamError`（ボディは読まない）                 | `UpstreamServerError`                           | 502                                           | warn       |
+| 4xx を返し、ボディに `code` がある              | `toUpstreamError`                                     | `UpstreamRejectedError`                         | **上流のステータス・ボディを透過**            | info       |
+| 4xx を返したが `code` が無い / ボディが解析不能 | `toUpstreamError`                                     | `UpstreamContractViolationError`                | 502                                           | error      |
+| 成功応答のボディが解析できない                  | `shared/readUpstreamJson`                             | `UpstreamContractViolationError`                | 502                                           | error      |
+| セッション主体が未登録 / artist 不在            | `shared/resolveMyUserId` / `shared/resolveMyArtistId` | `MyUserNotFoundError` / `MyArtistNotFoundError` | 404                                           | info       |
+| 画面の対象が不在（未公開・存在しない handle）   | 各 read route                                         | `PlayerNotFoundError` 等                        | 404                                           | info       |
+| BFF へのリクエスト形式が不正                    | `validators/validateRequest`                          | `InvalidRequestFormatError`                     | 400 + `issues`                                | info       |
+| 複数の更新 API を順に呼ぶ write が途中で失敗    | 合成 write route（`artists/me/saveMyProfile`）        | `PartialSaveFailedError`（上流エラーを内包）    | 上流エラーの行に従う + `saved[]` / `failedAt` | 上流に従う |
 
 - **到達不能の検知は route ではなく client 層**が担う。route ごとに `try/catch` を重ねない。
+  - 例外は **複数の更新 API を順に呼ぶ合成 write**（`saveMyProfile`）。ステップ単位で上流の失敗（`toUpstreamError` の結果、または client 層が投げた `UpstreamUnavailableError`）を `PartialSaveFailedError` に包み、保存済みステップを添える。上流由来でない例外は包まず素通しする（500）。fetcher はボディの `saved` / `failedAt` を読んで `progress`（読めなければ `null`）として hook へ渡し、画面が「どこまで保存されたか」を示す。
 - **route の失敗パスは `if (!res.ok) throw await toUpstreamError(res);` の 1 行**。成功応答の読み取りは `await readUpstreamJson(res)`。`route.ts` の `.onError(handleBffError)` が `errorMap` で HTTP へ変換する。
 - **read も write も同じ経路**。read で「対象の不在」を画面が区別する必要がある場合（`players/getPlayerDetail` の 404）は、route が意味を判定して専用の型付きエラー（`PlayerNotFoundError`）を throw する。ステータスは `errorMap` 側にある。
 - **未知のエラーは 500 + `console.error`**。上流障害（502）と BFF 自身のバグ（500）を混ぜない（[エラーハンドリングの層責務](../../server/error-handling/layer-responsibilities.md#例外-bff-から見た-api-serverゲートウェイの上流障害)）。

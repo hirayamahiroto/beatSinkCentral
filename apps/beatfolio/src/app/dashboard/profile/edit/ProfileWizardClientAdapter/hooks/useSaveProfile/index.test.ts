@@ -129,8 +129,40 @@ describe("useSaveProfile", () => {
     });
 
     expect(returned).toBe(false);
-    expect(result.current.error).toBe("保存に失敗");
+    expect(result.current.error).toStrictEqual({
+      message: "保存に失敗",
+      progress: null,
+    });
     expect(pushMock).not.toHaveBeenCalled();
+    expect(refreshMock).not.toHaveBeenCalled();
+  });
+
+  it("途中まで保存されて失敗したら、どのステップまで保存されたかを error に載せる", async () => {
+    saveMock.mockResolvedValueOnce(
+      buildJsonResponse(
+        {
+          error: "Invalid snsUrl format",
+          code: "InvalidSnsUrlFormatError",
+          saved: ["attributes", "chapter:beginning"],
+          failedAt: "links",
+        },
+        { status: 422 },
+      ),
+    );
+
+    const { result } = renderHook(() => useSaveProfile());
+
+    await act(async () => {
+      await result.current.saveDraft(values);
+    });
+
+    expect(result.current.error).toStrictEqual({
+      message: "Invalid snsUrl format",
+      progress: {
+        saved: ["attributes", "chapter:beginning"],
+        failedAt: "links",
+      },
+    });
     expect(refreshMock).not.toHaveBeenCalled();
   });
 });

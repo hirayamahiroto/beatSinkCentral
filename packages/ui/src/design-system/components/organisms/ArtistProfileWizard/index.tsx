@@ -88,6 +88,30 @@ const toDefaultChapters = (
     }),
   );
 
+export type SaveSection = "attributes" | "chapters" | "links";
+
+export type SaveProgress = {
+  savedSections: SaveSection[];
+  failedSection: SaveSection;
+};
+
+const SAVE_SECTION_LABELS: Record<SaveSection, string> = {
+  attributes: "基本・活動",
+  chapters: "Story",
+  links: "リンク",
+};
+
+const describeSaveProgress = (progress: SaveProgress): string => {
+  const failed = SAVE_SECTION_LABELS[progress.failedSection];
+  if (progress.savedSections.length === 0) {
+    return `${failed}の保存に失敗したため、まだ何も保存されていません。`;
+  }
+  const saved = progress.savedSections
+    .map((section) => SAVE_SECTION_LABELS[section])
+    .join("・");
+  return `${saved}は保存済みです。${failed}の保存に失敗しました。もう一度保存すると全体が反映されます。`;
+};
+
 type ArtistProfileWizardProps = {
   email: string;
   linkTypeOptions: LinkTypeOption[];
@@ -98,6 +122,7 @@ type ArtistProfileWizardProps = {
   onSaveDraft?: (data: WizardValues) => void;
   isLoading?: boolean;
   error?: string | null;
+  saveProgress?: SaveProgress | null;
 };
 
 const STEP_LABELS = ["基本", "Story", "活動", "リンク", "確認"];
@@ -124,6 +149,7 @@ export const ArtistProfileWizard = ({
   onSaveDraft,
   isLoading = false,
   error = null,
+  saveProgress = null,
 }: ArtistProfileWizardProps) => {
   const [step, setStep] = React.useState(1);
   const [isUploadingImage, setIsUploadingImage] = React.useState(false);
@@ -470,6 +496,11 @@ export const ArtistProfileWizard = ({
               {error && (
                 <Typography variant="small" tone="danger">
                   {error}
+                </Typography>
+              )}
+              {saveProgress && (
+                <Typography variant="small" tone="muted">
+                  {describeSaveProgress(saveProgress)}
                 </Typography>
               )}
             </div>

@@ -44,7 +44,61 @@ describe("saveMyProfile", () => {
 
     expect(result).toStrictEqual({
       ok: false,
-      error: { kind: "rejected", message: "Invalid name format" },
+      error: {
+        kind: "rejected",
+        message: "Invalid name format",
+        progress: null,
+      },
+    });
+  });
+
+  it("保存済みと失敗ステップを含むボディは progress として返す", async () => {
+    postMock.mockResolvedValue({
+      ok: false,
+      status: 422,
+      json: async () => ({
+        error: "Invalid snsUrl format",
+        code: "InvalidSnsUrlFormatError",
+        saved: ["attributes", "chapter:beginning"],
+        failedAt: "links",
+      }),
+    });
+
+    const result = await saveMyProfile(input);
+
+    expect(result).toStrictEqual({
+      ok: false,
+      error: {
+        kind: "rejected",
+        message: "Invalid snsUrl format",
+        progress: {
+          saved: ["attributes", "chapter:beginning"],
+          failedAt: "links",
+        },
+      },
+    });
+  });
+
+  it("ステップ識別子が契約外なら progress は null にする", async () => {
+    postMock.mockResolvedValue({
+      ok: false,
+      status: 422,
+      json: async () => ({
+        error: "Invalid snsUrl format",
+        saved: ["image"],
+        failedAt: "links",
+      }),
+    });
+
+    const result = await saveMyProfile(input);
+
+    expect(result).toStrictEqual({
+      ok: false,
+      error: {
+        kind: "rejected",
+        message: "Invalid snsUrl format",
+        progress: null,
+      },
     });
   });
 
@@ -62,6 +116,7 @@ describe("saveMyProfile", () => {
       error: {
         kind: "unexpected",
         message: "プロフィールの保存に失敗しました",
+        progress: null,
       },
     });
   });
@@ -73,7 +128,11 @@ describe("saveMyProfile", () => {
 
     expect(result).toStrictEqual({
       ok: false,
-      error: { kind: "unexpected", message: NETWORK_ERROR_MESSAGE },
+      error: {
+        kind: "unexpected",
+        message: NETWORK_ERROR_MESSAGE,
+        progress: null,
+      },
     });
   });
 });

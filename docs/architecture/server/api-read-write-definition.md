@@ -146,7 +146,7 @@ app/api/[[...route]]/artists/[artistId]/
 | 更新 | 画面の入力を、構造ごとの更新 API に振り分けて送る。編集画面が全項目を一度に保存するなら BFF が複数を順に呼ぶ。薄い |
 
 - 編集画面の「保存」ボタン一つに対して api-server の更新 API が一つ、という対応にしない。**ボタンは画面の語彙、更新 API はモデルの語彙**。対応づけは BFF が持つ。
-- BFF の `artists/me/saveMyProfile` は画面都合の合成であり、内部で `attributes` → `story/chapters/:chapterKey`（章ごと）→ `links` を順に呼ぶ。途中で失敗した場合は失敗した呼び出しのエラーをそのまま返す（下書きの部分的な状態は許容する）。
+- BFF の `artists/me/saveMyProfile` は画面都合の合成であり、内部で `attributes` → `story/chapters/:chapterKey`（章ごと）→ `links` を順に呼ぶ。途中で失敗した場合は後続を送らず、失敗した呼び出しのエラー（ステータス・ボディ）に **保存済みステップ `saved[]` と失敗ステップ `failedAt`** を添えて返す（`PartialSaveFailedError`）。下書きの部分的な状態は許容するが、どこまで保存されたかは画面へ伝える。各更新は置換型で冪等なので、同じ入力での再送で全体が収束する。
 - 画像は編集画面から `profile/image` へ直接アップロードされ、その時点で集約へ書き込まれる。`saveMyProfile` は画像 URL を受け取らない。
 
 ---
