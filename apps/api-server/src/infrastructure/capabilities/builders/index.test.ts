@@ -87,9 +87,11 @@ describe("buildPublicReadCapabilities", () => {
     expect(Object.keys(caps).sort()).toStrictEqual([
       "artistProfiles",
       "linkTypes",
+      "storyQuestions",
     ]);
     expect(createArtistProfileReader).toHaveBeenCalledWith(executor);
     expect(createLinkTypeReader).toHaveBeenCalledWith(executor);
+    expect(createStoryQuestionReader).toHaveBeenCalledWith(executor);
     expect(createArtistProfileWriter).not.toHaveBeenCalled();
   });
 });
@@ -115,15 +117,11 @@ describe("buildArtistReadCapabilities", () => {
   it("Actor と Reader だけを渡し、Writer は渡さない", () => {
     const caps = buildArtistReadCapabilities(actor)(executor);
 
-    expect(Object.keys(caps).sort()).toStrictEqual([
-      "actor",
-      "artistProfiles",
-      "storyQuestions",
-    ]);
+    expect(Object.keys(caps).sort()).toStrictEqual(["actor", "artistProfiles"]);
     expect(caps.actor).toBe(actor);
     expect(createArtistProfileReader).toHaveBeenCalledWith(executor);
     expect(createArtistProfileWriter).not.toHaveBeenCalled();
-    expect(createStoryQuestionReader).toHaveBeenCalledWith(executor);
+    expect(createStoryQuestionReader).not.toHaveBeenCalled();
   });
 });
 

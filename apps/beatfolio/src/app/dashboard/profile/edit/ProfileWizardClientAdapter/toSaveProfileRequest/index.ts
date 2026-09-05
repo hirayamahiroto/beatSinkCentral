@@ -4,29 +4,27 @@ import { composeActivityInfo } from "../../../../../../libs/activityInfo";
 export type SaveProfileRequest = {
   name: string;
   tagline: string | null;
-  imageUrl: string;
-  chapters: { questionCode: string; body: string }[];
   activityInfo: string;
   genres: string[];
+  chapters: { questionCode: string; body: string }[];
   links: { type: string; url: string }[];
 };
 
 const toChapters = (
   values: WizardValues,
 ): { questionCode: string; body: string }[] =>
-  Object.entries(values.chapters).flatMap(([questionCode, body]) => {
-    const trimmed = body.trim();
-    return trimmed.length > 0 ? [{ questionCode, body: trimmed }] : [];
-  });
+  Object.entries(values.chapters).map(([questionCode, body]) => ({
+    questionCode,
+    body: body.trim(),
+  }));
 
 export const toSaveProfileRequest = (
   values: WizardValues,
 ): SaveProfileRequest => ({
   name: values.name,
   tagline: values.tagline?.trim() ? values.tagline : null,
-  imageUrl: values.imageUrl,
-  chapters: toChapters(values),
   activityInfo: composeActivityInfo(values),
   genres: values.genres,
+  chapters: toChapters(values),
   links: values.links.map(({ type, url }) => ({ type, url })),
 });

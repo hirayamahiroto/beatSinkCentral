@@ -1,15 +1,17 @@
 import type { ProfileName } from "../valueObjects/profileName";
 import type { Tagline } from "../valueObjects/tagline";
 import type { ImageUrl } from "../valueObjects/imageUrl";
-import type { StoryChapter } from "../valueObjects/storyChapter";
+import type {
+  StoryChapter,
+  StoryQuestionCode,
+} from "../valueObjects/storyChapter";
 import type { ActivityInfo } from "../valueObjects/activityInfo";
 import type { Genre } from "../valueObjects/genre";
 import type { ProfileLink } from "../valueObjects/profileLink";
 
 export type ProfileLinkData = {
-  type: string;
+  linkTypeCode: string;
   url: string;
-  label: string | null;
 };
 
 export type StoryChapterData = {
@@ -30,6 +32,11 @@ export type ArtistProfileState = {
   readonly published: boolean;
 };
 
+export type ArtistProfileAttributes = Pick<
+  ArtistProfileState,
+  "name" | "tagline" | "genres" | "activityInfo"
+>;
+
 export type ArtistProfilePersistenceData = {
   id: string;
   artistId: string;
@@ -43,13 +50,26 @@ export type ArtistProfilePersistenceData = {
   published: boolean;
 };
 
-export type ArtistProfileView = {
+export type ArtistProfileAttributesView = {
   name: string | null;
-  tagline: string | null;
   imageUrl: string | null;
-  chapters: StoryChapterData[];
-  activityInfo: string | null;
+  tagline: string | null;
   genres: string[];
+  activityInfo: string | null;
+};
+
+export type StoryChapterView = {
+  key: string;
+  body: string;
+};
+
+export type ArtistProfileStoryView = {
+  chapters: StoryChapterView[];
+};
+
+export type ArtistProfileView = {
+  attributes: ArtistProfileAttributesView;
+  story: ArtistProfileStoryView;
   links: ProfileLinkData[];
   published: boolean;
 };
@@ -67,6 +87,11 @@ export type ArtistProfile = {
   isPublished: () => boolean;
   publish: () => ArtistProfile;
   unpublish: () => ArtistProfile;
+  reviseAttributes: (attributes: ArtistProfileAttributes) => ArtistProfile;
+  writeStoryChapter: (chapter: StoryChapter) => ArtistProfile;
+  clearStoryChapter: (questionCode: StoryQuestionCode) => ArtistProfile;
+  replaceLinks: (links: readonly ProfileLink[]) => ArtistProfile;
+  changeImage: (imageUrl: ImageUrl) => ArtistProfile;
   toPersistence: () => ArtistProfilePersistenceData;
   toView: () => ArtistProfileView;
 };

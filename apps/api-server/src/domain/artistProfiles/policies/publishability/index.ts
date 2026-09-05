@@ -44,8 +44,20 @@ export const collectMissingPublishFields = (
   return missing;
 };
 
+export type Publishability = {
+  ok: boolean;
+  missingFields: PublishRequiredField[];
+};
+
+export const assessPublishability = (
+  profile: ArtistProfile,
+): Publishability => {
+  const missingFields = collectMissingPublishFields(profile);
+  return { ok: missingFields.length === 0, missingFields };
+};
+
 const isPublishable = (profile: ArtistProfile): boolean =>
-  collectMissingPublishFields(profile).length === 0;
+  assessPublishability(profile).ok;
 
 export const enforcePublishInvariant = (
   profile: ArtistProfile,

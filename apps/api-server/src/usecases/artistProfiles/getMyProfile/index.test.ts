@@ -4,7 +4,6 @@ import { reconstructArtist } from "../../../domain/artists/factories";
 import { reconstructArtistProfile } from "../../../domain/artistProfiles/factories";
 import { getMyProfile } from "./index";
 import type { IArtistProfileReader } from "../../../domain/artistProfiles/repositories";
-import type { IStoryQuestionReader } from "../../../domain/storyQuestions/repositories";
 import type { Actor, ArtistReadCapabilities } from "../../capabilities";
 
 const actor: Actor = {
@@ -21,12 +20,6 @@ const actor: Actor = {
   }),
 };
 
-const storyQuestions = [
-  { code: "beginning", label: "始まり" },
-  { code: "turning_point", label: "転機" },
-  { code: "concept", label: "何を表現したいのか" },
-];
-
 const createCaps = () =>
   ({
     actor,
@@ -41,37 +34,27 @@ const createCaps = () =>
         IArtistProfileReader["listPublishedSummaries"]
       >(async () => []),
     },
-    storyQuestions: {
-      findAll: vi.fn<IStoryQuestionReader["findAll"]>(
-        async () => storyQuestions,
-      ),
-    },
   }) satisfies ArtistReadCapabilities;
 
 describe("getMyProfile", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("プロフィール未作成なら profile と missingPublishFields を null で返し、問いマスタは返す", async () => {
+  it("プロフィール未作成なら profile と publishability を null で返す", async () => {
     const caps = createCaps();
 
     const result = await getMyProfile(caps);
 
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.value).toEqual({
+      expect(result.value).toStrictEqual({
         handle: "beatboxer_taro",
         profile: null,
-        missingPublishFields: null,
-        storyQuestions: [
-          { code: "beginning", label: "始まり", required: true },
-          { code: "turning_point", label: "転機", required: false },
-          { code: "concept", label: "何を表現したいのか", required: false },
-        ],
+        publishability: null,
       });
     }
   });
 
-  it("actor の artistId で引き、view を返す", async () => {
+  it("actor の artistId で引き、集約の構造（attributes / story / links / published）で返す", async () => {
     const caps = createCaps();
     caps.artistProfiles.findByArtistId.mockResolvedValue(
       reconstructArtistProfile({
@@ -79,6 +62,9 @@ describe("getMyProfile", () => {
         artistId: "artist-1",
         published: false,
         name: "Taro",
+        chapters: [{ questionCode: "beginning", body: "始めたきっかけ。" }],
+        genres: ["Beatbox"],
+        links: [{ linkTypeCode: "youtube", url: "https://youtube.com/@taro" }],
       }),
     );
 
@@ -87,12 +73,22 @@ describe("getMyProfile", () => {
     expect(caps.artistProfiles.findByArtistId).toHaveBeenCalledWith("artist-1");
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.value.profile?.name).toBe("Taro");
-      expect(result.value.profile?.published).toBe(false);
+      expect(result.value.profile).toStrictEqual({
+        attributes: {
+          name: "Taro",
+          imageUrl: null,
+          tagline: null,
+          genres: ["Beatbox"],
+          activityInfo: null,
+        },
+        story: { chapters: [{ key: "beginning", body: "始めたきっかけ。" }] },
+        links: [{ linkTypeCode: "youtube", url: "https://youtube.com/@taro" }],
+        published: false,
+      });
     }
   });
 
-  it("公開に足りない項目を missingPublishFields として返す", async () => {
+  it("公開に足りない項目を publishability として返す", async () => {
     const caps = createCaps();
     caps.artistProfiles.findByArtistId.mockResolvedValue(
       reconstructArtistProfile({
@@ -109,14 +105,14 @@ describe("getMyProfile", () => {
 
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.value.missingPublishFields).toStrictEqual([
-        "imageUrl",
-        "links",
-      ]);
+      expect(result.value.publishability).toStrictEqual({
+        ok: false,
+        missingFields: ["imageUrl", "links"],
+      });
     }
   });
 
-  it("公開可能なプロフィールなら missingPublishFields は空配列を返す", async () => {
+  it("公開可能なプロフィールなら publishability.ok が true で missingFields は空", async () => {
     const caps = createCaps();
     caps.artistProfiles.findByArtistId.mockResolvedValue(
       reconstructArtistProfile({
@@ -127,7 +123,7 @@ describe("getMyProfile", () => {
         imageUrl: "https://example.com/taro.jpg",
         chapters: [{ questionCode: "beginning", body: "始めたきっかけ。" }],
         genres: ["Beatbox"],
-        links: [{ type: "youtube", url: "https://youtube.com/@taro" }],
+        links: [{ linkTypeCode: "youtube", url: "https://youtube.com/@taro" }],
       }),
     );
 
@@ -135,7 +131,10 @@ describe("getMyProfile", () => {
 
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.value.missingPublishFields).toStrictEqual([]);
+      expect(result.value.publishability).toStrictEqual({
+        ok: true,
+        missingFields: [],
+      });
     }
   });
 });

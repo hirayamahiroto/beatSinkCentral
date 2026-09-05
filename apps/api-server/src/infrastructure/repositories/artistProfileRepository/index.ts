@@ -1,4 +1,13 @@
-import { and, eq, isNull, isNotNull, asc, desc, inArray } from "drizzle-orm";
+import {
+  and,
+  eq,
+  isNull,
+  isNotNull,
+  asc,
+  desc,
+  inArray,
+  sql,
+} from "drizzle-orm";
 import {
   artistsTable,
   artistProfilesTable,
@@ -53,6 +62,8 @@ const toPublishedSummaries = (
     handle: string;
     name: string | null;
     imageUrl: string | null;
+    tagline: string | null;
+    genres: string[];
   }[],
 ): PublishedProfileSummary[] =>
   rows.flatMap((row) =>
@@ -68,9 +79,8 @@ const loadChildren = async (executor: Executor, profileId: string) => {
       .orderBy(asc(artistProfileGenresTable.sortOrder)),
     executor
       .select({
-        type: linkTypesTable.code,
+        linkTypeCode: linkTypesTable.code,
         url: artistProfileLinksTable.url,
-        label: artistProfileLinksTable.label,
       })
       .from(artistProfileLinksTable)
       .innerJoin(
@@ -122,7 +132,7 @@ const resolveLinkTypeIds = async (
   executor: Executor,
   links: ProfileLinkData[],
 ): Promise<Map<string, number>> => {
-  const codes = [...new Set(links.map((link) => link.type))];
+  const codes = [...new Set(links.map((link) => link.linkTypeCode))];
   const rows = await executor
     .select({ id: linkTypesTable.id, code: linkTypesTable.code })
     .from(linkTypesTable)
@@ -175,7 +185,7 @@ const replaceChildren = async (
     const idByCode = await resolveLinkTypeIds(executor, links);
     await executor.insert(artistProfileLinksTable).values(
       links.map((link, index) => {
-        const linkTypeId = idByCode.get(link.type);
+        const linkTypeId = idByCode.get(link.linkTypeCode);
         if (linkTypeId === undefined) {
           throw createInvalidProfileLinkFormatError();
         }
@@ -183,7 +193,6 @@ const replaceChildren = async (
           artistProfileId: profileId,
           linkTypeId,
           url: link.url,
-          label: link.label,
           sortOrder: index,
         };
       }),
@@ -253,16 +262,35 @@ export const createArtistProfileReader = (
   async listPublishedSummaries({
     limit,
   }: ListPublishedSummariesInput): Promise<PublishedProfileSummary[]> {
+    const genresByProfile = executor
+      .select({
+        artistProfileId: artistProfileGenresTable.artistProfileId,
+        genres: sql<
+          string[]
+        >`array_agg(${artistProfileGenresTable.genre} order by ${artistProfileGenresTable.sortOrder})`.as(
+          "genres",
+        ),
+      })
+      .from(artistProfileGenresTable)
+      .groupBy(artistProfileGenresTable.artistProfileId)
+      .as("profile_genres");
+
     const rows = await executor
       .select({
         handle: artistsTable.handle,
         name: artistProfilesTable.name,
         imageUrl: artistProfilesTable.imageUrl,
+        tagline: artistProfilesTable.tagline,
+        genres: sql<string[]>`coalesce(${genresByProfile.genres}, '{}')`,
       })
       .from(artistProfilesTable)
       .innerJoin(
         artistsTable,
         eq(artistProfilesTable.artistId, artistsTable.id),
+      )
+      .leftJoin(
+        genresByProfile,
+        eq(genresByProfile.artistProfileId, artistProfilesTable.id),
       )
       .where(
         and(
@@ -300,6 +328,8 @@ export const createArtistProfileWriter = (
           tagline: data.tagline,
           imageUrl: data.imageUrl,
           activityInfo: data.activityInfo,
+          published: sql`${artistProfilesTable.published} and excluded.published`,
+          publishedAt: sql`case when excluded.published then ${artistProfilesTable.publishedAt} else null end`,
           updatedAt: new Date(),
         },
       })

@@ -71,11 +71,14 @@ describe("useSaveProfile", () => {
     expect(saveMock).toHaveBeenCalledWith({
       json: {
         name: "SAKU",
-        imageUrl: "https://example.com/saku.jpg",
         tagline: "口ひとつで、フロアを揺らす。",
-        chapters: [{ questionCode: "beginning", body: "始めたきっかけ。" }],
         activityInfo: "拠点: 東京 / 形態: ソロ",
         genres: ["Beatbox"],
+        chapters: [
+          { questionCode: "beginning", body: "始めたきっかけ。" },
+          { questionCode: "turning_point", body: "" },
+          { questionCode: "concept", body: "" },
+        ],
         links: [{ type: "youtube", url: "https://youtube.com/@saku" }],
       },
     });
@@ -97,11 +100,14 @@ describe("useSaveProfile", () => {
     expect(saveMock).toHaveBeenCalledExactlyOnceWith({
       json: {
         name: "SAKU",
-        imageUrl: "https://example.com/saku.jpg",
         tagline: "口ひとつで、フロアを揺らす。",
-        chapters: [{ questionCode: "beginning", body: "始めたきっかけ。" }],
         activityInfo: "拠点: 東京 / 形態: ソロ",
         genres: ["Beatbox"],
+        chapters: [
+          { questionCode: "beginning", body: "始めたきっかけ。" },
+          { questionCode: "turning_point", body: "" },
+          { questionCode: "concept", body: "" },
+        ],
         links: [{ type: "youtube", url: "https://youtube.com/@saku" }],
       },
     });

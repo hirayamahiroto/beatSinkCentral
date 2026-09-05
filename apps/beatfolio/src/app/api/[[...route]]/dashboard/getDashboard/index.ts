@@ -26,9 +26,9 @@ const app = new Hono<RequestContextEnv>().get("/", async (c) => {
 
   if (!profileRes.ok) throw await toUpstreamError(profileRes);
 
-  const { profile, missingPublishFields } = await readUpstreamJson(profileRes);
+  const { profile, publishability } = await readUpstreamJson(profileRes);
 
-  if (profile === null || missingPublishFields === null) {
+  if (profile === null || publishability === null) {
     return c.json({
       registered: true as const,
       artist: { handle: me.artist.handle, profile: null },
@@ -41,8 +41,9 @@ const app = new Hono<RequestContextEnv>().get("/", async (c) => {
       handle: me.artist.handle,
       profile: {
         published: profile.published,
-        missingPublishRequirements:
-          resolvePublishRequirementLabels(missingPublishFields),
+        missingPublishRequirements: resolvePublishRequirementLabels(
+          publishability.missingFields,
+        ),
       },
     },
   });

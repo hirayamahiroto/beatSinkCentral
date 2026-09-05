@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { SQL } from "drizzle-orm";
+import { PgDialect } from "drizzle-orm/pg-core";
 import { createArtistProfileReader, createArtistProfileWriter } from "./index";
+
+const toSqlText = (fragment: SQL): string =>
+  new PgDialect().sqlToQuery(fragment).sql;
 
 const createDbMock = () => {
   const queue: unknown[] = [];
@@ -10,9 +15,12 @@ const createDbMock = () => {
     "select",
     "from",
     "innerJoin",
+    "leftJoin",
     "where",
     "limit",
     "orderBy",
+    "groupBy",
+    "as",
     "insert",
     "values",
     "onConflictDoUpdate",
@@ -69,7 +77,7 @@ describe("artistProfileRepository", () => {
       mock.enqueue(
         [profileRow],
         [{ genre: "bass" }, { genre: "inward" }],
-        [{ type: "x", url: "https://x.com/taro", label: null }],
+        [{ linkTypeCode: "x", url: "https://x.com/taro" }],
         [{ questionCode: "beginning", body: "私の歩み" }],
       );
       const reader = createArtistProfileReader(mock.db as never);
@@ -78,8 +86,8 @@ describe("artistProfileRepository", () => {
 
       expect(result?.getName()).toBe("Taro");
       expect(result?.getGenres()).toEqual(["bass", "inward"]);
-      expect(result?.getLinks()).toEqual([
-        { type: "x", url: "https://x.com/taro", label: null },
+      expect(result?.getLinks()).toStrictEqual([
+        { linkTypeCode: "x", url: "https://x.com/taro" },
       ]);
       expect(result?.getChapters()).toEqual([
         { questionCode: "beginning", body: "私の歩み" },
@@ -100,37 +108,90 @@ describe("artistProfileRepository", () => {
   });
 
   describe("listPublishedSummaries", () => {
-    it("handle / name / imageUrl の要約を返し、件数上限を渡す", async () => {
+    it("handle / name / imageUrl / tagline / genres の要約を返し、件数上限を渡す", async () => {
       mock.enqueue([
-        { handle: "taro", name: "Taro", imageUrl: "https://e.com/a.png" },
-        { handle: "hana", name: "Hana", imageUrl: null },
+        {
+          handle: "taro",
+          name: "Taro",
+          imageUrl: "https://e.com/a.png",
+          tagline: "音で旅する",
+          genres: ["bass", "inward"],
+        },
+        {
+          handle: "hana",
+          name: "Hana",
+          imageUrl: null,
+          tagline: null,
+          genres: [],
+        },
       ]);
       const reader = createArtistProfileReader(mock.db as never);
 
       const result = await reader.listPublishedSummaries({ limit: 100 });
 
-      expect(result).toEqual([
-        { handle: "taro", name: "Taro", imageUrl: "https://e.com/a.png" },
-        { handle: "hana", name: "Hana", imageUrl: null },
+      expect(result).toStrictEqual([
+        {
+          handle: "taro",
+          name: "Taro",
+          imageUrl: "https://e.com/a.png",
+          tagline: "音で旅する",
+          genres: ["bass", "inward"],
+        },
+        {
+          handle: "hana",
+          name: "Hana",
+          imageUrl: null,
+          tagline: null,
+          genres: [],
+        },
       ]);
       expect(mock.spy("limit")).toHaveBeenCalledWith(100);
     });
 
+    it("ジャンルはサブクエリで集約して 1 クエリで引く（N+1 にしない）", async () => {
+      mock.enqueue([]);
+      const reader = createArtistProfileReader(mock.db as never);
+
+      await reader.listPublishedSummaries({ limit: 100 });
+
+      expect(mock.spy("groupBy")).toHaveBeenCalledTimes(1);
+      expect(mock.spy("leftJoin")).toHaveBeenCalledTimes(1);
+      expect(mock.spy("select")).toHaveBeenCalledTimes(2);
+    });
+
     it("name が欠けた行は除外する", async () => {
       mock.enqueue([
-        { handle: "taro", name: "Taro", imageUrl: null },
-        { handle: "noname", name: null, imageUrl: null },
+        {
+          handle: "taro",
+          name: "Taro",
+          imageUrl: null,
+          tagline: null,
+          genres: [],
+        },
+        {
+          handle: "noname",
+          name: null,
+          imageUrl: null,
+          tagline: null,
+          genres: [],
+        },
       ]);
       const reader = createArtistProfileReader(mock.db as never);
 
       const result = await reader.listPublishedSummaries({ limit: 100 });
 
-      expect(result).toEqual([
-        { handle: "taro", name: "Taro", imageUrl: null },
+      expect(result).toStrictEqual([
+        {
+          handle: "taro",
+          name: "Taro",
+          imageUrl: null,
+          tagline: null,
+          genres: [],
+        },
       ]);
     });
 
-    it("公開行が無ければ空配列を返す（子テーブルを引かない）", async () => {
+    it("公開行が無ければ空配列を返す", async () => {
       mock.enqueue([]);
       const reader = createArtistProfileReader(mock.db as never);
 
@@ -165,17 +226,53 @@ describe("artistProfileRepository", () => {
         chapters: [{ questionCode: "beginning", body: "私の歩み" }],
         activityInfo: null,
         genres: ["bass"],
-        links: [{ type: "x", url: "https://x.com/taro", label: null }],
+        links: [{ linkTypeCode: "x", url: "https://x.com/taro" }],
         published: false,
       });
 
       expect(mock.spy("insert")).toHaveBeenCalled();
       expect(mock.spy("delete")).toHaveBeenCalledTimes(3);
+      expect(mock.spy("values").mock.calls[2][0]).toEqual([
+        {
+          artistProfileId: "profile-1",
+          linkTypeId: 1,
+          url: "https://x.com/taro",
+          sortOrder: 0,
+        },
+      ]);
       expect(result.getName()).toBe("Taro");
       expect(result.getGenres()).toEqual(["bass"]);
       expect(result.getChapters()).toEqual([
         { questionCode: "beginning", body: "私の歩み" },
       ]);
+    });
+
+    it("既存行との衝突時は published を「現在値 AND 保存値」で降格のみ反映し、降格時は publishedAt を消す（並行する publish を戻さない）", async () => {
+      mock.enqueue([profileRow], undefined, undefined, undefined);
+      const writer = createArtistProfileWriter(mock.db as never);
+
+      await writer.upsert({
+        id: "profile-1",
+        artistId: "artist-1",
+        name: "Taro",
+        tagline: null,
+        imageUrl: null,
+        chapters: [],
+        activityInfo: null,
+        genres: [],
+        links: [],
+        published: false,
+      });
+
+      const { set } = mock.spy("onConflictDoUpdate").mock.calls[0][0];
+      expect(set.published).toBeInstanceOf(SQL);
+      expect(set.publishedAt).toBeInstanceOf(SQL);
+      expect(toSqlText(set.published)).toBe(
+        '"artist_profiles"."published" and excluded.published',
+      );
+      expect(toSqlText(set.publishedAt)).toBe(
+        'case when excluded.published then "artist_profiles"."published_at" else null end',
+      );
     });
 
     it("未知の questionCode の章は InvalidStoryChapterFormatError を投げる（データ破損防御）", async () => {

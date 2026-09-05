@@ -42,13 +42,15 @@ const registeredMe = {
 };
 
 const profileView = {
-  name: "SAKU",
-  tagline: null,
-  imageUrl: "https://example.com/saku.jpg",
-  chapters: [{ questionCode: "beginning", body: "始めたきっかけ。" }],
-  activityInfo: null,
-  genres: ["Beatbox"],
-  links: [{ type: "youtube", url: "https://youtube.com/@saku", label: null }],
+  attributes: {
+    name: "SAKU",
+    imageUrl: "https://example.com/saku.jpg",
+    tagline: null,
+    genres: ["Beatbox"],
+    activityInfo: null,
+  },
+  story: { chapters: [{ key: "beginning", body: "始めたきっかけ。" }] },
+  links: [{ linkTypeCode: "youtube", url: "https://youtube.com/@saku" }],
   published: true,
 };
 
@@ -61,7 +63,7 @@ describe("GET /dashboard", () => {
       jsonResponse({
         handle: "saku",
         profile: profileView,
-        missingPublishFields: [],
+        publishability: { ok: true, missingFields: [] },
       }),
     );
 
@@ -85,8 +87,12 @@ describe("GET /dashboard", () => {
     profileGet.mockResolvedValue(
       jsonResponse({
         handle: "saku",
-        profile: { ...profileView, imageUrl: null, published: false },
-        missingPublishFields: ["imageUrl", "links"],
+        profile: {
+          ...profileView,
+          attributes: { ...profileView.attributes, imageUrl: null },
+          published: false,
+        },
+        publishability: { ok: false, missingFields: ["imageUrl", "links"] },
       }),
     );
 
@@ -115,7 +121,7 @@ describe("GET /dashboard", () => {
       jsonResponse({
         handle: "saku",
         profile: null,
-        missingPublishFields: null,
+        publishability: null,
       }),
     );
 

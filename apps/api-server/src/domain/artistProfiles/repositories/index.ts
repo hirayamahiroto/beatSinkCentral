@@ -13,6 +13,8 @@ export type PublishedProfileSummary = {
   handle: string;
   name: string;
   imageUrl: string | null;
+  tagline: string | null;
+  genres: string[];
 };
 
 export type ListPublishedSummariesInput = {

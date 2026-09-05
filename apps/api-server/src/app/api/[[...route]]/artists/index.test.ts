@@ -38,7 +38,9 @@ describe("/artists ルーターの合成", () => {
       "ALL /:artistId/*",
       "POST /:artistId",
       "GET /:artistId/profile",
-      "POST /:artistId/profile",
+      "POST /:artistId/attributes",
+      "POST /:artistId/story/chapters/:chapterKey",
+      "POST /:artistId/links",
       "POST /:artistId/profile/publish",
       "POST /:artistId/profile/image",
     ]);
@@ -63,7 +65,9 @@ describe("/artists ルーターの合成", () => {
   it.each([
     ["POST", "/artists/artist-1"],
     ["GET", "/artists/artist-1/profile"],
-    ["POST", "/artists/artist-1/profile"],
+    ["POST", "/artists/artist-1/attributes"],
+    ["POST", "/artists/artist-1/story/chapters/beginning"],
+    ["POST", "/artists/artist-1/links"],
     ["POST", "/artists/artist-1/profile/publish"],
     ["POST", "/artists/artist-1/profile/image"],
   ])("%s %s は認証を要求する", async (method, path) => {

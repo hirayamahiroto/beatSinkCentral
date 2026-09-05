@@ -66,7 +66,7 @@ const publishableProfile = () =>
     imageUrl: "https://example.com/a.jpg",
     chapters: [{ questionCode: "beginning", body: "story" }],
     genres: ["bass"],
-    links: [{ type: "x", url: "https://x.com/taro" }],
+    links: [{ linkTypeCode: "x", url: "https://x.com/taro" }],
   });
 
 describe("POST /artists/:artistId/profile/publish", () => {
