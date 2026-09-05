@@ -5,8 +5,11 @@ import {
   classifyArea,
   classifyPhase,
   estimateCost,
+  lifecycleBuckets,
   promptText,
   usageOf,
+  INITIAL_IMPLEMENTATION,
+  BEFORE_FIRST_REVIEW,
   renderMarkdown,
   REPORT_MARKER,
 } from "./lib.mjs";
@@ -371,4 +374,136 @@ test("renderMarkdown はマーカーで始まり、既定では指示文を含�
   });
   assert.ok(shown.includes("秘密の指示文"));
   assert.ok(shown.includes("| n/a |"));
+});
+
+test("lifecycleBuckets は PR 作成時刻とレビュー時刻で指示を区間に振り分け、10 分以内のレビューは 1 ラウンドにまとめる", () => {
+  const turn = (timestamp, contextTokens) => ({
+    timestamp,
+    calls: 1,
+    toolCalls: 2,
+    contextTokens,
+    outputTokens: 10,
+    cost: 0.5,
+  });
+  const buckets = lifecycleBuckets(
+    [
+      turn("2026-08-19T10:00:00.000Z", 100),
+      turn("2026-08-20T01:00:00.000Z", 200),
+      turn("2026-08-20T02:00:00.000Z", 400),
+      turn("2026-08-23T12:00:00.000Z", 800),
+      { ...turn(null, 9999), timestamp: null },
+    ],
+    {
+      createdAt: "2026-08-20T00:40:46Z",
+      reviews: [
+        { at: "2026-08-23T11:39:49Z", by: "reviewer-b" },
+        { at: "2026-08-20T01:13:05Z", by: "reviewer-a" },
+        { at: "2026-08-23T11:41:00Z", by: "reviewer-c" },
+        { at: "2026-08-23T11:42:00Z", by: "reviewer-b" },
+      ],
+    },
+  );
+  assert.deepEqual(
+    buckets.map(
+      ({
+        label,
+        from,
+        prompts,
+        calls,
+        toolCalls,
+        contextTokens,
+        outputTokens,
+        cost,
+      }) => ({
+        label,
+        from,
+        prompts,
+        calls,
+        toolCalls,
+        contextTokens,
+        outputTokens,
+        cost,
+      }),
+    ),
+    [
+      {
+        label: INITIAL_IMPLEMENTATION,
+        from: null,
+        prompts: 1,
+        calls: 1,
+        toolCalls: 2,
+        contextTokens: 100,
+        outputTokens: 10,
+        cost: 0.5,
+      },
+      {
+        label: BEFORE_FIRST_REVIEW,
+        from: "2026-08-20T00:40:46Z",
+        prompts: 1,
+        calls: 1,
+        toolCalls: 2,
+        contextTokens: 200,
+        outputTokens: 10,
+        cost: 0.5,
+      },
+      {
+        label: "修正 1（レビュー: reviewer-a）",
+        from: "2026-08-20T01:13:05Z",
+        prompts: 1,
+        calls: 1,
+        toolCalls: 2,
+        contextTokens: 400,
+        outputTokens: 10,
+        cost: 0.5,
+      },
+      {
+        label: "修正 2（レビュー: reviewer-b, reviewer-c）",
+        from: "2026-08-23T11:39:49Z",
+        prompts: 1,
+        calls: 1,
+        toolCalls: 2,
+        contextTokens: 800,
+        outputTokens: 10,
+        cost: 0.5,
+      },
+    ],
+  );
+});
+
+test("renderMarkdown は lifecycle が渡されたときだけライフサイクル別の表を出す", () => {
+  const records = [
+    user("最初", { timestamp: "2026-08-19T10:00:00.000Z" }),
+    assistant({ requestId: "r1", usage: usage(0, 0, 100_000, 100) }),
+    user("修正", { timestamp: "2026-08-21T10:00:00.000Z" }),
+    assistant({ requestId: "r2", usage: usage(0, 0, 300_000, 100) }),
+  ];
+  const report = aggregate([{ sessionId: "s1", records }], {
+    branch: "feat/x",
+  });
+  const without = renderMarkdown(report);
+  assert.ok(!without.includes("### PR ライフサイクル別"));
+
+  const withLifecycle = renderMarkdown(report, {
+    lifecycle: {
+      createdAt: "2026-08-20T00:00:00Z",
+      reviews: [{ at: "2026-08-20T12:00:00Z", by: "rev" }],
+    },
+  });
+  assert.ok(withLifecycle.includes("### PR ライフサイクル別"));
+  assert.ok(
+    withLifecycle.includes(
+      "初回実装 25% / PR 作成後の対応 75%（入力総量ベース）",
+    ),
+  );
+  assert.ok(
+    withLifecycle.includes(
+      `| ${INITIAL_IMPLEMENTATION} |  | 1 | 1 | 100k | 25% |`,
+    ),
+  );
+  assert.ok(!withLifecycle.includes(BEFORE_FIRST_REVIEW));
+  assert.ok(
+    withLifecycle.includes(
+      "| 修正 1（レビュー: rev） | 2026-08-20 12:00 | 1 | 1 | 300k | 75% |",
+    ),
+  );
 });

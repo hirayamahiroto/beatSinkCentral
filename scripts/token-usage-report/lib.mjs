@@ -285,6 +285,62 @@ export function aggregate(sessions, { branch = null } = {}) {
   };
 }
 
+export const INITIAL_IMPLEMENTATION = "初回実装（PR 作成まで）";
+export const BEFORE_FIRST_REVIEW = "PR 作成後・初回レビュー前";
+
+const REVIEW_MERGE_WINDOW_MS = 10 * 60 * 1000;
+
+function reviewRounds(reviews) {
+  const sorted = [...reviews].sort(
+    (a, b) => Date.parse(a.at) - Date.parse(b.at),
+  );
+  const rounds = [];
+  for (const review of sorted) {
+    const last = rounds.at(-1);
+    if (
+      last &&
+      Date.parse(review.at) - Date.parse(last.at) <= REVIEW_MERGE_WINDOW_MS
+    ) {
+      if (!last.by.includes(review.by)) last.by.push(review.by);
+      continue;
+    }
+    rounds.push({ at: review.at, by: [review.by] });
+  }
+  return rounds;
+}
+
+export function lifecycleBuckets(turns, { createdAt, reviews }) {
+  const boundaries = [
+    { label: INITIAL_IMPLEMENTATION, from: null },
+    { label: BEFORE_FIRST_REVIEW, from: createdAt },
+    ...reviewRounds(reviews).map((round, index) => ({
+      label: `修正 ${index + 1}（レビュー: ${round.by.join(", ")}）`,
+      from: round.at,
+    })),
+  ];
+  const buckets = boundaries.map((boundary) => ({
+    ...boundary,
+    prompts: 0,
+    ...emptyBucket(),
+  }));
+  for (const turn of turns) {
+    if (!turn.timestamp) continue;
+    const at = Date.parse(turn.timestamp);
+    let index = 0;
+    for (let i = 1; i < buckets.length; i += 1) {
+      if (at >= Date.parse(buckets[i].from)) index = i;
+    }
+    const bucket = buckets[index];
+    bucket.prompts += 1;
+    bucket.calls += turn.calls;
+    bucket.toolCalls += turn.toolCalls;
+    bucket.contextTokens += turn.contextTokens;
+    bucket.outputTokens += turn.outputTokens;
+    bucket.cost += turn.cost;
+  }
+  return buckets;
+}
+
 export const REPORT_MARKER = "<!-- token-usage-report -->";
 
 const kilo = (n) => `${Math.round(n / 1000).toLocaleString("en-US")}k`;
@@ -315,9 +371,44 @@ function bucketRows(rows, totals, labelHeader) {
   );
 }
 
+function lifecycleSection(report, lifecycle) {
+  const buckets = lifecycleBuckets(report.turns, lifecycle);
+  const total = report.totals.contextTokens;
+  const initial = buckets[0].contextTokens;
+  const afterCreation = total - initial;
+  return [
+    "### PR ライフサイクル別",
+    "",
+    `初回実装 ${percent(initial, total)} / PR 作成後の対応 ${percent(afterCreation, total)}（入力総量ベース）`,
+    "",
+    table(
+      ["区間", "開始", "指示", "API呼出", "入力総量", "割合", "概算額"],
+      buckets
+        .filter((bucket, index) => index === 0 || bucket.prompts > 0)
+        .map((bucket) => [
+          bucket.label,
+          bucket.from === null
+            ? ""
+            : bucket.from.slice(0, 16).replace("T", " "),
+          bucket.prompts.toString(),
+          bucket.calls.toString(),
+          kilo(bucket.contextTokens),
+          percent(bucket.contextTokens, total),
+          dollars(bucket.cost),
+        ]),
+    ),
+    "",
+  ];
+}
+
 export function renderMarkdown(
   report,
-  { changedLines = null, includePrompts = false, topTurns = 10 } = {},
+  {
+    changedLines = null,
+    includePrompts = false,
+    topTurns = 10,
+    lifecycle = null,
+  } = {},
 ) {
   const { totals } = report;
   const perLine =
@@ -355,6 +446,7 @@ export function renderMarkdown(
       ],
     ),
     "",
+    ...(lifecycle ? lifecycleSection(report, lifecycle) : []),
     "### フェーズ別",
     "",
     bucketRows(report.byPhase, totals, "フェーズ"),

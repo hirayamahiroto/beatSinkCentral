@@ -98,7 +98,7 @@ function pullRequest(number) {
     "view",
     String(number),
     "--json",
-    "number,headRefName,additions,deletions,url",
+    "number,headRefName,additions,deletions,url,createdAt,reviews",
   ]);
   return JSON.parse(json);
 }
@@ -114,7 +114,7 @@ function pullRequestForBranch(branch) {
     "--limit",
     "1",
     "--json",
-    "number,headRefName,additions,deletions,url",
+    "number,headRefName,additions,deletions,url,createdAt,reviews",
   ]);
   const [pr] = JSON.parse(json);
   if (!pr) throw new Error(`ブランチ ${branch} に対応する PR が見つかりません`);
@@ -208,8 +208,18 @@ function main() {
 
   const sessions = loadSessions(options.projectsDir, root);
   const report = aggregate(sessions, { branch });
+  const lifecycle = pr
+    ? {
+        createdAt: pr.createdAt,
+        reviews: pr.reviews.map((review) => ({
+          at: review.submittedAt,
+          by: review.author.login,
+        })),
+      }
+    : null;
   const markdown = renderMarkdown(report, {
     changedLines,
+    lifecycle,
     includePrompts: options.includePrompts,
     topTurns: options.top,
   });
