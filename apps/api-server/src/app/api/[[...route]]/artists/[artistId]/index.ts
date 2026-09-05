@@ -1,7 +1,9 @@
 import { Hono } from "hono";
 import updateHandle from "./updateHandle";
 import getProfile from "./getProfile";
-import saveProfile from "./saveProfile";
+import updateAttributes from "./updateAttributes";
+import writeStoryChapter from "./writeStoryChapter";
+import replaceLinks from "./replaceLinks";
 import publishProfile from "./publishProfile";
 import uploadProfileImage from "./uploadProfileImage";
 import { requireAuthMiddleware } from "../../../../../middlewares/auth0";
@@ -10,7 +12,9 @@ const app = new Hono()
   .use("*", requireAuthMiddleware)
   .route("/", updateHandle)
   .route("/profile", getProfile)
-  .route("/profile", saveProfile)
+  .route("/attributes", updateAttributes)
+  .route("/story/chapters/:chapterKey", writeStoryChapter)
+  .route("/links", replaceLinks)
   .route("/profile/publish", publishProfile)
   .route("/profile/image", uploadProfileImage);
 

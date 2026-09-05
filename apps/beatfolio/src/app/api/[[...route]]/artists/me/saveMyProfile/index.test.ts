@@ -6,17 +6,26 @@ import {
 } from "../../../../../../middlewares/requestContext";
 import saveMyProfile from "./index";
 import { handleBffError } from "../../../../../../errorMap";
+import { createUpstreamUnavailableError } from "../../../../../../utils/client/errors/upstreamUnavailable";
 
-const { meGet, profilePost } = vi.hoisted(() => ({
+const { meGet, attributesPost, chapterPost, linksPost } = vi.hoisted(() => ({
   meGet: vi.fn(),
-  profilePost: vi.fn(),
+  attributesPost: vi.fn(),
+  chapterPost: vi.fn(),
+  linksPost: vi.fn(),
 }));
 
 vi.mock("../../../../../../utils/client", () => ({
   createApiServerClient: () => ({
     api: {
       users: { me: { $get: meGet } },
-      artists: { ":artistId": { profile: { $post: profilePost } } },
+      artists: {
+        ":artistId": {
+          attributes: { $post: attributesPost },
+          story: { chapters: { ":chapterKey": { $post: chapterPost } } },
+          links: { $post: linksPost },
+        },
+      },
     },
   }),
 }));
@@ -36,103 +45,221 @@ const request = (body: unknown) =>
     body: JSON.stringify(body),
   });
 
+const jsonResponse = (
+  body: unknown,
+  init: { ok?: boolean; status?: number } = {},
+) => ({
+  ok: init.ok ?? true,
+  status: init.status ?? 200,
+  json: async () => body,
+});
+
+const fullBody = {
+  name: "SAKU",
+  tagline: "口ひとつで、フロアを揺らす。",
+  activityInfo: "拠点: 東京 / 形態: ソロ",
+  genres: ["Beatbox"],
+  chapters: [
+    { questionCode: "beginning", body: "始めたきっかけ。" },
+    { questionCode: "turning_point", body: "" },
+  ],
+  links: [{ type: "youtube", url: "https://youtube.com/@saku" }],
+};
+
 describe("POST /artists/me/profile", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    meGet.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({
+    meGet.mockResolvedValue(
+      jsonResponse({
         registered: true,
         userId: "user-1",
         email: "saku@example.com",
         artist: { artistId: "artist-1", handle: "saku", hasProfile: true },
       }),
-    });
-    profilePost.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({ handle: "saku", profile: { name: "SAKU" } }),
-    });
+    );
+    attributesPost.mockResolvedValue(jsonResponse({ attributes: {} }));
+    chapterPost.mockResolvedValue(jsonResponse({ story: { chapters: [] } }));
+    linksPost.mockResolvedValue(jsonResponse({ links: [] }));
   });
 
-  it("検証を通ったボディを自分の artistId 宛てで api-server へ渡す", async () => {
-    const body = { name: "SAKU", genres: ["Beatbox"] };
+  it("画面の入力を属性 → 章ごと → リンクの順に構造ごとの更新 API へ振り分け、204 を返す", async () => {
+    const res = await request(fullBody);
 
-    const res = await request(body);
-
-    expect(profilePost).toHaveBeenCalledWith({
+    expect(res.status).toBe(204);
+    expect(attributesPost).toHaveBeenCalledExactlyOnceWith({
       param: { artistId: "artist-1" },
-      json: body,
+      json: {
+        name: "SAKU",
+        tagline: "口ひとつで、フロアを揺らす。",
+        genres: ["Beatbox"],
+        activityInfo: "拠点: 東京 / 形態: ソロ",
+      },
     });
-    expect(res.status).toBe(200);
-    expect(await res.json()).toStrictEqual({
-      handle: "saku",
-      profile: { name: "SAKU" },
+    expect(chapterPost.mock.calls).toStrictEqual([
+      [
+        {
+          param: { artistId: "artist-1", chapterKey: "beginning" },
+          json: { body: "始めたきっかけ。" },
+        },
+      ],
+      [
+        {
+          param: { artistId: "artist-1", chapterKey: "turning_point" },
+          json: { body: "" },
+        },
+      ],
+    ]);
+    expect(linksPost).toHaveBeenCalledExactlyOnceWith({
+      param: { artistId: "artist-1" },
+      json: {
+        links: [{ linkTypeCode: "youtube", url: "https://youtube.com/@saku" }],
+      },
     });
+    expect(attributesPost.mock.invocationCallOrder[0]).toBeLessThan(
+      chapterPost.mock.invocationCallOrder[0],
+    );
+    expect(chapterPost.mock.invocationCallOrder[1]).toBeLessThan(
+      linksPost.mock.invocationCallOrder[0],
+    );
   });
 
   it("artist 未登録なら api-server へ渡さず 404 を返す", async () => {
-    meGet.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({ registered: false }),
-    });
+    meGet.mockResolvedValue(jsonResponse({ registered: false }));
 
-    const res = await request({ name: "SAKU" });
+    const res = await request(fullBody);
 
     expect(res.status).toBe(404);
-    expect(profilePost).not.toHaveBeenCalled();
+    expect(attributesPost).not.toHaveBeenCalled();
+    expect(chapterPost).not.toHaveBeenCalled();
+    expect(linksPost).not.toHaveBeenCalled();
   });
 
-  it("genres が上限を超えたら api-server へ渡さず 400 を返す", async () => {
-    const res = await request({ genres: Array(21).fill("Beatbox") });
+  it.each([
+    ["genres", { ...fullBody, genres: Array(21).fill("Beatbox") }],
+    [
+      "links",
+      {
+        ...fullBody,
+        links: Array(21).fill({ type: "youtube", url: "https://y.com/@s" }),
+      },
+    ],
+    [
+      "chapters",
+      {
+        ...fullBody,
+        chapters: Array(4).fill({ questionCode: "beginning", body: "x" }),
+      },
+    ],
+  ])("%s が上限を超えたら api-server へ渡さず 400 を返す", async (_, body) => {
+    const res = await request(body);
 
     expect(res.status).toBe(400);
-    expect(profilePost).not.toHaveBeenCalled();
+    expect(attributesPost).not.toHaveBeenCalled();
   });
 
-  it("links が上限を超えたら api-server へ渡さず 400 を返す", async () => {
+  it("構造の配列（genres / chapters / links）が欠けていたら 400 を返す", async () => {
+    const res = await request({ name: "SAKU" });
+
+    expect(res.status).toBe(400);
+    expect(attributesPost).not.toHaveBeenCalled();
+  });
+
+  it("imageUrl は受け取らない（属性の更新に渡さない）", async () => {
     const res = await request({
-      links: Array(21).fill({ type: "youtube", url: "https://youtube.com/@s" }),
+      ...fullBody,
+      imageUrl: "https://example.com/ignored.png",
     });
 
-    expect(res.status).toBe(400);
-    expect(profilePost).not.toHaveBeenCalled();
+    expect(res.status).toBe(204);
+    expect(attributesPost.mock.calls[0][0].json).not.toHaveProperty("imageUrl");
   });
 
-  it("上限ちょうどの genres / links は api-server へ渡す", async () => {
-    const genres = Array(20).fill("Beatbox");
-    const links = Array(20).fill({
-      type: "youtube",
-      url: "https://youtube.com/@s",
-    });
+  it("属性の更新が失敗したら章・リンクは送らず、ステータスごと透過し、保存済みは空で返す", async () => {
+    attributesPost.mockResolvedValue(
+      jsonResponse(
+        { error: "Invalid name format", code: "InvalidProfileNameFormatError" },
+        { ok: false, status: 422 },
+      ),
+    );
 
-    const res = await request({ genres, links });
-
-    expect(res.status).toBe(200);
-    expect(profilePost).toHaveBeenCalledExactlyOnceWith({
-      param: { artistId: "artist-1" },
-      json: { genres, links },
-    });
-  });
-
-  it("api-server のエラーはステータスごと透過する", async () => {
-    profilePost.mockResolvedValue({
-      ok: false,
-      status: 422,
-      json: async () => ({
-        error: "Invalid imageUrl format",
-        code: "InvalidImageUrlFormatError",
-      }),
-    });
-
-    const res = await request({ imageUrl: "not-a-url" });
+    const res = await request(fullBody);
 
     expect(res.status).toBe(422);
     expect(await res.json()).toStrictEqual({
-      error: "Invalid imageUrl format",
-      code: "InvalidImageUrlFormatError",
+      error: "Invalid name format",
+      code: "InvalidProfileNameFormatError",
+      saved: [],
+      failedAt: "attributes",
     });
+    expect(chapterPost).not.toHaveBeenCalled();
+    expect(linksPost).not.toHaveBeenCalled();
+  });
+
+  it("章の更新が失敗したら残りの章とリンクは送らず、保存済みの属性と失敗した章を返す", async () => {
+    chapterPost.mockResolvedValueOnce(
+      jsonResponse(
+        {
+          error: "Invalid story chapter format",
+          code: "InvalidStoryChapterFormatError",
+        },
+        { ok: false, status: 422 },
+      ),
+    );
+
+    const res = await request(fullBody);
+
+    expect(res.status).toBe(422);
+    expect(await res.json()).toStrictEqual({
+      error: "Invalid story chapter format",
+      code: "InvalidStoryChapterFormatError",
+      saved: ["attributes"],
+      failedAt: "chapter:beginning",
+    });
+    expect(chapterPost).toHaveBeenCalledTimes(1);
+    expect(linksPost).not.toHaveBeenCalled();
+  });
+
+  it("リンクの更新が 5xx なら 502 に畳み、属性と全章を保存済みとして返す", async () => {
+    linksPost.mockResolvedValue(
+      jsonResponse(
+        { error: "Internal Server Error" },
+        { ok: false, status: 500 },
+      ),
+    );
+
+    const res = await request(fullBody);
+
+    expect(res.status).toBe(502);
+    expect(await res.json()).toStrictEqual({
+      error: "Upstream request failed",
+      code: "UpstreamServerError",
+      saved: ["attributes", "chapter:beginning", "chapter:turning_point"],
+      failedAt: "links",
+    });
+  });
+
+  it("途中で api-server に到達できなくなっても、そこまでの保存済みステップを返す", async () => {
+    linksPost.mockRejectedValue(
+      createUpstreamUnavailableError(new TypeError("fetch failed")),
+    );
+
+    const res = await request(fullBody);
+
+    expect(res.status).toBe(502);
+    expect(await res.json()).toStrictEqual({
+      error: "Upstream request failed",
+      code: "UpstreamUnavailableError",
+      saved: ["attributes", "chapter:beginning", "chapter:turning_point"],
+      failedAt: "links",
+    });
+  });
+
+  it("上流由来でない例外はそのまま投げ、保存進捗で包まない", async () => {
+    linksPost.mockRejectedValue(new Error("programming error"));
+
+    const res = await request(fullBody);
+
+    expect(res.status).toBe(500);
+    expect(await res.json()).toStrictEqual({ error: "Internal Server Error" });
   });
 });

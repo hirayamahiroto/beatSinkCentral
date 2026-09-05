@@ -33,7 +33,11 @@ import {
   type ProfileLinkInput,
 } from "../valueObjects/profileLink";
 import { createArtistProfileBehaviors } from "../behaviors";
-import type { ArtistProfile, ArtistProfileState } from "../entities";
+import type {
+  ArtistProfile,
+  ArtistProfileAttributes,
+  ArtistProfileState,
+} from "../entities";
 import {
   type Result,
   ok,
@@ -43,15 +47,6 @@ import {
   traverse,
   unwrapOrThrow,
 } from "../../../utils/result";
-
-export type ArtistProfileContentError =
-  | InvalidProfileNameFormatError
-  | InvalidTaglineFormatError
-  | InvalidImageUrlFormatError
-  | InvalidStoryChapterFormatError
-  | InvalidActivityInfoFormatError
-  | InvalidGenreFormatError
-  | CreateProfileLinkError;
 
 const optional = <T, E>(
   value: string | null | undefined,
@@ -73,16 +68,6 @@ const toGenres = (
   );
 };
 
-const toLinks = (
-  values: ProfileLinkInput[] | undefined,
-): Result<ProfileLink[], CreateProfileLinkError> => {
-  if (values === undefined) return ok([]);
-  return traverse(
-    values.filter((value) => value.url.trim().length > 0),
-    createProfileLink,
-  );
-};
-
 const toChapters = (
   values: StoryChapterInput[] | undefined,
 ): Result<StoryChapter[], InvalidStoryChapterFormatError> => {
@@ -95,15 +80,48 @@ const toChapters = (
   return traverse(withBody, createStoryChapter);
 };
 
-export type ArtistProfileContent = {
+export type ArtistProfileAttributesContent = {
   name?: string | null;
   tagline?: string | null;
+  genres?: string[];
+  activityInfo?: string | null;
+};
+
+export type ArtistProfileAttributesError =
+  | InvalidProfileNameFormatError
+  | InvalidTaglineFormatError
+  | InvalidGenreFormatError
+  | InvalidActivityInfoFormatError;
+
+export const createProfileAttributes = (
+  content: ArtistProfileAttributesContent,
+): Result<ArtistProfileAttributes, ArtistProfileAttributesError> =>
+  all({
+    name: optional(content.name, createProfileName),
+    tagline: optional(content.tagline, createTagline),
+    genres: toGenres(content.genres),
+    activityInfo: optional(content.activityInfo, createActivityInfo),
+  });
+
+export const createProfileLinks = (
+  values: ProfileLinkInput[],
+): Result<ProfileLink[], CreateProfileLinkError> =>
+  traverse(
+    values.filter((value) => value.url.trim().length > 0),
+    createProfileLink,
+  );
+
+export type ArtistProfileContent = ArtistProfileAttributesContent & {
   imageUrl?: string | null;
   chapters?: StoryChapterInput[];
-  activityInfo?: string | null;
-  genres?: string[];
   links?: ProfileLinkInput[];
 };
+
+export type ArtistProfileContentError =
+  | ArtistProfileAttributesError
+  | InvalidImageUrlFormatError
+  | InvalidStoryChapterFormatError
+  | CreateProfileLinkError;
 
 type ProfileIdentity = {
   id: string;
@@ -117,60 +135,65 @@ const buildState = (
 ): Result<ArtistProfileState, ArtistProfileContentError> =>
   map(
     all({
-      name: optional(content.name, createProfileName),
-      tagline: optional(content.tagline, createTagline),
+      attributes: createProfileAttributes(content),
       imageUrl: optional(content.imageUrl, createImageUrl),
       chapters: toChapters(content.chapters),
-      activityInfo: optional(content.activityInfo, createActivityInfo),
-      genres: toGenres(content.genres),
-      links: toLinks(content.links),
+      links:
+        content.links === undefined
+          ? ok([])
+          : createProfileLinks(content.links),
     }),
-    (fields) => ({
+    ({ attributes, imageUrl, chapters, links }) => ({
       id: base.id,
       artistId: base.artistId,
       published: base.published,
-      ...fields,
+      ...attributes,
+      imageUrl,
+      chapters,
+      links,
     }),
   );
 
-export type CreateArtistProfileParams = ArtistProfileContent & {
+export type CreateDraftArtistProfileParams = {
   artistId: string;
 };
 
-export const createArtistProfile = (
-  params: CreateArtistProfileParams,
-): Result<ArtistProfile, ArtistProfileContentError> =>
-  map(
-    buildState(
-      { id: crypto.randomUUID(), artistId: params.artistId, published: false },
-      params,
-    ),
-    createArtistProfileBehaviors,
-  );
+export const createDraftArtistProfile = (
+  params: CreateDraftArtistProfileParams,
+): ArtistProfile =>
+  createArtistProfileBehaviors({
+    id: crypto.randomUUID(),
+    artistId: params.artistId,
+    published: false,
+    name: null,
+    tagline: null,
+    imageUrl: null,
+    chapters: [],
+    activityInfo: null,
+    genres: [],
+    links: [],
+  });
 
-export type ReviseArtistProfileParams = ArtistProfileContent & {
+export type ReconstructArtistProfileParams = ArtistProfileContent & {
   id: string;
   artistId: string;
   published: boolean;
 };
 
-export const reviseArtistProfile = (
-  params: ReviseArtistProfileParams,
-): Result<ArtistProfile, ArtistProfileContentError> =>
-  map(
-    buildState(
-      { id: params.id, artistId: params.artistId, published: params.published },
-      params,
-    ),
-    createArtistProfileBehaviors,
-  );
-
-export type ReconstructArtistProfileParams = ReviseArtistProfileParams;
-
 export const reconstructArtistProfile = (
   params: ReconstructArtistProfileParams,
 ): ArtistProfile =>
   unwrapOrThrow(
-    reviseArtistProfile(params),
+    map(
+      buildState(
+        {
+          id: params.id,
+          artistId: params.artistId,
+          published: params.published,
+        },
+        params,
+      ),
+      createArtistProfileBehaviors,
+    ),
     "reconstructArtistProfile: stored profile has invalid field values",
   );

@@ -708,9 +708,12 @@ app/api/[[...route]]/
 │   │   └── getArtist/          # GET /artists/:handle
 │   └── [artistId]/             # ← ここが認証境界（不変 ID artistId。handle とは別の鍵）
 │       ├── index.ts            # requireAuthMiddleware + マウントテーブル
-│       ├── updateHandle/    # POST /:artistId
+│       ├── updateHandle/       # POST /:artistId
 │       ├── getProfile/         # GET  /:artistId/profile
-│       ├── saveProfile/        # POST /:artistId/profile
+│       ├── updateAttributes/   # POST /:artistId/attributes
+│       ├── writeStoryChapter/  # POST /:artistId/story/chapters/:chapterKey
+│       ├── replaceLinks/       # POST /:artistId/links
+│       ├── uploadProfileImage/ # POST /:artistId/profile/image
 │       └── publishProfile/     # POST /:artistId/profile/publish
 └── link-types/
     ├── index.ts                # 認証不要 → 集約のみ
@@ -1182,19 +1185,22 @@ describe("reconstructUser", () => {
 
 ## API エンドポイント
 
-| メソッド | パス                                     | 説明                           | 認証 |
-| -------- | ---------------------------------------- | ------------------------------ | ---- |
-| GET      | `/api/test`                              | ヘルスチェック                 | 要   |
-| POST     | `/api/users`                             | ユーザー作成                   | 要   |
-| GET      | `/api/users/me`                          | 自分のユーザー情報取得         | 要   |
-| POST     | `/api/users/:userId`                     | メールアドレス更新             | 要   |
-| GET      | `/api/artists`                           | 公開プロフィール一覧           | 不要 |
-| GET      | `/api/artists/:handle`                   | 公開プロフィール詳細           | 不要 |
-| POST     | `/api/artists/:artistId`                 | handle 更新                    | 要   |
-| GET      | `/api/artists/:artistId/profile`         | プロフィール取得（下書き含む） | 要   |
-| POST     | `/api/artists/:artistId/profile`         | プロフィール保存               | 要   |
-| POST     | `/api/artists/:artistId/profile/publish` | 公開/非公開の切り替え          | 要   |
-| POST     | `/api/artists/:artistId/profile/image`   | プロフィール画像アップロード   | 要   |
-| GET      | `/api/link-types`                        | リンク種別マスタ一覧           | 不要 |
+| メソッド | パス                                                | 説明                                                          | 認証 |
+| -------- | --------------------------------------------------- | ------------------------------------------------------------- | ---- |
+| GET      | `/api/test`                                         | ヘルスチェック                                                | 要   |
+| POST     | `/api/users`                                        | ユーザー作成                                                  | 要   |
+| GET      | `/api/users/me`                                     | 自分のユーザー情報取得                                        | 要   |
+| POST     | `/api/users/:userId`                                | メールアドレス更新                                            | 要   |
+| GET      | `/api/artists`                                      | 公開プロフィール一覧                                          | 不要 |
+| GET      | `/api/artists/:handle`                              | 公開プロフィール詳細                                          | 不要 |
+| POST     | `/api/artists/:artistId`                            | handle 更新                                                   | 要   |
+| GET      | `/api/artists/:artistId/profile`                    | プロフィール取得（下書き含む・集約一本）                      | 要   |
+| POST     | `/api/artists/:artistId/attributes`                 | 属性の更新                                                    | 要   |
+| POST     | `/api/artists/:artistId/story/chapters/:chapterKey` | Story 章の書き込み（空文字で章を消す）                        | 要   |
+| POST     | `/api/artists/:artistId/links`                      | SNS リンク集合の差し替え                                      | 要   |
+| POST     | `/api/artists/:artistId/profile/publish`            | 公開/非公開の切り替え                                         | 要   |
+| POST     | `/api/artists/:artistId/profile/image`              | プロフィール画像の差し替え（アップロード＋集約へ URL を書く） | 要   |
+| GET      | `/api/link-types`                                   | リンク種別マスタ一覧                                          | 不要 |
+| GET      | `/api/story-questions`                              | Story の問いマスタ一覧（必須フラグ付き）                      | 不要 |
 
 > 旧 `me` 系（`POST /api/artists/me`・`GET|POST /api/artists/me/profile`・`POST /api/artists/me/profile/publish`・`POST /api/users/me`）はクライアント移行の完了に伴い削除済み（[api-design-guidelines.md](./api-design-guidelines.md) のリソースアドレッシング参照）。`GET /api/users/me` だけは、クライアントが自分の `userId` / `artistId` を解決する起点（bootstrap）として存置する。

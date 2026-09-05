@@ -10,26 +10,19 @@ const paramSchema = z.object({
   handle: z.string().min(1).max(255),
 });
 
-const storyChapterSchema = z.object({
-  questionCode: z.string(),
-  body: z.string(),
-});
-
 const publicProfileSchema = z.object({
-  name: z.string().min(1),
-  tagline: z.string().nullable(),
-  imageUrl: z.string().min(1),
-  chapters: z.array(storyChapterSchema).min(1),
-  activityInfo: z.string().nullable(),
-  genres: z.array(z.string()).min(1),
+  attributes: z.object({
+    name: z.string().min(1),
+    imageUrl: z.string().min(1),
+    tagline: z.string().nullable(),
+    genres: z.array(z.string()).min(1),
+    activityInfo: z.string().nullable(),
+  }),
+  story: z.object({
+    chapters: z.array(z.object({ key: z.string(), body: z.string() })).min(1),
+  }),
   links: z
-    .array(
-      z.object({
-        type: z.string(),
-        url: z.string(),
-        label: z.string().nullable(),
-      }),
-    )
+    .array(z.object({ linkTypeCode: z.string(), url: z.string() }))
     .min(1),
   published: z.literal(true),
 });

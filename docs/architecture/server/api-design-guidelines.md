@@ -147,7 +147,7 @@ POST /orders/:id/cancel     → キャンセル
 ルート（`app/api/[[...route]]`）は **1 ユニット = 1 エンドポイント（1 HTTP メソッド + 1 パス）** で構成する。ただし **ディレクトリを掘るのはリソースの境目とミドルウェアが変わる境目だけ**で、URL セグメントの数だけ階層を作らない。
 
 - **取得（GET）と保存（POST）は別ユニット**。「使用例」の `GET /users/:id`（詳細取得）と `POST /users/:id`（更新）のように同じパスをメソッドで切り替える場合も、別ユニットに分離する。
-- ユニットは「ディレクトリ + `index.ts`」構成（+ 同階層 `index.test.ts`）。**ディレクトリ名はエンドポイントの意図を表す名前**にする（`updateHandle/` `getProfile/` `saveProfile/` `publishProfile/` 等）。HTTP メソッド名のディレクトリ（`get/` `post/`）や method を埋め込んだファイル名（`profile.publish.post.ts`）は使わない。
+- ユニットは「ディレクトリ + `index.ts`」構成（+ 同階層 `index.test.ts`）。**ディレクトリ名はエンドポイントの意図を表す名前**にする（`updateHandle/` `getProfile/` `updateAttributes/` `publishProfile/` 等）。HTTP メソッド名のディレクトリ（`get/` `post/`）や method を埋め込んだファイル名（`profile.publish.post.ts`）は使わない。
 - ミドルウェアが変わる境界の `index.ts` が「path → ユニット」の対応表（マウントテーブル）を `.route()` で宣言する。ユニット自身は小さな Hono app として自分からの相対パス（`"/"` 等）と自分のバリデーション（`validateRequest`）だけを持ち、実際の絶対 URL は境界の `index.ts` だけが知っている。バリデーションは Hono の型推論の都合上、ユニットの Hono チェーン内で行う（境界側に持ち出さない）。
 - アクションは「使用例」の `POST /users/:id/delete` と同じ意図を、ディレクトリ名（`deleteUser/`）で表す。独自の method 接尾辞ファイル名は使わない。
 
@@ -160,10 +160,13 @@ app/api/[[...route]]/
       getArtist/index.ts           → GET /artists/:handle
     [artistId]/                   ← 認証境界（不変 ID artistId）
       index.ts                    → requireAuthMiddleware + マウントテーブル
-      updateHandle/index.ts    → POST /:artistId
+      updateHandle/index.ts       → POST /:artistId
       getProfile/index.ts         → GET  /:artistId/profile
-      saveProfile/index.ts        → POST /:artistId/profile
+      updateAttributes/index.ts   → POST /:artistId/attributes
+      writeStoryChapter/index.ts  → POST /:artistId/story/chapters/:chapterKey
+      replaceLinks/index.ts       → POST /:artistId/links
       publishProfile/index.ts     → POST /:artistId/profile/publish
+      uploadProfileImage/index.ts → POST /:artistId/profile/image
   users/                           ← 全ルート認証（境界は users/ 直下）
     index.ts                       → requireAuthMiddleware + マウントテーブル
     createUser/index.ts            → POST /users
@@ -178,7 +181,9 @@ app/api/[[...route]]/
 import { Hono } from "hono";
 import updateHandle from "./updateHandle";
 import getProfile from "./getProfile";
-import saveProfile from "./saveProfile";
+import updateAttributes from "./updateAttributes";
+import writeStoryChapter from "./writeStoryChapter";
+import replaceLinks from "./replaceLinks";
 import publishProfile from "./publishProfile";
 import { requireAuthMiddleware } from "../../../../../middlewares/auth0";
 
@@ -186,7 +191,9 @@ const app = new Hono()
   .use("*", requireAuthMiddleware)
   .route("/", updateHandle)
   .route("/profile", getProfile)
-  .route("/profile", saveProfile)
+  .route("/attributes", updateAttributes)
+  .route("/story/chapters/:chapterKey", writeStoryChapter)
+  .route("/links", replaceLinks)
   .route("/profile/publish", publishProfile);
 
 export default app;
@@ -212,17 +219,20 @@ export default app;
 
 ### アーティストプロフィール操作
 
-対象アーティストは不変 ID（`artistId`）でアドレスし、操作可否は authorization 層が「セッションの主体がその artistId に書けるか」を照合する。取得と保存は同一エンドポイントをメソッドで切り替える。
+対象アーティストは不変 ID（`artistId`）でアドレスし、操作可否は authorization 層が「セッションの主体がその artistId に書けるか」を照合する。**取得は集約一本、更新は情報の構造ごと**に切る（切り方の規範は [api-read-write-definition.md](./api-read-write-definition.md)）。
 
-| 操作                     | メソッド | エンドポイント                       |
-| ------------------------ | -------- | ------------------------------------ |
-| 取得（本人・下書き含む） | GET      | `/artists/:artistId/profile`         |
-| 保存（作成・更新）       | POST     | `/artists/:artistId/profile`         |
-| 公開 / 非公開            | POST     | `/artists/:artistId/profile/publish` |
-| handle 変更              | POST     | `/artists/:artistId`                 |
-| 公開詳細（誰でも）       | GET      | `/artists/:handle`                   |
+| 操作                     | メソッド | エンドポイント                                  |
+| ------------------------ | -------- | ----------------------------------------------- |
+| 取得（本人・下書き含む） | GET      | `/artists/:artistId/profile`                    |
+| 属性を直す               | POST     | `/artists/:artistId/attributes`                 |
+| 章を書く                 | POST     | `/artists/:artistId/story/chapters/:chapterKey` |
+| 繋ぎ先を変える           | POST     | `/artists/:artistId/links`                      |
+| 画像を差し替える         | POST     | `/artists/:artistId/profile/image`              |
+| 公開 / 非公開            | POST     | `/artists/:artistId/profile/publish`            |
+| handle 変更              | POST     | `/artists/:artistId`                            |
+| 公開詳細（誰でも）       | GET      | `/artists/:handle`                              |
 
-- 取得 (GET) と保存 (POST) は **同じ `/artists/:artistId/profile`**。`users` の `GET /users/:id` ⇔ `POST /users/:id` と同じ関係。
+- 更新は構造ごとに小さく複数。入力はその構造の項目だけを受け、成功応答も更新した構造だけを返す。集約全体を 1 本で受ける `POST /artists/:artistId/profile` は廃止済み。
 - 公開切り替えは `POST /users/:id/delete` と同じくアクションを接尾辞で表す（`/publish`）。
 - 公開詳細のみ可変ハンドル（handle）で引く。認証済み操作のパスキーは不変 ID（artistId）。
 - 旧 `me` 系ルート（`/artists/me/*`）は移行完了に伴い削除済み。

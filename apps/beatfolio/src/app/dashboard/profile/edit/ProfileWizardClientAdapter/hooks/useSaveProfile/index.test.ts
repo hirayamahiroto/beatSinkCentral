@@ -71,11 +71,14 @@ describe("useSaveProfile", () => {
     expect(saveMock).toHaveBeenCalledWith({
       json: {
         name: "SAKU",
-        imageUrl: "https://example.com/saku.jpg",
         tagline: "口ひとつで、フロアを揺らす。",
-        chapters: [{ questionCode: "beginning", body: "始めたきっかけ。" }],
         activityInfo: "拠点: 東京 / 形態: ソロ",
         genres: ["Beatbox"],
+        chapters: [
+          { questionCode: "beginning", body: "始めたきっかけ。" },
+          { questionCode: "turning_point", body: "" },
+          { questionCode: "concept", body: "" },
+        ],
         links: [{ type: "youtube", url: "https://youtube.com/@saku" }],
       },
     });
@@ -97,11 +100,14 @@ describe("useSaveProfile", () => {
     expect(saveMock).toHaveBeenCalledExactlyOnceWith({
       json: {
         name: "SAKU",
-        imageUrl: "https://example.com/saku.jpg",
         tagline: "口ひとつで、フロアを揺らす。",
-        chapters: [{ questionCode: "beginning", body: "始めたきっかけ。" }],
         activityInfo: "拠点: 東京 / 形態: ソロ",
         genres: ["Beatbox"],
+        chapters: [
+          { questionCode: "beginning", body: "始めたきっかけ。" },
+          { questionCode: "turning_point", body: "" },
+          { questionCode: "concept", body: "" },
+        ],
         links: [{ type: "youtube", url: "https://youtube.com/@saku" }],
       },
     });
@@ -123,8 +129,40 @@ describe("useSaveProfile", () => {
     });
 
     expect(returned).toBe(false);
-    expect(result.current.error).toBe("保存に失敗");
+    expect(result.current.error).toStrictEqual({
+      message: "保存に失敗",
+      progress: null,
+    });
     expect(pushMock).not.toHaveBeenCalled();
+    expect(refreshMock).not.toHaveBeenCalled();
+  });
+
+  it("途中まで保存されて失敗したら、どのステップまで保存されたかを error に載せる", async () => {
+    saveMock.mockResolvedValueOnce(
+      buildJsonResponse(
+        {
+          error: "Invalid snsUrl format",
+          code: "InvalidSnsUrlFormatError",
+          saved: ["attributes", "chapter:beginning"],
+          failedAt: "links",
+        },
+        { status: 422 },
+      ),
+    );
+
+    const { result } = renderHook(() => useSaveProfile());
+
+    await act(async () => {
+      await result.current.saveDraft(values);
+    });
+
+    expect(result.current.error).toStrictEqual({
+      message: "Invalid snsUrl format",
+      progress: {
+        saved: ["attributes", "chapter:beginning"],
+        failedAt: "links",
+      },
+    });
     expect(refreshMock).not.toHaveBeenCalled();
   });
 });

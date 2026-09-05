@@ -27,7 +27,13 @@ describe("GET /artists", () => {
 
   it("公開プロフィールの一覧を返す", async () => {
     mockArtistProfiles.listPublishedSummaries.mockResolvedValue([
-      { handle: "taro", name: "Taro", imageUrl: "https://e.com/a.png" },
+      {
+        handle: "taro",
+        name: "Taro",
+        imageUrl: "https://e.com/a.png",
+        tagline: null,
+        genres: ["bass"],
+      },
     ]);
 
     const res = await createApp().request("/", { method: "GET" });
@@ -35,7 +41,13 @@ describe("GET /artists", () => {
 
     expect(res.status).toBe(200);
     expect(body.profiles).toEqual([
-      { handle: "taro", name: "Taro", imageUrl: "https://e.com/a.png" },
+      {
+        handle: "taro",
+        name: "Taro",
+        imageUrl: "https://e.com/a.png",
+        tagline: null,
+        genres: ["bass"],
+      },
     ]);
   });
 

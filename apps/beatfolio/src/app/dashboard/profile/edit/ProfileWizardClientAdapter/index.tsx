@@ -7,6 +7,7 @@ import {
   type WizardValues,
 } from "@ui/design-system/components/organisms/ArtistProfileWizard";
 import { useSaveProfile } from "./hooks/useSaveProfile";
+import { toSaveProgress } from "./toSaveProgress";
 import { uploadMyProfileImage } from "../../../../../fetchers/artists/uploadMyProfileImage";
 
 type Props = {
@@ -39,7 +40,8 @@ export const ProfileWizardClientAdapter = ({
       storyQuestions={storyQuestions}
       defaultValues={defaultValues}
       isLoading={isLoading}
-      error={error}
+      error={error ? error.message : null}
+      saveProgress={error?.progress ? toSaveProgress(error.progress) : null}
       onSubmit={async (data) => {
         await submit(data);
       }}

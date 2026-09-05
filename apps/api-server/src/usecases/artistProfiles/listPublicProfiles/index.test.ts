@@ -24,8 +24,20 @@ describe("listPublicProfiles", () => {
   it("公開プロフィールの一覧を ok(profiles) で返す", async () => {
     const caps = createCaps();
     caps.artistProfiles.listPublishedSummaries.mockResolvedValue([
-      { handle: "taro", name: "Taro", imageUrl: "https://e.com/a.png" },
-      { handle: "hana", name: "Hana", imageUrl: null },
+      {
+        handle: "taro",
+        name: "Taro",
+        imageUrl: "https://e.com/a.png",
+        tagline: "音で旅する",
+        genres: ["bass"],
+      },
+      {
+        handle: "hana",
+        name: "Hana",
+        imageUrl: null,
+        tagline: null,
+        genres: [],
+      },
     ]);
 
     const result = await listPublicProfiles(caps);

@@ -5,7 +5,7 @@ import { reconstructArtist } from "../../../../../../domain/artists/factories";
 import { reconstructArtistProfile } from "../../../../../../domain/artistProfiles/factories";
 import type { ArtistProfilePersistenceData } from "../../../../../../domain/artistProfiles/entities";
 import { handleAppError } from "../../../../../../errorMap";
-import saveProfileRoute from "./index";
+import updateAttributesRoute from "./index";
 
 const actor = {
   user: reconstructUser({
@@ -46,19 +46,19 @@ const createApp = (sub: string) => {
     c.set("auth0User", { sub });
     await next();
   });
-  app.route("/:artistId/profile", saveProfileRoute);
+  app.route("/:artistId/attributes", updateAttributesRoute);
   app.onError(handleAppError);
   return app;
 };
 
 const request = (artistId: string, body: unknown) =>
-  createApp("auth0|123").request(`/${artistId}/profile`, {
+  createApp("auth0|123").request(`/${artistId}/attributes`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
 
-describe("POST /artists/:artistId/profile", () => {
+describe("POST /artists/:artistId/attributes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockResolveActorState.mockResolvedValue({ status: "complete", actor });
@@ -69,18 +69,75 @@ describe("POST /artists/:artistId/profile", () => {
     );
   });
 
-  it("Actor と一致する artistId ならプロフィールを保存し、view を返す", async () => {
-    const res = await request("artist-1", { name: "Taro", genres: ["bass"] });
+  it("Actor と一致する artistId なら属性を保存し、attributes だけを返す", async () => {
+    const res = await request("artist-1", {
+      name: "Taro",
+      tagline: "音で旅する",
+      genres: ["bass"],
+      activityInfo: "東京 / ソロ",
+    });
     const body = await res.json();
 
     expect(res.status).toBe(200);
-    expect(body.handle).toBe("beatboxer_taro");
-    expect(body.profile.name).toBe("Taro");
+    expect(body).toStrictEqual({
+      attributes: {
+        name: "Taro",
+        imageUrl: null,
+        tagline: "音で旅する",
+        genres: ["bass"],
+        activityInfo: "東京 / ソロ",
+      },
+    });
     expect(mockArtistProfiles.upsert).toHaveBeenCalledTimes(1);
+    expect(mockArtistProfiles.upsert.mock.calls[0][0]).toMatchObject({
+      artistId: "artist-1",
+      name: "Taro",
+      genres: ["bass"],
+    });
   });
 
+  it("他の構造（imageUrl / chapters / links）はボディに渡しても無視される", async () => {
+    mockArtistProfiles.findByArtistId.mockResolvedValue(
+      reconstructArtistProfile({
+        id: "p1",
+        artistId: "artist-1",
+        published: false,
+        imageUrl: "https://example.com/keep.png",
+        chapters: [{ questionCode: "beginning", body: "保持される章" }],
+      }),
+    );
+
+    const res = await request("artist-1", {
+      name: "Taro",
+      genres: [],
+      imageUrl: "https://example.com/ignored.png",
+      chapters: [{ questionCode: "beginning", body: "無視される章" }],
+      links: [{ linkTypeCode: "x", url: "https://x.com/ignored" }],
+    });
+
+    expect(res.status).toBe(200);
+    expect(mockArtistProfiles.upsert.mock.calls[0][0]).toMatchObject({
+      imageUrl: "https://example.com/keep.png",
+      chapters: [{ questionCode: "beginning", body: "保持される章" }],
+      links: [],
+    });
+  });
+
+  it.each([
+    ["name", { genres: ["bass"] }],
+    ["genres", { name: "Taro" }],
+  ])(
+    "属性は丸ごと差し替えのため %s が無いリクエストは 400 を返し、保存しない",
+    async (_, body) => {
+      const res = await request("artist-1", body);
+
+      expect(res.status).toBe(400);
+      expect(mockArtistProfiles.upsert).not.toHaveBeenCalled();
+    },
+  );
+
   it("Actor と一致しない artistId は 404 を返し、保存しない", async () => {
-    const res = await request("other-artist", { name: "Taro" });
+    const res = await request("other-artist", { name: "Taro", genres: [] });
 
     expect(res.status).toBe(404);
     expect(mockArtistProfiles.upsert).not.toHaveBeenCalled();
@@ -89,48 +146,26 @@ describe("POST /artists/:artistId/profile", () => {
   it("actor が解決できなければ 404 を返し、保存しない", async () => {
     mockResolveActorState.mockResolvedValue({ status: "unregistered" });
 
-    const res = await request("artist-1", { name: "Taro" });
+    const res = await request("artist-1", { name: "Taro", genres: [] });
 
     expect(res.status).toBe(404);
     expect(mockArtistProfiles.upsert).not.toHaveBeenCalled();
   });
 
   it("入力が不正なら 422 を返し、保存しない", async () => {
-    const res = await request("artist-1", { imageUrl: "not-a-url" });
+    const res = await request("artist-1", {
+      name: "a".repeat(256),
+      genres: [],
+    });
 
     expect(res.status).toBe(422);
     expect(mockArtistProfiles.upsert).not.toHaveBeenCalled();
   });
 
-  it("chapters を渡すと保存され、response の profile.chapters に反映される", async () => {
+  it("MAX_GENRES（20件）を超える genres はリクエストスキーマ違反として 400 を返し、保存しない", async () => {
     const res = await request("artist-1", {
       name: "Taro",
-      chapters: [
-        { questionCode: "beginning", body: "始めたきっかけ" },
-        { questionCode: "turning_point", body: "転機" },
-      ],
-    });
-    const body = await res.json();
-
-    expect(res.status).toBe(200);
-    expect(body.profile.chapters).toStrictEqual([
-      { questionCode: "beginning", body: "始めたきっかけ" },
-      { questionCode: "turning_point", body: "転機" },
-    ]);
-    expect(mockArtistProfiles.upsert.mock.calls[0][0].chapters).toEqual([
-      { questionCode: "beginning", body: "始めたきっかけ" },
-      { questionCode: "turning_point", body: "転機" },
-    ]);
-  });
-
-  it("MAX_CHAPTERS（3件）を超える chapters はリクエストスキーマ違反として 400 を返し、保存しない", async () => {
-    const res = await request("artist-1", {
-      chapters: [
-        { questionCode: "beginning", body: "始めたきっかけ" },
-        { questionCode: "turning_point", body: "転機" },
-        { questionCode: "concept", body: "コンセプト" },
-        { questionCode: "beginning", body: "4つ目" },
-      ],
+      genres: Array(21).fill("bass"),
     });
 
     expect(res.status).toBe(400);

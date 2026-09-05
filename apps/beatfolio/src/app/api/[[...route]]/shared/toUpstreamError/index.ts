@@ -1,8 +1,17 @@
 import { z } from "zod";
 import type { ClientErrorStatusCode } from "hono/utils/http-status";
-import { createUpstreamRejectedError } from "../../errors/upstreamRejected";
-import { createUpstreamServerError } from "../../errors/upstreamServerError";
-import { createUpstreamContractViolationError } from "../../errors/upstreamContractViolation";
+import {
+  createUpstreamRejectedError,
+  type UpstreamRejectedError,
+} from "../../errors/upstreamRejected";
+import {
+  createUpstreamServerError,
+  type UpstreamServerError,
+} from "../../errors/upstreamServerError";
+import {
+  createUpstreamContractViolationError,
+  type UpstreamContractViolationError,
+} from "../../errors/upstreamContractViolation";
 
 export type UpstreamResponse = {
   status: number;
@@ -26,9 +35,14 @@ const readBody = async (res: UpstreamResponse): Promise<unknown> => {
   }
 };
 
+export type UpstreamResponseError =
+  | UpstreamRejectedError
+  | UpstreamServerError
+  | UpstreamContractViolationError;
+
 export const toUpstreamError = async (
   res: UpstreamResponse,
-): Promise<Error> => {
+): Promise<UpstreamResponseError> => {
   if (res.status >= 500) {
     return createUpstreamServerError(res.status);
   }

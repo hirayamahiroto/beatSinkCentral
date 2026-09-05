@@ -35,19 +35,24 @@ const jsonResponse = (
 });
 
 const publishedProfile = {
+  handle: "saku",
   profile: {
-    name: "SAKU",
-    tagline: "口ひとつで、フロアを揺らす。",
-    imageUrl: "https://example.com/saku.jpg",
-    chapters: [
-      { questionCode: "beginning", body: "始めたきっかけ。" },
-      { questionCode: "concept", body: "表現したいこと。" },
-    ],
-    activityInfo: "拠点: 東京 / 形態: ソロ",
-    genres: ["Beatbox"],
+    attributes: {
+      name: "SAKU",
+      imageUrl: "https://example.com/saku.jpg",
+      tagline: "口ひとつで、フロアを揺らす。",
+      genres: ["Beatbox"],
+      activityInfo: "拠点: 東京 / 形態: ソロ",
+    },
+    story: {
+      chapters: [
+        { key: "beginning", body: "始めたきっかけ。" },
+        { key: "concept", body: "表現したいこと。" },
+      ],
+    },
     links: [
-      { type: "youtube", url: "https://youtube.com/@saku", label: null },
-      { type: "other", url: "https://example.com/me", label: "個人HP" },
+      { linkTypeCode: "youtube", url: "https://youtube.com/@saku" },
+      { linkTypeCode: "other", url: "https://example.com/me" },
     ],
     published: true,
   },
@@ -84,7 +89,7 @@ describe("GET /players/:handle", () => {
       offer: null,
       supportLinks: [
         { url: "https://youtube.com/@saku", label: "YouTube" },
-        { url: "https://example.com/me", label: "個人HP" },
+        { url: "https://example.com/me", label: "その他" },
       ],
     });
   });

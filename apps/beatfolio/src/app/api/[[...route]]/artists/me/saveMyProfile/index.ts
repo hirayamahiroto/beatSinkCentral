@@ -3,39 +3,66 @@ import { z } from "zod";
 import type { RequestContextEnv } from "../../../../../../middlewares/requestContext";
 import { validateRequest } from "../../../validators/validateRequest";
 import { resolveMyArtistId } from "../../../shared/resolveMyArtistId";
-import { toUpstreamError } from "../../../shared/toUpstreamError";
-import { readUpstreamJson } from "../../../shared/readUpstreamJson";
+import {
+  toUpstreamError,
+  type UpstreamResponse,
+} from "../../../shared/toUpstreamError";
+import {
+  createPartialSaveFailedError,
+  type UpstreamFailure,
+} from "../../../errors/partialSaveFailed";
+import { isUpstreamUnavailableError } from "../../../../../../utils/client/errors/upstreamUnavailable";
+import {
+  chapterStep,
+  type SaveStep,
+} from "../../../../../../libs/saveProfileProgress";
 
 const MAX_GENRES = 20;
 const MAX_LINKS = 20;
 const MAX_CHAPTERS = 3;
 
 const saveProfileRequestSchema = z.object({
-  name: z.string().nullable().optional(),
+  name: z.string().nullable(),
   tagline: z.string().nullable().optional(),
-  imageUrl: z.string().nullable().optional(),
-  chapters: z
-    .array(
-      z.object({
-        questionCode: z.string(),
-        body: z.string(),
-      }),
-    )
-    .max(MAX_CHAPTERS)
-    .optional(),
   activityInfo: z.string().nullable().optional(),
-  genres: z.array(z.string()).max(MAX_GENRES).optional(),
+  genres: z.array(z.string()).max(MAX_GENRES),
+  chapters: z
+    .array(z.object({ questionCode: z.string().min(1), body: z.string() }))
+    .max(MAX_CHAPTERS),
   links: z
-    .array(
-      z.object({
-        type: z.string(),
-        url: z.string(),
-        label: z.string().nullable().optional(),
-      }),
-    )
-    .max(MAX_LINKS)
-    .optional(),
+    .array(z.object({ type: z.string(), url: z.string() }))
+    .max(MAX_LINKS),
 });
+
+type StepResponse = UpstreamResponse & { ok: boolean };
+
+const createSaveSteps = () => {
+  const saved: SaveStep[] = [];
+
+  const run = async (
+    step: SaveStep,
+    send: () => Promise<StepResponse>,
+  ): Promise<void> => {
+    const fail = (upstream: UpstreamFailure) =>
+      createPartialSaveFailedError({
+        saved: [...saved],
+        failedAt: step,
+        upstream,
+      });
+
+    let res: StepResponse;
+    try {
+      res = await send();
+    } catch (error) {
+      if (isUpstreamUnavailableError(error)) throw fail(error);
+      throw error;
+    }
+    if (!res.ok) throw fail(await toUpstreamError(res));
+    saved.push(step);
+  };
+
+  return { run };
+};
 
 const app = new Hono<RequestContextEnv>().post(
   "/",
@@ -45,14 +72,43 @@ const app = new Hono<RequestContextEnv>().post(
     const body = c.req.valid("json");
 
     const artistId = await resolveMyArtistId(apiClient);
+    const artist = apiClient.api.artists[":artistId"];
+    const steps = createSaveSteps();
 
-    const res = await apiClient.api.artists[":artistId"].profile.$post({
-      param: { artistId },
-      json: body,
-    });
-    if (!res.ok) throw await toUpstreamError(res);
+    await steps.run("attributes", () =>
+      artist.attributes.$post({
+        param: { artistId },
+        json: {
+          name: body.name,
+          tagline: body.tagline,
+          genres: body.genres,
+          activityInfo: body.activityInfo,
+        },
+      }),
+    );
 
-    return c.json(await readUpstreamJson(res));
+    for (const chapter of body.chapters) {
+      await steps.run(chapterStep(chapter.questionCode), () =>
+        artist.story.chapters[":chapterKey"].$post({
+          param: { artistId, chapterKey: chapter.questionCode },
+          json: { body: chapter.body },
+        }),
+      );
+    }
+
+    await steps.run("links", () =>
+      artist.links.$post({
+        param: { artistId },
+        json: {
+          links: body.links.map((link) => ({
+            linkTypeCode: link.type,
+            url: link.url,
+          })),
+        },
+      }),
+    );
+
+    return c.body(null, 204);
   },
 );
 

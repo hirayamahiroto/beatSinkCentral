@@ -88,6 +88,7 @@ export const createCapabilityDepsStub = (
     buildPublicReadCapabilities: () => ({
       artistProfiles: createArtistProfileReaderStub(),
       linkTypes: { findAll: async () => [] },
+      storyQuestions: createStoryQuestionReaderStub(),
     }),
 
     buildPublicWriteCapabilities: () => ({
@@ -97,7 +98,6 @@ export const createCapabilityDepsStub = (
     buildArtistReadCapabilities: (actor) => ({
       actor,
       artistProfiles: createArtistProfileReaderStub(),
-      storyQuestions: createStoryQuestionReaderStub(),
     }),
 
     buildArtistStorageWriteCapabilities: (actor) => ({

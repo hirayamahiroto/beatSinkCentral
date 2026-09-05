@@ -15,13 +15,20 @@ export const toErrorKind = (status: number): FetcherError["kind"] =>
 
 const errorBodySchema = z.object({ error: z.string().min(1) });
 
+export const readErrorMessageFromBody = (
+  body: unknown,
+  fallback: string,
+): string => {
+  const parsed = errorBodySchema.safeParse(body);
+  return parsed.success ? parsed.data.error : fallback;
+};
+
 export const readErrorMessage = async (
   res: { json: () => Promise<unknown> },
   fallback: string,
 ): Promise<string> => {
   try {
-    const parsed = errorBodySchema.safeParse(await res.json());
-    return parsed.success ? parsed.data.error : fallback;
+    return readErrorMessageFromBody(await res.json(), fallback);
   } catch {
     return fallback;
   }

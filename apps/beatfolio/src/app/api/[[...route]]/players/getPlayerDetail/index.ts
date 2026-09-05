@@ -7,7 +7,7 @@ import { createPlayerNotFoundError } from "../../errors/playerNotFound";
 
 const CURRENT_STORY_CHAPTER_QUESTION = "Story";
 
-type StoryChapter = { questionCode: string; body: string };
+type StoryChapter = { key: string; body: string };
 
 // T03② で章単位の区画表示に置き換えるまでの暫定措置。旧 story 相当の1本のテキストとして結合する
 const joinChapterBodies = (chapters: StoryChapter[]): string =>
@@ -32,14 +32,14 @@ const app = new Hono<RequestContextEnv>().get("/:handle", async (c) => {
   const { linkTypes } = await readUpstreamJson(linkTypesRes);
 
   return c.json({
-    name: profile.name,
-    tagline: profile.tagline,
-    imageUrl: profile.imageUrl,
-    genres: profile.genres,
+    name: profile.attributes.name,
+    tagline: profile.attributes.tagline,
+    imageUrl: profile.attributes.imageUrl,
+    genres: profile.attributes.genres,
     storyChapters: [
       {
         question: CURRENT_STORY_CHAPTER_QUESTION,
-        body: joinChapterBodies(profile.chapters),
+        body: joinChapterBodies(profile.story.chapters),
       },
     ],
     translation: null,

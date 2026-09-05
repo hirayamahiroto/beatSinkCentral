@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { saveMyProfile } from "./index";
+import { saveMyProfile, type SaveMyProfileInput } from "./index";
 import { NETWORK_ERROR_MESSAGE } from "../../shared/error";
 
 const { postMock } = vi.hoisted(() => ({ postMock: vi.fn() }));
@@ -10,21 +10,26 @@ vi.mock("../../../utils/client", () => ({
   }),
 }));
 
+const input: SaveMyProfileInput = {
+  name: "SAKU",
+  genres: ["Beatbox"],
+  chapters: [{ questionCode: "beginning", body: "始めたきっかけ。" }],
+  links: [{ type: "youtube", url: "https://youtube.com/@saku" }],
+};
+
 describe("saveMyProfile", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("成功したら ok を返す", async () => {
     postMock.mockResolvedValue({
       ok: true,
-      status: 200,
+      status: 204,
       json: async () => ({}),
     });
 
-    const result = await saveMyProfile({ name: "SAKU", genres: ["Beatbox"] });
+    const result = await saveMyProfile(input);
 
-    expect(postMock).toHaveBeenCalledWith({
-      json: { name: "SAKU", genres: ["Beatbox"] },
-    });
+    expect(postMock).toHaveBeenCalledWith({ json: input });
     expect(result).toStrictEqual({ ok: true, value: undefined });
   });
 
@@ -32,14 +37,68 @@ describe("saveMyProfile", () => {
     postMock.mockResolvedValue({
       ok: false,
       status: 422,
-      json: async () => ({ error: "Invalid imageUrl format" }),
+      json: async () => ({ error: "Invalid name format" }),
     });
 
-    const result = await saveMyProfile({ imageUrl: "not-a-url" });
+    const result = await saveMyProfile({ ...input, name: "a".repeat(256) });
 
     expect(result).toStrictEqual({
       ok: false,
-      error: { kind: "rejected", message: "Invalid imageUrl format" },
+      error: {
+        kind: "rejected",
+        message: "Invalid name format",
+        progress: null,
+      },
+    });
+  });
+
+  it("保存済みと失敗ステップを含むボディは progress として返す", async () => {
+    postMock.mockResolvedValue({
+      ok: false,
+      status: 422,
+      json: async () => ({
+        error: "Invalid snsUrl format",
+        code: "InvalidSnsUrlFormatError",
+        saved: ["attributes", "chapter:beginning"],
+        failedAt: "links",
+      }),
+    });
+
+    const result = await saveMyProfile(input);
+
+    expect(result).toStrictEqual({
+      ok: false,
+      error: {
+        kind: "rejected",
+        message: "Invalid snsUrl format",
+        progress: {
+          saved: ["attributes", "chapter:beginning"],
+          failedAt: "links",
+        },
+      },
+    });
+  });
+
+  it("ステップ識別子が契約外なら progress は null にする", async () => {
+    postMock.mockResolvedValue({
+      ok: false,
+      status: 422,
+      json: async () => ({
+        error: "Invalid snsUrl format",
+        saved: ["image"],
+        failedAt: "links",
+      }),
+    });
+
+    const result = await saveMyProfile(input);
+
+    expect(result).toStrictEqual({
+      ok: false,
+      error: {
+        kind: "rejected",
+        message: "Invalid snsUrl format",
+        progress: null,
+      },
     });
   });
 
@@ -50,13 +109,14 @@ describe("saveMyProfile", () => {
       json: async () => ({}),
     });
 
-    const result = await saveMyProfile({ name: "SAKU" });
+    const result = await saveMyProfile(input);
 
     expect(result).toStrictEqual({
       ok: false,
       error: {
         kind: "unexpected",
         message: "プロフィールの保存に失敗しました",
+        progress: null,
       },
     });
   });
@@ -64,11 +124,15 @@ describe("saveMyProfile", () => {
   it("通信に失敗したら unexpected を返す", async () => {
     postMock.mockRejectedValue(new TypeError("Failed to fetch"));
 
-    const result = await saveMyProfile({ name: "SAKU" });
+    const result = await saveMyProfile(input);
 
     expect(result).toStrictEqual({
       ok: false,
-      error: { kind: "unexpected", message: NETWORK_ERROR_MESSAGE },
+      error: {
+        kind: "unexpected",
+        message: NETWORK_ERROR_MESSAGE,
+        progress: null,
+      },
     });
   });
 });

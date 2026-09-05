@@ -33,7 +33,7 @@ const publishableProfile = () =>
     imageUrl: "https://example.com/a.png",
     chapters: [{ questionCode: "beginning", body: "私の歩み" }],
     genres: ["bass"],
-    links: [{ type: "x", url: "https://x.com/taro" }],
+    links: [{ linkTypeCode: "x", url: "https://x.com/taro" }],
   });
 
 const createCaps = () =>

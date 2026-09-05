@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  assessPublishability,
   collectMissingPublishFields,
   createProfileNotPublishableError,
   enforcePublishInvariant,
@@ -16,7 +17,7 @@ const fullContent = {
   imageUrl: "https://example.com/a.png",
   chapters: [{ questionCode: "beginning", body: "私の歩み" }],
   genres: ["bass"],
-  links: [{ type: "x", url: "https://x.com/taro" }],
+  links: [{ linkTypeCode: "x", url: "https://x.com/taro" }],
 };
 
 describe("collectMissingPublishFields", () => {
@@ -62,6 +63,25 @@ describe("collectMissingPublishFields", () => {
     });
 
     expect(collectMissingPublishFields(profile)).toEqual([]);
+  });
+});
+
+describe("assessPublishability", () => {
+  it("最小核が揃っていれば ok:true と空の missingFields を返す", () => {
+    expect(
+      assessPublishability(reconstructArtistProfile(fullContent)),
+    ).toStrictEqual({
+      ok: true,
+      missingFields: [],
+    });
+  });
+
+  it("不足があれば ok:false と不足フィールドを返す", () => {
+    expect(
+      assessPublishability(
+        reconstructArtistProfile({ ...fullContent, chapters: [], links: [] }),
+      ),
+    ).toStrictEqual({ ok: false, missingFields: ["story", "links"] });
   });
 });
 

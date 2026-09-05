@@ -45,6 +45,7 @@ export const buildPublicReadCapabilities = (
 ): PublicReadCapabilities => ({
   artistProfiles: createArtistProfileReader(executor),
   linkTypes: createLinkTypeReader(executor),
+  storyQuestions: createStoryQuestionReader(executor),
 });
 
 export const buildPublicWriteCapabilities = (
@@ -58,7 +59,6 @@ export const buildArtistReadCapabilities =
   (executor: Executor): ArtistReadCapabilities => ({
     actor,
     artistProfiles: createArtistProfileReader(executor),
-    storyQuestions: createStoryQuestionReader(executor),
   });
 
 export const buildUserWriteCapabilities =

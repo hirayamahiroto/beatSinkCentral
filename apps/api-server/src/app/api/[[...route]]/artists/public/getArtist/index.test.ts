@@ -37,7 +37,7 @@ describe("GET /artists/:handle", () => {
         imageUrl: "https://example.com/a.png",
         chapters: [{ questionCode: "beginning", body: "私の歩み" }],
         genres: ["bass"],
-        links: [{ type: "x", url: "https://x.com/taro" }],
+        links: [{ linkTypeCode: "x", url: "https://x.com/taro" }],
       }),
     );
 
@@ -46,9 +46,9 @@ describe("GET /artists/:handle", () => {
 
     expect(res.status).toBe(200);
     expect(body.handle).toBe("beatboxer_taro");
-    expect(body.profile.name).toBe("Taro");
-    expect(body.profile.chapters).toStrictEqual([
-      { questionCode: "beginning", body: "私の歩み" },
+    expect(body.profile.attributes.name).toBe("Taro");
+    expect(body.profile.story.chapters).toStrictEqual([
+      { key: "beginning", body: "私の歩み" },
     ]);
     expect(mockArtistProfiles.findPublishedByHandle).toHaveBeenCalledWith(
       "beatboxer_taro",
@@ -65,7 +65,7 @@ describe("GET /artists/:handle", () => {
         imageUrl: null,
         chapters: [{ questionCode: "beginning", body: "私の歩み" }],
         genres: [],
-        links: [{ type: "x", url: "https://x.com/taro" }],
+        links: [{ linkTypeCode: "x", url: "https://x.com/taro" }],
       }),
     );
 
@@ -80,7 +80,12 @@ describe("GET /artists/:handle", () => {
     expect(JSON.parse(consoleError.mock.calls[0][0])).toMatchObject({
       event: "AppError",
       errorType: "ResponseContractViolationError",
-      context: { issuePaths: ["profile.imageUrl", "profile.genres"] },
+      context: {
+        issuePaths: [
+          "profile.attributes.imageUrl",
+          "profile.attributes.genres",
+        ],
+      },
     });
     consoleError.mockRestore();
   });

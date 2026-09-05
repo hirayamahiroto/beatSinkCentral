@@ -26,13 +26,16 @@ describe("toSaveProfileRequest", () => {
     const result = toSaveProfileRequest(baseValues);
 
     expect(result.name).toBe("SAKU");
-    expect(result.imageUrl).toBe("https://example.com/saku.jpg");
     expect(result.tagline).toBe("口ひとつで、フロアを揺らす。");
     expect(result.genres).toEqual(["Beatbox", "Bass"]);
     expect(result.links).toEqual([
       { type: "youtube", url: "https://youtube.com/@saku" },
       { type: "x", url: "https://x.com/saku" },
     ]);
+  });
+
+  it("imageUrl は保存リクエストに含めない（画像はアップロード時に確定済み）", () => {
+    expect(toSaveProfileRequest(baseValues)).not.toHaveProperty("imageUrl");
   });
 
   it("Story の3問をそれぞれ questionCode 付きの章として渡す", () => {
@@ -51,7 +54,7 @@ describe("toSaveProfileRequest", () => {
     ]);
   });
 
-  it("未回答（空白のみ）の問いは章として送らない", () => {
+  it("未回答（空白のみ）の問いも空文字の章として渡す（サーバー側で章を消すため）", () => {
     const result = toSaveProfileRequest({
       ...baseValues,
       chapters: {
@@ -66,6 +69,8 @@ describe("toSaveProfileRequest", () => {
         questionCode: "beginning",
         body: "中学のときに動画を見て衝撃を受けた。",
       },
+      { questionCode: "turning_point", body: "" },
+      { questionCode: "concept", body: "" },
     ]);
   });
 

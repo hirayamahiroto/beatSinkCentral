@@ -46,8 +46,16 @@ describe("GET /players", () => {
             handle: "saku",
             name: "SAKU",
             imageUrl: "https://example.com/saku.jpg",
+            tagline: "口ひとつで、フロアを揺らす。",
+            genres: ["Beatbox"],
           },
-          { handle: "rei", name: "REI", imageUrl: null },
+          {
+            handle: "rei",
+            name: "REI",
+            imageUrl: null,
+            tagline: null,
+            genres: [],
+          },
         ],
       }),
     );
@@ -61,8 +69,16 @@ describe("GET /players", () => {
           handle: "saku",
           name: "SAKU",
           imageUrl: "https://example.com/saku.jpg",
+          tagline: "口ひとつで、フロアを揺らす。",
+          genres: ["Beatbox"],
         },
-        { handle: "rei", name: "REI", imageUrl: null },
+        {
+          handle: "rei",
+          name: "REI",
+          imageUrl: null,
+          tagline: null,
+          genres: [],
+        },
       ],
     });
   });

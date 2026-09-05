@@ -25,14 +25,6 @@ const mockArtistProfiles = {
   findPublishedByHandle: vi.fn(),
 };
 
-const mockStoryQuestions = {
-  findAll: vi.fn(async () => [
-    { code: "beginning", label: "始まり" },
-    { code: "turning_point", label: "転機" },
-    { code: "concept", label: "何を表現したいのか" },
-  ]),
-};
-
 const mockResolveActorState = vi.fn();
 
 vi.mock("../../../../../../infrastructure/capabilities", () => ({
@@ -41,7 +33,6 @@ vi.mock("../../../../../../infrastructure/capabilities", () => ({
     buildArtistReadCapabilities: (a: unknown) => ({
       actor: a,
       artistProfiles: mockArtistProfiles,
-      storyQuestions: mockStoryQuestions,
     }),
   }),
 }));
@@ -66,7 +57,7 @@ describe("GET /artists/:artistId/profile", () => {
     mockResolveActorState.mockResolvedValue({ status: "complete", actor });
   });
 
-  it("Actor と一致する artistId ならプロフィールと問いマスタを返す", async () => {
+  it("Actor と一致する artistId なら集約の構造と公開可能性を返す", async () => {
     mockArtistProfiles.findByArtistId.mockResolvedValue(
       reconstructArtistProfile({
         id: "p1",
@@ -74,6 +65,7 @@ describe("GET /artists/:artistId/profile", () => {
         published: false,
         name: "Taro",
         chapters: [{ questionCode: "beginning", body: "私の歩み" }],
+        links: [{ linkTypeCode: "x", url: "https://x.com/taro" }],
       }),
     );
 
@@ -81,21 +73,36 @@ describe("GET /artists/:artistId/profile", () => {
     const body = await res.json();
 
     expect(res.status).toBe(200);
-    expect(body.profile.name).toBe("Taro");
-    expect(body.profile.chapters).toStrictEqual([
-      { questionCode: "beginning", body: "私の歩み" },
-    ]);
-    expect(body.missingPublishFields).toStrictEqual([
-      "imageUrl",
-      "genres",
-      "links",
-    ]);
-    expect(body.storyQuestions).toStrictEqual([
-      { code: "beginning", label: "始まり", required: true },
-      { code: "turning_point", label: "転機", required: false },
-      { code: "concept", label: "何を表現したいのか", required: false },
-    ]);
+    expect(body).toStrictEqual({
+      handle: "beatboxer_taro",
+      profile: {
+        attributes: {
+          name: "Taro",
+          imageUrl: null,
+          tagline: null,
+          genres: [],
+          activityInfo: null,
+        },
+        story: { chapters: [{ key: "beginning", body: "私の歩み" }] },
+        links: [{ linkTypeCode: "x", url: "https://x.com/taro" }],
+        published: false,
+      },
+      publishability: { ok: false, missingFields: ["imageUrl", "genres"] },
+    });
     expect(mockArtistProfiles.findByArtistId).toHaveBeenCalledWith("artist-1");
+  });
+
+  it("プロフィール未作成なら profile と publishability を null で返す", async () => {
+    mockArtistProfiles.findByArtistId.mockResolvedValue(null);
+
+    const res = await request("artist-1");
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toStrictEqual({
+      handle: "beatboxer_taro",
+      profile: null,
+      publishability: null,
+    });
   });
 
   it("Actor と一致しない artistId は 404 を返し、プロフィールを読まない", async () => {

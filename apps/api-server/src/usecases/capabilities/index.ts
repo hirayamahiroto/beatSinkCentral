@@ -38,12 +38,12 @@ export type IdentityCapabilities = {
 export type PublicReadCapabilities = {
   artistProfiles: IArtistProfileReader;
   linkTypes: ILinkTypeReader;
+  storyQuestions: IStoryQuestionReader;
 };
 
 export type ArtistReadCapabilities = {
   actor: Actor;
   artistProfiles: IArtistProfileReader;
-  storyQuestions: IStoryQuestionReader;
 };
 
 export type PublicWriteCapabilities = {

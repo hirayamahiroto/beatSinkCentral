@@ -11,6 +11,7 @@ import type { InvalidRequestFormatError } from "../app/api/[[...route]]/errors/i
 import type { MyUserNotFoundError } from "../app/api/[[...route]]/errors/myUserNotFound";
 import type { MyArtistNotFoundError } from "../app/api/[[...route]]/errors/myArtistNotFound";
 import type { PlayerNotFoundError } from "../app/api/[[...route]]/errors/playerNotFound";
+import type { PartialSaveFailedError } from "../app/api/[[...route]]/errors/partialSaveFailed";
 import { translateUpstreamBody } from "./translateUpstreamBody";
 
 export type BffError =
@@ -21,7 +22,8 @@ export type BffError =
   | InvalidRequestFormatError
   | MyUserNotFoundError
   | MyArtistNotFoundError
-  | PlayerNotFoundError;
+  | PlayerNotFoundError
+  | PartialSaveFailedError;
 
 type ErrorStatusCode = ClientErrorStatusCode | ServerErrorStatusCode;
 
@@ -32,7 +34,7 @@ type LogLevel = "info" | "warn" | "error";
 type ErrorMapping<SpecificError extends BffError> = {
   status: (error: SpecificError) => ErrorStatusCode;
   body: (error: SpecificError) => ErrorBody;
-  logLevel: LogLevel;
+  logLevel: (error: SpecificError) => LogLevel;
 };
 
 type ErrorMap = {
@@ -45,12 +47,12 @@ const errorMap: ErrorMap = {
   UpstreamUnavailableError: {
     status: () => 502,
     body: (error) => ({ error: "Upstream request failed", code: error.type }),
-    logLevel: "warn",
+    logLevel: () => "warn",
   },
   UpstreamServerError: {
     status: () => 502,
     body: (error) => ({ error: "Upstream request failed", code: error.type }),
-    logLevel: "warn",
+    logLevel: () => "warn",
   },
   UpstreamContractViolationError: {
     status: () => 502,
@@ -58,12 +60,12 @@ const errorMap: ErrorMap = {
       error: "Upstream response violated contract",
       code: error.type,
     }),
-    logLevel: "error",
+    logLevel: () => "error",
   },
   UpstreamRejectedError: {
     status: (error) => error.status,
     body: (error) => translateUpstreamBody(error.body),
-    logLevel: "info",
+    logLevel: () => "info",
   },
   InvalidRequestFormatError: {
     status: () => 400,
@@ -72,22 +74,32 @@ const errorMap: ErrorMap = {
       code: error.type,
       issues: error.issues,
     }),
-    logLevel: "info",
+    logLevel: () => "info",
   },
   MyUserNotFoundError: {
     status: () => 404,
     body: (error) => ({ error: "User not found", code: error.type }),
-    logLevel: "info",
+    logLevel: () => "info",
   },
   MyArtistNotFoundError: {
     status: () => 404,
     body: (error) => ({ error: "Artist not found", code: error.type }),
-    logLevel: "info",
+    logLevel: () => "info",
   },
   PlayerNotFoundError: {
     status: () => 404,
     body: (error) => ({ error: "Player profile not found", code: error.type }),
-    logLevel: "info",
+    logLevel: () => "info",
+  },
+  PartialSaveFailedError: {
+    status: (error) => resolveMapping(error.upstream).status(error.upstream),
+    body: (error) => ({
+      ...resolveMapping(error.upstream).body(error.upstream),
+      saved: error.saved,
+      failedAt: error.failedAt,
+    }),
+    logLevel: (error) =>
+      resolveMapping(error.upstream).logLevel(error.upstream),
   },
 };
 
@@ -113,7 +125,7 @@ const buildMappedResponse = (error: BffError): ErrorResponse => {
 
 const logMapped = (error: BffError, status: ErrorStatusCode): void => {
   const mapping = resolveMapping(error);
-  console[mapping.logLevel]("[BffError]", {
+  console[mapping.logLevel(error)]("[BffError]", {
     type: error.type,
     status,
     cause: error.cause,
