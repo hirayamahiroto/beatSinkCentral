@@ -13,6 +13,7 @@ import {
   createArtistProfileReader,
   createArtistProfileWriter,
 } from "../../repositories/artistProfileRepository";
+import { createArtistHandleHistoryWriter } from "../../repositories/artistHandleHistoryRepository";
 import { createLinkTypeReader } from "../../repositories/linkTypeRepository";
 import { createAnalyticsEventWriter } from "../../repositories/analyticsEventRepository";
 import { createStoryQuestionReader } from "../../repositories/storyQuestionRepository";
@@ -45,6 +46,10 @@ vi.mock("../../repositories/artistProfileRepository", () => ({
     upsert: vi.fn(),
     setPublished: vi.fn(),
   })),
+}));
+
+vi.mock("../../repositories/artistHandleHistoryRepository", () => ({
+  createArtistHandleHistoryWriter: vi.fn(() => ({ record: vi.fn() })),
 }));
 
 vi.mock("../../repositories/linkTypeRepository", () => ({
@@ -151,12 +156,14 @@ describe("buildArtistWriteCapabilities", () => {
 
     expect(Object.keys(caps).sort()).toStrictEqual([
       "actor",
+      "artistHandleHistories",
       "artistProfiles",
       "artists",
       "users",
     ]);
     expect(caps.actor).toBe(actor);
     expect(createUserReader).toHaveBeenCalledWith(executor);
+    expect(createArtistHandleHistoryWriter).toHaveBeenCalledWith(executor);
     expect(createArtistProfileWriter).toHaveBeenCalledWith(executor);
   });
 });

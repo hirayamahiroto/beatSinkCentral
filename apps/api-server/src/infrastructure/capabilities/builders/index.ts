@@ -10,6 +10,7 @@ import {
   createArtistProfileReader,
   createArtistProfileWriter,
 } from "../../repositories/artistProfileRepository";
+import { createArtistHandleHistoryWriter } from "../../repositories/artistHandleHistoryRepository";
 import { createLinkTypeReader } from "../../repositories/linkTypeRepository";
 import { createAnalyticsEventWriter } from "../../repositories/analyticsEventRepository";
 import { createStoryQuestionReader } from "../../repositories/storyQuestionRepository";
@@ -73,6 +74,7 @@ export const buildArtistWriteCapabilities =
   (executor: Executor): ArtistWriteCapabilities => ({
     actor,
     ...buildAccountRepositories(executor),
+    artistHandleHistories: createArtistHandleHistoryWriter(executor),
     artistProfiles: {
       ...createArtistProfileReader(executor),
       ...createArtistProfileWriter(executor),

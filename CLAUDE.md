@@ -83,6 +83,7 @@ npm run build
 | DB 接続パターン（Supabase Pooler / Direct 使い分け） | `docs/architecture/server/database/connection.md`                 | 新環境の DB セットアップ・CI/CD の DB エラー調査時     |
 | Supabase Storage（バケット管理・アクセスモデル）     | `docs/architecture/server/database/storage.md`                    | ファイルアップロード機能・バケット追加/変更時          |
 | 外部クライアント実装（Next.js 遅延初期化）           | `docs/architecture/server/external-clients.md`                    | Database / Auth0 / Redis 等の追加・初期化変更時        |
+| handle 変更履歴                                      | `docs/architecture/server/handle-history.md`                      | handle 変更の経路・旧 handle の扱いを判断する時        |
 | 認証                                                 | `docs/architecture/authentication.md`                             | 認証・認可フローの追加・変更時                         |
 | フロントエンド全般                                   | `docs/architecture/frontend/README.md`                            | UI 実装時                                              |
 | 画面 URL 設計（遷移・階層・BFF ルート対応）          | `docs/architecture/frontend/routing.md`                           | 画面追加・URL 変更時                                   |

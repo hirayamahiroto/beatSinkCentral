@@ -10,6 +10,7 @@ import type {
   IArtistReader,
   IArtistWriter,
 } from "../../domain/artists/repositories";
+import type { IArtistHandleHistoryWriter } from "../../domain/artistHandleHistories/repositories";
 import type { ILinkTypeReader } from "../../domain/linkTypes/repositories";
 import type { IAnalyticsEventWriter } from "../../domain/analyticsEvents/repositories";
 import type { IStoryQuestionReader } from "../../domain/storyQuestions/repositories";
@@ -59,6 +60,7 @@ export type ArtistWriteCapabilities = {
   actor: Actor;
   users: IUserReader & IUserWriter;
   artists: IArtistReader & IArtistWriter;
+  artistHandleHistories: IArtistHandleHistoryWriter;
   artistProfiles: IArtistProfileReader & IArtistProfileWriter;
 };
 

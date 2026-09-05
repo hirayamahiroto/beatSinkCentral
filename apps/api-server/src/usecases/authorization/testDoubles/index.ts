@@ -115,6 +115,7 @@ export const createCapabilityDepsStub = (
       return work({
         actor,
         ...createRegistrationCapabilitiesStub(),
+        artistHandleHistories: { record: unusedInAuthorizationTests },
         artistProfiles: {
           ...createArtistProfileReaderStub(),
           ...createArtistProfileWriterStub(),

@@ -57,6 +57,13 @@
       "when": 1788359527040,
       "tag": "0007_tidy_radioactive_man",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788647509651,
+      "tag": "0008_stormy_eternity",
+      "breakpoints": true
     }
   ]
 }

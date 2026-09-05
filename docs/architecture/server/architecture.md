@@ -1193,7 +1193,7 @@ describe("reconstructUser", () => {
 | POST     | `/api/users/:userId`                                | メールアドレス更新                                            | 要   |
 | GET      | `/api/artists`                                      | 公開プロフィール一覧                                          | 不要 |
 | GET      | `/api/artists/:handle`                              | 公開プロフィール詳細                                          | 不要 |
-| POST     | `/api/artists/:artistId`                            | handle 更新                                                   | 要   |
+| POST     | `/api/artists/:artistId`                            | handle 更新（変更履歴を同一トランザクションで記録）           | 要   |
 | GET      | `/api/artists/:artistId/profile`                    | プロフィール取得（下書き含む・集約一本）                      | 要   |
 | POST     | `/api/artists/:artistId/attributes`                 | 属性の更新                                                    | 要   |
 | POST     | `/api/artists/:artistId/story/chapters/:chapterKey` | Story 章の書き込み（空文字で章を消す）                        | 要   |
