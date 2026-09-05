@@ -6,11 +6,13 @@ import { handleBffError } from "../../../../../errorMap";
 
 const meGet = vi.fn();
 const profileGet = vi.fn();
+const presentationPatternsGet = vi.fn();
 
 const apiClient = {
   api: {
     users: { me: { $get: meGet } },
     artists: { ":artistId": { profile: { $get: profileGet } } },
+    "presentation-patterns": { $get: presentationPatternsGet },
   },
 };
 
@@ -51,13 +53,24 @@ const profileView = {
   },
   story: { chapters: [{ key: "beginning", body: "始めたきっかけ。" }] },
   links: [{ linkTypeCode: "youtube", url: "https://youtube.com/@saku" }],
+  presentation: { patternCode: "spotlight" },
   published: true,
 };
 
-describe("GET /dashboard", () => {
-  beforeEach(() => vi.clearAllMocks());
+const presentationPatterns = [
+  { code: "interview", label: "インタビュー" },
+  { code: "spotlight", label: "スポットライト" },
+];
 
-  it("画面に必要な公開状態だけに絞って返す", async () => {
+describe("GET /dashboard", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    presentationPatternsGet.mockResolvedValue(
+      jsonResponse({ presentationPatterns }),
+    );
+  });
+
+  it("画面に必要な公開状態と、表現パターンの現在値・選択肢を返す", async () => {
     meGet.mockResolvedValue(jsonResponse(registeredMe));
     profileGet.mockResolvedValue(
       jsonResponse({
@@ -77,9 +90,32 @@ describe("GET /dashboard", () => {
       registered: true,
       artist: {
         handle: "saku",
-        profile: { published: true, missingPublishRequirements: [] },
+        profile: {
+          published: true,
+          missingPublishRequirements: [],
+          presentation: {
+            patternCode: "spotlight",
+            options: presentationPatterns,
+          },
+        },
       },
     });
+  });
+
+  it("表現パターン未選択なら公開ページと同じ既定（interview）を現在値として返す", async () => {
+    meGet.mockResolvedValue(jsonResponse(registeredMe));
+    profileGet.mockResolvedValue(
+      jsonResponse({
+        handle: "saku",
+        profile: { ...profileView, presentation: { patternCode: null } },
+        publishability: { ok: true, missingFields: [] },
+      }),
+    );
+
+    const res = await createApp().request("/", { method: "GET" });
+    const body = await res.json();
+
+    expect(body.artist.profile.presentation.patternCode).toBe("interview");
   });
 
   it("公開に足りない項目は表示ラベルへ解決して返す", async () => {
@@ -105,6 +141,10 @@ describe("GET /dashboard", () => {
         profile: {
           published: false,
           missingPublishRequirements: ["アーティスト写真", "SNS / 配信リンク"],
+          presentation: {
+            patternCode: "spotlight",
+            options: presentationPatterns,
+          },
         },
       },
     });
@@ -152,6 +192,24 @@ describe("GET /dashboard", () => {
 
   it("api-server が 5xx なら 502 を返す", async () => {
     meGet.mockResolvedValue(
+      jsonResponse({ error: "Internal" }, { ok: false, status: 500 }),
+    );
+
+    const res = await createApp().request("/", { method: "GET" });
+
+    expect(res.status).toBe(502);
+  });
+
+  it("表現パターンマスタの取得が失敗したら 502 を返す", async () => {
+    meGet.mockResolvedValue(jsonResponse(registeredMe));
+    profileGet.mockResolvedValue(
+      jsonResponse({
+        handle: "saku",
+        profile: profileView,
+        publishability: { ok: true, missingFields: [] },
+      }),
+    );
+    presentationPatternsGet.mockResolvedValue(
       jsonResponse({ error: "Internal" }, { ok: false, status: 500 }),
     );
 

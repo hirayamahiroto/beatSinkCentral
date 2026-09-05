@@ -87,6 +87,8 @@
 - **定義層**: `artist_status_masters`（`status_code` unique ＋ `status_name` ＋ `description`、`serial` PK、タイムスタンプ無し）
 - **利用層**: `artist_statuses`（`uuid` PK、`artist_id` FK、`artist_status_master_id` FK、`changed_by_user_id`、論理削除、active な部分 unique index）
 
+- **1:1 の選択**: `presentation_patterns`（`code` unique ＋ `label`）を `artist_profiles.presentation_pattern_id`（nullable FK）で参照する。主体ごとに 1 つしか選ばない種別は、利用層テーブルを別に切らず親の FK 列で持ってよい（履歴が要るなら `artist_statuses` の形へ）。
+
 新しく種別を持つ構造を作るときは、この二層を範とする。
 
 ---

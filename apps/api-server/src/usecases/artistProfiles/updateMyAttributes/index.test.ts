@@ -106,6 +106,7 @@ describe("updateMyAttributes", () => {
       activityInfo: null,
       genres: ["loop"],
       links: [{ linkTypeCode: "x", url: "https://x.com/taro" }],
+      presentationPatternCode: null,
       published: true,
     });
   });

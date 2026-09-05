@@ -60,6 +60,7 @@ describe("persistMyProfile", () => {
       activityInfo: null,
       genres: ["bass"],
       links: [{ linkTypeCode: "x", url: "https://x.com/taro" }],
+      presentationPatternCode: null,
       published: true,
     });
     expect(saved.isPublished()).toBe(true);

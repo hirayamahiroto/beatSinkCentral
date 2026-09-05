@@ -52,6 +52,7 @@
 | オファー   | オファーを差し替える  | `POST /artists/:artistId/offers`（予定）             | `{ date, place, ticketUrl, comment, coPerformers[] }`  |
 | 画像       | 画像を差し替える      | `POST /artists/:artistId/profile/image`（既存）      | multipart `file`。保存先 URL を集約に書き込む          |
 | 公開       | 公開する / 取り下げる | `POST /artists/:artistId/profile/publish`（既存）    | `{ published }`                                        |
+| 表現       | 見せ方を選ぶ          | `POST /artists/:artistId/presentation`               | `{ patternCode }`（`presentation_patterns.code`）      |
 | 翻訳段落   | —                     | **作らない**（運営が直接書く）                       | —                                                      |
 
 `chapterKey` は問いマスタ `story_questions.code` の値（`beginning` / `turning_point` / `concept`）。語彙は DB マスタ由来であり、URL に別名を導入しない（[`code-review-checklist.md`](../../../.claude/rules/code-review-checklist.md) §14）。
@@ -68,12 +69,13 @@
 
 集約は `ArtistProfile` 一つのまま。更新 API ごとに**集約の一部だけを受け取る振る舞い**を置き、残りの状態には触らない。
 
-| 更新 API            | 振る舞い                                   | 受け取るもの                           |
-| ------------------- | ------------------------------------------ | -------------------------------------- |
-| `updateAttributes`  | `ArtistProfile.reviseAttributes(content)`  | name / tagline / genres / activityInfo |
-| `writeStoryChapter` | `ArtistProfile.writeStoryChapter(chapter)` | questionCode / body                    |
-| `replaceLinks`      | `ArtistProfile.replaceLinks(links)`        | links[]                                |
-| `profile/image`     | `ArtistProfile.changeImage(imageUrl)`      | imageUrl                               |
+| 更新 API            | 振る舞い                                        | 受け取るもの                           |
+| ------------------- | ----------------------------------------------- | -------------------------------------- |
+| `updateAttributes`  | `ArtistProfile.reviseAttributes(content)`       | name / tagline / genres / activityInfo |
+| `writeStoryChapter` | `ArtistProfile.writeStoryChapter(chapter)`      | questionCode / body                    |
+| `replaceLinks`      | `ArtistProfile.replaceLinks(links)`             | links[]                                |
+| `profile/image`     | `ArtistProfile.changeImage(imageUrl)`           | imageUrl                               |
+| `presentation`      | `ArtistProfile.choosePresentationPattern(code)` | patternCode                            |
 
 - 集約が未作成なら `createDraftArtistProfile({ artistId })` で空の下書きを作ってから振る舞いを適用する。どの構造から書き始めてもよい。
 - リポジトリの `upsert` は集約全体のままでよい。振る舞いが返す集約をそのまま保存する。部分更新の最適化は必要になってから。
@@ -89,6 +91,7 @@ app/api/[[...route]]/artists/[artistId]/
   updateAttributes/index.ts        → POST /:artistId/attributes
   writeStoryChapter/index.ts       → POST /:artistId/story/chapters/:chapterKey
   replaceLinks/index.ts            → POST /:artistId/links
+  choosePresentationPattern/index.ts → POST /:artistId/presentation
   uploadProfileImage/index.ts      → POST /:artistId/profile/image（既存）
   publishProfile/index.ts          → POST /:artistId/profile/publish（既存）
 ```
@@ -120,6 +123,7 @@ app/api/[[...route]]/artists/[artistId]/
     },
     "story": { "chapters": [{ "key": "beginning", "body": "..." }] },
     "links": [{ "linkTypeCode": "youtube", "url": "..." }],
+    "presentation": { "patternCode": "interview" },
     "published": true
   },
   "publishability": { "ok": false, "missingFields": ["imageUrl"] }
@@ -131,8 +135,8 @@ app/api/[[...route]]/artists/[artistId]/
 
 ルール:
 
-- **応答のキーは更新 API の構造と一致させる。** `attributes` / `story` / `links` が、そのまま更新エンドポイントの名前になる。
-- **閲覧者の文脈を混ぜない。** 購読可否・共演者判定・表示順・文言（問いの設問文、リンク種別のラベル）は入れない。語彙の解決は BFF が汎用マスタ API（`GET /link-types` / `GET /story-questions`）を引いて行う。
+- **応答のキーは更新 API の構造と一致させる。** `attributes` / `story` / `links` / `presentation` が、そのまま更新エンドポイントの名前になる。`presentation.patternCode` は未選択なら `null`（既定の見せ方は BFF が決める）。
+- **閲覧者の文脈を混ぜない。** 購読可否・共演者判定・表示順・文言（問いの設問文、リンク種別のラベル）は入れない。語彙の解決は BFF が汎用マスタ API（`GET /link-types` / `GET /story-questions` / `GET /presentation-patterns`）を引いて行う。
 - **一覧は集約全体を返さない。** 一覧は属性の投影であり、別の read として置く（既存どおり）。
 - 本人向け取得には `publishability: { ok, missingFields[] }` を含めてよい。これはドメインが決める情報（`ensurePublishable` の結果）で、画面都合ではない。
 

@@ -14,6 +14,7 @@ import {
   artistProfileGenresTable,
   artistProfileLinksTable,
   linkTypesTable,
+  presentationPatternsTable,
   storyChaptersTable,
   storyQuestionsTable,
 } from "../../../../../../packages/database/src/utils/createClient";
@@ -34,6 +35,7 @@ import { reconstructArtistProfile } from "../../../domain/artistProfiles/factori
 import { createArtistProfileNotFoundError } from "../../../domain/artistProfiles/errors/artistProfileNotFound";
 import { createInvalidProfileLinkFormatError } from "../../../domain/artistProfiles/valueObjects/profileLink";
 import { createInvalidStoryChapterFormatError } from "../../../domain/artistProfiles/valueObjects/storyChapter";
+import { createInvalidPresentationPatternError } from "../../../domain/artistProfiles/valueObjects/presentationPattern";
 import type { Executor } from "../../transaction";
 
 type ProfileRow = {
@@ -43,6 +45,7 @@ type ProfileRow = {
   tagline: string | null;
   imageUrl: string | null;
   activityInfo: string | null;
+  presentationPatternCode: string | null;
   published: boolean;
 };
 
@@ -53,8 +56,24 @@ const profileColumns = {
   tagline: artistProfilesTable.tagline,
   imageUrl: artistProfilesTable.imageUrl,
   activityInfo: artistProfilesTable.activityInfo,
+  presentationPatternCode: presentationPatternsTable.code,
   published: artistProfilesTable.published,
 };
+
+const writtenProfileColumns = {
+  id: artistProfilesTable.id,
+  artistId: artistProfilesTable.artistId,
+  name: artistProfilesTable.name,
+  tagline: artistProfilesTable.tagline,
+  imageUrl: artistProfilesTable.imageUrl,
+  activityInfo: artistProfilesTable.activityInfo,
+  published: artistProfilesTable.published,
+};
+
+const presentationPatternJoin = [
+  presentationPatternsTable,
+  eq(artistProfilesTable.presentationPatternId, presentationPatternsTable.id),
+] as const;
 
 // Drizzle の isNotNull は取得行の型を絞らないため、null を落として契約の name: string を満たす
 const toPublishedSummaries = (
@@ -109,6 +128,19 @@ const loadChildren = async (executor: Executor, profileId: string) => {
   };
 };
 
+const loadPresentationPatternCode = async (
+  executor: Executor,
+  profileId: string,
+): Promise<string | null> => {
+  const [row] = await executor
+    .select({ code: presentationPatternsTable.code })
+    .from(artistProfilesTable)
+    .innerJoin(...presentationPatternJoin)
+    .where(eq(artistProfilesTable.id, profileId))
+    .limit(1);
+  return row ? row.code : null;
+};
+
 const toEntity = (
   row: ProfileRow,
   genres: string[],
@@ -126,6 +158,7 @@ const toEntity = (
     activityInfo: row.activityInfo,
     genres,
     links,
+    presentationPatternCode: row.presentationPatternCode,
   });
 
 const resolveLinkTypeIds = async (
@@ -138,6 +171,20 @@ const resolveLinkTypeIds = async (
     .from(linkTypesTable)
     .where(inArray(linkTypesTable.code, codes));
   return new Map(rows.map((row) => [row.code, row.id]));
+};
+
+const resolvePresentationPatternId = async (
+  executor: Executor,
+  code: string | null,
+): Promise<number | null> => {
+  if (code === null) return null;
+  const [row] = await executor
+    .select({ id: presentationPatternsTable.id })
+    .from(presentationPatternsTable)
+    .where(eq(presentationPatternsTable.code, code))
+    .limit(1);
+  if (!row) throw createInvalidPresentationPatternError();
+  return row.id;
 };
 
 const resolveStoryQuestionIds = async (
@@ -224,6 +271,7 @@ export const createArtistProfileReader = (
     const [row] = await executor
       .select(profileColumns)
       .from(artistProfilesTable)
+      .leftJoin(...presentationPatternJoin)
       .where(
         and(
           eq(artistProfilesTable.artistId, artistId),
@@ -245,6 +293,7 @@ export const createArtistProfileReader = (
         artistsTable,
         eq(artistProfilesTable.artistId, artistsTable.id),
       )
+      .leftJoin(...presentationPatternJoin)
       .where(
         and(
           eq(artistsTable.handle, handle),
@@ -310,6 +359,10 @@ export const createArtistProfileWriter = (
   executor: Executor,
 ): IArtistProfileWriter => ({
   async upsert(data: ArtistProfileSaveData): Promise<ArtistProfile> {
+    const presentationPatternId = await resolvePresentationPatternId(
+      executor,
+      data.presentationPatternCode,
+    );
     const [row] = await executor
       .insert(artistProfilesTable)
       .values({
@@ -319,6 +372,7 @@ export const createArtistProfileWriter = (
         tagline: data.tagline,
         imageUrl: data.imageUrl,
         activityInfo: data.activityInfo,
+        presentationPatternId,
         published: data.published,
       })
       .onConflictDoUpdate({
@@ -328,12 +382,13 @@ export const createArtistProfileWriter = (
           tagline: data.tagline,
           imageUrl: data.imageUrl,
           activityInfo: data.activityInfo,
+          presentationPatternId,
           published: sql`${artistProfilesTable.published} and excluded.published`,
           publishedAt: sql`case when excluded.published then ${artistProfilesTable.publishedAt} else null end`,
           updatedAt: new Date(),
         },
       })
-      .returning(profileColumns);
+      .returning(writtenProfileColumns);
 
     await replaceChildren(
       executor,
@@ -342,7 +397,12 @@ export const createArtistProfileWriter = (
       data.links,
       data.chapters,
     );
-    return toEntity(row, data.genres, data.links, data.chapters);
+    return toEntity(
+      { ...row, presentationPatternCode: data.presentationPatternCode },
+      data.genres,
+      data.links,
+      data.chapters,
+    );
   },
 
   async setPublished(
@@ -361,10 +421,19 @@ export const createArtistProfileWriter = (
           isNull(artistProfilesTable.deletedAt),
         ),
       )
-      .returning(profileColumns);
+      .returning(writtenProfileColumns);
     if (!row) throw createArtistProfileNotFoundError();
 
-    const { genres, links, chapters } = await loadChildren(executor, row.id);
-    return toEntity(row, genres, links, chapters);
+    const [{ genres, links, chapters }, presentationPatternCode] =
+      await Promise.all([
+        loadChildren(executor, row.id),
+        loadPresentationPatternCode(executor, row.id),
+      ]);
+    return toEntity(
+      { ...row, presentationPatternCode },
+      genres,
+      links,
+      chapters,
+    );
   },
 });

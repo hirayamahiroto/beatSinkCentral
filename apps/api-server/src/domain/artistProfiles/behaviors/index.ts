@@ -9,6 +9,7 @@ import type {
 } from "../entities";
 import type { ImageUrl } from "../valueObjects/imageUrl";
 import type { ProfileLink } from "../valueObjects/profileLink";
+import type { PresentationPatternCode } from "../valueObjects/presentationPattern";
 import type {
   StoryChapter,
   StoryQuestionCode,
@@ -58,6 +59,7 @@ export const createArtistProfileBehaviors = (
       })),
     },
     links: toLinks(),
+    presentation: { patternCode: state.presentationPattern },
     published: state.published,
   });
 
@@ -71,6 +73,7 @@ export const createArtistProfileBehaviors = (
     getActivityInfo: () => valueOrNull(state.activityInfo),
     getGenres: () => state.genres.map((genre) => genre.value),
     getLinks: toLinks,
+    getPresentationPatternCode: () => state.presentationPattern,
     isPublished: () => state.published,
     publish: () => createArtistProfileBehaviors({ ...state, published: true }),
     unpublish: () =>
@@ -92,6 +95,8 @@ export const createArtistProfileBehaviors = (
       }),
     replaceLinks: (links: readonly ProfileLink[]) =>
       createArtistProfileBehaviors({ ...state, links }),
+    choosePresentationPattern: (pattern: PresentationPatternCode) =>
+      createArtistProfileBehaviors({ ...state, presentationPattern: pattern }),
     changeImage: (imageUrl: ImageUrl) =>
       createArtistProfileBehaviors({ ...state, imageUrl }),
     toPersistence: (): ArtistProfilePersistenceData => ({
@@ -104,6 +109,7 @@ export const createArtistProfileBehaviors = (
       activityInfo: valueOrNull(state.activityInfo),
       genres: state.genres.map((genre) => genre.value),
       links: toLinks(),
+      presentationPatternCode: state.presentationPattern,
       published: state.published,
     }),
     toView,
