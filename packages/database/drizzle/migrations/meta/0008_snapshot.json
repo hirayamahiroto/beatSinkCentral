@@ -1,5 +1,5 @@
 {
-  "id": "92b9e9eb-fd81-4959-986e-1755bdbbd7ac",
+  "id": "649fd9d2-fddf-4c20-905e-d3b036b47358",
   "prevId": "982495c4-a954-4c48-a4d8-749e1999a08e",
   "version": "7",
   "dialect": "postgresql",
@@ -138,8 +138,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.artist_handle_histories": {
-      "name": "artist_handle_histories",
+    "public.artist_id_histories": {
+      "name": "artist_id_histories",
       "schema": "",
       "columns": {
         "id": {
@@ -155,14 +155,14 @@
           "primaryKey": false,
           "notNull": true
         },
-        "old_handle": {
-          "name": "old_handle",
+        "old_artist_id": {
+          "name": "old_artist_id",
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": true
         },
-        "new_handle": {
-          "name": "new_handle",
+        "new_artist_id": {
+          "name": "new_artist_id",
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": true
@@ -179,44 +179,28 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
         }
       },
-      "indexes": {
-        "artist_handle_histories_artist_created_idx": {
-          "name": "artist_handle_histories_artist_created_idx",
-          "columns": [
-            {
-              "expression": "artist_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
-        "artist_handle_histories_artist_id_artists_id_fk": {
-          "name": "artist_handle_histories_artist_id_artists_id_fk",
-          "tableFrom": "artist_handle_histories",
+        "artist_id_histories_artist_id_artists_id_fk": {
+          "name": "artist_id_histories_artist_id_artists_id_fk",
+          "tableFrom": "artist_id_histories",
           "tableTo": "artists",
           "columnsFrom": ["artist_id"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "artist_handle_histories_changed_by_user_id_users_id_fk": {
-          "name": "artist_handle_histories_changed_by_user_id_users_id_fk",
-          "tableFrom": "artist_handle_histories",
+        "artist_id_histories_changed_by_user_id_users_id_fk": {
+          "name": "artist_id_histories_changed_by_user_id_users_id_fk",
+          "tableFrom": "artist_id_histories",
           "tableTo": "users",
           "columnsFrom": ["changed_by_user_id"],
           "columnsTo": ["id"],
@@ -585,6 +569,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "presentation_pattern_id": {
+          "name": "presentation_pattern_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "published": {
           "name": "published",
           "type": "boolean",
@@ -626,6 +616,15 @@
           "tableFrom": "artist_profiles",
           "tableTo": "artists",
           "columnsFrom": ["artist_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "artist_profiles_presentation_pattern_id_presentation_patterns_id_fk": {
+          "name": "artist_profiles_presentation_pattern_id_presentation_patterns_id_fk",
+          "tableFrom": "artist_profiles",
+          "tableTo": "presentation_patterns",
+          "columnsFrom": ["presentation_pattern_id"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
@@ -926,6 +925,43 @@
       "uniqueConstraints": {
         "link_types_code_unique": {
           "name": "link_types_code_unique",
+          "nullsNotDistinct": false,
+          "columns": ["code"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.presentation_patterns": {
+      "name": "presentation_patterns",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "label": {
+          "name": "label",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "presentation_patterns_code_unique": {
+          "name": "presentation_patterns_code_unique",
           "nullsNotDistinct": false,
           "columns": ["code"]
         }

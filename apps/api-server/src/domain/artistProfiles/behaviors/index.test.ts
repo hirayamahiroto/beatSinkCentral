@@ -64,8 +64,22 @@ describe("createArtistProfileBehaviors", () => {
         ],
       },
       links: [{ linkTypeCode: "x", url: "https://x.com/taro" }],
+      presentation: { patternCode: null },
       published: true,
     });
+  });
+
+  it("choosePresentationPattern は表現パターンだけを差し替えた新しい Entity を返し、元は不変", () => {
+    const chosen = profile.choosePresentationPattern("editorial");
+
+    expect(chosen.getPresentationPatternCode()).toBe("editorial");
+    expect(chosen.toView().presentation).toStrictEqual({
+      patternCode: "editorial",
+    });
+    expect(chosen.toPersistence().presentationPatternCode).toBe("editorial");
+    expect(chosen.getName()).toBe("Taro");
+    expect(chosen.getLinks()).toStrictEqual(profile.getLinks());
+    expect(profile.getPresentationPatternCode()).toBeNull();
   });
 
   it("unpublish は published=false の新しい Entity を返し、元は不変", () => {

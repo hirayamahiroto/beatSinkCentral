@@ -36,7 +36,7 @@ handle は公開 URL（`/players/[handle]`）を構成する**可変の公開識
 
 index: `(artist_id, created_at)`。ある Artist の履歴を時系列で引く用途に合わせる。
 
-旧 `artist_id_histories`（`old_artist_id` / `new_artist_id` / `deleted_at`）は、handle がまだ accountId と呼ばれていた時期の定義で、書き込むコードが存在しなかった。そのためマイグレーション `0008` で drop / create により置き換えている。
+旧 `artist_id_histories`（`old_artist_id` / `new_artist_id` / `deleted_at`）は、handle がまだ accountId と呼ばれていた時期の定義で、書き込むコードが存在しなかった。そのためマイグレーション `0009` で drop / create により置き換えている。
 
 ## 実装の所在
 

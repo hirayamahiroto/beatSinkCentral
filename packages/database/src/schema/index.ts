@@ -5,6 +5,7 @@ export * from "./artistMembers";
 export * from "./artistProfiles";
 export * from "./artistProfileGenres";
 export * from "./linkTypes";
+export * from "./presentationPatterns";
 export * from "./artistProfileLinks";
 export * from "./storyQuestions";
 export * from "./storyChapters";

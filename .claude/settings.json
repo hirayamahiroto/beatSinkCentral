@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/token-usage-report/post-on-pr-hook.mjs\"",
+            "timeout": 120,
+            "statusMessage": "token-report を PR コメントへ投稿中"
+          }
+        ]
+      }
+    ]
+  }
+}

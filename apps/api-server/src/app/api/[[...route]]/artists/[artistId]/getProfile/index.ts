@@ -23,6 +23,7 @@ const artistProfileViewSchema = z.object({
     chapters: z.array(z.object({ key: z.string(), body: z.string() })),
   }),
   links: z.array(z.object({ linkTypeCode: z.string(), url: z.string() })),
+  presentation: z.object({ patternCode: z.string().nullable() }),
   published: z.boolean(),
 });
 

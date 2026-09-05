@@ -165,6 +165,7 @@ app/api/[[...route]]/
       updateAttributes/index.ts   → POST /:artistId/attributes
       writeStoryChapter/index.ts  → POST /:artistId/story/chapters/:chapterKey
       replaceLinks/index.ts       → POST /:artistId/links
+      choosePresentationPattern/index.ts → POST /:artistId/presentation
       publishProfile/index.ts     → POST /:artistId/profile/publish
       uploadProfileImage/index.ts → POST /:artistId/profile/image
   users/                           ← 全ルート認証（境界は users/ 直下）
@@ -184,7 +185,9 @@ import getProfile from "./getProfile";
 import updateAttributes from "./updateAttributes";
 import writeStoryChapter from "./writeStoryChapter";
 import replaceLinks from "./replaceLinks";
+import choosePresentationPattern from "./choosePresentationPattern";
 import publishProfile from "./publishProfile";
+import uploadProfileImage from "./uploadProfileImage";
 import { requireAuthMiddleware } from "../../../../../middlewares/auth0";
 
 const app = new Hono()
@@ -194,7 +197,9 @@ const app = new Hono()
   .route("/attributes", updateAttributes)
   .route("/story/chapters/:chapterKey", writeStoryChapter)
   .route("/links", replaceLinks)
-  .route("/profile/publish", publishProfile);
+  .route("/presentation", choosePresentationPattern)
+  .route("/profile/publish", publishProfile)
+  .route("/profile/image", uploadProfileImage);
 
 export default app;
 ```

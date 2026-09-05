@@ -41,6 +41,7 @@ describe("/artists ルーターの合成", () => {
       "POST /:artistId/attributes",
       "POST /:artistId/story/chapters/:chapterKey",
       "POST /:artistId/links",
+      "POST /:artistId/presentation",
       "POST /:artistId/profile/publish",
       "POST /:artistId/profile/image",
     ]);
@@ -68,6 +69,7 @@ describe("/artists ルーターの合成", () => {
     ["POST", "/artists/artist-1/attributes"],
     ["POST", "/artists/artist-1/story/chapters/beginning"],
     ["POST", "/artists/artist-1/links"],
+    ["POST", "/artists/artist-1/presentation"],
     ["POST", "/artists/artist-1/profile/publish"],
     ["POST", "/artists/artist-1/profile/image"],
   ])("%s %s は認証を要求する", async (method, path) => {

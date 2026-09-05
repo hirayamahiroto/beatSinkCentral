@@ -85,6 +85,7 @@ describe("GET /artists/:artistId/profile", () => {
         },
         story: { chapters: [{ key: "beginning", body: "私の歩み" }] },
         links: [{ linkTypeCode: "x", url: "https://x.com/taro" }],
+        presentation: { patternCode: null },
         published: false,
       },
       publishability: { ok: false, missingFields: ["imageUrl", "genres"] },

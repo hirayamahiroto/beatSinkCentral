@@ -89,6 +89,7 @@ export const createCapabilityDepsStub = (
       artistProfiles: createArtistProfileReaderStub(),
       linkTypes: { findAll: async () => [] },
       storyQuestions: createStoryQuestionReaderStub(),
+      presentationPatterns: { findAll: async () => [] },
     }),
 
     buildPublicWriteCapabilities: () => ({
