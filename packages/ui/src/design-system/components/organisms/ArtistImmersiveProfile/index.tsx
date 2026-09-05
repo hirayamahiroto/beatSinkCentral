@@ -92,6 +92,13 @@ const css = `
 .imm-ring { animation: pulseRing 1.6s ease-out infinite; }
 .imm-reveal { opacity:0; transform:translateY(28px); filter:blur(8px); transition: opacity .8s, transform .8s, filter .8s; }
 .imm-reveal.in { opacity:1; transform:none; filter:blur(0); }
+.imm-focus { transition: object-position 1.2s ease-out; }
+.imm-spot { transition: all 1.1s cubic-bezier(.2,.8,.2,1); }
+@media (prefers-reduced-motion: reduce) {
+  .imm-rise, .imm-drop, .imm-drift, .imm-ring { animation: none; }
+  .imm-reveal { opacity:1; transform:none; filter:none; transition:none; }
+  .imm-focus, .imm-spot { transition: none; }
+}
 `;
 
 const ImmersiveStyle = () => <style>{css}</style>;
@@ -204,7 +211,7 @@ const PatternInterview = ({ artist, onLinkClick }: ActionProps) => {
             <img
               src={artist.heroImageUrl}
               alt=""
-              className="absolute inset-0 h-full w-full object-cover transition-all duration-1000"
+              className="absolute inset-0 h-full w-full object-cover transition-all duration-1000 motion-reduce:transition-none"
               style={{ objectPosition: stage.position, filter: stage.filter }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
@@ -221,7 +228,7 @@ const PatternInterview = ({ artist, onLinkClick }: ActionProps) => {
                 <span
                   key={chapter.key}
                   className={
-                    "h-1.5 w-8 rounded-full transition-all duration-500 " +
+                    "h-1.5 w-8 rounded-full transition-all duration-500 motion-reduce:transition-none " +
                     (index === active ? "bg-white" : "bg-white/25")
                   }
                 />
@@ -339,18 +346,17 @@ const PatternZoomDive = ({ artist, onLinkClick }: ActionProps) => {
           <img
             src={artist.heroImageUrl}
             alt=""
-            className="h-full w-full object-cover"
+            className="imm-focus h-full w-full object-cover"
             style={{
               transform: `scale(${scale})`,
               filter: `grayscale(${grayscale}) contrast(1.1)`,
               objectPosition: `${focus.x} ${focus.y}`,
-              transition: "object-position 1.2s ease-out",
             }}
           />
           <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/80" />
 
           <div
-            className="absolute inset-x-0 bottom-0 p-6 transition-opacity duration-700 sm:p-12"
+            className="absolute inset-x-0 bottom-0 p-6 transition-opacity duration-700 motion-reduce:transition-none sm:p-12"
             style={{ opacity: active === 0 ? 1 : 0 }}
           >
             <h1
@@ -373,7 +379,7 @@ const PatternZoomDive = ({ artist, onLinkClick }: ActionProps) => {
           {artist.chapters.map((entry, index) => (
             <div
               key={entry.key}
-              className="absolute inset-x-0 bottom-0 p-6 transition-all duration-700 sm:p-12"
+              className="absolute inset-x-0 bottom-0 p-6 transition-all duration-700 motion-reduce:transition-none sm:p-12"
               style={{
                 opacity: active === index + 1 ? 1 : 0,
                 transform: active === index + 1 ? "none" : "translateY(24px)",
@@ -393,17 +399,13 @@ const PatternZoomDive = ({ artist, onLinkClick }: ActionProps) => {
             </div>
           ))}
 
-          <div
-            className="absolute inset-0 flex items-center justify-center p-6 transition-all duration-700"
-            style={{
-              opacity: isAction ? 1 : 0,
-              pointerEvents: isAction ? "auto" : "none",
-            }}
-          >
-            <div className="max-w-xl rounded-2xl border border-white/10 bg-black/60 p-8 backdrop-blur-md">
-              <Action artist={artist} onLinkClick={onLinkClick} />
+          {isAction && (
+            <div className="imm-rise absolute inset-0 flex items-center justify-center p-6">
+              <div className="max-w-xl rounded-2xl border border-white/10 bg-black/60 p-8 backdrop-blur-md">
+                <Action artist={artist} onLinkClick={onLinkClick} />
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="absolute left-1/2 top-4 h-0.5 w-40 -translate-x-1/2 overflow-hidden rounded-full bg-white/15">
             <div
@@ -434,14 +436,14 @@ const PatternSpotlight = ({ artist, onLinkClick }: ActionProps) => {
       <img
         src={artist.heroImageUrl}
         alt=""
-        className="absolute inset-0 h-full w-full object-cover transition-all duration-1000"
+        className="absolute inset-0 h-full w-full object-cover transition-all duration-1000 motion-reduce:transition-none"
         style={{
           filter: stage ? stage.filter : "grayscale(0.3) contrast(1.1)",
           objectPosition: "50% 30%",
         }}
       />
       <div
-        className="pointer-events-none absolute rounded-full"
+        className="imm-spot pointer-events-none absolute rounded-full"
         style={{
           left: spot.x,
           top: spot.y,
@@ -450,7 +452,6 @@ const PatternSpotlight = ({ artist, onLinkClick }: ActionProps) => {
           transform: "translate(-50%, -50%)",
           boxShadow:
             "0 0 0 9999px rgba(0,0,0,0.94), inset 0 0 80px 30px rgba(0,0,0,0.4)",
-          transition: "all 1.1s cubic-bezier(.2,.8,.2,1)",
         }}
       />
       <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/40" />
