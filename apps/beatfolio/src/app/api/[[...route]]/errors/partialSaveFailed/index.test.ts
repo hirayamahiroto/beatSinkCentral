@@ -16,5 +16,6 @@ describe("createPartialSaveFailedError", () => {
     expect(error.saved).toStrictEqual(["attributes", "chapter:beginning"]);
     expect(error.failedAt).toBe("links");
     expect(error.upstream).toBe(upstream);
+    expect(error.cause).toBe(upstream);
   });
 });

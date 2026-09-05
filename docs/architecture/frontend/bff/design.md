@@ -245,7 +245,7 @@ UI 層（`page.tsx` / hooks）は hono クライアントを直接生成しな�
 
 - **構成**: BFF エンドポイント1つにつき1モジュール。`src/fetchers/<BFF ルートの名前空間>/<操作名>/index.ts`（+ `index.test.ts`）。例: `fetchers/artists/updateMyHandle/`、`fetchers/dashboard/getProfileEditScreen/`。
 - **責務**: クライアント生成（write = CSR は `createBeatfolioBffClient`、read = SSR は `createBeatfolioBffServerClient`。受信リクエストの cookie は client 生成時に `headers()` から引き継ぐので、fetcher も `page.tsx` も cookie を扱わない）・レスポンス解釈・エラー正規化。
-- **契約**: `Promise<Result<T, FetcherError>>` を返し、**throw しない**（到達不能も catch して `unexpected` に正規化する）。`FetcherError` は `{ kind: "rejected" | "unexpected"; message: string }` — `rejected` はユーザー起因（400/409/422）でメッセージをそのまま画面に出せる、`unexpected` はそれ以外。共通処理は `fetchers/shared/error/` に置く。
+- **契約**: `Promise<Result<T, FetcherError>>` を返し、**throw しない**（到達不能も catch して `unexpected` に正規化する）。`FetcherError` は `{ kind: "rejected" | "unexpected"; message: string }` — `rejected` はユーザー起因（400/409/422）でメッセージをそのまま画面に出せる、`unexpected` はそれ以外。fetcher 固有の情報が要る場合は `FetcherError & { ... }` で拡張する（例: `saveMyProfile` の `progress`）。共通処理は `fetchers/shared/error/` に置く。
 - **型は BFF AppType から導出する**（`InferRequestType` / `InferResponseType`）。fetchers 層でリクエスト・レスポンスの型を手書きしない。
 - **呼び出し側の責務**: hooks は状態管理（`isLoading` / `error` / `router.refresh`）に専念し、`page.tsx` は認証・`redirect`・描画に専念する。レスポンス解釈・エラー文言は fetchers 側にある。
 
@@ -305,7 +305,7 @@ api-server はエラーを型付きエラーで分類し、`errorMap` で `{ err
 
 - **到達不能の検知は route ではなく client 層**が担う。route ごとに `try/catch` を重ねない。
   - 例外は **複数の更新 API を順に呼ぶ合成 write**（`saveMyProfile`）。ステップ単位で上流の失敗（`toUpstreamError` の結果、または client 層が投げた `UpstreamUnavailableError`）を `PartialSaveFailedError` に包み、保存済みステップを添える。上流由来でない例外は包まず素通しする（500）。fetcher はボディの `saved` / `failedAt` を読んで `progress`（読めなければ `null`）として hook へ渡し、画面が「どこまで保存されたか」を示す。
-- **route の失敗パスは `if (!res.ok) throw await toUpstreamError(res);` の 1 行**。成功応答の読み取りは `await readUpstreamJson(res)`。`route.ts` の `.onError(handleBffError)` が `errorMap` で HTTP へ変換する。
+- **route の失敗パスは `if (!res.ok) throw await toUpstreamError(res);` の 1 行**（合成 write を除く）。成功応答の読み取りは `await readUpstreamJson(res)`。`route.ts` の `.onError(handleBffError)` が `errorMap` で HTTP へ変換する。
 - **read も write も同じ経路**。read で「対象の不在」を画面が区別する必要がある場合（`players/getPlayerDetail` の 404）は、route が意味を判定して専用の型付きエラー（`PlayerNotFoundError`）を throw する。ステータスは `errorMap` 側にある。
 - **未知のエラーは 500 + `console.error`**。上流障害（502）と BFF 自身のバグ（500）を混ぜない（[エラーハンドリングの層責務](../../server/error-handling/layer-responsibilities.md#例外-bff-から見た-api-serverゲートウェイの上流障害)）。
 - BFF の `errorMap` が返すボディも `{ error, code }` を持つ（`code = BffError["type"]`）。`UpstreamRejectedError` は上流のボディをそのまま返すため、`code` は api-server のものになる。

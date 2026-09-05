@@ -168,12 +168,13 @@ describe("handleBffError", () => {
     });
   });
 
-  it("部分保存の失敗が上流 5xx なら 502 に畳み、ログレベルも上流に合わせて warn にする", async () => {
+  it("部分保存の失敗が上流 5xx なら 502 に畳み、ログレベルも上流に合わせて warn にし、上流を cause に残す", async () => {
+    const upstream = createUpstreamServerError(503);
     const res = await createApp(
       createPartialSaveFailedError({
         saved: ["attributes"],
         failedAt: "chapter:beginning",
-        upstream: createUpstreamServerError(503),
+        upstream,
       }),
     ).request("/");
 
@@ -184,10 +185,11 @@ describe("handleBffError", () => {
       saved: ["attributes"],
       failedAt: "chapter:beginning",
     });
-    expect(console.warn).toHaveBeenCalledWith(
-      "[BffError]",
-      expect.objectContaining({ type: "PartialSaveFailedError", status: 502 }),
-    );
+    expect(console.warn).toHaveBeenCalledWith("[BffError]", {
+      type: "PartialSaveFailedError",
+      status: 502,
+      cause: upstream,
+    });
   });
 
   it("未知のエラーは 500 にし、内部情報を応答に含めない", async () => {

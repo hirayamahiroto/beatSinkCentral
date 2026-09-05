@@ -27,7 +27,7 @@ const saveProfileRequestSchema = z.object({
   activityInfo: z.string().nullable().optional(),
   genres: z.array(z.string()).max(MAX_GENRES),
   chapters: z
-    .array(z.object({ questionCode: z.string(), body: z.string() }))
+    .array(z.object({ questionCode: z.string().min(1), body: z.string() }))
     .max(MAX_CHAPTERS),
   links: z
     .array(z.object({ type: z.string(), url: z.string() }))

@@ -1,4 +1,3 @@
-import { createTypedError } from "../../../../../utils/errors/createTypedError";
 import type { UpstreamUnavailableError } from "../../../../../utils/client/errors/upstreamUnavailable";
 import type { SaveStep } from "../../../../../libs/saveProfileProgress";
 import type { UpstreamServerError } from "../upstreamServerError";
@@ -23,8 +22,12 @@ export const createPartialSaveFailedError = (input: {
   failedAt: SaveStep;
   upstream: UpstreamFailure;
 }): PartialSaveFailedError =>
-  createTypedError("PartialSaveFailedError", {
-    saved: input.saved,
-    failedAt: input.failedAt,
-    upstream: input.upstream,
-  });
+  Object.assign(
+    new Error("PartialSaveFailedError", { cause: input.upstream }),
+    {
+      type: "PartialSaveFailedError" as const,
+      saved: input.saved,
+      failedAt: input.failedAt,
+      upstream: input.upstream,
+    },
+  );

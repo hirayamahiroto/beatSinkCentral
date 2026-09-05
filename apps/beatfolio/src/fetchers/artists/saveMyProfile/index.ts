@@ -4,7 +4,7 @@ import { type Result, ok, err } from "../../../utils/result";
 import {
   type FetcherError,
   toErrorKind,
-  readErrorMessage,
+  readErrorMessageFromBody,
   NETWORK_ERROR_MESSAGE,
 } from "../../shared/error";
 import {
@@ -24,13 +24,9 @@ export type SaveMyProfileError = FetcherError & {
 
 const FALLBACK_MESSAGE = "プロフィールの保存に失敗しました";
 
-const partialSaveBodySchema = saveStepProgressSchema.passthrough();
-
 const readProgress = (body: unknown): SaveStepProgress | null => {
-  const parsed = partialSaveBodySchema.safeParse(body);
-  return parsed.success
-    ? { saved: parsed.data.saved, failedAt: parsed.data.failedAt }
-    : null;
+  const parsed = saveStepProgressSchema.safeParse(body);
+  return parsed.success ? parsed.data : null;
 };
 
 const readBody = async (res: { json: () => Promise<unknown> }) => {
@@ -52,10 +48,7 @@ export const saveMyProfile = async (
       const body = await readBody(res);
       return err({
         kind: toErrorKind(res.status),
-        message: await readErrorMessage(
-          { json: async () => body },
-          FALLBACK_MESSAGE,
-        ),
+        message: readErrorMessageFromBody(body, FALLBACK_MESSAGE),
         progress: readProgress(body),
       });
     }

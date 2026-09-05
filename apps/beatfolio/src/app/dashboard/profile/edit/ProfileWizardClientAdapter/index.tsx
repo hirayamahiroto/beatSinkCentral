@@ -7,7 +7,7 @@ import {
   type WizardValues,
 } from "@ui/design-system/components/organisms/ArtistProfileWizard";
 import { useSaveProfile } from "./hooks/useSaveProfile";
-import { toSaveProgress } from "../../../../../libs/saveProfileProgress";
+import { toSaveProgress } from "./toSaveProgress";
 import { uploadMyProfileImage } from "../../../../../fetchers/artists/uploadMyProfileImage";
 
 type Props = {
