@@ -20,6 +20,7 @@
 | 画面 → BFF → API の契約                                        | [`interface-map.md`](./interface-map.md)                                                          |
 | 実行計画の全体像                                               | 本書                                                                                              |
 | 各チケットの設計書（紐づく要件・最終挙動・受け入れ条件）と状態 | **各 sub-issue**（#271〜#284）                                                                    |
+| 告知素材（T12）のテンプレート・URL 規約・依頼文・記録シート    | [`announce/README.md`](./announce/README.md)                                                      |
 | 分解・粒度の方法論                                             | `.claude/skills/task-breakdown/SKILL.md`                                                          |
 | 実装の判断根拠                                                 | `docs/product/` と `docs/architecture/` のみ（CLAUDE.md の規約）                                  |
 
