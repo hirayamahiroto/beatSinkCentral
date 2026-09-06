@@ -58,6 +58,7 @@
 | API の定義方法     | [api-read-write-definition.md](./architecture/server/api-read-write-definition.md) | 取得と更新のエンドポイントを切る時（構造ごとの更新・集約一本の取得） |
 | エラーハンドリング | [error-handling/](./architecture/server/error-handling/README.md)          | エラー追加・失敗の伝え方・errorMap 変更時 |
 | 外部クライアント   | [external-clients.md](./architecture/server/external-clients.md)           | Database / Auth0 / Redis 等の追加時     |
+| handle 変更履歴    | [handle-history.md](./architecture/server/handle-history.md)               | handle 変更・旧 handle の扱いを判断する時 |
 
 DB まわり — [`architecture/server/database/`](./architecture/server/database/design.md)
 

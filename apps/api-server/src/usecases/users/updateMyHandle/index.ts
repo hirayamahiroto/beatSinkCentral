@@ -1,13 +1,11 @@
-import {
-  createHandleAlreadyTakenError,
-  type HandleAlreadyTakenError,
-} from "../../../domain/artists/errors/handleAlreadyTaken";
+import type { HandleAlreadyTakenError } from "../../../domain/artists/errors/handleAlreadyTaken";
 import {
   createHandle,
   type InvalidHandleFormatError,
 } from "../../../domain/artists/valueObjects/handle";
+import { changeArtistHandle } from "../../../domain/services/artistHandleChange";
 import type { ArtistWriteCapabilities } from "../../capabilities";
-import { type Result, ok, err } from "../../../utils/result";
+import { type Result, ok } from "../../../utils/result";
 
 export type UpdateMyHandleInput = {
   handle: string;
@@ -22,7 +20,10 @@ export type UpdateMyHandleError =
   | InvalidHandleFormatError
   | HandleAlreadyTakenError;
 
-type UpdateMyHandleCaps = Pick<ArtistWriteCapabilities, "actor" | "artists">;
+type UpdateMyHandleCaps = Pick<
+  ArtistWriteCapabilities,
+  "actor" | "artists" | "artistHandleHistories"
+>;
 
 export const updateMyHandle = async (
   caps: UpdateMyHandleCaps,
@@ -41,16 +42,20 @@ export const updateMyHandle = async (
     });
   }
 
-  const taken = await caps.artists.findByHandle(newHandle.value);
-  if (taken) {
-    return err(createHandleAlreadyTakenError(taken.getHandle()));
-  }
+  const artistIfHandleTaken = await caps.artists.findByHandle(newHandle.value);
+  const changed = changeArtistHandle(
+    { artist, newHandle, changedByUserId: caps.actor.user.getId() },
+    artistIfHandleTaken,
+  );
+  if (!changed.ok) return changed;
 
-  const updated = artist.changeHandle(newHandle);
   const saved = await caps.artists.updateHandle({
-    artistId: updated.getArtistId(),
-    handle: updated.getHandle(),
+    artistId: changed.value.artist.getArtistId(),
+    handle: changed.value.artist.getHandle(),
   });
+  await caps.artistHandleHistories.record(
+    changed.value.history.toPersistence(),
+  );
 
   return ok({
     artistId: saved.getArtistId(),

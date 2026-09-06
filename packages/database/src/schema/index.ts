@@ -11,5 +11,5 @@ export * from "./storyQuestions";
 export * from "./storyChapters";
 export * from "./artistStatusMasters";
 export * from "./artistStatuses";
-export * from "./artistIdHistories";
+export * from "./artistHandleHistories";
 export * from "./analyticsEvents";
