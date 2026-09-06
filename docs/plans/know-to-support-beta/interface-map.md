@@ -45,6 +45,7 @@
 | 受信解除（メール記載 URL）                    | `players/unsubscribe`                                 | `POST /subscriptions/:token/delete`（推測不能トークン）    | T10  |
 
 - 認証境界の整理: **公開 read ＝ handle**／**本人 write ＝ artistId＋セッション照合**／**取り込み ＝ 認証不要だが作成専用（読み出し無し）**。
+- 公開 read（`GET /artists/:handle` → `players/getPlayerDetail`）の応答には `artistId` を含める。計測イベント（§6-1 の artist-scoped イベント）と取り込み系 write の識別子として大衆ブラウザが必要とする値であり、`artistId` だけで読み出せる経路は無い（T03②）。
 
 ## 5. 協議点（T00, 2026-09-02 決定）
 

@@ -14,6 +14,7 @@ const meta = {
           "オファーの有無でページの状態が切り替わる（あり: 固定バー＋チケット CTA / なし: Story 主役で軽い応援が主 CTA）。" +
           "任意項目が空のときは区画ごと描画しない。" +
           "Story の問い・日付表示・共演者のリンク先は BFF で解決済みの値を受け取る前提で、変換ロジックは持たない。" +
+          "Story の「続きを読む」展開と章末への到達（章数に対する 25/50/75/100% 到達）は callback で通知し、計測の送信は利用側が担う。" +
           "本人の言葉（Story）と運営の言葉（翻訳）は区画を分けて表示する。",
       },
     },
@@ -73,6 +74,7 @@ const baseArgs = {
   offer,
   supportLinks,
   onStoryExpand: () => {},
+  onStoryScroll: () => {},
   onOfferClick: () => {},
   onSupportClick: () => {},
   onNotifySubscribe: () => {},
@@ -132,6 +134,7 @@ export const MinimumFields: Story = {
     offer: null,
     supportLinks,
     onStoryExpand: () => {},
+    onStoryScroll: () => {},
     onOfferClick: () => {},
     onSupportClick: () => {},
     onNotifySubscribe: () => {},

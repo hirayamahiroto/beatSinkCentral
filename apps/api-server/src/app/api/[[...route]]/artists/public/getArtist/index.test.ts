@@ -46,6 +46,7 @@ describe("GET /artists/:handle", () => {
 
     expect(res.status).toBe(200);
     expect(body.handle).toBe("beatboxer_taro");
+    expect(body.artistId).toBe("artist-1");
     expect(body.profile.attributes.name).toBe("Taro");
     expect(body.profile.story.chapters).toStrictEqual([
       { key: "beginning", body: "私の歩み" },
