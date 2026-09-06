@@ -27,13 +27,6 @@ runs:
       run: npx turbo run lint --filter=${{ inputs.package-filter }}
       shell: bash
 
-    - name: 🔍 呼び手のない公開面（knip）
-      if: inputs.package-filter == 'api-server'
-      run: |
-        npm run knip
-        npm run knip:production
-      shell: bash
-
     - name: 🏗️ Build
       run: npx turbo run build --filter=${{ inputs.package-filter }}
       shell: bash

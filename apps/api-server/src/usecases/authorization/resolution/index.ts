@@ -9,7 +9,7 @@ import { createUserNotFoundError } from "../../../domain/users/errors/userNotFou
 import { createArtistNotFoundError } from "../../../domain/artists/errors/artistNotFound";
 import { type Result, ok, err } from "../../../utils/result";
 
-const toActor = (
+export const toActor = (
   resolution: ActorResolution,
 ): Result<Actor, ResolveActorError> => {
   switch (resolution.status) {
@@ -34,7 +34,7 @@ export const toAddressedActor = (
   return actor;
 };
 
-const toUser = (
+export const toUser = (
   resolution: ActorResolution,
 ): Result<User, ResolveUserError> => {
   switch (resolution.status) {

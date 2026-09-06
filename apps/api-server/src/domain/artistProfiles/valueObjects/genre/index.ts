@@ -10,7 +10,7 @@ export type InvalidGenreFormatError = Error & {
   readonly type: "InvalidGenreFormatError";
 };
 
-const createInvalidGenreFormatError = (): InvalidGenreFormatError =>
+export const createInvalidGenreFormatError = (): InvalidGenreFormatError =>
   createTypedError("InvalidGenreFormatError");
 
 const genreSchema = z

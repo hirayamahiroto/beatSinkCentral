@@ -50,6 +50,7 @@ describe("createArtistReader / createArtistWriter", () => {
       expect(result).not.toBeNull();
       expect(result?.getArtistId()).toBe("artist-1");
       expect(result?.getHandle()).toBe("user_123");
+      expect(result?.getProfile()).toStrictEqual({ name: "Test Artist" });
       expect(result?.hasProfile()).toBe(true);
     });
 
@@ -65,6 +66,7 @@ describe("createArtistReader / createArtistWriter", () => {
       const result = await reader.findByUserId("user-1");
 
       expect(result?.hasProfile()).toBe(false);
+      expect(result?.getProfile()).toBeNull();
     });
 
     it("見つからない場合はnullを返す", async () => {
@@ -105,7 +107,8 @@ describe("createArtistReader / createArtistWriter", () => {
       expect(result).not.toBeNull();
       expect(result?.getArtistId()).toBe("artist-1");
       expect(result?.getHandle()).toBe("user_123");
-      expect(result?.toPersistence().ownerUserId).toBe("user-1");
+      expect(result?.getOwnerUserId()).toBe("user-1");
+      expect(result?.getProfile()).toStrictEqual({ name: "Test Artist" });
     });
 
     it("見つからない場合はnullを返す", async () => {
@@ -147,7 +150,8 @@ describe("createArtistReader / createArtistWriter", () => {
       expect(mockDb.set).toHaveBeenCalledWith({ handle: "new_handle" });
       expect(result.getArtistId()).toBe("artist-1");
       expect(result.getHandle()).toBe("new_handle");
-      expect(result.toPersistence().ownerUserId).toBe("user-1");
+      expect(result.getOwnerUserId()).toBe("user-1");
+      expect(result.getProfile()).toStrictEqual({ name: "Test Artist" });
     });
 
     it("profile が無い場合は profile:null で返す", async () => {
@@ -164,6 +168,7 @@ describe("createArtistReader / createArtistWriter", () => {
       });
 
       expect(result.hasProfile()).toBe(false);
+      expect(result.getProfile()).toBeNull();
     });
 
     it("handle の一意制約違反を HandleAlreadyTakenError に変換して throw する", async () => {

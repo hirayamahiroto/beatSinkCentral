@@ -10,7 +10,7 @@ export type InvalidTaglineFormatError = Error & {
   readonly type: "InvalidTaglineFormatError";
 };
 
-const createInvalidTaglineFormatError = (): InvalidTaglineFormatError =>
+export const createInvalidTaglineFormatError = (): InvalidTaglineFormatError =>
   createTypedError("InvalidTaglineFormatError");
 
 const taglineSchema = z

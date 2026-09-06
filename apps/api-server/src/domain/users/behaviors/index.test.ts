@@ -19,6 +19,10 @@ describe("createUserBehaviors", () => {
     expect(user.getId()).toBe(id);
   });
 
+  it("getSubでsubの値を返す", () => {
+    expect(user.getSub()).toBe("auth0|123");
+  });
+
   it("getEmailでemailの値を返す", () => {
     expect(user.getEmail()).toBe("test@example.com");
   });
@@ -37,7 +41,7 @@ describe("createUserBehaviors", () => {
 
       expect(updated.getEmail()).toBe("new@example.com");
       expect(updated.getId()).toBe(id);
-      expect(updated.toPersistence().subId).toBe("auth0|123");
+      expect(updated.getSub()).toBe("auth0|123");
     });
 
     it("元のUserは不変", () => {

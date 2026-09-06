@@ -1,9 +1,22 @@
 import { describe, it, expect } from "vitest";
 import {
   createStoryChapter,
+  isStoryQuestionCode,
   REQUIRED_STORY_QUESTION_CODE,
   STORY_QUESTION_CODES,
 } from "./index";
+
+describe("isStoryQuestionCode", () => {
+  it("3つの固定コードを真と判定する", () => {
+    expect(isStoryQuestionCode("beginning")).toBe(true);
+    expect(isStoryQuestionCode("turning_point")).toBe(true);
+    expect(isStoryQuestionCode("concept")).toBe(true);
+  });
+
+  it("未知のコードを偽と判定する", () => {
+    expect(isStoryQuestionCode("unknown")).toBe(false);
+  });
+});
 
 describe("REQUIRED_STORY_QUESTION_CODE", () => {
   it("始まりの章が必須コードである", () => {

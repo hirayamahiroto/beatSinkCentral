@@ -67,11 +67,15 @@ export const createArtistProfileBehaviors = (
     getId: () => state.id,
     getArtistId: () => state.artistId,
     getName: () => valueOrNull(state.name),
+    getTagline: () => valueOrNull(state.tagline),
     getImageUrl: () => valueOrNull(state.imageUrl),
     getChapters: () => toOrderedChapters(state.chapters),
+    getActivityInfo: () => valueOrNull(state.activityInfo),
     getGenres: () => state.genres.map((genre) => genre.value),
     getLinks: toLinks,
+    getPresentationPatternCode: () => state.presentationPattern,
     isPublished: () => state.published,
+    publish: () => createArtistProfileBehaviors({ ...state, published: true }),
     unpublish: () =>
       createArtistProfileBehaviors({ ...state, published: false }),
     reviseAttributes: (attributes: ArtistProfileAttributes) =>

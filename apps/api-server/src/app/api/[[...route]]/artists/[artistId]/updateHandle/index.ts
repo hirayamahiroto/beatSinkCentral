@@ -11,11 +11,13 @@ const paramSchema = z.object({
   artistId: z.string().min(1).max(255),
 });
 
-const updateHandleRequestSchema = z.object({
+export const updateHandleRequestSchema = z.object({
   handle: z
     .string({ required_error: "handle is required" })
     .min(1, "handle is required"),
 });
+
+export type UpdateHandleRequestBody = z.infer<typeof updateHandleRequestSchema>;
 
 const updateHandleResponseSchema = z.object({
   artistId: z.string(),

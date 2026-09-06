@@ -115,7 +115,7 @@ export const createProfileLinks = (
     createProfileLink,
   );
 
-type ArtistProfileContent = ArtistProfileAttributesContent & {
+export type ArtistProfileContent = ArtistProfileAttributesContent & {
   imageUrl?: string | null;
   chapters?: StoryChapterInput[];
   links?: ProfileLinkInput[];

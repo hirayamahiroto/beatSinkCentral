@@ -11,11 +11,13 @@ const paramSchema = z.object({
   userId: z.string().min(1).max(255),
 });
 
-const updateEmailRequestSchema = z.object({
+export const updateEmailRequestSchema = z.object({
   email: z
     .string({ required_error: "email is required" })
     .min(1, "email is required"),
 });
+
+export type UpdateEmailRequestBody = z.infer<typeof updateEmailRequestSchema>;
 
 const updateEmailResponseSchema = z.object({
   userId: z.string(),

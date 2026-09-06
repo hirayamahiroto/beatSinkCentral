@@ -6,7 +6,7 @@ import { createUser } from "../../../../../usecases/users/createUser";
 import { validateRequest } from "../../validators/validateRequest";
 import { handleAppError } from "../../../../../errorMap";
 
-const requestSchema = z.object({
+export const requestSchema = z.object({
   email: z
     .string({ required_error: "email is required" })
     .min(1, "email is required")
@@ -16,6 +16,8 @@ const requestSchema = z.object({
     .min(1, "handle is required")
     .max(255, "handle must be 255 characters or less"),
 });
+
+export type CreateUserRequestBody = z.infer<typeof requestSchema>;
 
 const app = new Hono().post(
   "/",

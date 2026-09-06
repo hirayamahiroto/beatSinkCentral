@@ -5,6 +5,8 @@ import {
   testUser as user,
   testArtist as artist,
 } from "../testDoubles";
+import { isUserNotFoundError } from "../../../domain/users/errors/userNotFound";
+import { isArtistNotFoundError } from "../../../domain/artists/errors/artistNotFound";
 import {
   createHandleAlreadyTakenError,
   isHandleAlreadyTakenError,
@@ -30,7 +32,7 @@ describe("withArtistWriteCapabilitiesById", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error.type).toBe("UserNotFoundError");
+      expect(isUserNotFoundError(result.error)).toBe(true);
     }
     expect(calls.artistWriteBoundaries).toBe(0);
   });
@@ -50,7 +52,7 @@ describe("withArtistWriteCapabilitiesById", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error.type).toBe("ArtistNotFoundError");
+      expect(isArtistNotFoundError(result.error)).toBe(true);
     }
     expect(calls.artistWriteBoundaries).toBe(0);
   });
@@ -87,7 +89,7 @@ describe("withArtistWriteCapabilitiesById", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error.type).toBe("ArtistNotFoundError");
+      expect(isArtistNotFoundError(result.error)).toBe(true);
     }
     expect(calls.artistWriteBoundaries).toBe(0);
   });

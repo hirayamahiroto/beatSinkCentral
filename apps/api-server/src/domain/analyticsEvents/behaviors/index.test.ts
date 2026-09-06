@@ -25,6 +25,14 @@ describe("createAnalyticsEventBehaviors", () => {
     expect(event.getId()).toBe("event-2");
   });
 
+  it("getEventTypeでEventTypeの値を返す", () => {
+    const event = createAnalyticsEventBehaviors(
+      buildState({ eventType: { value: "story_scroll" } }),
+    );
+
+    expect(event.getEventType()).toBe("story_scroll");
+  });
+
   it("toPersistenceで永続化用データを返す", () => {
     const state = buildState({
       props: { depth: 50 },

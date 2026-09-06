@@ -2,7 +2,7 @@ import { createMiddleware } from "hono/factory";
 import { getAuth0 } from "../../infrastructure/auth0";
 import { createUnauthorizedError } from "./errors/unauthorized";
 
-type AuthenticatedUser = {
+export type AuthenticatedUser = {
   sub: string;
 };
 

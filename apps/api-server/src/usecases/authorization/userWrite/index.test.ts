@@ -5,6 +5,7 @@ import {
   testUser as user,
   testArtist as artist,
 } from "../testDoubles";
+import { isUserNotFoundError } from "../../../domain/users/errors/userNotFound";
 import {
   createEmailAlreadyTakenError,
   isEmailAlreadyTakenError,
@@ -31,7 +32,7 @@ describe("withUserWriteCapabilitiesById", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error.type).toBe("UserNotFoundError");
+      expect(isUserNotFoundError(result.error)).toBe(true);
     }
     expect(workCalls).toBe(0);
     expect(calls.userWriteBoundaries).toBe(0);
@@ -52,7 +53,7 @@ describe("withUserWriteCapabilitiesById", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error.type).toBe("UserNotFoundError");
+      expect(isUserNotFoundError(result.error)).toBe(true);
     }
     expect(calls.userWriteBoundaries).toBe(0);
   });

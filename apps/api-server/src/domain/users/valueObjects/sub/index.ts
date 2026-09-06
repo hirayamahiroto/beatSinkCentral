@@ -9,7 +9,7 @@ export type InvalidSubFormatError = Error & {
   readonly type: "InvalidSubFormatError";
 };
 
-const createInvalidSubFormatError = (): InvalidSubFormatError =>
+export const createInvalidSubFormatError = (): InvalidSubFormatError =>
   createTypedError("InvalidSubFormatError");
 
 const isValidSub = (sub: string): boolean => {

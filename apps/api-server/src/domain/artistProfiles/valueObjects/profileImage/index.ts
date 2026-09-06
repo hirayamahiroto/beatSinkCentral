@@ -1,9 +1,9 @@
 import { createTypedError } from "../../../../utils/errors/createTypedError";
 import { type Result, ok, err } from "../../../../utils/result";
 
-type ProfileImageContentType = "image/jpeg" | "image/png" | "image/webp";
+export type ProfileImageContentType = "image/jpeg" | "image/png" | "image/webp";
 
-type ProfileImageExtension = "jpg" | "png" | "webp";
+export type ProfileImageExtension = "jpg" | "png" | "webp";
 
 export type ProfileImage = {
   readonly contentType: ProfileImageContentType;
@@ -15,21 +15,21 @@ export type UnsupportedImageTypeError = Error & {
   readonly type: "UnsupportedImageTypeError";
 };
 
-const createUnsupportedImageTypeError = (): UnsupportedImageTypeError =>
+export const createUnsupportedImageTypeError = (): UnsupportedImageTypeError =>
   createTypedError("UnsupportedImageTypeError");
 
 export type ImageTooLargeError = Error & {
   readonly type: "ImageTooLargeError";
 };
 
-const createImageTooLargeError = (): ImageTooLargeError =>
+export const createImageTooLargeError = (): ImageTooLargeError =>
   createTypedError("ImageTooLargeError");
 
 export type EmptyImageFileError = Error & {
   readonly type: "EmptyImageFileError";
 };
 
-const createEmptyImageFileError = (): EmptyImageFileError =>
+export const createEmptyImageFileError = (): EmptyImageFileError =>
   createTypedError("EmptyImageFileError");
 
 export const PROFILE_IMAGE_MAX_SIZE_BYTES = 5 * 1024 * 1024;

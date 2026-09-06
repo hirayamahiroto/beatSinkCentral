@@ -4,6 +4,7 @@ export const createAnalyticsEventBehaviors = (
   state: AnalyticsEventState,
 ): AnalyticsEvent => ({
   getId: () => state.id,
+  getEventType: () => state.eventType.value,
   toPersistence: () => ({
     id: state.id,
     eventType: state.eventType.value,

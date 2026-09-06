@@ -33,7 +33,7 @@ const ARTIST_SCOPED_EVENT_TYPES: readonly string[] = [
   "survey_answer",
 ];
 
-const recordEventRequestSchema = z
+export const recordEventRequestSchema = z
   .object({
     eventType: z.enum(ANALYTICS_EVENT_TYPES),
     artistId: z.string().uuid().nullable(),

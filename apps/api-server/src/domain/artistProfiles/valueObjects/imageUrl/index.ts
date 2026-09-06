@@ -10,8 +10,9 @@ export type InvalidImageUrlFormatError = Error & {
   readonly type: "InvalidImageUrlFormatError";
 };
 
-const createInvalidImageUrlFormatError = (): InvalidImageUrlFormatError =>
-  createTypedError("InvalidImageUrlFormatError");
+export const createInvalidImageUrlFormatError =
+  (): InvalidImageUrlFormatError =>
+    createTypedError("InvalidImageUrlFormatError");
 
 const ALLOWED_PROTOCOLS = new Set(["http:", "https:"]);
 

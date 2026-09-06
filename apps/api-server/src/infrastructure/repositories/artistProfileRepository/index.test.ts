@@ -94,7 +94,7 @@ describe("artistProfileRepository", () => {
         { questionCode: "beginning", body: "私の歩み" },
       ]);
       expect(result?.isPublished()).toBe(true);
-      expect(result?.toView().presentation.patternCode).toBeNull();
+      expect(result?.getPresentationPatternCode()).toBeNull();
     });
 
     it("表現パターンはマスタを leftJoin してコードで返す", async () => {
@@ -109,7 +109,7 @@ describe("artistProfileRepository", () => {
       const result = await reader.findByArtistId("artist-1");
 
       expect(mock.spy("leftJoin")).toHaveBeenCalledTimes(1);
-      expect(result?.toView().presentation.patternCode).toBe("editorial");
+      expect(result?.getPresentationPatternCode()).toBe("editorial");
     });
   });
 
@@ -360,7 +360,7 @@ describe("artistProfileRepository", () => {
         mock.spy("onConflictDoUpdate").mock.calls[0][0].set
           .presentationPatternId,
       ).toBe(3);
-      expect(result.toView().presentation.patternCode).toBe("spotlight");
+      expect(result.getPresentationPatternCode()).toBe("spotlight");
     });
 
     it("未知の presentationPatternCode は InvalidPresentationPatternError を投げ、保存しない", async () => {
@@ -405,7 +405,7 @@ describe("artistProfileRepository", () => {
       expect(mock.spy("update")).toHaveBeenCalledTimes(1);
       expect(result.isPublished()).toBe(true);
       expect(result.getGenres()).toEqual(["bass"]);
-      expect(result.toView().presentation.patternCode).toBe("editorial");
+      expect(result.getPresentationPatternCode()).toBe("editorial");
     });
 
     it("対象が無ければ ArtistProfileNotFoundError をスローする", async () => {

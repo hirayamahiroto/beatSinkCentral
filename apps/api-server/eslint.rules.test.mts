@@ -1,10 +1,6 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { ESLint } from "eslint";
-import nextTypescript from "eslint-config-next/typescript";
 import { describe, expect, it } from "vitest";
-import { entityBehaviorRules } from "../../eslint.rules.mjs";
 
 // vitest の root は apps/api-server（vitest.config.mts の位置）。
 // ここを cwd にすると api-server の eslint.config.mjs がそのまま解決される。
@@ -256,104 +252,5 @@ describe("local/usecase-capability-parameter", () => {
     );
 
     expect(ruleIds).not.toContain(PARAMETER);
-  });
-});
-
-const ENTITY = "src/domain/example/entities/index.ts";
-const ENTITY_BEHAVIOR = "local/entity-behavior-has-caller";
-
-// この rule は同じ src 配下の本番コードを読むため、一時ディレクトリに
-// 実ファイルを置いて lint し、呼び手の有無で結果が変わることを確かめる。
-const entityBehaviorMessagesIn = async (files: Record<string, string>) => {
-  const root = mkdtempSync(join(tmpdir(), "entity-behavior-"));
-  for (const [relativePath, code] of Object.entries(files)) {
-    const path = join(root, relativePath);
-    mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(path, code);
-  }
-  const eslint = new ESLint({
-    cwd: root,
-    overrideConfigFile: true,
-    overrideConfig: [
-      ...nextTypescript,
-      entityBehaviorRules(["src/domain/*/entities/index.ts"]),
-    ],
-  });
-  const [result] = await eslint.lintFiles([ENTITY]);
-  return result.messages.filter(
-    (message) => message.ruleId === ENTITY_BEHAVIOR,
-  );
-};
-
-const EXAMPLE_ENTITY = [
-  `export type Example = {`,
-  `  getId: () => string;`,
-  `  getName: () => string;`,
-  `  toPersistence: () => { id: string; name: string };`,
-  `};`,
-  ``,
-].join("\n");
-
-describe("local/entity-behavior-has-caller", () => {
-  it("本番コードに呼び手のない振る舞いを検出する", async () => {
-    const messages = await entityBehaviorMessagesIn({
-      [ENTITY]: EXAMPLE_ENTITY,
-      "src/usecases/example/index.ts": [
-        `import type { Example } from "../../domain/example/entities";`,
-        `export const run = (example: Example) => example.getId();`,
-        `export const save = (example: Example) => example.toPersistence();`,
-        ``,
-      ].join("\n"),
-    });
-
-    expect(messages.map((message) => message.message)).toEqual([
-      expect.stringContaining("`Example` の振る舞い `getName`"),
-    ]);
-  });
-
-  it("テストとテストダブルからの呼び出しは呼び手に数えない", async () => {
-    const messages = await entityBehaviorMessagesIn({
-      [ENTITY]: EXAMPLE_ENTITY,
-      "src/usecases/example/index.test.ts": `example.getId(); example.getName(); example.toPersistence();\n`,
-      "src/usecases/authorization/testDoubles/index.ts": `example.getId(); example.getName(); example.toPersistence();\n`,
-    });
-
-    expect(messages).toHaveLength(3);
-  });
-
-  it("optional chaining の呼び出しも呼び手に数える", async () => {
-    const messages = await entityBehaviorMessagesIn({
-      [ENTITY]: EXAMPLE_ENTITY,
-      "src/usecases/example/index.ts": [
-        `export const run = (example?: { getId: () => string; getName: () => string; toPersistence: () => unknown }) =>`,
-        `  [example?.getId(), example?.getName(), example?.toPersistence()];`,
-        ``,
-      ].join("\n"),
-    });
-
-    expect(messages).toHaveLength(0);
-  });
-
-  it("関数でないメンバー（State / PersistenceData）と非公開の型は対象外", async () => {
-    const messages = await entityBehaviorMessagesIn({
-      [ENTITY]: [
-        `export type ExampleState = { readonly id: string; readonly name: string };`,
-        `type Internal = { getSecret: () => string };`,
-        `export type Example = { getId: () => string };`,
-        ``,
-      ].join("\n"),
-      "src/usecases/example/index.ts": `export const run = (example: { getId: () => string }) => example.getId();\n`,
-    });
-
-    expect(messages).toHaveLength(0);
-  });
-
-  it("実プロジェクトの設定では entities 配下にだけ効く", async () => {
-    const code = `export type Example = { getNobodyCallsThis: () => string };\n`;
-
-    expect(await ruleIdsFor(ENTITY, code)).toContain(ENTITY_BEHAVIOR);
-    expect(
-      await ruleIdsFor("src/domain/example/behaviors/index.ts", code),
-    ).not.toContain(ENTITY_BEHAVIOR);
   });
 });

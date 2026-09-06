@@ -31,9 +31,9 @@ const profile = reconstructArtistProfile({
 describe("createArtistProfileBehaviors", () => {
   it("getter がプリミティブ値を返す（内部の VO 構造を露出しない）", () => {
     expect(profile.getName()).toBe("Taro");
-    expect(profile.toView().attributes.tagline).toBe("音で旅する");
+    expect(profile.getTagline()).toBe("音で旅する");
     expect(profile.getImageUrl()).toBe("https://example.com/a.png");
-    expect(profile.toView().attributes.activityInfo).toBe("東京 / ソロ");
+    expect(profile.getActivityInfo()).toBe("東京 / ソロ");
     expect(profile.getGenres()).toEqual(["bass", "inward"]);
     expect(profile.getLinks()).toStrictEqual([
       { linkTypeCode: "x", url: "https://x.com/taro" },
@@ -72,14 +72,14 @@ describe("createArtistProfileBehaviors", () => {
   it("choosePresentationPattern は表現パターンだけを差し替えた新しい Entity を返し、元は不変", () => {
     const chosen = profile.choosePresentationPattern("editorial");
 
-    expect(chosen.toView().presentation.patternCode).toBe("editorial");
+    expect(chosen.getPresentationPatternCode()).toBe("editorial");
     expect(chosen.toView().presentation).toStrictEqual({
       patternCode: "editorial",
     });
     expect(chosen.toPersistence().presentationPatternCode).toBe("editorial");
     expect(chosen.getName()).toBe("Taro");
     expect(chosen.getLinks()).toStrictEqual(profile.getLinks());
-    expect(profile.toView().presentation.patternCode).toBeNull();
+    expect(profile.getPresentationPatternCode()).toBeNull();
   });
 
   it("unpublish は published=false の新しい Entity を返し、元は不変", () => {
@@ -112,9 +112,9 @@ describe("createArtistProfileBehaviors", () => {
       );
 
       expect(revised.getName()).toBe("Jiro");
-      expect(revised.toView().attributes.tagline).toBeNull();
+      expect(revised.getTagline()).toBeNull();
       expect(revised.getGenres()).toEqual(["loop"]);
-      expect(revised.toView().attributes.activityInfo).toBeNull();
+      expect(revised.getActivityInfo()).toBeNull();
       expect(revised.getImageUrl()).toBe("https://example.com/a.png");
       expect(revised.getChapters()).toEqual(profile.getChapters());
       expect(revised.getLinks()).toEqual(profile.getLinks());

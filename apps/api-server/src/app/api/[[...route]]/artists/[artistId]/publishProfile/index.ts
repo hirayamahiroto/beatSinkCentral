@@ -11,9 +11,13 @@ const paramSchema = z.object({
   artistId: z.string().min(1).max(255),
 });
 
-const publishProfileRequestSchema = z.object({
+export const publishProfileRequestSchema = z.object({
   published: z.boolean({ required_error: "published is required" }),
 });
+
+export type PublishProfileRequestBody = z.infer<
+  typeof publishProfileRequestSchema
+>;
 
 const publishProfileResponseSchema = z.object({
   published: z.boolean(),

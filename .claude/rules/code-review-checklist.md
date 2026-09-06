@@ -347,7 +347,7 @@ logger.info("login", { userId, email: maskEmail(email) });
 ### 6-1. 呼び手のない公開面を足さない 🟡 推奨
 
 - 新規の `export`・Entity の公開振る舞い・リポジトリのメソッド・権能のフィールド・drizzle-zod の `*SelectSchema` / `*InsertSchema`・index は、**その PR 内の本番コードに呼び手があるもの**だけを足す
-- 判定は機械検証に任せる。`npm run knip`（未参照の `export`・ファイル・依存）、`npm run knip:production`（テストからしか参照されない `export`）、api-server の lint（`local/entity-behavior-has-caller`: Entity の振る舞い）が 1 件でも報告したら削る。テストからしか呼ばれない公開 API は「テストのための API」であり、意図が読めない（`docs/architecture/server/architecture.md`「呼び手のない公開面は機械的に検出する」）
+- 判定はテストを除いて grep し、呼び手が 0 件なら削る。テストからしか呼ばれない公開 API は「テストのための API」であり、意図が読めない
 - 既存の類似実装を構造の参考にしてよいが、その公開面を一式写さない。将来の要件で必要になった時点で、その PR で足す
 
 ```typescript

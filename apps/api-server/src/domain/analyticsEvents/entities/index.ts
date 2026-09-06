@@ -28,5 +28,6 @@ export type AnalyticsEventPersistenceData = {
 
 export type AnalyticsEvent = {
   getId: () => string;
+  getEventType: () => string;
   toPersistence: () => AnalyticsEventPersistenceData;
 };

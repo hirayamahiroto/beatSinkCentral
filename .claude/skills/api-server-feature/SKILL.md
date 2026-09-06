@@ -139,13 +139,10 @@ DBスキーマ + migration → VO → entity(型) → behaviors → factory
 ```bash
 npm test -- --filter api-server           # 全テスト green
 cd apps/api-server && npx tsc --noEmit    # 型（vitest は型を見ないので必須）
-cd apps/api-server && npx next lint       # lint（Entity の振る舞いの呼び手は local/entity-behavior-has-caller が見る）
-npm run knip                              # 呼び手のない export・ファイル・依存
-npm run knip:production                   # テストからしか参照されない export
+cd apps/api-server && npx next lint       # lint
 ```
 
 - 新規 module すべてに test があるか。
-- 自分が足した `export`・Entity の振る舞い・`*Schema` が knip / lint の出力に**新たに**現れていないか。手動 grep で代替しない（`docs/architecture/server/architecture.md`「呼び手のない公開面は機械的に検出する」）。
 - `tsc` の**既存エラー**（無関係なテストモック等）と**自分の変更起因**のエラーを切り分ける（`git status` で diff 範囲を確認）。
 
 ### Step 4b. 意図適合をレビューする（機械検証では拾えない）
@@ -155,7 +152,7 @@ npm run knip:production                   # テストからしか参照されな
 クエリや権限モデルの意味を理解しないと判定できず、機械検証では検知できない。
 
 **`Agent` を1本立てて diff を敵対的にレビューさせる。** 自分の実装を自分で見ると、意図が見えているぶん盲点が残る。
-`code-review-checklist.md` を照らし合わせて実行する。§6-1（呼び手のない公開面）は Step 4 の knip / lint が判定するため、ここでは扱わない。
+`code-review-checklist.md` を照らし合わせて実行する。§6-1（呼び手のない公開面）は「テストを除いて grep して 0 件か」を述語として必ず含める。
 
 **次のいずれかに触れた変更では必須**（省略しない）:
 

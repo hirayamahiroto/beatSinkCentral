@@ -1,10 +1,4 @@
-import {
-  pgTable,
-  uuid,
-  varchar,
-  integer,
-  timestamp,
-} from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, integer, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { artistProfilesTable } from "./artistProfiles";
 

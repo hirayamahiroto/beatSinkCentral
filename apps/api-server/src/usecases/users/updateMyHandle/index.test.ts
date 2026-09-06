@@ -48,7 +48,7 @@ const createCaps = () =>
 const renamedArtist = reconstructArtist({
   artistId: artist.getArtistId(),
   handle: "new_handle",
-  ownerUserId: artist.toPersistence().ownerUserId,
+  ownerUserId: artist.getOwnerUserId(),
   profile: null,
 });
 

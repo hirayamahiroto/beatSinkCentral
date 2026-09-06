@@ -3,7 +3,7 @@ import type { StoryQuestionView } from "../../../domain/storyQuestions/entities"
 import type { PublicReadCapabilities } from "../../capabilities";
 import { type Result, ok } from "../../../utils/result";
 
-type StoryQuestionListItem = StoryQuestionView & {
+export type StoryQuestionListItem = StoryQuestionView & {
   required: boolean;
 };
 
