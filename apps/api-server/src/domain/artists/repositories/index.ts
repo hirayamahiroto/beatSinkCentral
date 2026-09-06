@@ -8,6 +8,7 @@ export type ArtistUpdateHandleData = {
 export interface IArtistReader {
   findByUserId(userId: string): Promise<Artist | null>;
   findByHandle(handle: string): Promise<Artist | null>;
+  findByHandles(handles: string[]): Promise<Artist[]>;
 }
 
 export interface IArtistWriter {

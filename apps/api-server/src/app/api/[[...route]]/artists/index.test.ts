@@ -42,6 +42,7 @@ describe("/artists ルーターの合成", () => {
       "POST /:artistId/story/chapters/:chapterKey",
       "POST /:artistId/links",
       "POST /:artistId/presentation",
+      "POST /:artistId/offers",
       "POST /:artistId/profile/publish",
       "POST /:artistId/profile/image",
     ]);

@@ -71,6 +71,13 @@
       "when": 1788678744905,
       "tag": "0009_red_captain_midlands",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788684538828,
+      "tag": "0010_burly_tigra",
+      "breakpoints": true
     }
   ]
 }

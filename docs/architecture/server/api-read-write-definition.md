@@ -43,17 +43,17 @@
 
 **更新は行為の単位で切る。** 入力はその構造の項目だけを受け、他の構造には触らない。
 
-| 構造       | 行為                  | エンドポイント                                       | 入力                                                   |
-| ---------- | --------------------- | ---------------------------------------------------- | ------------------------------------------------------ |
-| 属性       | 属性を直す            | `POST /artists/:artistId/attributes`                 | `{ name, tagline?, genres[], activityInfo? }`          |
-| Story      | 章を書く              | `POST /artists/:artistId/story/chapters/:chapterKey` | `{ body }`（空文字は章を消す）                         |
-| 聴きどころ | 聴きどころを設定する  | `POST /artists/:artistId/listening-point`（予定）    | `{ videoUrl, comment }`                                |
-| SNS リンク | 繋ぎ先を変える        | `POST /artists/:artistId/links`                      | `{ links: [{ linkTypeCode, url }] }`（集合を差し替え） |
-| オファー   | オファーを差し替える  | `POST /artists/:artistId/offers`（予定）             | `{ date, place, ticketUrl, comment, coPerformers[] }`  |
-| 画像       | 画像を差し替える      | `POST /artists/:artistId/profile/image`（既存）      | multipart `file`。保存先 URL を集約に書き込む          |
-| 公開       | 公開する / 取り下げる | `POST /artists/:artistId/profile/publish`（既存）    | `{ published }`                                        |
-| 表現       | 見せ方を選ぶ          | `POST /artists/:artistId/presentation`               | `{ patternCode }`（`presentation_patterns.code`）      |
-| 翻訳段落   | —                     | **作らない**（運営が直接書く）                       | —                                                      |
+| 構造       | 行為                  | エンドポイント                                       | 入力                                                                                                                                                                 |
+| ---------- | --------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 属性       | 属性を直す            | `POST /artists/:artistId/attributes`                 | `{ name, tagline?, genres[], activityInfo? }`                                                                                                                        |
+| Story      | 章を書く              | `POST /artists/:artistId/story/chapters/:chapterKey` | `{ body }`（空文字は章を消す）                                                                                                                                       |
+| 聴きどころ | 聴きどころを設定する  | `POST /artists/:artistId/listening-point`（予定）    | `{ videoUrl, comment }`                                                                                                                                              |
+| SNS リンク | 繋ぎ先を変える        | `POST /artists/:artistId/links`                      | `{ links: [{ linkTypeCode, url }] }`（集合を差し替え）                                                                                                               |
+| オファー   | オファーを差し替える  | `POST /artists/:artistId/offers`                     | `{ date, place, ticketUrl, comment, coPerformers[] }`（`coPerformers[]` は `{ name, handle }` を最大 20 件。`handle` は登録済み共演者のみ。`date` は開催日前に限る） |
+| 画像       | 画像を差し替える      | `POST /artists/:artistId/profile/image`（既存）      | multipart `file`。保存先 URL を集約に書き込む                                                                                                                        |
+| 公開       | 公開する / 取り下げる | `POST /artists/:artistId/profile/publish`（既存）    | `{ published }`                                                                                                                                                      |
+| 表現       | 見せ方を選ぶ          | `POST /artists/:artistId/presentation`               | `{ patternCode }`（`presentation_patterns.code`）                                                                                                                    |
+| 翻訳段落   | —                     | **作らない**（運営が直接書く）                       | —                                                                                                                                                                    |
 
 `chapterKey` は問いマスタ `story_questions.code` の値（`beginning` / `turning_point` / `concept`）。語彙は DB マスタ由来であり、URL に別名を導入しない（[`code-review-checklist.md`](../../../.claude/rules/code-review-checklist.md) §14）。
 
@@ -92,6 +92,7 @@ app/api/[[...route]]/artists/[artistId]/
   writeStoryChapter/index.ts       → POST /:artistId/story/chapters/:chapterKey
   replaceLinks/index.ts            → POST /:artistId/links
   choosePresentationPattern/index.ts → POST /:artistId/presentation
+  replaceOffer/index.ts            → POST /:artistId/offers
   uploadProfileImage/index.ts      → POST /:artistId/profile/image（既存）
   publishProfile/index.ts          → POST /:artistId/profile/publish（既存）
 ```
@@ -131,7 +132,8 @@ app/api/[[...route]]/artists/[artistId]/
 ```
 
 - 本人向けは `profile` と `publishability` が未作成時に `null`。公開向けは `publishability` を持たず、`profile` は必ず存在する（無ければ 404）。
-- 聴きどころ・オファー・翻訳段落は実装時に同じ階層へ `listeningPoint` / `offer` / `translation` として足す（未実装のうちはキーを出さない）。
+- 聴きどころ・翻訳段落は実装時に同じ階層へ `listeningPoint` / `translation` として足す（未実装のうちはキーを出さない）。
+- オファーは `ArtistProfile` とは別の集約（`artists` 直下・時限で差し替わる）のため、`profile` の**兄弟**として `offer` を返す。開催日前のオファーだけを載せ、無ければ `null`。開催日を過ぎた行は DB に残るが応答には現れない（本人向け `GET /artists/:artistId/profile` で実装済み）。
 
 ルール:
 

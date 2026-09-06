@@ -14,6 +14,10 @@ import {
   createArtistProfileWriter,
 } from "../../repositories/artistProfileRepository";
 import { createArtistHandleHistoryWriter } from "../../repositories/artistHandleHistoryRepository";
+import {
+  createOfferReader,
+  createOfferWriter,
+} from "../../repositories/offerRepository";
 import { createLinkTypeReader } from "../../repositories/linkTypeRepository";
 import { createAnalyticsEventWriter } from "../../repositories/analyticsEventRepository";
 import { createStoryQuestionReader } from "../../repositories/storyQuestionRepository";
@@ -51,6 +55,11 @@ vi.mock("../../repositories/artistProfileRepository", () => ({
 
 vi.mock("../../repositories/artistHandleHistoryRepository", () => ({
   createArtistHandleHistoryWriter: vi.fn(() => ({ record: vi.fn() })),
+}));
+
+vi.mock("../../repositories/offerRepository", () => ({
+  createOfferReader: vi.fn(() => ({ findLatestByArtistId: vi.fn() })),
+  createOfferWriter: vi.fn(() => ({ upsert: vi.fn() })),
 }));
 
 vi.mock("../../repositories/linkTypeRepository", () => ({
@@ -129,10 +138,16 @@ describe("buildArtistReadCapabilities", () => {
   it("Actor と Reader だけを渡し、Writer は渡さない", () => {
     const caps = buildArtistReadCapabilities(actor)(executor);
 
-    expect(Object.keys(caps).sort()).toStrictEqual(["actor", "artistProfiles"]);
+    expect(Object.keys(caps).sort()).toStrictEqual([
+      "actor",
+      "artistProfiles",
+      "offers",
+    ]);
     expect(caps.actor).toBe(actor);
     expect(createArtistProfileReader).toHaveBeenCalledWith(executor);
+    expect(createOfferReader).toHaveBeenCalledWith(executor);
     expect(createArtistProfileWriter).not.toHaveBeenCalled();
+    expect(createOfferWriter).not.toHaveBeenCalled();
     expect(createStoryQuestionReader).not.toHaveBeenCalled();
   });
 });
@@ -166,12 +181,15 @@ describe("buildArtistWriteCapabilities", () => {
       "artistHandleHistories",
       "artistProfiles",
       "artists",
+      "offers",
       "users",
     ]);
     expect(caps.actor).toBe(actor);
     expect(createUserReader).toHaveBeenCalledWith(executor);
     expect(createArtistHandleHistoryWriter).toHaveBeenCalledWith(executor);
     expect(createArtistProfileWriter).toHaveBeenCalledWith(executor);
+    expect(createOfferReader).toHaveBeenCalledWith(executor);
+    expect(createOfferWriter).toHaveBeenCalledWith(executor);
   });
 });
 

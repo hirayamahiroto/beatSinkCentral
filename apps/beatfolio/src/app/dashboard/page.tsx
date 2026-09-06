@@ -6,6 +6,7 @@ import { Button } from "@ui/design-system/components/atoms/Button";
 import { getDashboard } from "../../fetchers/dashboard/getDashboard";
 import { ProfilePublishClientAdapter } from "./ProfilePublishClientAdapter";
 import { PresentationPatternClientAdapter } from "./PresentationPatternClientAdapter";
+import { OfferEditorClientAdapter } from "./OfferEditorClientAdapter";
 
 export default async function DashboardPage() {
   const result = await getDashboard();
@@ -74,6 +75,8 @@ export default async function DashboardPage() {
             }
           />
         )}
+
+        {artist?.profile && <OfferEditorClientAdapter offer={artist.offer} />}
 
         <Card>
           <div className="flex flex-col gap-3">
