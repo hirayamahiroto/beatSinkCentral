@@ -1,13 +1,18 @@
 import { notFound } from "next/navigation";
 import { getPlayerDetail } from "../../../fetchers/players/getPlayerDetail";
+import { resolveProfileViewFrom } from "../../../libs/analytics/profileViewFrom";
 import { PlayerDetailClientAdapter } from "./PlayerDetailClientAdapter";
 
 type Props = {
   params: Promise<{ handle: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-export default async function PlayerDetailPage({ params }: Props) {
-  const { handle } = await params;
+export default async function PlayerDetailPage({
+  params,
+  searchParams,
+}: Props) {
+  const [{ handle }, { from }] = await Promise.all([params, searchParams]);
   const result = await getPlayerDetail({ handle });
 
   if (!result.ok) {
@@ -23,6 +28,8 @@ export default async function PlayerDetailPage({ params }: Props) {
     <div className="min-h-screen bg-background px-4 pb-16 pt-24 text-foreground">
       <div className="container mx-auto max-w-3xl">
         <PlayerDetailClientAdapter
+          artistId={player.artistId}
+          profileViewFrom={resolveProfileViewFrom(from)}
           name={player.name}
           tagline={player.tagline}
           imageUrl={player.imageUrl}

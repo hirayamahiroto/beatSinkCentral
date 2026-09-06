@@ -11,6 +11,7 @@ vi.mock("../../../utils/client/server", () => ({
 }));
 
 const player = {
+  artistId: "artist-1",
   name: "SAKU",
   tagline: "口ひとつで、フロアを揺らす。",
   imageUrl: "https://example.com/saku.jpg",
@@ -19,7 +20,9 @@ const player = {
   translation: null,
   listeningPoint: null,
   offer: null,
-  supportLinks: [{ url: "https://youtube.com/@saku", label: "YouTube" }],
+  supportLinks: [
+    { platform: "youtube", url: "https://youtube.com/@saku", label: "YouTube" },
+  ],
 };
 
 describe("getPlayerDetail", () => {
