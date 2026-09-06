@@ -40,10 +40,21 @@ const publishabilitySchema = z.object({
   missingFields: z.array(publishRequiredFieldSchema),
 });
 
+const offerViewSchema = z.object({
+  date: z.string(),
+  place: z.string(),
+  ticketUrl: z.string(),
+  comment: z.string(),
+  coPerformers: z.array(
+    z.object({ name: z.string(), handle: z.string().nullable() }),
+  ),
+});
+
 const getProfileResponseSchema = z.object({
   handle: z.string(),
   profile: artistProfileViewSchema.nullable(),
   publishability: publishabilitySchema.nullable(),
+  offer: offerViewSchema.nullable(),
 });
 
 const app = new Hono().get(

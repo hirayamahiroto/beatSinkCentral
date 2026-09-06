@@ -5,6 +5,7 @@ import updateAttributes from "./updateAttributes";
 import writeStoryChapter from "./writeStoryChapter";
 import replaceLinks from "./replaceLinks";
 import choosePresentationPattern from "./choosePresentationPattern";
+import replaceOffer from "./replaceOffer";
 import publishProfile from "./publishProfile";
 import uploadProfileImage from "./uploadProfileImage";
 import { requireAuthMiddleware } from "../../../../../middlewares/auth0";
@@ -17,6 +18,7 @@ const app = new Hono()
   .route("/story/chapters/:chapterKey", writeStoryChapter)
   .route("/links", replaceLinks)
   .route("/presentation", choosePresentationPattern)
+  .route("/offers", replaceOffer)
   .route("/profile/publish", publishProfile)
   .route("/profile/image", uploadProfileImage);
 

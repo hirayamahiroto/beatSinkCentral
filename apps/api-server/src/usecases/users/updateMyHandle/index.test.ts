@@ -32,6 +32,7 @@ const createCaps = () =>
     artists: {
       findByUserId: vi.fn<IArtistReader["findByUserId"]>(async () => null),
       findByHandle: vi.fn<IArtistReader["findByHandle"]>(async () => null),
+      findByHandles: vi.fn<IArtistReader["findByHandles"]>(async () => []),
       save: vi.fn<IArtistWriter["save"]>(),
       updateHandle: vi.fn<IArtistWriter["updateHandle"]>(),
     },

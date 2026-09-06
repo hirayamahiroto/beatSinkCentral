@@ -4,6 +4,7 @@ import { resolvePublishRequirementLabels } from "../../shared/resolvePublishRequ
 import { toUpstreamError } from "../../shared/toUpstreamError";
 import { readUpstreamJson } from "../../shared/readUpstreamJson";
 import { resolvePresentationPattern } from "../../shared/resolvePresentationPattern";
+import { toOfferEditorValues } from "./toOfferEditorValues";
 
 const app = new Hono<RequestContextEnv>().get("/", async (c) => {
   const apiClient = c.get("apiClient");
@@ -33,15 +34,20 @@ const app = new Hono<RequestContextEnv>().get("/", async (c) => {
     throw await toUpstreamError(presentationPatternsRes);
   }
 
-  const { profile, publishability } = await readUpstreamJson(profileRes);
+  const { profile, publishability, offer } = await readUpstreamJson(profileRes);
   const { presentationPatterns } = await readUpstreamJson(
     presentationPatternsRes,
   );
+  const offerEditorValues = offer === null ? null : toOfferEditorValues(offer);
 
   if (profile === null || publishability === null) {
     return c.json({
       registered: true as const,
-      artist: { handle: me.artist.handle, profile: null },
+      artist: {
+        handle: me.artist.handle,
+        profile: null,
+        offer: offerEditorValues,
+      },
     });
   }
 
@@ -61,6 +67,7 @@ const app = new Hono<RequestContextEnv>().get("/", async (c) => {
           options: presentationPatterns,
         },
       },
+      offer: offerEditorValues,
     },
   });
 });

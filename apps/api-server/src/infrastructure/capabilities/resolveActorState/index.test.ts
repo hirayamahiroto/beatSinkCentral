@@ -21,6 +21,7 @@ const createReaders = (): ActorStateReaders => ({
   artists: {
     findByUserId: vi.fn(async () => null),
     findByHandle: vi.fn(async () => null),
+    findByHandles: vi.fn(async () => []),
   },
 });
 

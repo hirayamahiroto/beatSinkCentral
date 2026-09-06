@@ -9,6 +9,10 @@ import type {
   IProfileImageStorage,
 } from "../../../domain/artistProfiles/repositories";
 import type { IStoryQuestionReader } from "../../../domain/storyQuestions/repositories";
+import type {
+  IOfferReader,
+  IOfferWriter,
+} from "../../../domain/offers/repositories";
 import { reconstructUser } from "../../../domain/users/factories";
 import { reconstructArtist } from "../../../domain/artists/factories";
 
@@ -55,6 +59,14 @@ const createStoryQuestionReaderStub = (): IStoryQuestionReader => ({
   findAll: async () => [],
 });
 
+const createOfferReaderStub = (): IOfferReader => ({
+  findLatestByArtistId: async () => null,
+});
+
+const createOfferWriterStub = (): IOfferWriter => ({
+  upsert: unusedInAuthorizationTests,
+});
+
 const createRegistrationCapabilitiesStub = (): RegistrationCapabilities => ({
   users: {
     findBySub: async () => null,
@@ -64,6 +76,7 @@ const createRegistrationCapabilitiesStub = (): RegistrationCapabilities => ({
   artists: {
     findByUserId: async () => null,
     findByHandle: async () => null,
+    findByHandles: async () => [],
     save: unusedInAuthorizationTests,
     updateHandle: unusedInAuthorizationTests,
   },
@@ -99,6 +112,7 @@ export const createCapabilityDepsStub = (
     buildArtistReadCapabilities: (actor) => ({
       actor,
       artistProfiles: createArtistProfileReaderStub(),
+      offers: createOfferReaderStub(),
     }),
 
     buildArtistStorageWriteCapabilities: (actor) => ({
@@ -120,6 +134,10 @@ export const createCapabilityDepsStub = (
         artistProfiles: {
           ...createArtistProfileReaderStub(),
           ...createArtistProfileWriterStub(),
+        },
+        offers: {
+          ...createOfferReaderStub(),
+          ...createOfferWriterStub(),
         },
       });
     },

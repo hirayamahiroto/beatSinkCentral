@@ -6,11 +6,15 @@ const notPublishableDetailsSchema = z.object({
   missingFields: z.array(z.string()),
 });
 
-export const translateUpstreamBody = (
+const coPerformerNotFoundDetailsSchema = z.object({
+  handle: z.string(),
+});
+
+const OFFER_DATE_PASSED_MESSAGE = "開催日を過ぎた日付は登録できません";
+
+const translateNotPublishable = (
   body: UpstreamErrorBody,
 ): UpstreamErrorBody => {
-  if (body.code !== "ProfileNotPublishableError") return body;
-
   const details = notPublishableDetailsSchema.safeParse(body.details);
   if (!details.success) return body;
 
@@ -21,4 +25,31 @@ export const translateUpstreamBody = (
       details.data.missingFields,
     ),
   };
+};
+
+const translateCoPerformerNotFound = (
+  body: UpstreamErrorBody,
+): UpstreamErrorBody => {
+  const details = coPerformerNotFoundDetailsSchema.safeParse(body.details);
+  if (!details.success) return body;
+
+  return {
+    error: `共演者のハンドル「${details.data.handle}」は登録されていません`,
+    code: body.code,
+  };
+};
+
+export const translateUpstreamBody = (
+  body: UpstreamErrorBody,
+): UpstreamErrorBody => {
+  switch (body.code) {
+    case "ProfileNotPublishableError":
+      return translateNotPublishable(body);
+    case "CoPerformerNotFoundError":
+      return translateCoPerformerNotFound(body);
+    case "OfferDatePassedError":
+      return { error: OFFER_DATE_PASSED_MESSAGE, code: body.code };
+    default:
+      return body;
+  }
 };
