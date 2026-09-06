@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>告知素材 2/3 — 翻訳の一行</title>
+    <style>
+      :root {
+        --background: oklch(0.145 0 0);
+        --foreground: oklch(0.985 0 0);
+        --muted-foreground: oklch(0.708 0 0);
+        --border: oklch(0.269 0 0);
+      }
+      html,
+      body {
+        margin: 0;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: var(--background);
+        color: var(--foreground);
+        font-family:
+          system-ui,
+          -apple-system,
+          "Hiragino Sans",
+          "Hiragino Kaku Gothic ProN",
+          "Noto Sans JP",
+          sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      .canvas {
+        box-sizing: border-box;
+        width: 1080px;
+        height: 1920px;
+        padding: 260px 88px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+      [contenteditable] {
+        outline: none;
+      }
+      .label {
+        margin: 0;
+        font-size: 32px;
+        color: var(--muted-foreground);
+        letter-spacing: 0.08em;
+      }
+      .quote {
+        border-left: 8px solid var(--border);
+        padding-left: 48px;
+      }
+      .line {
+        margin: 0;
+        font-size: 72px;
+        font-weight: 700;
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+      }
+      .by {
+        margin: 48px 0 0;
+        font-size: 36px;
+        color: var(--muted-foreground);
+      }
+      .foot {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        color: var(--muted-foreground);
+        font-size: 32px;
+      }
+      .brand {
+        font-weight: 700;
+        letter-spacing: 0.02em;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="canvas">
+      <p class="label" contenteditable="true">この人の何が凄いか</p>
+
+      <div class="quote">
+        <p class="line" contenteditable="true">
+          【翻訳の一行：翻訳あり群は運営が書いた一段落から、なし群は本人の Story
+          から一文を抜く】
+        </p>
+        <p class="by" contenteditable="true">— 【名前】について</p>
+      </div>
+
+      <div class="foot">
+        <span class="brand">beatfolio</span>
+        <span>2 / 3 →</span>
+      </div>
+    </div>
+  </body>
+</html>
