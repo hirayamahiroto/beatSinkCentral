@@ -31,7 +31,7 @@ describe("GET /artists/:handle", () => {
     mockArtistProfiles.findPublishedByHandle.mockResolvedValue(
       reconstructArtistProfile({
         id: "p1",
-        artistId: "artist-1",
+        artistId: "0d7fbb2e-5f6c-4d3a-9c1e-2b8f4a6d7e90",
         published: true,
         name: "Taro",
         imageUrl: "https://example.com/a.png",
@@ -46,6 +46,7 @@ describe("GET /artists/:handle", () => {
 
     expect(res.status).toBe(200);
     expect(body.handle).toBe("beatboxer_taro");
+    expect(body.artistId).toBe("0d7fbb2e-5f6c-4d3a-9c1e-2b8f4a6d7e90");
     expect(body.profile.attributes.name).toBe("Taro");
     expect(body.profile.story.chapters).toStrictEqual([
       { key: "beginning", body: "私の歩み" },
@@ -60,7 +61,7 @@ describe("GET /artists/:handle", () => {
     mockArtistProfiles.findPublishedByHandle.mockResolvedValue(
       reconstructArtistProfile({
         id: "p1",
-        artistId: "artist-1",
+        artistId: "0d7fbb2e-5f6c-4d3a-9c1e-2b8f4a6d7e90",
         published: true,
         name: "Taro",
         imageUrl: null,

@@ -1,6 +1,9 @@
 import { Hono } from "hono";
 import type { RequestContextEnv } from "../../../../../middlewares/requestContext";
-import { resolveLinkLabels } from "../../shared/resolveLinkLabels";
+import {
+  resolveLinkLabels,
+  type ResolvedLink,
+} from "../../shared/resolveLinkLabels";
 import { toUpstreamError } from "../../shared/toUpstreamError";
 import { readUpstreamJson } from "../../shared/readUpstreamJson";
 import { createPlayerNotFoundError } from "../../errors/playerNotFound";
@@ -12,6 +15,12 @@ type StoryChapter = { key: string; body: string };
 // T03② で章単位の区画表示に置き換えるまでの暫定措置。旧 story 相当の1本のテキストとして結合する
 const joinChapterBodies = (chapters: StoryChapter[]): string =>
   chapters.map((chapter) => chapter.body).join("\n\n");
+
+const toSupportLink = (link: ResolvedLink) => ({
+  platform: link.type,
+  url: link.url,
+  label: link.label,
+});
 
 const app = new Hono<RequestContextEnv>().get("/:handle", async (c) => {
   const apiClient = c.get("apiClient");
@@ -28,10 +37,11 @@ const app = new Hono<RequestContextEnv>().get("/:handle", async (c) => {
   if (!profileRes.ok) throw await toUpstreamError(profileRes);
   if (!linkTypesRes.ok) throw await toUpstreamError(linkTypesRes);
 
-  const { profile } = await readUpstreamJson(profileRes);
+  const { artistId, profile } = await readUpstreamJson(profileRes);
   const { linkTypes } = await readUpstreamJson(linkTypesRes);
 
   return c.json({
+    artistId,
     name: profile.attributes.name,
     tagline: profile.attributes.tagline,
     imageUrl: profile.attributes.imageUrl,
@@ -45,7 +55,9 @@ const app = new Hono<RequestContextEnv>().get("/:handle", async (c) => {
     translation: null,
     listeningPoint: null,
     offer: null,
-    supportLinks: resolveLinkLabels(profile.links, linkTypes),
+    supportLinks: resolveLinkLabels(profile.links, linkTypes).map(
+      toSupportLink,
+    ),
   });
 });
 

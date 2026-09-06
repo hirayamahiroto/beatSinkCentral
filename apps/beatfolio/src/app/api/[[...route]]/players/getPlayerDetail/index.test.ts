@@ -36,6 +36,7 @@ const jsonResponse = (
 
 const publishedProfile = {
   handle: "saku",
+  artistId: "artist-1",
   profile: {
     attributes: {
       name: "SAKU",
@@ -77,6 +78,7 @@ describe("GET /players/:handle", () => {
     expect(profileGet).toHaveBeenCalledWith({ param: { handle: "saku" } });
     expect(res.status).toBe(200);
     expect(await res.json()).toStrictEqual({
+      artistId: "artist-1",
       name: "SAKU",
       tagline: "口ひとつで、フロアを揺らす。",
       imageUrl: "https://example.com/saku.jpg",
@@ -88,8 +90,12 @@ describe("GET /players/:handle", () => {
       listeningPoint: null,
       offer: null,
       supportLinks: [
-        { url: "https://youtube.com/@saku", label: "YouTube" },
-        { url: "https://example.com/me", label: "その他" },
+        {
+          platform: "youtube",
+          url: "https://youtube.com/@saku",
+          label: "YouTube",
+        },
+        { platform: "other", url: "https://example.com/me", label: "その他" },
       ],
     });
   });
