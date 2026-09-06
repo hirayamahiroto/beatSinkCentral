@@ -3,7 +3,6 @@ import { reconstructUser } from "../../../domain/users/factories";
 import { reconstructArtist } from "../../../domain/artists/factories";
 import { reconstructArtistProfile } from "../../../domain/artistProfiles/factories";
 import { publishMyProfile } from "./index";
-import { isProfileNotPublishableError } from "../../../domain/artistProfiles/policies/publishability";
 import type {
   IArtistProfileReader,
   IArtistProfileWriter,
@@ -24,11 +23,11 @@ const actor: Actor = {
   }),
 };
 
-const publishableProfile = () =>
+const publishableProfile = (published = false) =>
   reconstructArtistProfile({
     id: "profile-1",
     artistId: "artist-1",
-    published: false,
+    published,
     name: "Taro",
     imageUrl: "https://example.com/a.png",
     chapters: [{ questionCode: "beginning", body: "私の歩み" }],
@@ -61,7 +60,7 @@ describe("publishMyProfile", () => {
     const caps = createCaps();
     caps.artistProfiles.findByArtistId.mockResolvedValue(publishableProfile());
     caps.artistProfiles.setPublished.mockResolvedValue(
-      publishableProfile().publish(),
+      publishableProfile(true),
     );
 
     const result = await publishMyProfile(caps, { published: true });
@@ -92,15 +91,10 @@ describe("publishMyProfile", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(isProfileNotPublishableError(result.error)).toBe(true);
-      if (isProfileNotPublishableError(result.error)) {
-        expect(result.error.missingFields).toEqual([
-          "imageUrl",
-          "story",
-          "genres",
-          "links",
-        ]);
-      }
+      expect(result.error.type).toBe("ProfileNotPublishableError");
+      expect(result.error).toMatchObject({
+        missingFields: ["imageUrl", "story", "genres", "links"],
+      });
     }
     expect(caps.artistProfiles.setPublished).not.toHaveBeenCalled();
   });

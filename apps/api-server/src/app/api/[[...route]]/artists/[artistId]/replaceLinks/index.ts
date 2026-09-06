@@ -18,11 +18,9 @@ const linkSchema = z.object({
   url: z.string(),
 });
 
-export const replaceLinksRequestSchema = z.object({
+const replaceLinksRequestSchema = z.object({
   links: z.array(linkSchema).max(MAX_LINKS),
 });
-
-export type ReplaceLinksRequestBody = z.infer<typeof replaceLinksRequestSchema>;
 
 const replaceLinksResponseSchema = z.object({
   links: z.array(linkSchema),

@@ -1,11 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
   assessPublishability,
-  collectMissingPublishFields,
-  createProfileNotPublishableError,
   enforcePublishInvariant,
   ensurePublishable,
-  isProfileNotPublishableError,
 } from "./index";
 import { reconstructArtistProfile } from "../../factories";
 
@@ -20,11 +17,11 @@ const fullContent = {
   links: [{ linkTypeCode: "x", url: "https://x.com/taro" }],
 };
 
-describe("collectMissingPublishFields", () => {
+describe("assessPublishability の missingFields", () => {
   it("最小核が揃っていれば空配列を返す", () => {
     const profile = reconstructArtistProfile(fullContent);
 
-    expect(collectMissingPublishFields(profile)).toEqual([]);
+    expect(assessPublishability(profile).missingFields).toEqual([]);
   });
 
   it("不足しているフィールド名を列挙する", () => {
@@ -34,7 +31,10 @@ describe("collectMissingPublishFields", () => {
       links: [],
     });
 
-    expect(collectMissingPublishFields(profile)).toEqual(["story", "links"]);
+    expect(assessPublishability(profile).missingFields).toEqual([
+      "story",
+      "links",
+    ]);
   });
 
   it("始まりの章が無く転機・コンセプトのみでは不足扱いになる", () => {
@@ -43,7 +43,7 @@ describe("collectMissingPublishFields", () => {
       chapters: [{ questionCode: "turning_point", body: "転機" }],
     });
 
-    expect(collectMissingPublishFields(profile)).toEqual(["story"]);
+    expect(assessPublishability(profile).missingFields).toEqual(["story"]);
   });
 
   it("転機・コンセプトが無くても始まりの章があれば不足扱いにならない", () => {
@@ -52,7 +52,7 @@ describe("collectMissingPublishFields", () => {
       chapters: [{ questionCode: "beginning", body: "私の歩み" }],
     });
 
-    expect(collectMissingPublishFields(profile)).toEqual([]);
+    expect(assessPublishability(profile).missingFields).toEqual([]);
   });
 
   it("タグライン・活動情報は公開ゲート対象外", () => {
@@ -62,7 +62,7 @@ describe("collectMissingPublishFields", () => {
       activityInfo: undefined,
     });
 
-    expect(collectMissingPublishFields(profile)).toEqual([]);
+    expect(assessPublishability(profile).missingFields).toEqual([]);
   });
 });
 
@@ -99,33 +99,9 @@ describe("ensurePublishable", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(isProfileNotPublishableError(result.error)).toBe(true);
+      expect(result.error.type).toBe("ProfileNotPublishableError");
       expect(result.error.missingFields).toEqual(["story", "links"]);
     }
-  });
-});
-
-describe("ProfileNotPublishableError", () => {
-  it("不足フィールドを保持した Error を生成する", () => {
-    const error = createProfileNotPublishableError(["story", "links"]);
-
-    expect(error).toBeInstanceOf(Error);
-    expect(error.type).toBe("ProfileNotPublishableError");
-    expect(error.missingFields).toEqual(["story", "links"]);
-  });
-
-  it("生成したエラーを型ガードで判別できる", () => {
-    expect(
-      isProfileNotPublishableError(createProfileNotPublishableError([])),
-    ).toBe(true);
-  });
-
-  it("別のエラーや非 Error は判別しない", () => {
-    expect(isProfileNotPublishableError(new Error("boom"))).toBe(false);
-    expect(
-      isProfileNotPublishableError({ type: "ProfileNotPublishableError" }),
-    ).toBe(false);
-    expect(isProfileNotPublishableError(null)).toBe(false);
   });
 });
 

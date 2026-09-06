@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createUser, type CreateUserInput } from "./index";
-import { isUserAlreadyRegisteredError } from "../../../domain/users/errors/userAlreadyRegistered";
 import {
   createHandleAlreadyTakenError,
   isHandleAlreadyTakenError,
@@ -79,7 +78,7 @@ describe("createUser", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(isUserAlreadyRegisteredError(result.error)).toBe(true);
+      expect(result.error.type).toBe("UserAlreadyRegisteredError");
     }
     expect(caps.users.save).not.toHaveBeenCalled();
     expect(caps.artists.save).not.toHaveBeenCalled();

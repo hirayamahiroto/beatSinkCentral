@@ -12,7 +12,7 @@ describe("Artist Factory", () => {
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.value.getHandle()).toBe("user_123");
-        expect(result.value.getOwnerUserId()).toBe("user-1");
+        expect(result.value.toPersistence().ownerUserId).toBe("user-1");
         expect(result.value.getArtistId()).toEqual(expect.any(String));
         expect(result.value.hasProfile()).toBe(false);
       }
@@ -44,7 +44,6 @@ describe("Artist Factory", () => {
 
       expect(artist.getArtistId()).toBe("artist-1");
       expect(artist.getHandle()).toBe("user_123");
-      expect(artist.getProfile()).toBeNull();
       expect(artist.hasProfile()).toBe(false);
     });
 
@@ -54,7 +53,6 @@ describe("Artist Factory", () => {
         profile: { name: "Test Artist" },
       });
 
-      expect(artist.getProfile()).toStrictEqual({ name: "Test Artist" });
       expect(artist.hasProfile()).toBe(true);
     });
 

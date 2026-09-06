@@ -20,9 +20,6 @@ export const toStoryQuestionCode = (
   value: string,
 ): StoryQuestionCode | undefined => STORY_QUESTION_CODE_BY_VALUE.get(value);
 
-export const isStoryQuestionCode = (value: string): boolean =>
-  toStoryQuestionCode(value) !== undefined;
-
 export type StoryChapter = {
   readonly questionCode: StoryQuestionCode;
   readonly body: string;

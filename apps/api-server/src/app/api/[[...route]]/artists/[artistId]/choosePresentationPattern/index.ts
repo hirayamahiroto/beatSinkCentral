@@ -11,7 +11,7 @@ const paramSchema = z.object({
   artistId: z.string().min(1).max(255),
 });
 
-export const choosePresentationPatternRequestSchema = z.object({
+const choosePresentationPatternRequestSchema = z.object({
   patternCode: z.string().min(1).max(50),
 });
 

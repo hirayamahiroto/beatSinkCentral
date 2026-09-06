@@ -5,8 +5,6 @@ import {
   testUser as user,
   testArtist as artist,
 } from "../testDoubles";
-import { isUserNotFoundError } from "../../../domain/users/errors/userNotFound";
-import { isArtistNotFoundError } from "../../../domain/artists/errors/artistNotFound";
 import { ok } from "../../../utils/result";
 
 describe("withArtistStorageWriteCapabilitiesById", () => {
@@ -26,7 +24,7 @@ describe("withArtistStorageWriteCapabilitiesById", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(isUserNotFoundError(result.error)).toBe(true);
+      expect(result.error.type).toBe("UserNotFoundError");
     }
     expect(workCalls).toBe(0);
   });
@@ -47,7 +45,7 @@ describe("withArtistStorageWriteCapabilitiesById", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(isArtistNotFoundError(result.error)).toBe(true);
+      expect(result.error.type).toBe("ArtistNotFoundError");
     }
     expect(workCalls).toBe(0);
   });
@@ -87,7 +85,7 @@ describe("withArtistStorageWriteCapabilitiesById", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(isArtistNotFoundError(result.error)).toBe(true);
+      expect(result.error.type).toBe("ArtistNotFoundError");
     }
     expect(workCalls).toBe(0);
   });

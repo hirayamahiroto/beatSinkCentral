@@ -6,10 +6,3 @@ export type UnauthorizedError = Error & {
 
 export const createUnauthorizedError = (): UnauthorizedError =>
   createTypedError("UnauthorizedError");
-
-export const isUnauthorizedError = (
-  error: unknown,
-): error is UnauthorizedError =>
-  error instanceof Error &&
-  "type" in error &&
-  error.type === "UnauthorizedError";

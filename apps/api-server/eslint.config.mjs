@@ -7,6 +7,7 @@ import {
   responseValidationPendingWarn,
   usecaseCapabilityRules,
   usecaseCapabilityParameterExempt,
+  entityBehaviorRules,
 } from "../../eslint.rules.mjs";
 
 const eslintConfig = [
@@ -18,7 +19,7 @@ const eslintConfig = [
     "src/domain/artists/errors/*/index.ts",
     "src/domain/users/errors/*/index.ts",
     "src/domain/users/valueObjects/sub/index.test.ts",
-    "src/errorMap/index.ts",
+    "src/errorMap/createAppErrorHandler/index.ts",
     "src/infrastructure/capabilities/builders/index.test.ts",
     "src/infrastructure/repositories/*/index.test.ts",
     "src/infrastructure/transaction/index.test.ts",
@@ -51,6 +52,7 @@ const eslintConfig = [
     "src/usecases/**/testDoubles/**/*.ts",
     "src/usecases/**/*.test.ts",
   ]),
+  entityBehaviorRules(["src/domain/*/entities/index.ts"]),
 ];
 
 export default eslintConfig;

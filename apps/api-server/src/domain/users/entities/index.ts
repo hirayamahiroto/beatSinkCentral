@@ -9,7 +9,6 @@ export type UserState = {
 
 export type User = {
   getId: () => string;
-  getSub: () => string;
   getEmail: () => string;
   changeEmail: (newEmail: Email) => User;
   toPersistence: () => {

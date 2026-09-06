@@ -18,7 +18,7 @@ const paramSchema = z.object({
   artistId: z.string().min(1).max(255),
 });
 
-export const uploadProfileImageRequestSchema = z.object({
+const uploadProfileImageRequestSchema = z.object({
   file: z.instanceof(File),
 });
 

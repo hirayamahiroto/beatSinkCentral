@@ -13,16 +13,12 @@ const paramSchema = z.object({
   artistId: z.string().min(1).max(255),
 });
 
-export const updateAttributesRequestSchema = z.object({
+const updateAttributesRequestSchema = z.object({
   name: z.string().nullable(),
   tagline: z.string().nullable().optional(),
   genres: z.array(z.string()).max(MAX_GENRES),
   activityInfo: z.string().nullable().optional(),
 });
-
-export type UpdateAttributesRequestBody = z.infer<
-  typeof updateAttributesRequestSchema
->;
 
 const updateAttributesResponseSchema = z.object({
   attributes: z.object({
