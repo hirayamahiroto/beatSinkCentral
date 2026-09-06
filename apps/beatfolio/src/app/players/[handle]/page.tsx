@@ -23,6 +23,7 @@ export default async function PlayerDetailPage({ params }: Props) {
     <div className="min-h-screen bg-background px-4 pb-16 pt-24 text-foreground">
       <div className="container mx-auto max-w-3xl">
         <PlayerDetailClientAdapter
+          artistId={player.artistId}
           name={player.name}
           tagline={player.tagline}
           imageUrl={player.imageUrl}

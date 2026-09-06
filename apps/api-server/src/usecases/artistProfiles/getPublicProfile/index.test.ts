@@ -40,6 +40,7 @@ describe("getPublicProfile", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.value.handle).toBe("beatboxer_taro");
+      expect(result.value.artistId).toBe("artist-1");
       expect(result.value.profile.attributes.name).toBe("Taro");
       expect(result.value.profile.published).toBe(true);
       expect(result.value.profile.presentation).toStrictEqual({

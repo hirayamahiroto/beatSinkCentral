@@ -16,6 +16,7 @@ export type GetPublicProfileInput = {
 
 export type GetPublicProfileOutput = {
   handle: string;
+  artistId: string;
   profile: ArtistProfileView;
 };
 
@@ -38,6 +39,7 @@ export const getPublicProfile = async (
 
   return ok({
     handle: handle.value,
+    artistId: profile.getArtistId(),
     profile: profile.toView(),
   });
 };

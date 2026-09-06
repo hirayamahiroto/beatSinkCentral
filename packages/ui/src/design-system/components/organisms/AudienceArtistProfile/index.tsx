@@ -38,6 +38,20 @@ type AudienceSupportLink = {
 
 type OfferClickPosition = "hero" | "after-story";
 
+type StoryScrollDepth = 25 | 50 | 75 | 100;
+
+const STORY_SCROLL_DEPTHS: readonly StoryScrollDepth[] = [25, 50, 75, 100];
+
+const ABOVE_VIEWPORT_BOTTOM_ROOT_MARGIN = "100000px 0px 0px 0px";
+
+const reachedStoryScrollDepths = (
+  readChapterCount: number,
+  chapterCount: number,
+): StoryScrollDepth[] => {
+  const readPercent = Math.floor((readChapterCount * 100) / chapterCount);
+  return STORY_SCROLL_DEPTHS.filter((depth) => depth <= readPercent);
+};
+
 export type {
   AudienceStoryChapter,
   AudienceOfferPerformer,
@@ -58,6 +72,7 @@ type AudienceArtistProfileProps = {
   offer: AudienceOffer | null;
   supportLinks: AudienceSupportLink[];
   onStoryExpand: () => void;
+  onStoryScroll: (depth: StoryScrollDepth) => void;
   onOfferClick: (position: OfferClickPosition) => void;
   onSupportClick: (label: string) => void;
   onNotifySubscribe: (email: string) => void;
@@ -74,6 +89,7 @@ export const AudienceArtistProfile = ({
   offer,
   supportLinks,
   onStoryExpand,
+  onStoryScroll,
   onOfferClick,
   onSupportClick,
   onNotifySubscribe,
@@ -87,6 +103,41 @@ export const AudienceArtistProfile = ({
     storyExpanded || firstChapter === undefined
       ? storyChapters
       : [firstChapter];
+
+  const chapterEndRefs = React.useRef<(HTMLDivElement | null)[]>([]);
+  const firedDepthsRef = React.useRef<Set<StoryScrollDepth>>(new Set());
+
+  React.useEffect(() => {
+    if (typeof IntersectionObserver === "undefined") return;
+    const chapterCount = storyChapters.length;
+    if (chapterCount === 0) return;
+
+    const indexByElement = new Map<Element, number>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const index = indexByElement.get(entry.target);
+          if (!entry.isIntersecting || index === undefined) return;
+          reachedStoryScrollDepths(index + 1, chapterCount).forEach((depth) => {
+            if (firedDepthsRef.current.has(depth)) return;
+            firedDepthsRef.current.add(depth);
+            onStoryScroll(depth);
+          });
+        });
+      },
+      { rootMargin: ABOVE_VIEWPORT_BOTTOM_ROOT_MARGIN },
+    );
+
+    chapterEndRefs.current
+      .slice(0, visibleChapters.length)
+      .forEach((element, index) => {
+        if (element === null) return;
+        indexByElement.set(element, index);
+        observer.observe(element);
+      });
+
+    return () => observer.disconnect();
+  }, [onStoryScroll, storyChapters.length, visibleChapters.length]);
 
   const expandStory = () => {
     setStoryExpanded(true);
@@ -157,11 +208,19 @@ export const AudienceArtistProfile = ({
         {visibleChapters.length > 0 && (
           <Card>
             <Stack gap="md">
-              {visibleChapters.map((chapter) => (
-                <Stack key={chapter.question} gap="sm">
-                  <Typography variant="h4">{chapter.question}</Typography>
-                  <Typography variant="p">{chapter.body}</Typography>
-                </Stack>
+              {visibleChapters.map((chapter, index) => (
+                <div key={chapter.question}>
+                  <Stack gap="sm">
+                    <Typography variant="h4">{chapter.question}</Typography>
+                    <Typography variant="p">{chapter.body}</Typography>
+                  </Stack>
+                  <div
+                    ref={(element) => {
+                      chapterEndRefs.current[index] = element;
+                    }}
+                    aria-hidden="true"
+                  />
+                </div>
               ))}
               {!storyExpanded && restChapters.length > 0 && (
                 <div>
