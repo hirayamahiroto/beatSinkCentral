@@ -424,6 +424,8 @@ export const createUserBehaviors = (state: UserState): User => ({
 > return { email: user.getEmail() }; // Usecaseは内部構造を知らない
 > ```
 
+**公開する振る舞いは、その時点で本番コードに呼び手があるものに限る。** getter を置くこと自体は上記の通り必要だが、全フィールドに先回りして getter を並べることは求めていない。書き込み専用の集約は `toPersistence` から始め、Reader や usecase が値を読む要件が出た時点でその getter を足す。既存の集約を構造の参考にしてよいが、その公開面（getter・`export`・スキーマ・index）を一式写さない。テストからしか呼ばれない公開 API は、意図が読めなくなるため置かない。
+
 ---
 
 #### Factories（生成）

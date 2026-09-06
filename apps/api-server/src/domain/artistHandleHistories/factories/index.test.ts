@@ -28,8 +28,8 @@ describe("createArtistHandleHistory", () => {
   });
 
   it("呼び出しごとに異なる id を採番する", () => {
-    expect(createArtistHandleHistory(params).getId()).not.toBe(
-      createArtistHandleHistory(params).getId(),
+    expect(createArtistHandleHistory(params).toPersistence().id).not.toBe(
+      createArtistHandleHistory(params).toPersistence().id,
     );
   });
 });

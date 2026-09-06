@@ -1,5 +1,5 @@
 {
-  "id": "d7c4afe8-657c-4d4c-abf6-4ae5d7479cba",
+  "id": "4caf84a3-ed57-48e8-87f5-58f7d1e154f7",
   "prevId": "649fd9d2-fddf-4c20-905e-d3b036b47358",
   "version": "7",
   "dialect": "postgresql",
@@ -181,29 +181,7 @@
           "default": "now()"
         }
       },
-      "indexes": {
-        "artist_handle_histories_artist_created_idx": {
-          "name": "artist_handle_histories_artist_created_idx",
-          "columns": [
-            {
-              "expression": "artist_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "artist_handle_histories_artist_id_artists_id_fk": {
           "name": "artist_handle_histories_artist_id_artists_id_fk",

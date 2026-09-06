@@ -8,13 +8,13 @@ import { createArtistHandleHistory } from "../../artistHandleHistories/factories
 import type { ArtistHandleHistory } from "../../artistHandleHistories/entities";
 import { type Result, ok, err } from "../../../utils/result";
 
-export type ChangeArtistHandleInput = {
+type ChangeArtistHandleInput = {
   artist: Artist;
   newHandle: Handle;
   changedByUserId: string;
 };
 
-export type ChangeArtistHandleResult = {
+type ChangeArtistHandleResult = {
   artist: Artist;
   history: ArtistHandleHistory;
 };

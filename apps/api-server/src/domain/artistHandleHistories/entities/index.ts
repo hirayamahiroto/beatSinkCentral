@@ -15,10 +15,5 @@ export type ArtistHandleHistoryPersistenceData = {
 };
 
 export type ArtistHandleHistory = {
-  getId: () => string;
-  getArtistId: () => string;
-  getOldHandle: () => string;
-  getNewHandle: () => string;
-  getChangedByUserId: () => string;
   toPersistence: () => ArtistHandleHistoryPersistenceData;
 };

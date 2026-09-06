@@ -34,7 +34,7 @@ handle は公開 URL（`/players/[handle]`）を構成する**可変の公開識
 | `changed_by_user_id` | uuid FK      | 変更した User                                                                                     |
 | `created_at`         | timestamp    | 変更が確定した時刻（DB 既定値。同一トランザクションで追記されるため handle の更新時刻と一致する） |
 
-index: `(artist_id, created_at)`。ある Artist の履歴を時系列で引く用途に合わせる。
+index は持たない。履歴を読む要件（参照 API・転送）を足す PR で、そのクエリに合わせて `(artist_id, created_at)` 等を足す。
 
 旧 `artist_id_histories`（`old_artist_id` / `new_artist_id` / `deleted_at`）は、handle がまだ accountId と呼ばれていた時期の定義で、書き込むコードが存在しなかった。そのためマイグレーション `0009` で drop / create により置き換えている。
 

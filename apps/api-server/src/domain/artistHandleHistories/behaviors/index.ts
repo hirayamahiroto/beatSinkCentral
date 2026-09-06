@@ -6,11 +6,6 @@ import type {
 export const createArtistHandleHistoryBehaviors = (
   state: ArtistHandleHistoryState,
 ): ArtistHandleHistory => ({
-  getId: () => state.id,
-  getArtistId: () => state.artistId,
-  getOldHandle: () => state.oldHandle,
-  getNewHandle: () => state.newHandle,
-  getChangedByUserId: () => state.changedByUserId,
   toPersistence: () => ({
     id: state.id,
     artistId: state.artistId,
