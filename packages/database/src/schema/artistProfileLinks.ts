@@ -6,6 +6,7 @@ import {
   varchar,
   timestamp,
 } from "drizzle-orm/pg-core";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { artistProfilesTable } from "./artistProfiles";
 import { linkTypesTable } from "./linkTypes";
 
@@ -22,3 +23,10 @@ export const artistProfileLinksTable = pgTable("artist_profile_links", {
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export const artistProfileLinkSelectSchema = createSelectSchema(
+  artistProfileLinksTable,
+);
+export const artistProfileLinkInsertSchema = createInsertSchema(
+  artistProfileLinksTable,
+);

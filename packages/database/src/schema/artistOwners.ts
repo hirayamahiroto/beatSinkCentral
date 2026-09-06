@@ -1,4 +1,9 @@
 import { pgTable, uuid, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import {
+  createInsertSchema,
+  createSelectSchema,
+  createUpdateSchema,
+} from "drizzle-zod";
 import { usersTable } from "./users";
 import { artistsTable } from "./artists";
 
@@ -21,3 +26,7 @@ export const artistOwnersTable = pgTable(
     ),
   ],
 );
+
+export const artistOwnerSelectSchema = createSelectSchema(artistOwnersTable);
+export const artistOwnerInsertSchema = createInsertSchema(artistOwnersTable);
+export const artistOwnerUpdateSchema = createUpdateSchema(artistOwnersTable);

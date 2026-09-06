@@ -1,8 +1,12 @@
 import { pgTable, uuid, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import {
+  createInsertSchema,
+  createSelectSchema,
+  createUpdateSchema,
+} from "drizzle-zod";
 import { usersTable } from "./users";
 import { artistsTable } from "./artists";
 
-/** @public drizzle-kit がマイグレーション生成で参照する（アプリからの参照はまだ無い） */
 export const artistMembersTable = pgTable(
   "artist_members",
   {
@@ -26,3 +30,7 @@ export const artistMembersTable = pgTable(
     ),
   ],
 );
+
+export const artistMemberSelectSchema = createSelectSchema(artistMembersTable);
+export const artistMemberInsertSchema = createInsertSchema(artistMembersTable);
+export const artistMemberUpdateSchema = createUpdateSchema(artistMembersTable);

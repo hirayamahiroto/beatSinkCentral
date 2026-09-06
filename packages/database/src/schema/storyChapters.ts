@@ -6,6 +6,7 @@ import {
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { artistProfilesTable } from "./artistProfiles";
 import { storyQuestionsTable } from "./storyQuestions";
 
@@ -30,3 +31,6 @@ export const storyChaptersTable = pgTable(
     ),
   ],
 );
+
+export const storyChapterSelectSchema = createSelectSchema(storyChaptersTable);
+export const storyChapterInsertSchema = createInsertSchema(storyChaptersTable);

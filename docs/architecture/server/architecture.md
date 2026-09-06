@@ -1034,7 +1034,7 @@ Write 系の権能は**単一操作であっても常に境界を張る**。単�
 
 | 検出対象                                                        | 仕組み                                                                         | 実行                                 |
 | --------------------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------ |
-| A. どこからも参照されない `export`・ファイル・依存              | knip（設定は `knip.jsonc`、対象は `apps/api-server` と `packages/database`）   | `npm run knip`                       |
+| A. どこからも参照されない `export`・ファイル・依存              | knip（設定は `knip.jsonc`、対象は `apps/api-server`）                          | `npm run knip`                       |
 | B. テストからしか参照されない `export`                          | knip の production モード（`*.test.ts` と test 用 entry を除いて集計）         | `npm run knip:production`            |
 | C. Entity の振る舞い（getter 等）で本番コードの呼び手が無いもの | ESLint ローカルルール `local/entity-behavior-has-caller`（`eslint.rules.mjs`） | `npm run lint`（api-server の lint） |
 
@@ -1043,9 +1043,9 @@ C を knip に任せられないのは、knip / ts-prune が型のメンバー�
 運用上の決め:
 
 - 3 つとも error で運用する（既存分は導入時に棚卸し済み）。検出されたら、呼び手を足すのではなく、その公開面を削るか `export` を外す。テストのためだけに必要な関数は、本番の呼び手を持つ module として切り出す（例: `utils/traceparent`、`errorMap/createAppErrorHandler`）
-- knip が誤検出する箇所は `knip.jsonc` に理由付きで ignore する。drizzle-kit だけが参照するテーブル定義は `@public` の JSDoc タグで knip の対象から外す
+- knip が誤検出する箇所は `knip.jsonc` に理由付きで ignore する
+- `packages/database` は対象外。drizzle-zod で自動生成する `*SelectSchema` 等を含み、スキーマ定義はアプリからの参照ではなく drizzle-kit のマイグレーション生成のために置くものだから
 - テスト専用ヘルパ（`usecases/**/testDoubles/`）は production entry として明示し、B の検出対象から外す
-- `createDatabaseClient` は schema の namespace（`import * as schema`）を値として drizzle に渡さない。namespace を値として渡すと knip はその module の全 `export` を使用済みとみなし、`*SelectSchema` 等の未使用が検出できなくなる。relational query（`db.query.*`）が必要になったら、namespace ではなく明示的なテーブル一覧を渡す
 - CI では `.github/actions/build-and-test` の lint の直後に knip を両モードで実行する。ルールの振る舞いは `apps/api-server/eslint.rules.test.mts` で固定している
 
 ---

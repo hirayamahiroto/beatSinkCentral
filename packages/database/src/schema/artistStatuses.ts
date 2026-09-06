@@ -6,11 +6,11 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { isNull } from "drizzle-orm";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { artistsTable } from "./artists";
 import { artistStatusMastersTable } from "./artistStatusMasters";
 import { usersTable } from "./users";
 
-/** @public drizzle-kit がマイグレーション生成で参照する（アプリからの参照はまだ無い） */
 export const artistStatusesTable = pgTable(
   "artist_statuses",
   {
@@ -34,3 +34,6 @@ export const artistStatusesTable = pgTable(
       .where(isNull(table.deletedAt)),
   ],
 );
+
+export const artistStatusSelectSchema = createSelectSchema(artistStatusesTable);
+export const artistStatusInsertSchema = createInsertSchema(artistStatusesTable);
