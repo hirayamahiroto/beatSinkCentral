@@ -8,6 +8,7 @@
 - 統合 Issue: [#270](https://github.com/hirayamahiroto/beatSinkCentral/issues/270)（進捗はここを見る）
 - マイルストーン: `know-to-support-beta`
 - インターフェース契約: [`interface-map.md`](./interface-map.md)（T00 で凍結）
+- ベータ運用キット（手作業。候補者リスト・声かけ・割り付け・聞き取り・翻訳確認・週次進行・記録メール）: [`ops/README.md`](./ops/README.md)（T11）
 
 ---
 
