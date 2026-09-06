@@ -2,17 +2,15 @@ import { pgTable, uuid, varchar, timestamp } from "drizzle-orm/pg-core";
 import { artistsTable } from "./artists";
 import { usersTable } from "./users";
 
-/** @public drizzle-kit がマイグレーション生成で参照する（アプリからの参照はまだ無い） */
-export const artistIdHistoriesTable = pgTable("artist_id_histories", {
+export const artistHandleHistoriesTable = pgTable("artist_handle_histories", {
   id: uuid("id").primaryKey().defaultRandom(),
   artistId: uuid("artist_id")
     .notNull()
     .references(() => artistsTable.id),
-  oldArtistId: varchar("old_artist_id", { length: 255 }).notNull(),
-  newArtistId: varchar("new_artist_id", { length: 255 }).notNull(),
+  oldHandle: varchar("old_handle", { length: 255 }).notNull(),
+  newHandle: varchar("new_handle", { length: 255 }).notNull(),
   changedByUserId: uuid("changed_by_user_id")
     .notNull()
     .references(() => usersTable.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-  deletedAt: timestamp("deleted_at"),
 });

@@ -424,6 +424,8 @@ export const createUserBehaviors = (state: UserState): User => ({
 > return { email: user.getEmail() }; // Usecaseは内部構造を知らない
 > ```
 
+**公開する振る舞いは、その時点で本番コードに呼び手があるものに限る。** getter を置くこと自体は上記の通り必要だが、全フィールドに先回りして getter を並べることは求めていない。書き込み専用の集約は `toPersistence` から始め、Reader や usecase が値を読む要件が出た時点でその getter を足す。既存の集約を構造の参考にしてよいが、その公開面（getter・`export`・スキーマ・index）を一式写さない。テストからしか呼ばれない公開 API は、意図が読めなくなるため置かない。
+
 ---
 
 #### Factories（生成）
@@ -980,6 +982,18 @@ export type ActorResolution =
 
 usecase が `tx` を受け取ることはない。**リポジトリの executor は権能の生成時に注入される**ため、「トランザクション内で動いているか」は usecase から見えない。
 
+Write 系の権能は**単一操作であっても常に境界を張る**。単一文でも Postgres は暗黙のトランザクションで動くため追加コストは `BEGIN` / `COMMIT` の往復分に留まり、その代わりに「この usecase に境界は要るか」という判断そのものを無くせる。単一操作が複数操作に育ったときも、境界側に触れずに原子性が付いてくる（例: handle 変更に履歴の追記が加わった際、usecase の配線を足しただけで同一トランザクションに乗った）。
+
+境界の意味論は経路ごとに 1 つに固定する。既定は **all-or-nothing**（`ok` で commit、`err` / throw で rollback）で、usecase はこれを前提に配線だけを書く。次のように既定と異なる意味論が必要になったら、それは usecase ではなく**境界の設計問題**として扱い、**既存の権能型の意味論を変えずに、別の経路・別の権能型として足す**。
+
+| 要件の例                                | 既定の境界で起きること           | 取るべき形                                                                  |
+| --------------------------------------- | -------------------------------- | --------------------------------------------------------------------------- |
+| 失敗（`err`）でも一部の記録は残したい   | 記録ごと rollback される         | 境界なし、または独立した境界を持つ Write 権能                               |
+| 一括処理で件ごとに確定したい            | 1 件の失敗で全件 rollback される | 件ごとに境界を張る経路モジュール                                            |
+| DB 外の書き込み（Storage 等）と揃えたい | 境界は DB 外に効かない           | `ArtistStorageWriteCapabilities` のように境界の外へ分離し、原子性を求めない |
+
+既存の境界を緩める（例: `ArtistWriteCapabilities` で `err` 時も一部を残す）方向には倒さない。usecase の第 1 引数の権能型が「どの整合性の約束のもとで動くか」をそのまま表す状態を保つ。
+
 ### Composition Root の分割
 
 `infrastructure/capabilities/index.ts` は**合成だけ**を持つ。中身は関心ごとに分かれており、それぞれ単体でテストできる。
@@ -1213,7 +1227,7 @@ describe("reconstructUser", () => {
 | POST     | `/api/users/:userId`                                | メールアドレス更新                                            | 要   |
 | GET      | `/api/artists`                                      | 公開プロフィール一覧                                          | 不要 |
 | GET      | `/api/artists/:handle`                              | 公開プロフィール詳細                                          | 不要 |
-| POST     | `/api/artists/:artistId`                            | handle 更新                                                   | 要   |
+| POST     | `/api/artists/:artistId`                            | handle 更新（変更履歴を同一トランザクションで記録）           | 要   |
 | GET      | `/api/artists/:artistId/profile`                    | プロフィール取得（下書き含む・集約一本）                      | 要   |
 | POST     | `/api/artists/:artistId/attributes`                 | 属性の更新                                                    | 要   |
 | POST     | `/api/artists/:artistId/story/chapters/:chapterKey` | Story 章の書き込み（空文字で章を消す）                        | 要   |

@@ -344,6 +344,26 @@ logger.info("login", { userId, email: maskEmail(email) });
 - 新規関数を作る前に、既存関数を拡張できないか検討する
 - 重複ロジックがある場合、共通化の判断基準を明確にする（型の違い、ドメインの違いなど）
 
+### 6-1. 呼び手のない公開面を足さない 🟡 推奨
+
+- 新規の `export`・Entity の公開振る舞い・リポジトリのメソッド・権能のフィールド・drizzle-zod の `*SelectSchema` / `*InsertSchema`・index は、**その PR 内の本番コードに呼び手があるもの**だけを足す
+- 判定はテストを除いて grep し、呼び手が 0 件なら削る。テストからしか呼ばれない公開 API は「テストのための API」であり、意図が読めない
+- 既存の類似実装を構造の参考にしてよいが、その公開面を一式写さない。将来の要件で必要になった時点で、その PR で足す
+
+```typescript
+// NG: 先例の Entity に倣って、呼び手のない getter を一式並べる
+export type ArtistHandleHistory = {
+  getId: () => string; // 本番コードで未使用
+  getOldHandle: () => string; // 本番コードで未使用
+  toPersistence: () => ArtistHandleHistoryPersistenceData;
+};
+
+// OK: この PR で必要な振る舞いだけを公開する（Reader を足す PR で getter を足す）
+export type ArtistHandleHistory = {
+  toPersistence: () => ArtistHandleHistoryPersistenceData;
+};
+```
+
 ---
 
 ## 7. ライブラリAPIの優先使用（生SQL/低レベル記述の回避） 🟡 推奨
