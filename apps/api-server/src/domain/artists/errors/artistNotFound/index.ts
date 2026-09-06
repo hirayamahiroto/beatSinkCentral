@@ -6,10 +6,3 @@ export type ArtistNotFoundError = Error & {
 
 export const createArtistNotFoundError = (): ArtistNotFoundError =>
   createTypedError("ArtistNotFoundError");
-
-export const isArtistNotFoundError = (
-  error: unknown,
-): error is ArtistNotFoundError =>
-  error instanceof Error &&
-  "type" in error &&
-  error.type === "ArtistNotFoundError";

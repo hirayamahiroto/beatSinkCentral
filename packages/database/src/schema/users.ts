@@ -1,9 +1,4 @@
 import { pgTable, uuid, varchar, timestamp } from "drizzle-orm/pg-core";
-import {
-  createInsertSchema,
-  createSelectSchema,
-  createUpdateSchema,
-} from "drizzle-zod";
 
 export const usersTable = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -13,7 +8,3 @@ export const usersTable = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   deletedAt: timestamp("deleted_at"),
 });
-
-export const userSelectSchema = createSelectSchema(usersTable);
-export const userInsertSchema = createInsertSchema(usersTable);
-export const userUpdateSchema = createUpdateSchema(usersTable);

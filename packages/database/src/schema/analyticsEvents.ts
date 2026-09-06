@@ -6,7 +6,6 @@ import {
   timestamp,
   index,
 } from "drizzle-orm/pg-core";
-import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { artistsTable } from "./artists";
 
 export const analyticsEventsTable = pgTable(
@@ -33,8 +32,3 @@ export const analyticsEventsTable = pgTable(
     index("analytics_events_session_idx").on(table.sessionId),
   ],
 );
-
-export const analyticsEventSelectSchema =
-  createSelectSchema(analyticsEventsTable);
-export const analyticsEventInsertSchema =
-  createInsertSchema(analyticsEventsTable);

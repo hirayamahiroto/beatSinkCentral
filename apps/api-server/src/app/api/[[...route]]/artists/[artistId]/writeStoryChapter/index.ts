@@ -12,13 +12,9 @@ const paramSchema = z.object({
   chapterKey: z.string().min(1).max(50),
 });
 
-export const writeStoryChapterRequestSchema = z.object({
+const writeStoryChapterRequestSchema = z.object({
   body: z.string({ required_error: "body is required" }),
 });
-
-export type WriteStoryChapterRequestBody = z.infer<
-  typeof writeStoryChapterRequestSchema
->;
 
 const writeStoryChapterResponseSchema = z.object({
   story: z.object({

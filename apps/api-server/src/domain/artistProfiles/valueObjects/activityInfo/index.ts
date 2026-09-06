@@ -10,7 +10,7 @@ export type InvalidActivityInfoFormatError = Error & {
   readonly type: "InvalidActivityInfoFormatError";
 };
 
-export const createInvalidActivityInfoFormatError =
+const createInvalidActivityInfoFormatError =
   (): InvalidActivityInfoFormatError =>
     createTypedError("InvalidActivityInfoFormatError");
 

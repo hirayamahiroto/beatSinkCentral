@@ -7,11 +7,6 @@ import {
   integer,
   timestamp,
 } from "drizzle-orm/pg-core";
-import {
-  createInsertSchema,
-  createSelectSchema,
-  createUpdateSchema,
-} from "drizzle-zod";
 import { artistsTable } from "./artists";
 import { presentationPatternsTable } from "./presentationPatterns";
 
@@ -34,10 +29,3 @@ export const artistProfilesTable = pgTable("artist_profiles", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   deletedAt: timestamp("deleted_at"),
 });
-
-export const artistProfileSelectSchema =
-  createSelectSchema(artistProfilesTable);
-export const artistProfileInsertSchema =
-  createInsertSchema(artistProfilesTable);
-export const artistProfileUpdateSchema =
-  createUpdateSchema(artistProfilesTable);

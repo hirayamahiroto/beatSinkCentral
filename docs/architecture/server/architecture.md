@@ -1014,6 +1014,26 @@ usecase が `tx` を受け取ることはない。**リポジトリの executor 
 
 新しい依存の入口（別の外部クライアント等）を `infrastructure/` に足したときは、`RESTRICTED_USECASE_SOURCES` に追加するか、`infrastructure/` 配下に置いてパスで拾われるようにする。ルール自体の振る舞いは `apps/api-server/eslint.rules.test.mts` で固定している。
 
+### 呼び手のない公開面は機械的に検出する
+
+「公開する振る舞い・`export` は本番コードに呼び手があるものに限る」も人の grep に頼らず、3 種類の機械検証で担保する。
+
+| 検出対象                                                        | 仕組み                                                                         | 実行                                 |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------ |
+| A. どこからも参照されない `export`・ファイル・依存              | knip（設定は `knip.jsonc`、対象は `apps/api-server` と `packages/database`）   | `npm run knip`                       |
+| B. テストからしか参照されない `export`                          | knip の production モード（`*.test.ts` と test 用 entry を除いて集計）         | `npm run knip:production`            |
+| C. Entity の振る舞い（getter 等）で本番コードの呼び手が無いもの | ESLint ローカルルール `local/entity-behavior-has-caller`（`eslint.rules.mjs`） | `npm run lint`（api-server の lint） |
+
+C を knip に任せられないのは、knip / ts-prune が型のメンバーを見ないため。ルールは `src/domain/*/entities/index.ts` で **export された型の関数メンバー**を Entity の振る舞いとみなし（配置ベースの判定。State / PersistenceData のようなデータ型は関数メンバーを持たないので対象外）、同じ `src` 配下の本番コード（`*.test.ts` と `testDoubles/` を除く）に `.name(` の呼び出しがあるかを探す。判定は名前ベースで、別 Entity の同名メンバー（`getId` 等）は区別しない。
+
+運用上の決め:
+
+- 3 つとも error で運用する（既存分は導入時に棚卸し済み）。検出されたら、呼び手を足すのではなく、その公開面を削るか `export` を外す。テストのためだけに必要な関数は、本番の呼び手を持つ module として切り出す（例: `utils/traceparent`、`errorMap/createAppErrorHandler`）
+- knip が誤検出する箇所は `knip.jsonc` に理由付きで ignore する。drizzle-kit だけが参照するテーブル定義は `@public` の JSDoc タグで knip の対象から外す
+- テスト専用ヘルパ（`usecases/**/testDoubles/`）は production entry として明示し、B の検出対象から外す
+- `createDatabaseClient` は schema の namespace（`import * as schema`）を値として drizzle に渡さない。namespace を値として渡すと knip はその module の全 `export` を使用済みとみなし、`*SelectSchema` 等の未使用が検出できなくなる。relational query（`db.query.*`）が必要になったら、namespace ではなく明示的なテーブル一覧を渡す
+- CI では `.github/actions/build-and-test` の lint の直後に knip を両モードで実行する。ルールの振る舞いは `apps/api-server/eslint.rules.test.mts` で固定している
+
 ---
 
 ## 設計原則: Functional Core, Imperative Shell

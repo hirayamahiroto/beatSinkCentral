@@ -236,7 +236,7 @@ describe("reconstructArtistProfile", () => {
       presentationPatternCode: "spotlight",
     });
 
-    expect(profile.getPresentationPatternCode()).toBe("spotlight");
+    expect(profile.toView().presentation.patternCode).toBe("spotlight");
     expect(() =>
       reconstructArtistProfile({
         id: "profile-1",
@@ -254,7 +254,6 @@ describe("reconstructArtistProfile", () => {
       published: false,
     });
 
-    expect(profile.publish().isPublished()).toBe(true);
     expect(profile.isPublished()).toBe(false);
   });
 });

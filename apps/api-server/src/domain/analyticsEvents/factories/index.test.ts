@@ -20,7 +20,7 @@ describe("createAnalyticsEvent", () => {
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.value.getEventType()).toBe("profile_view");
+    expect(result.value.toPersistence().eventType).toBe("profile_view");
     expect(result.value.getId()).toBeTruthy();
   });
 

@@ -61,7 +61,7 @@ export type ArtistProfileAttributesView = {
   activityInfo: string | null;
 };
 
-export type StoryChapterView = {
+type StoryChapterView = {
   key: string;
   body: string;
 };
@@ -86,15 +86,11 @@ export type ArtistProfile = {
   getId: () => string;
   getArtistId: () => string;
   getName: () => string | null;
-  getTagline: () => string | null;
   getImageUrl: () => string | null;
   getChapters: () => StoryChapterData[];
-  getActivityInfo: () => string | null;
   getGenres: () => string[];
   getLinks: () => ProfileLinkData[];
-  getPresentationPatternCode: () => string | null;
   isPublished: () => boolean;
-  publish: () => ArtistProfile;
   unpublish: () => ArtistProfile;
   reviseAttributes: (attributes: ArtistProfileAttributes) => ArtistProfile;
   writeStoryChapter: (chapter: StoryChapter) => ArtistProfile;

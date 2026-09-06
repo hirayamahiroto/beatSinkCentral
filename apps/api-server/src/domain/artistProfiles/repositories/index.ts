@@ -34,7 +34,7 @@ export interface IArtistProfileWriter {
   setPublished(data: ArtistProfileSetPublishedData): Promise<ArtistProfile>;
 }
 
-export type ProfileImageUploadData = {
+type ProfileImageUploadData = {
   artistId: string;
   image: ProfileImage;
   bytes: Uint8Array;

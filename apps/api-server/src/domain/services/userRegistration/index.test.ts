@@ -28,7 +28,7 @@ describe("registerNewUser", () => {
 
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.value.user.getSub()).toBe(validInput.subId);
+      expect(result.value.user.toPersistence().subId).toBe(validInput.subId);
       expect(result.value.user.getEmail()).toBe(validInput.email);
       expect(result.value.artist.getHandle()).toBe(validInput.handle);
     }
@@ -39,7 +39,7 @@ describe("registerNewUser", () => {
 
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.value.artist.getOwnerUserId()).toBe(
+      expect(result.value.artist.toPersistence().ownerUserId).toBe(
         result.value.user.getId(),
       );
     }

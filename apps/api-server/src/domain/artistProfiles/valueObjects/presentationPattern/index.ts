@@ -1,7 +1,7 @@
 import { createTypedError } from "../../../../utils/errors/createTypedError";
 import { type Result, ok, err } from "../../../../utils/result";
 
-export const PRESENTATION_PATTERN_CODES = [
+const PRESENTATION_PATTERN_CODES = [
   "interview",
   "zoom_dive",
   "spotlight",
@@ -16,7 +16,7 @@ const PRESENTATION_PATTERN_CODE_BY_VALUE = new Map<
   PresentationPatternCode
 >(PRESENTATION_PATTERN_CODES.map((code) => [code, code] as const));
 
-export const toPresentationPatternCode = (
+const toPresentationPatternCode = (
   value: string,
 ): PresentationPatternCode | undefined =>
   PRESENTATION_PATTERN_CODE_BY_VALUE.get(value.trim());

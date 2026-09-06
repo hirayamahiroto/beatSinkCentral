@@ -14,7 +14,7 @@ export const ANALYTICS_EVENT_TYPES = [
   "invite_signup",
 ] as const;
 
-export type AnalyticsEventTypeValue = (typeof ANALYTICS_EVENT_TYPES)[number];
+type AnalyticsEventTypeValue = (typeof ANALYTICS_EVENT_TYPES)[number];
 
 export type EventType = {
   readonly value: AnalyticsEventTypeValue;
@@ -24,9 +24,8 @@ export type InvalidEventTypeFormatError = Error & {
   readonly type: "InvalidEventTypeFormatError";
 };
 
-export const createInvalidEventTypeFormatError =
-  (): InvalidEventTypeFormatError =>
-    createTypedError("InvalidEventTypeFormatError");
+const createInvalidEventTypeFormatError = (): InvalidEventTypeFormatError =>
+  createTypedError("InvalidEventTypeFormatError");
 
 export const createEventType = (
   value: string,

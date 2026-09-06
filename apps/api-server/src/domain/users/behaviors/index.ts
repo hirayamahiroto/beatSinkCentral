@@ -3,7 +3,6 @@ import type { Email } from "../valueObjects/email";
 
 export const createUserBehaviors = (state: UserState): User => ({
   getId: () => state.id,
-  getSub: () => state.subId.value,
   getEmail: () => state.email.value,
   changeEmail: (newEmail: Email) =>
     createUserBehaviors({

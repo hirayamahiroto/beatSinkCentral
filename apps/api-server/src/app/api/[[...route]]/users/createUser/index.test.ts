@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import usersCreate, { type CreateUserRequestBody } from "./index";
+import usersCreate from "./index";
 import { handleAppError } from "../../../../../errorMap";
 import { reconstructUser } from "../../../../../domain/users/factories";
 import { reconstructArtist } from "../../../../../domain/artists/factories";
 import { createEmailAlreadyTakenError } from "../../../../../domain/users/errors/emailAlreadyTaken";
+
+type CreateUserRequestBody = { email: string; handle: string };
 
 const mockUsers = {
   save: vi.fn(),

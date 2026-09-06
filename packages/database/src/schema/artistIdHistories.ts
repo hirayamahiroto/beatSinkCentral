@@ -1,8 +1,8 @@
 import { pgTable, uuid, varchar, timestamp } from "drizzle-orm/pg-core";
-import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { artistsTable } from "./artists";
 import { usersTable } from "./users";
 
+/** @public drizzle-kit がマイグレーション生成で参照する（アプリからの参照はまだ無い） */
 export const artistIdHistoriesTable = pgTable("artist_id_histories", {
   id: uuid("id").primaryKey().defaultRandom(),
   artistId: uuid("artist_id")
@@ -16,10 +16,3 @@ export const artistIdHistoriesTable = pgTable("artist_id_histories", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   deletedAt: timestamp("deleted_at"),
 });
-
-export const artistIdHistorySelectSchema = createSelectSchema(
-  artistIdHistoriesTable,
-);
-export const artistIdHistoryInsertSchema = createInsertSchema(
-  artistIdHistoriesTable,
-);

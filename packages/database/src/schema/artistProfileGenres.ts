@@ -1,5 +1,10 @@
-import { pgTable, uuid, varchar, integer, timestamp } from "drizzle-orm/pg-core";
-import { createInsertSchema, createSelectSchema } from "drizzle-zod";
+import {
+  pgTable,
+  uuid,
+  varchar,
+  integer,
+  timestamp,
+} from "drizzle-orm/pg-core";
 import { artistProfilesTable } from "./artistProfiles";
 
 export const artistProfileGenresTable = pgTable("artist_profile_genres", {
@@ -11,10 +16,3 @@ export const artistProfileGenresTable = pgTable("artist_profile_genres", {
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
-
-export const artistProfileGenreSelectSchema = createSelectSchema(
-  artistProfileGenresTable,
-);
-export const artistProfileGenreInsertSchema = createInsertSchema(
-  artistProfileGenresTable,
-);
