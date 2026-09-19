@@ -72,6 +72,16 @@ npm run db:generate -w database
 
 新しいSQLファイル・スナップショット・ジャーナルエントリが自動生成される。
 
+### 2b. データだけを直す場合
+
+スキーマ差分が無く既存行だけを是正する場合は、空の SQL とジャーナル項目を生成してから SQL を書く。
+
+```bash
+npm run db:generate -w database -- --custom --name=<内容>
+```
+
+例: `0011_demote_unpublishable_profiles`（必須項目を欠いた公開行を下書きへ降ろす）。スキーマ変更と同時に必要な移行は、生成された差分 SQL に追記する（例: `0007` の story → 章の移行）。
+
 ### 3. コミット＆プッシュ
 
 生成されたファイルをすべてコミットする。
@@ -88,7 +98,7 @@ push → db-migrate（マイグレーション実行） → deploy（デプロ�
 
 ## 注意事項
 
-- SQLファイルを手動作成・編集しない。必ず `drizzle-kit generate` で生成する
+- SQLファイルを手動作成しない。必ず `drizzle-kit generate` で生成する（既存行だけを是正するデータ移行は `--custom` で空の SQL を生成してから書く）
 - スナップショットは `generate` の差分検出に使われるため、手動で変更しない
 - `_journal.json` に登録されていないSQLファイルは `migrate` で無視される
 - CI/CD での接続には Supabase Pooler（Session mode、ポート 5432）の URL を使用する。Transaction pooler（6543）は advisory lock 非対応のため `applying migrations...` でハングする。詳細は [データベース接続パターン](./connection.md) を参照

@@ -416,7 +416,7 @@ export const validateRequest = <Schema extends ZodSchema>(
 import { Hono } from "hono";
 import { z } from "zod";
 import { getCapabilityDeps } from "../../../../../infrastructure/capabilities";
-import { withRegistrationCapabilities } from "../../../../../authorization";
+import { withRegistrationCapabilities } from "../../../../../authorization/registration";
 import { createUser } from "../../../../../usecases/users/createUser";
 import { validateRequest } from "../../validators/validateRequest";
 import { handleAppError } from "../../../../../errorMap";
