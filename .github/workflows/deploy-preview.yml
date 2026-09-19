@@ -46,7 +46,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
 
   db-migrate:
-    if: github.event.action != 'closed'
+    if: github.event.action != 'closed' && github.actor != 'dependabot[bot]'
     name: 🗄️ db-migrate
     runs-on: ubuntu-latest
     steps:
