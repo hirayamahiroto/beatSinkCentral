@@ -18,7 +18,8 @@ const ticketUrlSchema = z
   .trim()
   .min(1, "ticketUrl is required")
   .max(2048, "ticketUrl must be 2048 characters or less")
-  .url("ticketUrl must be a valid URL");
+  .url("ticketUrl must be a valid URL")
+  .regex(/^https?:\/\//i, "ticketUrl must use http or https");
 
 export const createTicketUrl = (
   value: string,

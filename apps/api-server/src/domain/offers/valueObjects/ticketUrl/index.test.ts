@@ -19,6 +19,25 @@ describe("createTicketUrl", () => {
     expect(createTicketUrl("tickets.example.com").ok).toBe(false);
   });
 
+  it("javascript: スキームは err を返す", () => {
+    expect(createTicketUrl("javascript:alert(1)").ok).toBe(false);
+  });
+
+  it("data: スキームは err を返す", () => {
+    expect(createTicketUrl("data:text/html,<script>alert(1)</script>").ok).toBe(
+      false,
+    );
+  });
+
+  it("http / https 以外のスキームは err を返す", () => {
+    expect(createTicketUrl("ftp://tickets.example.com/e/1").ok).toBe(false);
+  });
+
+  it("http と大文字の HTTPS は受け付ける", () => {
+    expect(createTicketUrl("http://tickets.example.com/e/1").ok).toBe(true);
+    expect(createTicketUrl("HTTPS://tickets.example.com/e/1").ok).toBe(true);
+  });
+
   it("2048文字超は err を返す", () => {
     expect(createTicketUrl(`https://e.com/${"a".repeat(2048)}`).ok).toBe(false);
   });

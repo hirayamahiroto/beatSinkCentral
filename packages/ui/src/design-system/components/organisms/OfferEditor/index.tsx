@@ -19,7 +19,11 @@ const offerEditorSchema = z.object({
     .trim()
     .min(1, "場所を入力してください")
     .max(255, "255文字以内で入力してください"),
-  ticketUrl: z.string().trim().url("チケットのURLを入力してください"),
+  ticketUrl: z
+    .string()
+    .trim()
+    .url("チケットのURLを入力してください")
+    .regex(/^https?:\/\//i, "http または https で始まるURLを入力してください"),
   comment: z
     .string()
     .trim()
