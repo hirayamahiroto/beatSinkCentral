@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import {
   artistsTable,
   artistOwnersTable,
@@ -94,6 +94,32 @@ export const createArtistReader = (executor: Executor): IArtistReader => ({
       ownerUserId: row.ownerUserId,
       profile: row.profileName ? { name: row.profileName } : null,
     });
+  },
+
+  async findByHandles(handles: string[]) {
+    if (handles.length === 0) return [];
+
+    const rows = await executor
+      .select(artistColumns)
+      .from(artistsTable)
+      .innerJoin(
+        artistOwnersTable,
+        eq(artistsTable.id, artistOwnersTable.artistId),
+      )
+      .leftJoin(
+        artistProfilesTable,
+        eq(artistsTable.id, artistProfilesTable.artistId),
+      )
+      .where(inArray(artistsTable.handle, handles));
+
+    return rows.map((row) =>
+      reconstructArtist({
+        artistId: row.artistId,
+        handle: row.handle,
+        ownerUserId: row.ownerUserId,
+        profile: row.profileName ? { name: row.profileName } : null,
+      }),
+    );
   },
 });
 

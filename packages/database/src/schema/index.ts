@@ -13,3 +13,5 @@ export * from "./artistStatusMasters";
 export * from "./artistStatuses";
 export * from "./artistHandleHistories";
 export * from "./analyticsEvents";
+export * from "./offers";
+export * from "./offerPerformers";

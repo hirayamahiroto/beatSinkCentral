@@ -1,8 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
 import { reconstructUser } from "../../../../../../domain/users/factories";
 import { reconstructArtist } from "../../../../../../domain/artists/factories";
 import { reconstructArtistProfile } from "../../../../../../domain/artistProfiles/factories";
+import { reconstructOffer } from "../../../../../../domain/offers/factories";
 import { handleAppError } from "../../../../../../errorMap";
 import getProfileRoute from "./index";
 
@@ -25,6 +26,10 @@ const mockArtistProfiles = {
   findPublishedByHandle: vi.fn(),
 };
 
+const mockOffers = {
+  findLatestByArtistId: vi.fn(),
+};
+
 const mockResolveActorState = vi.fn();
 
 vi.mock("../../../../../../infrastructure/capabilities", () => ({
@@ -33,6 +38,7 @@ vi.mock("../../../../../../infrastructure/capabilities", () => ({
     buildArtistReadCapabilities: (a: unknown) => ({
       actor: a,
       artistProfiles: mockArtistProfiles,
+      offers: mockOffers,
     }),
   }),
 }));
@@ -54,7 +60,14 @@ const request = (artistId: string) =>
 describe("GET /artists/:artistId/profile", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-10T03:00:00.000Z"));
     mockResolveActorState.mockResolvedValue({ status: "complete", actor });
+    mockOffers.findLatestByArtistId.mockResolvedValue(null);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("Actor と一致する artistId なら集約の構造と公開可能性を返す", async () => {
@@ -89,8 +102,43 @@ describe("GET /artists/:artistId/profile", () => {
         published: false,
       },
       publishability: { ok: false, missingFields: ["imageUrl", "genres"] },
+      offer: null,
     });
     expect(mockArtistProfiles.findByArtistId).toHaveBeenCalledWith("artist-1");
+  });
+
+  it("開催日前のオファーがあれば offer として集約と同じ応答に載せる", async () => {
+    mockArtistProfiles.findByArtistId.mockResolvedValue(null);
+    mockOffers.findLatestByArtistId.mockResolvedValue(
+      reconstructOffer({
+        id: "offer-1",
+        artistId: "artist-1",
+        date: "2026-09-20",
+        place: "渋谷 WWW",
+        ticketUrl: "https://tickets.example.com/e/1",
+        comment: "新曲をやります",
+        coPerformers: [
+          { name: "Hana", artist: { artistId: "artist-2", handle: "hana_bb" } },
+        ],
+      }),
+    );
+
+    const res = await request("artist-1");
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toStrictEqual({
+      handle: "beatboxer_taro",
+      profile: null,
+      publishability: null,
+      offer: {
+        date: "2026-09-20",
+        place: "渋谷 WWW",
+        ticketUrl: "https://tickets.example.com/e/1",
+        comment: "新曲をやります",
+        coPerformers: [{ name: "Hana", handle: "hana_bb" }],
+      },
+    });
+    expect(mockOffers.findLatestByArtistId).toHaveBeenCalledWith("artist-1");
   });
 
   it("プロフィール未作成なら profile と publishability を null で返す", async () => {
@@ -103,6 +151,7 @@ describe("GET /artists/:artistId/profile", () => {
       handle: "beatboxer_taro",
       profile: null,
       publishability: null,
+      offer: null,
     });
   });
 
@@ -111,6 +160,7 @@ describe("GET /artists/:artistId/profile", () => {
 
     expect(res.status).toBe(404);
     expect(mockArtistProfiles.findByArtistId).not.toHaveBeenCalled();
+    expect(mockOffers.findLatestByArtistId).not.toHaveBeenCalled();
   });
 
   it("actor が解決できなければ 404 を返す", async () => {

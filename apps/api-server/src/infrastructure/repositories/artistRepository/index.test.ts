@@ -130,6 +130,45 @@ describe("createArtistReader / createArtistWriter", () => {
     });
   });
 
+  describe("findByHandles", () => {
+    it("handle が空ならクエリを発行せず空配列を返す", async () => {
+      const result = await reader.findByHandles([]);
+
+      expect(result).toEqual([]);
+      expect(mockDb.select).not.toHaveBeenCalled();
+    });
+
+    it("複数の handle を IN 句の 1 クエリで引き、該当した artist だけを返す", async () => {
+      mockDb.where.mockResolvedValueOnce([
+        {
+          artistId: "artist-2",
+          handle: "hana_bb",
+          ownerUserId: "user-2",
+          profileName: "Hana",
+        },
+        {
+          artistId: "artist-3",
+          handle: "ken_bb",
+          ownerUserId: "user-3",
+          profileName: null,
+        },
+      ]);
+
+      const result = await reader.findByHandles(["hana_bb", "ken_bb", "none"]);
+
+      expect(mockDb.select).toHaveBeenCalledTimes(1);
+      expect(mockDb.where).toHaveBeenCalledTimes(1);
+      expect(mockDb.limit).not.toHaveBeenCalled();
+      expect(result.map((artist) => artist.getArtistId())).toEqual([
+        "artist-2",
+        "artist-3",
+      ]);
+      expect(result[0].getHandle()).toBe("hana_bb");
+      expect(result[0].hasProfile()).toBe(true);
+      expect(result[1].hasProfile()).toBe(false);
+    });
+  });
+
   describe("updateHandle", () => {
     it("handle 更新後の Artist を返す（profile あり）", async () => {
       mockDb.returning.mockResolvedValue([

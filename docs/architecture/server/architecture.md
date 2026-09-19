@@ -715,6 +715,7 @@ app/api/[[...route]]/
 │       ├── updateAttributes/   # POST /:artistId/attributes
 │       ├── writeStoryChapter/  # POST /:artistId/story/chapters/:chapterKey
 │       ├── replaceLinks/       # POST /:artistId/links
+│       ├── replaceOffer/       # POST /:artistId/offers
 │       ├── uploadProfileImage/ # POST /:artistId/profile/image
 │       └── publishProfile/     # POST /:artistId/profile/publish
 └── link-types/
@@ -1232,6 +1233,7 @@ describe("reconstructUser", () => {
 | POST     | `/api/artists/:artistId/attributes`                 | 属性の更新                                                    | 要   |
 | POST     | `/api/artists/:artistId/story/chapters/:chapterKey` | Story 章の書き込み（空文字で章を消す）                        | 要   |
 | POST     | `/api/artists/:artistId/links`                      | SNS リンク集合の差し替え                                      | 要   |
+| POST     | `/api/artists/:artistId/offers`                     | オファー（次のライブ）の差し替え。同時有効 1 件               | 要   |
 | POST     | `/api/artists/:artistId/profile/publish`            | 公開/非公開の切り替え                                         | 要   |
 | POST     | `/api/artists/:artistId/profile/image`              | プロフィール画像の差し替え（アップロード＋集約へ URL を書く） | 要   |
 | GET      | `/api/link-types`                                   | リンク種別マスタ一覧                                          | 不要 |
