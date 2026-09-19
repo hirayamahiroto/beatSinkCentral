@@ -1,10 +1,22 @@
-import { and, eq, isNull, isNotNull, asc, desc, inArray } from "drizzle-orm";
+import {
+  and,
+  eq,
+  isNull,
+  isNotNull,
+  asc,
+  desc,
+  inArray,
+  sql,
+} from "drizzle-orm";
 import {
   artistsTable,
   artistProfilesTable,
   artistProfileGenresTable,
   artistProfileLinksTable,
   linkTypesTable,
+  presentationPatternsTable,
+  storyChaptersTable,
+  storyQuestionsTable,
 } from "../../../../../../packages/database/src/utils/createClient";
 import type {
   IArtistProfileReader,
@@ -17,10 +29,13 @@ import type {
 import type {
   ArtistProfile,
   ProfileLinkData,
+  StoryChapterData,
 } from "../../../domain/artistProfiles/entities";
 import { reconstructArtistProfile } from "../../../domain/artistProfiles/factories";
 import { createArtistProfileNotFoundError } from "../../../domain/artistProfiles/errors/artistProfileNotFound";
 import { createInvalidProfileLinkFormatError } from "../../../domain/artistProfiles/valueObjects/profileLink";
+import { createInvalidStoryChapterFormatError } from "../../../domain/artistProfiles/valueObjects/storyChapter";
+import { createInvalidPresentationPatternError } from "../../../domain/artistProfiles/valueObjects/presentationPattern";
 import type { Executor } from "../../transaction";
 
 type ProfileRow = {
@@ -29,8 +44,8 @@ type ProfileRow = {
   name: string | null;
   tagline: string | null;
   imageUrl: string | null;
-  story: string | null;
   activityInfo: string | null;
+  presentationPatternCode: string | null;
   published: boolean;
 };
 
@@ -40,10 +55,25 @@ const profileColumns = {
   name: artistProfilesTable.name,
   tagline: artistProfilesTable.tagline,
   imageUrl: artistProfilesTable.imageUrl,
-  story: artistProfilesTable.story,
+  activityInfo: artistProfilesTable.activityInfo,
+  presentationPatternCode: presentationPatternsTable.code,
+  published: artistProfilesTable.published,
+};
+
+const writtenProfileColumns = {
+  id: artistProfilesTable.id,
+  artistId: artistProfilesTable.artistId,
+  name: artistProfilesTable.name,
+  tagline: artistProfilesTable.tagline,
+  imageUrl: artistProfilesTable.imageUrl,
   activityInfo: artistProfilesTable.activityInfo,
   published: artistProfilesTable.published,
 };
+
+const presentationPatternJoin = [
+  presentationPatternsTable,
+  eq(artistProfilesTable.presentationPatternId, presentationPatternsTable.id),
+] as const;
 
 // Drizzle の isNotNull は取得行の型を絞らないため、null を落として契約の name: string を満たす
 const toPublishedSummaries = (
@@ -51,6 +81,8 @@ const toPublishedSummaries = (
     handle: string;
     name: string | null;
     imageUrl: string | null;
+    tagline: string | null;
+    genres: string[];
   }[],
 ): PublishedProfileSummary[] =>
   rows.flatMap((row) =>
@@ -58,7 +90,7 @@ const toPublishedSummaries = (
   );
 
 const loadChildren = async (executor: Executor, profileId: string) => {
-  const [genreRows, linkRows] = await Promise.all([
+  const [genreRows, linkRows, chapterRows] = await Promise.all([
     executor
       .select({ genre: artistProfileGenresTable.genre })
       .from(artistProfileGenresTable)
@@ -66,9 +98,8 @@ const loadChildren = async (executor: Executor, profileId: string) => {
       .orderBy(asc(artistProfileGenresTable.sortOrder)),
     executor
       .select({
-        type: linkTypesTable.code,
+        linkTypeCode: linkTypesTable.code,
         url: artistProfileLinksTable.url,
-        label: artistProfileLinksTable.label,
       })
       .from(artistProfileLinksTable)
       .innerJoin(
@@ -77,17 +108,44 @@ const loadChildren = async (executor: Executor, profileId: string) => {
       )
       .where(eq(artistProfileLinksTable.artistProfileId, profileId))
       .orderBy(asc(artistProfileLinksTable.sortOrder)),
+    executor
+      .select({
+        questionCode: storyQuestionsTable.code,
+        body: storyChaptersTable.body,
+      })
+      .from(storyChaptersTable)
+      .innerJoin(
+        storyQuestionsTable,
+        eq(storyChaptersTable.storyQuestionId, storyQuestionsTable.id),
+      )
+      .where(eq(storyChaptersTable.artistProfileId, profileId))
+      .orderBy(asc(storyQuestionsTable.sortOrder)),
   ]);
   return {
     genres: genreRows.map((row) => row.genre),
     links: linkRows,
+    chapters: chapterRows,
   };
+};
+
+const loadPresentationPatternCode = async (
+  executor: Executor,
+  profileId: string,
+): Promise<string | null> => {
+  const [row] = await executor
+    .select({ code: presentationPatternsTable.code })
+    .from(artistProfilesTable)
+    .innerJoin(...presentationPatternJoin)
+    .where(eq(artistProfilesTable.id, profileId))
+    .limit(1);
+  return row ? row.code : null;
 };
 
 const toEntity = (
   row: ProfileRow,
   genres: string[],
   links: ProfileLinkData[],
+  chapters: StoryChapterData[],
 ): ArtistProfile =>
   reconstructArtistProfile({
     id: row.id,
@@ -96,21 +154,48 @@ const toEntity = (
     name: row.name,
     tagline: row.tagline,
     imageUrl: row.imageUrl,
-    story: row.story,
+    chapters,
     activityInfo: row.activityInfo,
     genres,
     links,
+    presentationPatternCode: row.presentationPatternCode,
   });
 
 const resolveLinkTypeIds = async (
   executor: Executor,
   links: ProfileLinkData[],
 ): Promise<Map<string, number>> => {
-  const codes = [...new Set(links.map((link) => link.type))];
+  const codes = [...new Set(links.map((link) => link.linkTypeCode))];
   const rows = await executor
     .select({ id: linkTypesTable.id, code: linkTypesTable.code })
     .from(linkTypesTable)
     .where(inArray(linkTypesTable.code, codes));
+  return new Map(rows.map((row) => [row.code, row.id]));
+};
+
+const resolvePresentationPatternId = async (
+  executor: Executor,
+  code: string | null,
+): Promise<number | null> => {
+  if (code === null) return null;
+  const [row] = await executor
+    .select({ id: presentationPatternsTable.id })
+    .from(presentationPatternsTable)
+    .where(eq(presentationPatternsTable.code, code))
+    .limit(1);
+  if (!row) throw createInvalidPresentationPatternError();
+  return row.id;
+};
+
+const resolveStoryQuestionIds = async (
+  executor: Executor,
+  chapters: StoryChapterData[],
+): Promise<Map<string, number>> => {
+  const codes = [...new Set(chapters.map((chapter) => chapter.questionCode))];
+  const rows = await executor
+    .select({ id: storyQuestionsTable.id, code: storyQuestionsTable.code })
+    .from(storyQuestionsTable)
+    .where(inArray(storyQuestionsTable.code, codes));
   return new Map(rows.map((row) => [row.code, row.id]));
 };
 
@@ -119,6 +204,7 @@ const replaceChildren = async (
   profileId: string,
   genres: string[],
   links: ProfileLinkData[],
+  chapters: StoryChapterData[],
 ) => {
   await Promise.all([
     executor
@@ -127,6 +213,9 @@ const replaceChildren = async (
     executor
       .delete(artistProfileLinksTable)
       .where(eq(artistProfileLinksTable.artistProfileId, profileId)),
+    executor
+      .delete(storyChaptersTable)
+      .where(eq(storyChaptersTable.artistProfileId, profileId)),
   ]);
 
   if (genres.length > 0) {
@@ -143,7 +232,7 @@ const replaceChildren = async (
     const idByCode = await resolveLinkTypeIds(executor, links);
     await executor.insert(artistProfileLinksTable).values(
       links.map((link, index) => {
-        const linkTypeId = idByCode.get(link.type);
+        const linkTypeId = idByCode.get(link.linkTypeCode);
         if (linkTypeId === undefined) {
           throw createInvalidProfileLinkFormatError();
         }
@@ -151,8 +240,24 @@ const replaceChildren = async (
           artistProfileId: profileId,
           linkTypeId,
           url: link.url,
-          label: link.label,
           sortOrder: index,
+        };
+      }),
+    );
+  }
+
+  if (chapters.length > 0) {
+    const idByCode = await resolveStoryQuestionIds(executor, chapters);
+    await executor.insert(storyChaptersTable).values(
+      chapters.map((chapter) => {
+        const storyQuestionId = idByCode.get(chapter.questionCode);
+        if (storyQuestionId === undefined) {
+          throw createInvalidStoryChapterFormatError();
+        }
+        return {
+          artistProfileId: profileId,
+          storyQuestionId,
+          body: chapter.body,
         };
       }),
     );
@@ -166,6 +271,7 @@ export const createArtistProfileReader = (
     const [row] = await executor
       .select(profileColumns)
       .from(artistProfilesTable)
+      .leftJoin(...presentationPatternJoin)
       .where(
         and(
           eq(artistProfilesTable.artistId, artistId),
@@ -175,8 +281,8 @@ export const createArtistProfileReader = (
       .limit(1);
     if (!row) return null;
 
-    const { genres, links } = await loadChildren(executor, row.id);
-    return toEntity(row, genres, links);
+    const { genres, links, chapters } = await loadChildren(executor, row.id);
+    return toEntity(row, genres, links, chapters);
   },
 
   async findPublishedByHandle(handle: string): Promise<ArtistProfile | null> {
@@ -187,6 +293,7 @@ export const createArtistProfileReader = (
         artistsTable,
         eq(artistProfilesTable.artistId, artistsTable.id),
       )
+      .leftJoin(...presentationPatternJoin)
       .where(
         and(
           eq(artistsTable.handle, handle),
@@ -197,23 +304,42 @@ export const createArtistProfileReader = (
       .limit(1);
     if (!row) return null;
 
-    const { genres, links } = await loadChildren(executor, row.id);
-    return toEntity(row, genres, links);
+    const { genres, links, chapters } = await loadChildren(executor, row.id);
+    return toEntity(row, genres, links, chapters);
   },
 
   async listPublishedSummaries({
     limit,
   }: ListPublishedSummariesInput): Promise<PublishedProfileSummary[]> {
+    const genresByProfile = executor
+      .select({
+        artistProfileId: artistProfileGenresTable.artistProfileId,
+        genres: sql<
+          string[]
+        >`array_agg(${artistProfileGenresTable.genre} order by ${artistProfileGenresTable.sortOrder})`.as(
+          "genres",
+        ),
+      })
+      .from(artistProfileGenresTable)
+      .groupBy(artistProfileGenresTable.artistProfileId)
+      .as("profile_genres");
+
     const rows = await executor
       .select({
         handle: artistsTable.handle,
         name: artistProfilesTable.name,
         imageUrl: artistProfilesTable.imageUrl,
+        tagline: artistProfilesTable.tagline,
+        genres: sql<string[]>`coalesce(${genresByProfile.genres}, '{}')`,
       })
       .from(artistProfilesTable)
       .innerJoin(
         artistsTable,
         eq(artistProfilesTable.artistId, artistsTable.id),
+      )
+      .leftJoin(
+        genresByProfile,
+        eq(genresByProfile.artistProfileId, artistProfilesTable.id),
       )
       .where(
         and(
@@ -233,6 +359,10 @@ export const createArtistProfileWriter = (
   executor: Executor,
 ): IArtistProfileWriter => ({
   async upsert(data: ArtistProfileSaveData): Promise<ArtistProfile> {
+    const presentationPatternId = await resolvePresentationPatternId(
+      executor,
+      data.presentationPatternCode,
+    );
     const [row] = await executor
       .insert(artistProfilesTable)
       .values({
@@ -241,8 +371,8 @@ export const createArtistProfileWriter = (
         name: data.name,
         tagline: data.tagline,
         imageUrl: data.imageUrl,
-        story: data.story,
         activityInfo: data.activityInfo,
+        presentationPatternId,
         published: data.published,
       })
       .onConflictDoUpdate({
@@ -251,15 +381,28 @@ export const createArtistProfileWriter = (
           name: data.name,
           tagline: data.tagline,
           imageUrl: data.imageUrl,
-          story: data.story,
           activityInfo: data.activityInfo,
+          presentationPatternId,
+          published: sql`${artistProfilesTable.published} and excluded.published`,
+          publishedAt: sql`case when excluded.published then ${artistProfilesTable.publishedAt} else null end`,
           updatedAt: new Date(),
         },
       })
-      .returning(profileColumns);
+      .returning(writtenProfileColumns);
 
-    await replaceChildren(executor, row.id, data.genres, data.links);
-    return toEntity(row, data.genres, data.links);
+    await replaceChildren(
+      executor,
+      row.id,
+      data.genres,
+      data.links,
+      data.chapters,
+    );
+    return toEntity(
+      { ...row, presentationPatternCode: data.presentationPatternCode },
+      data.genres,
+      data.links,
+      data.chapters,
+    );
   },
 
   async setPublished(
@@ -278,10 +421,19 @@ export const createArtistProfileWriter = (
           isNull(artistProfilesTable.deletedAt),
         ),
       )
-      .returning(profileColumns);
+      .returning(writtenProfileColumns);
     if (!row) throw createArtistProfileNotFoundError();
 
-    const { genres, links } = await loadChildren(executor, row.id);
-    return toEntity(row, genres, links);
+    const [{ genres, links, chapters }, presentationPatternCode] =
+      await Promise.all([
+        loadChildren(executor, row.id),
+        loadPresentationPatternCode(executor, row.id),
+      ]);
+    return toEntity(
+      { ...row, presentationPatternCode },
+      genres,
+      links,
+      chapters,
+    );
   },
 });

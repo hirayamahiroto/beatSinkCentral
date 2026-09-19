@@ -8,6 +8,7 @@ import {
   typeSafetyRules,
   typeSafetyPendingWarn,
   bffRouteStatusRules,
+  hookTestRules,
 } from "./eslint.rules.mjs";
 
 const eslintConfig = [
@@ -25,6 +26,7 @@ const eslintConfig = [
     "apps/beatfolio/src/utils/client/errors/upstreamUnavailable/index.ts",
   ]),
   bffRouteStatusRules("apps/beatfolio"),
+  hookTestRules(["apps/beatfolio/src/app/**/hooks/**/*.ts"]),
 ];
 
 export default eslintConfig;

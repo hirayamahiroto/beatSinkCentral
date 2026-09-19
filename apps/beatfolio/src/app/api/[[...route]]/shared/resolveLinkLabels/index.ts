@@ -1,7 +1,6 @@
 type ProfileLink = {
-  type: string;
+  linkTypeCode: string;
   url: string;
-  label: string | null;
 };
 
 type LinkType = {
@@ -10,6 +9,7 @@ type LinkType = {
 };
 
 export type ResolvedLink = {
+  type: string;
   url: string;
   label: string;
 };
@@ -23,12 +23,12 @@ export const resolveLinkLabels = (
   );
 
   return links.map((link) => {
-    const label = link.label ?? labelByType.get(link.type);
+    const label = labelByType.get(link.linkTypeCode);
 
     if (label === undefined) {
-      throw new Error(`Unknown link type: ${link.type}`);
+      throw new Error(`Unknown link type: ${link.linkTypeCode}`);
     }
 
-    return { url: link.url, label };
+    return { type: link.linkTypeCode, url: link.url, label };
   });
 };

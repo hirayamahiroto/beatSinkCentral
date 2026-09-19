@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { reconstructUser } from "../../../../../domain/users/factories";
 import { reconstructArtist } from "../../../../../domain/artists/factories";
-import type { AuthenticatedUser } from "../../../../../middlewares/auth0";
 import getMeRoute from "./index";
 
 const mockResolveActorState = vi.fn();
@@ -25,6 +24,8 @@ const artist = reconstructArtist({
   ownerUserId: "user-1",
   profile: { name: "Test" },
 });
+
+type AuthenticatedUser = { sub: string };
 
 const createAppWithAuth = (auth0User: AuthenticatedUser) => {
   const app = new Hono();

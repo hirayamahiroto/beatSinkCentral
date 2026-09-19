@@ -9,7 +9,7 @@ export type InvalidEmailFormatError = Error & {
   readonly type: "InvalidEmailFormatError";
 };
 
-export const createInvalidEmailFormatError = (): InvalidEmailFormatError =>
+const createInvalidEmailFormatError = (): InvalidEmailFormatError =>
   createTypedError("InvalidEmailFormatError");
 
 const isValidEmail = (email: string): boolean => {

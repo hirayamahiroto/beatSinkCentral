@@ -12,6 +12,10 @@ const mockArtists = {
   updateHandle: vi.fn(),
 };
 
+const mockArtistHandleHistories = {
+  record: vi.fn(),
+};
+
 const mockResolveActorState = vi.fn();
 
 vi.mock("../../../../../../infrastructure/capabilities", () => ({
@@ -20,7 +24,12 @@ vi.mock("../../../../../../infrastructure/capabilities", () => ({
     runWithArtistWriteCapabilities: (
       actor: unknown,
       work: (caps: unknown) => Promise<unknown>,
-    ) => work({ actor, artists: mockArtists }),
+    ) =>
+      work({
+        actor,
+        artists: mockArtists,
+        artistHandleHistories: mockArtistHandleHistories,
+      }),
   }),
 }));
 
@@ -74,9 +83,21 @@ describe("POST /artists/:artistId", () => {
 
   it("Actor と一致する artistId なら handle を更新する", async () => {
     const res = await request("artist-1", { handle: "new_handle" });
+    const body = await res.json();
 
     expect(res.status).toBe(200);
-    expect(mockArtists.updateHandle).toHaveBeenCalledTimes(1);
+    expect(body).toEqual({ artistId: "artist-1", handle: "new_handle" });
+    expect(mockArtists.updateHandle).toHaveBeenCalledWith({
+      artistId: "artist-1",
+      handle: "new_handle",
+    });
+    expect(mockArtistHandleHistories.record).toHaveBeenCalledExactlyOnceWith({
+      id: expect.any(String),
+      artistId: "artist-1",
+      oldHandle: "old_handle",
+      newHandle: "new_handle",
+      changedByUserId: "user-1",
+    });
   });
 
   it("Actor と一致しない artistId は 404 を返し、更新しない", async () => {
@@ -84,6 +105,7 @@ describe("POST /artists/:artistId", () => {
 
     expect(res.status).toBe(404);
     expect(mockArtists.updateHandle).not.toHaveBeenCalled();
+    expect(mockArtistHandleHistories.record).not.toHaveBeenCalled();
   });
 
   it("actor が解決できなければ 404 を返す", async () => {

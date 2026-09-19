@@ -11,13 +11,18 @@ vi.mock("../../../utils/client/server", () => ({
 }));
 
 const player = {
+  artistId: "artist-1",
   name: "SAKU",
   tagline: "口ひとつで、フロアを揺らす。",
   imageUrl: "https://example.com/saku.jpg",
-  story: "始めたきっかけ。",
-  activityInfo: "拠点: 東京 / 形態: ソロ",
   genres: ["Beatbox"],
-  links: [{ url: "https://youtube.com/@saku", label: "YouTube" }],
+  storyChapters: [{ question: "始まりの話", body: "始めたきっかけ。" }],
+  translation: null,
+  listeningPoint: null,
+  offer: null,
+  supportLinks: [
+    { platform: "youtube", url: "https://youtube.com/@saku", label: "YouTube" },
+  ],
 };
 
 describe("getPlayerDetail", () => {

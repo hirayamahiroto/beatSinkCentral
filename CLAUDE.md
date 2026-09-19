@@ -23,6 +23,21 @@ npm test -- --filter api-server -- --run src/domain/users
 npm run build
 ```
 
+## 作業の入り口 — どの Skill に乗るか
+
+着手前に、まずタスクの種類に応じた Skill を確認する（Skill 名は `.claude/skills/` 配下、Skill ツールで起動する）。各 Skill が手順の中で該当する設計ドキュメントを指示するため、ドキュメントより先にここで経路を決める。
+
+| やること                                                                                                            | Skill                                     | 備考                                                                                                                                                                                          |
+| ------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 新しい施策・機能群の実装計画を立てる                                                                                | `task-breakdown`                          | **新施策は必ずここから**。要件 → 画面設計（UI 契約の凍結）→ ログ・計測設計 → インターフェース設計（API/BFF 対応表）→ タスク分解、の順を**すべて**踏む。画面設計だけ終えてタスク分解へ飛ばない |
+| ベータ統合 Issue（[#270](https://github.com/hirayamahiroto/beatSinkCentral/issues/270)）配下の sub-issue に着手する | `beta-ticket`                             | チケットと計画（`docs/plans/know-to-support-beta/`）を読まずに実装を始めない、の実装レール                                                                                                    |
+| DB スキーマ・ドメイン・usecase・API（api-server）に触れる                                                           | `api-server-feature`                      | 新しい集約・usecase・エンドポイントに着手する前に読む                                                                                                                                         |
+| BFF・画面・UI コンポーネント（beatfolio / packages/ui）に触れる                                                     | `frontend-feature`                        | 新しい画面/フォーム/コンポーネントに着手する前に読む                                                                                                                                          |
+| 両方に触れる PR                                                                                                     | `api-server-feature` → `frontend-feature` | 内側（api-server）から着手し、外側（BFF/UI）へ進む                                                                                                                                            |
+| QA で見つかった不具合を修正し staging/development へ二重 PR を出す                                                  | `qa-fix`                                  |                                                                                                                                                                                               |
+| PR / 期間からQAシナリオを作る                                                                                       | `qa-scenario` / `qa-scenario-release`     | 単一 PR は `qa-scenario`、リリース単位は `qa-scenario-release`                                                                                                                                |
+| 変更差分のコードレビュー                                                                                            | `code-review`                             | 効果は `low`〜`ultra` で選べる                                                                                                                                                                |
+
 ## 設計ドキュメントの参照ルール
 
 - 実装着手前に、必ず該当領域の設計ドキュメントを読むこと
@@ -60,6 +75,7 @@ npm run build
 | 全体アーキテクチャ・ディレクトリ構造・実装パターン   | `docs/architecture/server/architecture.md`                        | 新規実装・レイヤー追加時                               |
 | 認可と権能（capabilities）・トランザクション境界     | `docs/architecture/server/architecture.md#認可と権能capabilities` | usecase の依存を決める時・新しい集約を足す時           |
 | API 設計（HTTPメソッド・URL）                        | `docs/architecture/server/api-design-guidelines.md`               | API ルート追加・変更時                                 |
+| API の定義方法（取得は集約一本・更新は構造ごと）     | `docs/architecture/server/api-read-write-definition.md`           | 取得/更新のエンドポイントを切る時・応答の形を決める時  |
 | エラーハンドリング（Result 境界を含む）              | `docs/architecture/server/error-handling/README.md`               | エラー追加・失敗の伝え方・errorMap 変更時              |
 | 並行更新ポリシー                                     | `docs/architecture/server/database/concurrency.md`                | 新規 usecase の更新フロー設計時・競合挙動の判断時      |
 | DB 設計思想（マスタ参照・DB 由来の表示語彙）         | `docs/architecture/server/database/design.md`                     | 種別/媒体/分類のモデリング・表示語彙の出所を判断する時 |
@@ -67,6 +83,7 @@ npm run build
 | DB 接続パターン（Supabase Pooler / Direct 使い分け） | `docs/architecture/server/database/connection.md`                 | 新環境の DB セットアップ・CI/CD の DB エラー調査時     |
 | Supabase Storage（バケット管理・アクセスモデル）     | `docs/architecture/server/database/storage.md`                    | ファイルアップロード機能・バケット追加/変更時          |
 | 外部クライアント実装（Next.js 遅延初期化）           | `docs/architecture/server/external-clients.md`                    | Database / Auth0 / Redis 等の追加・初期化変更時        |
+| handle 変更履歴                                      | `docs/architecture/server/handle-history.md`                      | handle 変更の経路・旧 handle の扱いを判断する時        |
 | 認証                                                 | `docs/architecture/authentication.md`                             | 認証・認可フローの追加・変更時                         |
 | フロントエンド全般                                   | `docs/architecture/frontend/README.md`                            | UI 実装時                                              |
 | 画面 URL 設計（遷移・階層・BFF ルート対応）          | `docs/architecture/frontend/routing.md`                           | 画面追加・URL 変更時                                   |

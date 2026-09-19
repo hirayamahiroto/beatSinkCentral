@@ -80,6 +80,10 @@ describe("POST /users/:userId", () => {
       userId: "user-1",
       email: "new@example.com",
     });
+    expect(mockUsers.updateEmail).toHaveBeenCalledWith({
+      id: "user-1",
+      email: "new@example.com",
+    });
   });
 
   it("アーティストが未作成でもemailを更新して200を返す", async () => {
@@ -97,6 +101,10 @@ describe("POST /users/:userId", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toStrictEqual({
       userId: "user-1",
+      email: "new@example.com",
+    });
+    expect(mockUsers.updateEmail).toHaveBeenCalledWith({
+      id: "user-1",
       email: "new@example.com",
     });
   });

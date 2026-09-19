@@ -38,6 +38,14 @@ type AudienceSupportLink = {
 
 type OfferClickPosition = "hero" | "after-story";
 
+const getVisibleAudienceStoryChapters = (
+  chapters: AudienceStoryChapter[],
+  expanded: boolean,
+): AudienceStoryChapter[] => {
+  const [firstChapter] = chapters;
+  return expanded || firstChapter === undefined ? chapters : [firstChapter];
+};
+
 export type {
   AudienceStoryChapter,
   AudienceOfferPerformer,
@@ -46,6 +54,7 @@ export type {
   AudienceSupportLink,
   OfferClickPosition,
 };
+export { getVisibleAudienceStoryChapters };
 
 type AudienceArtistProfileProps = {
   name: string;
@@ -53,14 +62,19 @@ type AudienceArtistProfileProps = {
   imageUrl: string | null;
   genres: string[];
   storyChapters: AudienceStoryChapter[];
+  storyExpanded: boolean;
+  onExpandStory: () => void;
+  onChapterEndRef: (index: number, element: HTMLDivElement | null) => void;
   translation: string | null;
   listeningPoint: AudienceListeningPoint | null;
   offer: AudienceOffer | null;
   supportLinks: AudienceSupportLink[];
-  onStoryExpand: () => void;
   onOfferClick: (position: OfferClickPosition) => void;
   onSupportClick: (label: string) => void;
-  onNotifySubscribe: (email: string) => void;
+  email: string;
+  onEmailChange: (email: string) => void;
+  subscribed: boolean;
+  onSubmitSubscription: () => void;
 };
 
 export const AudienceArtistProfile = ({
@@ -69,35 +83,25 @@ export const AudienceArtistProfile = ({
   imageUrl,
   genres,
   storyChapters,
+  storyExpanded,
+  onExpandStory,
+  onChapterEndRef,
   translation,
   listeningPoint,
   offer,
   supportLinks,
-  onStoryExpand,
   onOfferClick,
   onSupportClick,
-  onNotifySubscribe,
+  email,
+  onEmailChange,
+  subscribed,
+  onSubmitSubscription,
 }: AudienceArtistProfileProps) => {
-  const [storyExpanded, setStoryExpanded] = React.useState(false);
-  const [email, setEmail] = React.useState("");
-  const [subscribed, setSubscribed] = React.useState(false);
-
-  const [firstChapter, ...restChapters] = storyChapters;
-  const visibleChapters =
-    storyExpanded || firstChapter === undefined
-      ? storyChapters
-      : [firstChapter];
-
-  const expandStory = () => {
-    setStoryExpanded(true);
-    onStoryExpand();
-  };
-
-  const submitSubscription = () => {
-    onNotifySubscribe(email);
-    setEmail("");
-    setSubscribed(true);
-  };
+  const visibleChapters = getVisibleAudienceStoryChapters(
+    storyChapters,
+    storyExpanded,
+  );
+  const restChapterCount = storyChapters.length - visibleChapters.length;
 
   return (
     <div className="relative">
@@ -157,15 +161,21 @@ export const AudienceArtistProfile = ({
         {visibleChapters.length > 0 && (
           <Card>
             <Stack gap="md">
-              {visibleChapters.map((chapter) => (
-                <Stack key={chapter.question} gap="sm">
-                  <Typography variant="h4">{chapter.question}</Typography>
-                  <Typography variant="p">{chapter.body}</Typography>
-                </Stack>
+              {visibleChapters.map((chapter, index) => (
+                <div key={chapter.question}>
+                  <Stack gap="sm">
+                    <Typography variant="h4">{chapter.question}</Typography>
+                    <Typography variant="p">{chapter.body}</Typography>
+                  </Stack>
+                  <div
+                    ref={(element) => onChapterEndRef(index, element)}
+                    aria-hidden="true"
+                  />
+                </div>
               ))}
-              {!storyExpanded && restChapters.length > 0 && (
+              {!storyExpanded && restChapterCount > 0 && (
                 <div>
-                  <Button variant="outline" onClick={expandStory}>
+                  <Button variant="outline" onClick={onExpandStory}>
                     続きを読む
                   </Button>
                 </div>
@@ -259,10 +269,10 @@ export const AudienceArtistProfile = ({
                   type="email"
                   value={email}
                   placeholder="メールアドレス"
-                  onChange={(event) => setEmail(event.target.value)}
+                  onChange={(event) => onEmailChange(event.target.value)}
                   className="max-w-xs"
                 />
-                <Button disabled={email === ""} onClick={submitSubscription}>
+                <Button disabled={email === ""} onClick={onSubmitSubscription}>
                   受け取る
                 </Button>
               </div>

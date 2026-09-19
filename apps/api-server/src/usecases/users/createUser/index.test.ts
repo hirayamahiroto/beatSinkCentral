@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createUser, type CreateUserInput } from "./index";
-import { isUserAlreadyRegisteredError } from "../../../domain/users/errors/userAlreadyRegistered";
 import {
   createHandleAlreadyTakenError,
   isHandleAlreadyTakenError,
@@ -52,9 +51,17 @@ describe("createUser", () => {
     if (result.ok) {
       expect(typeof result.value.userId).toBe("string");
       expect(typeof result.value.artistId).toBe("string");
+      expect(caps.users.save).toHaveBeenCalledExactlyOnceWith({
+        id: result.value.userId,
+        subId: validInput.subId,
+        email: validInput.email,
+      });
+      expect(caps.artists.save).toHaveBeenCalledExactlyOnceWith({
+        id: result.value.artistId,
+        handle: validInput.handle,
+        ownerUserId: result.value.userId,
+      });
     }
-    expect(caps.users.save).toHaveBeenCalledTimes(1);
-    expect(caps.artists.save).toHaveBeenCalledTimes(1);
   });
 
   it("既存ユーザーの場合はUserAlreadyRegisteredErrorをerrで返す", async () => {
@@ -71,7 +78,7 @@ describe("createUser", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(isUserAlreadyRegisteredError(result.error)).toBe(true);
+      expect(result.error.type).toBe("UserAlreadyRegisteredError");
     }
     expect(caps.users.save).not.toHaveBeenCalled();
     expect(caps.artists.save).not.toHaveBeenCalled();

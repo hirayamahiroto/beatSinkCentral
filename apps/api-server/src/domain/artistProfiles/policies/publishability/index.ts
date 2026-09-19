@@ -1,45 +1,51 @@
 import type { ArtistProfile } from "../../entities";
+import { REQUIRED_STORY_QUESTION_CODE } from "../../valueObjects/storyChapter";
 import { createTypedError } from "../../../../utils/errors/createTypedError";
 import { type Result, ok, err } from "../../../../utils/result";
 
-export type PublishRequiredField =
-  | "name"
-  | "imageUrl"
-  | "story"
-  | "genres"
-  | "links";
+type PublishRequiredField = "name" | "imageUrl" | "story" | "genres" | "links";
 
 export type ProfileNotPublishableError = Error & {
   readonly type: "ProfileNotPublishableError";
   readonly missingFields: PublishRequiredField[];
 };
 
-export const createProfileNotPublishableError = (
+const createProfileNotPublishableError = (
   missingFields: PublishRequiredField[],
 ): ProfileNotPublishableError =>
   createTypedError("ProfileNotPublishableError", { missingFields });
 
-export const isProfileNotPublishableError = (
-  error: unknown,
-): error is ProfileNotPublishableError =>
-  error instanceof Error &&
-  "type" in error &&
-  error.type === "ProfileNotPublishableError";
+const hasRequiredStoryChapter = (profile: ArtistProfile): boolean =>
+  profile
+    .getChapters()
+    .some((chapter) => chapter.questionCode === REQUIRED_STORY_QUESTION_CODE);
 
-export const collectMissingPublishFields = (
+const collectMissingPublishFields = (
   profile: ArtistProfile,
 ): PublishRequiredField[] => {
   const missing: PublishRequiredField[] = [];
   if (!profile.getName()) missing.push("name");
   if (!profile.getImageUrl()) missing.push("imageUrl");
-  if (!profile.getStory()) missing.push("story");
+  if (!hasRequiredStoryChapter(profile)) missing.push("story");
   if (profile.getGenres().length === 0) missing.push("genres");
   if (profile.getLinks().length === 0) missing.push("links");
   return missing;
 };
 
+export type Publishability = {
+  ok: boolean;
+  missingFields: PublishRequiredField[];
+};
+
+export const assessPublishability = (
+  profile: ArtistProfile,
+): Publishability => {
+  const missingFields = collectMissingPublishFields(profile);
+  return { ok: missingFields.length === 0, missingFields };
+};
+
 const isPublishable = (profile: ArtistProfile): boolean =>
-  collectMissingPublishFields(profile).length === 0;
+  assessPublishability(profile).ok;
 
 export const enforcePublishInvariant = (
   profile: ArtistProfile,

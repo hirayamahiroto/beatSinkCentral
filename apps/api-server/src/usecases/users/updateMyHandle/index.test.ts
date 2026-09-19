@@ -10,6 +10,7 @@ import type {
   IArtistReader,
   IArtistWriter,
 } from "../../../domain/artists/repositories";
+import type { IArtistHandleHistoryWriter } from "../../../domain/artistHandleHistories/repositories";
 import type { ArtistWriteCapabilities } from "../../capabilities";
 
 const user = reconstructUser({
@@ -21,7 +22,7 @@ const user = reconstructUser({
 const artist = reconstructArtist({
   artistId: "artist-1",
   handle: "old_handle",
-  ownerUserId: user.getId(),
+  ownerUserId: "owner-user-1",
   profile: null,
 });
 
@@ -34,12 +35,20 @@ const createCaps = () =>
       save: vi.fn<IArtistWriter["save"]>(),
       updateHandle: vi.fn<IArtistWriter["updateHandle"]>(),
     },
-  }) satisfies Pick<ArtistWriteCapabilities, "actor" | "artists">;
+    artistHandleHistories: {
+      record: vi.fn<IArtistHandleHistoryWriter["record"]>(
+        async () => undefined,
+      ),
+    },
+  }) satisfies Pick<
+    ArtistWriteCapabilities,
+    "actor" | "artists" | "artistHandleHistories"
+  >;
 
 const renamedArtist = reconstructArtist({
   artistId: artist.getArtistId(),
   handle: "new_handle",
-  ownerUserId: artist.getOwnerUserId(),
+  ownerUserId: artist.toPersistence().ownerUserId,
   profile: null,
 });
 
@@ -61,7 +70,25 @@ describe("updateMyHandle", () => {
         handle: "new_handle",
       });
     }
-    expect(caps.artists.updateHandle).toHaveBeenCalledTimes(1);
+    expect(caps.artists.updateHandle).toHaveBeenCalledExactlyOnceWith({
+      artistId: artist.getArtistId(),
+      handle: "new_handle",
+    });
+  });
+
+  it("handle 変更時に旧 handle・新 handle・変更者を履歴として記録する", async () => {
+    const caps = createCaps();
+    caps.artists.updateHandle.mockResolvedValue(renamedArtist);
+
+    await updateMyHandle(caps, { handle: "new_handle" });
+
+    expect(caps.artistHandleHistories.record).toHaveBeenCalledExactlyOnceWith({
+      id: expect.any(String),
+      artistId: artist.getArtistId(),
+      oldHandle: "old_handle",
+      newHandle: "new_handle",
+      changedByUserId: user.getId(),
+    });
   });
 
   it("現在の handle と同じ値の場合は更新せず early return する", async () => {
@@ -78,6 +105,7 @@ describe("updateMyHandle", () => {
     }
     expect(caps.artists.findByHandle).not.toHaveBeenCalled();
     expect(caps.artists.updateHandle).not.toHaveBeenCalled();
+    expect(caps.artistHandleHistories.record).not.toHaveBeenCalled();
   });
 
   it("他の artist が同じ handle を使用している場合は HandleAlreadyTakenError を err で返す", async () => {
@@ -96,8 +124,12 @@ describe("updateMyHandle", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(isHandleAlreadyTakenError(result.error)).toBe(true);
+      if (isHandleAlreadyTakenError(result.error)) {
+        expect(result.error.handle).toBe("new_handle");
+      }
     }
     expect(caps.artists.updateHandle).not.toHaveBeenCalled();
+    expect(caps.artistHandleHistories.record).not.toHaveBeenCalled();
   });
 
   it("handle が不正な形式の場合は参照せず InvalidHandleFormatError を err で返す", async () => {
@@ -113,9 +145,10 @@ describe("updateMyHandle", () => {
     }
     expect(caps.artists.findByHandle).not.toHaveBeenCalled();
     expect(caps.artists.updateHandle).not.toHaveBeenCalled();
+    expect(caps.artistHandleHistories.record).not.toHaveBeenCalled();
   });
 
-  it("更新時の一意制約違反はそのまま伝播する", async () => {
+  it("更新時の一意制約違反はそのまま伝播し、履歴を記録しない", async () => {
     const caps = createCaps();
     const takenError = createHandleAlreadyTakenError("new_handle");
     caps.artists.updateHandle.mockRejectedValue(takenError);
@@ -123,5 +156,6 @@ describe("updateMyHandle", () => {
     await expect(updateMyHandle(caps, { handle: "new_handle" })).rejects.toBe(
       takenError,
     );
+    expect(caps.artistHandleHistories.record).not.toHaveBeenCalled();
   });
 });

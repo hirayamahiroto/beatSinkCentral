@@ -424,6 +424,8 @@ export const createUserBehaviors = (state: UserState): User => ({
 > return { email: user.getEmail() }; // Usecaseは内部構造を知らない
 > ```
 
+**公開する振る舞いは、その時点で本番コードに呼び手があるものに限る。** getter を置くこと自体は上記の通り必要だが、全フィールドに先回りして getter を並べることは求めていない。書き込み専用の集約は `toPersistence` から始め、Reader や usecase が値を読む要件が出た時点でその getter を足す。既存の集約を構造の参考にしてよいが、その公開面（getter・`export`・スキーマ・index）を一式写さない。テストからしか呼ばれない公開 API は、意図が読めなくなるため置かない。
+
 ---
 
 #### Factories（生成）
@@ -708,9 +710,12 @@ app/api/[[...route]]/
 │   │   └── getArtist/          # GET /artists/:handle
 │   └── [artistId]/             # ← ここが認証境界（不変 ID artistId。handle とは別の鍵）
 │       ├── index.ts            # requireAuthMiddleware + マウントテーブル
-│       ├── updateHandle/    # POST /:artistId
+│       ├── updateHandle/       # POST /:artistId
 │       ├── getProfile/         # GET  /:artistId/profile
-│       ├── saveProfile/        # POST /:artistId/profile
+│       ├── updateAttributes/   # POST /:artistId/attributes
+│       ├── writeStoryChapter/  # POST /:artistId/story/chapters/:chapterKey
+│       ├── replaceLinks/       # POST /:artistId/links
+│       ├── uploadProfileImage/ # POST /:artistId/profile/image
 │       └── publishProfile/     # POST /:artistId/profile/publish
 └── link-types/
     ├── index.ts                # 認証不要 → 集約のみ
@@ -977,6 +982,18 @@ export type ActorResolution =
 
 usecase が `tx` を受け取ることはない。**リポジトリの executor は権能の生成時に注入される**ため、「トランザクション内で動いているか」は usecase から見えない。
 
+Write 系の権能は**単一操作であっても常に境界を張る**。単一文でも Postgres は暗黙のトランザクションで動くため追加コストは `BEGIN` / `COMMIT` の往復分に留まり、その代わりに「この usecase に境界は要るか」という判断そのものを無くせる。単一操作が複数操作に育ったときも、境界側に触れずに原子性が付いてくる（例: handle 変更に履歴の追記が加わった際、usecase の配線を足しただけで同一トランザクションに乗った）。
+
+境界の意味論は経路ごとに 1 つに固定する。既定は **all-or-nothing**（`ok` で commit、`err` / throw で rollback）で、usecase はこれを前提に配線だけを書く。次のように既定と異なる意味論が必要になったら、それは usecase ではなく**境界の設計問題**として扱い、**既存の権能型の意味論を変えずに、別の経路・別の権能型として足す**。
+
+| 要件の例                                | 既定の境界で起きること           | 取るべき形                                                                  |
+| --------------------------------------- | -------------------------------- | --------------------------------------------------------------------------- |
+| 失敗（`err`）でも一部の記録は残したい   | 記録ごと rollback される         | 境界なし、または独立した境界を持つ Write 権能                               |
+| 一括処理で件ごとに確定したい            | 1 件の失敗で全件 rollback される | 件ごとに境界を張る経路モジュール                                            |
+| DB 外の書き込み（Storage 等）と揃えたい | 境界は DB 外に効かない           | `ArtistStorageWriteCapabilities` のように境界の外へ分離し、原子性を求めない |
+
+既存の境界を緩める（例: `ArtistWriteCapabilities` で `err` 時も一部を残す）方向には倒さない。usecase の第 1 引数の権能型が「どの整合性の約束のもとで動くか」をそのまま表す状態を保つ。
+
 ### Composition Root の分割
 
 `infrastructure/capabilities/index.ts` は**合成だけ**を持つ。中身は関心ごとに分かれており、それぞれ単体でテストできる。
@@ -1010,6 +1027,26 @@ usecase が `tx` を受け取ることはない。**リポジトリの executor 
 権能型を型名の接尾辞（`*Caps` / `*Capabilities`）で判定していないのは、raw な db を持つ構造型に `FakeCaps` と名付けるだけでルールを通過できてしまうため。判定の軸は**その型が権能型の定義元から来ているか**に置く。
 
 新しい依存の入口（別の外部クライアント等）を `infrastructure/` に足したときは、`RESTRICTED_USECASE_SOURCES` に追加するか、`infrastructure/` 配下に置いてパスで拾われるようにする。ルール自体の振る舞いは `apps/api-server/eslint.rules.test.mts` で固定している。
+
+### 呼び手のない公開面は機械的に検出する
+
+「公開する振る舞い・`export` は本番コードに呼び手があるものに限る」も人の grep に頼らず、3 種類の機械検証で担保する。
+
+| 検出対象                                                        | 仕組み                                                                         | 実行                                 |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------ |
+| A. どこからも参照されない `export`・ファイル・依存              | knip（設定は `knip.jsonc`、対象は `apps/api-server`）                          | `npm run knip`                       |
+| B. テストからしか参照されない `export`                          | knip の production モード（`*.test.ts` と test 用 entry を除いて集計）         | `npm run knip:production`            |
+| C. Entity の振る舞い（getter 等）で本番コードの呼び手が無いもの | ESLint ローカルルール `local/entity-behavior-has-caller`（`eslint.rules.mjs`） | `npm run lint`（api-server の lint） |
+
+C を knip に任せられないのは、knip / ts-prune が型のメンバーを見ないため。ルールは `src/domain/*/entities/index.ts` で **export された型の関数メンバー**を Entity の振る舞いとみなし（配置ベースの判定。State / PersistenceData のようなデータ型は関数メンバーを持たないので対象外）、同じ `src` 配下の本番コード（`*.test.ts` と `testDoubles/` を除く）に `.name(` の呼び出しがあるかを探す。判定は名前ベースで、別 Entity の同名メンバー（`getId` 等）は区別しない。
+
+運用上の決め:
+
+- 3 つとも error で運用する（既存分は導入時に棚卸し済み）。検出されたら、呼び手を足すのではなく、その公開面を削るか `export` を外す。テストのためだけに必要な関数は、本番の呼び手を持つ module として切り出す（例: `utils/traceparent`、`errorMap/createAppErrorHandler`）
+- knip が誤検出する箇所は `knip.jsonc` に理由付きで ignore する
+- `packages/database` は対象外。drizzle-zod で自動生成する `*SelectSchema` 等を含み、スキーマ定義はアプリからの参照ではなく drizzle-kit のマイグレーション生成のために置くものだから
+- テスト専用ヘルパ（`usecases/**/testDoubles/`）は production entry として明示し、B の検出対象から外す
+- CI では `.github/actions/build-and-test` の lint の直後に knip を両モードで実行する。ルールの振る舞いは `apps/api-server/eslint.rules.test.mts` で固定している
 
 ---
 
@@ -1182,19 +1219,22 @@ describe("reconstructUser", () => {
 
 ## API エンドポイント
 
-| メソッド | パス                                     | 説明                           | 認証 |
-| -------- | ---------------------------------------- | ------------------------------ | ---- |
-| GET      | `/api/test`                              | ヘルスチェック                 | 要   |
-| POST     | `/api/users`                             | ユーザー作成                   | 要   |
-| GET      | `/api/users/me`                          | 自分のユーザー情報取得         | 要   |
-| POST     | `/api/users/:userId`                     | メールアドレス更新             | 要   |
-| GET      | `/api/artists`                           | 公開プロフィール一覧           | 不要 |
-| GET      | `/api/artists/:handle`                   | 公開プロフィール詳細           | 不要 |
-| POST     | `/api/artists/:artistId`                 | handle 更新                    | 要   |
-| GET      | `/api/artists/:artistId/profile`         | プロフィール取得（下書き含む） | 要   |
-| POST     | `/api/artists/:artistId/profile`         | プロフィール保存               | 要   |
-| POST     | `/api/artists/:artistId/profile/publish` | 公開/非公開の切り替え          | 要   |
-| POST     | `/api/artists/:artistId/profile/image`   | プロフィール画像アップロード   | 要   |
-| GET      | `/api/link-types`                        | リンク種別マスタ一覧           | 不要 |
+| メソッド | パス                                                | 説明                                                          | 認証 |
+| -------- | --------------------------------------------------- | ------------------------------------------------------------- | ---- |
+| GET      | `/api/test`                                         | ヘルスチェック                                                | 要   |
+| POST     | `/api/users`                                        | ユーザー作成                                                  | 要   |
+| GET      | `/api/users/me`                                     | 自分のユーザー情報取得                                        | 要   |
+| POST     | `/api/users/:userId`                                | メールアドレス更新                                            | 要   |
+| GET      | `/api/artists`                                      | 公開プロフィール一覧                                          | 不要 |
+| GET      | `/api/artists/:handle`                              | 公開プロフィール詳細                                          | 不要 |
+| POST     | `/api/artists/:artistId`                            | handle 更新（変更履歴を同一トランザクションで記録）           | 要   |
+| GET      | `/api/artists/:artistId/profile`                    | プロフィール取得（下書き含む・集約一本）                      | 要   |
+| POST     | `/api/artists/:artistId/attributes`                 | 属性の更新                                                    | 要   |
+| POST     | `/api/artists/:artistId/story/chapters/:chapterKey` | Story 章の書き込み（空文字で章を消す）                        | 要   |
+| POST     | `/api/artists/:artistId/links`                      | SNS リンク集合の差し替え                                      | 要   |
+| POST     | `/api/artists/:artistId/profile/publish`            | 公開/非公開の切り替え                                         | 要   |
+| POST     | `/api/artists/:artistId/profile/image`              | プロフィール画像の差し替え（アップロード＋集約へ URL を書く） | 要   |
+| GET      | `/api/link-types`                                   | リンク種別マスタ一覧                                          | 不要 |
+| GET      | `/api/story-questions`                              | Story の問いマスタ一覧（必須フラグ付き）                      | 不要 |
 
 > 旧 `me` 系（`POST /api/artists/me`・`GET|POST /api/artists/me/profile`・`POST /api/artists/me/profile/publish`・`POST /api/users/me`）はクライアント移行の完了に伴い削除済み（[api-design-guidelines.md](./api-design-guidelines.md) のリソースアドレッシング参照）。`GET /api/users/me` だけは、クライアントが自分の `userId` / `artistId` を解決する起点（bootstrap）として存置する。

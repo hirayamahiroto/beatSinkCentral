@@ -1,0 +1,19 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
+  // 検出対象は api-server（#306）。packages/database は drizzle-zod の自動生成スキーマを含むため対象外、他 workspace は棚卸し未了のため対象外
+  "ignoreWorkspaces": [
+    ".",
+    "apps/beatfolio",
+    "packages/database",
+    "packages/ui",
+    "packages/data",
+  ],
+  "workspaces": {
+    "apps/api-server": {
+      // テスト専用ヘルパは production でも entry として残す（テストからしか呼ばれない export の検出対象から外す）
+      "entry": ["src/usecases/**/testDoubles/**/*.ts!"],
+      // "database" は tsconfig paths で packages/database の実ファイルへ解決されるため、依存としては未使用に見える
+      "ignoreDependencies": ["database"],
+    },
+  },
+}

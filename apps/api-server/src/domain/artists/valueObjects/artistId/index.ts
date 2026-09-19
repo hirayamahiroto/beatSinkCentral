@@ -10,9 +10,8 @@ export type InvalidArtistIdFormatError = Error & {
   readonly type: "InvalidArtistIdFormatError";
 };
 
-export const createInvalidArtistIdFormatError =
-  (): InvalidArtistIdFormatError =>
-    createTypedError("InvalidArtistIdFormatError");
+const createInvalidArtistIdFormatError = (): InvalidArtistIdFormatError =>
+  createTypedError("InvalidArtistIdFormatError");
 
 const artistIdSchema = z.string().trim().min(1, "artistId is required");
 

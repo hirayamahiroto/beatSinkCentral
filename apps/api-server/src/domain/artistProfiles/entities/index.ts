@@ -1,15 +1,23 @@
 import type { ProfileName } from "../valueObjects/profileName";
 import type { Tagline } from "../valueObjects/tagline";
 import type { ImageUrl } from "../valueObjects/imageUrl";
-import type { Story } from "../valueObjects/story";
+import type {
+  StoryChapter,
+  StoryQuestionCode,
+} from "../valueObjects/storyChapter";
 import type { ActivityInfo } from "../valueObjects/activityInfo";
 import type { Genre } from "../valueObjects/genre";
 import type { ProfileLink } from "../valueObjects/profileLink";
+import type { PresentationPatternCode } from "../valueObjects/presentationPattern";
 
 export type ProfileLinkData = {
-  type: string;
+  linkTypeCode: string;
   url: string;
-  label: string | null;
+};
+
+export type StoryChapterData = {
+  questionCode: string;
+  body: string;
 };
 
 export type ArtistProfileState = {
@@ -18,12 +26,18 @@ export type ArtistProfileState = {
   readonly name: ProfileName | null;
   readonly tagline: Tagline | null;
   readonly imageUrl: ImageUrl | null;
-  readonly story: Story | null;
+  readonly chapters: readonly StoryChapter[];
   readonly activityInfo: ActivityInfo | null;
   readonly genres: readonly Genre[];
   readonly links: readonly ProfileLink[];
+  readonly presentationPattern: PresentationPatternCode | null;
   readonly published: boolean;
 };
+
+export type ArtistProfileAttributes = Pick<
+  ArtistProfileState,
+  "name" | "tagline" | "genres" | "activityInfo"
+>;
 
 export type ArtistProfilePersistenceData = {
   id: string;
@@ -31,21 +45,40 @@ export type ArtistProfilePersistenceData = {
   name: string | null;
   tagline: string | null;
   imageUrl: string | null;
-  story: string | null;
+  chapters: StoryChapterData[];
   activityInfo: string | null;
   genres: string[];
   links: ProfileLinkData[];
+  presentationPatternCode: string | null;
   published: boolean;
 };
 
-export type ArtistProfileView = {
+export type ArtistProfileAttributesView = {
   name: string | null;
-  tagline: string | null;
   imageUrl: string | null;
-  story: string | null;
-  activityInfo: string | null;
+  tagline: string | null;
   genres: string[];
+  activityInfo: string | null;
+};
+
+type StoryChapterView = {
+  key: string;
+  body: string;
+};
+
+export type ArtistProfileStoryView = {
+  chapters: StoryChapterView[];
+};
+
+export type ArtistProfilePresentationView = {
+  patternCode: string | null;
+};
+
+export type ArtistProfileView = {
+  attributes: ArtistProfileAttributesView;
+  story: ArtistProfileStoryView;
   links: ProfileLinkData[];
+  presentation: ArtistProfilePresentationView;
   published: boolean;
 };
 
@@ -53,15 +86,20 @@ export type ArtistProfile = {
   getId: () => string;
   getArtistId: () => string;
   getName: () => string | null;
-  getTagline: () => string | null;
   getImageUrl: () => string | null;
-  getStory: () => string | null;
-  getActivityInfo: () => string | null;
+  getChapters: () => StoryChapterData[];
   getGenres: () => string[];
   getLinks: () => ProfileLinkData[];
   isPublished: () => boolean;
-  publish: () => ArtistProfile;
   unpublish: () => ArtistProfile;
+  reviseAttributes: (attributes: ArtistProfileAttributes) => ArtistProfile;
+  writeStoryChapter: (chapter: StoryChapter) => ArtistProfile;
+  clearStoryChapter: (questionCode: StoryQuestionCode) => ArtistProfile;
+  replaceLinks: (links: readonly ProfileLink[]) => ArtistProfile;
+  choosePresentationPattern: (
+    pattern: PresentationPatternCode,
+  ) => ArtistProfile;
+  changeImage: (imageUrl: ImageUrl) => ArtistProfile;
   toPersistence: () => ArtistProfilePersistenceData;
   toView: () => ArtistProfileView;
 };

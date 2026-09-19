@@ -10,7 +10,11 @@ import type {
   IArtistReader,
   IArtistWriter,
 } from "../../domain/artists/repositories";
+import type { IArtistHandleHistoryWriter } from "../../domain/artistHandleHistories/repositories";
 import type { ILinkTypeReader } from "../../domain/linkTypes/repositories";
+import type { IAnalyticsEventWriter } from "../../domain/analyticsEvents/repositories";
+import type { IStoryQuestionReader } from "../../domain/storyQuestions/repositories";
+import type { IPresentationPatternReader } from "../../domain/presentationPatterns/repositories";
 import type { UserNotFoundError } from "../../domain/users/errors/userNotFound";
 import type { ArtistNotFoundError } from "../../domain/artists/errors/artistNotFound";
 import type { Result } from "../../utils/result";
@@ -36,11 +40,17 @@ export type IdentityCapabilities = {
 export type PublicReadCapabilities = {
   artistProfiles: IArtistProfileReader;
   linkTypes: ILinkTypeReader;
+  storyQuestions: IStoryQuestionReader;
+  presentationPatterns: IPresentationPatternReader;
 };
 
 export type ArtistReadCapabilities = {
   actor: Actor;
   artistProfiles: IArtistProfileReader;
+};
+
+export type PublicWriteCapabilities = {
+  analyticsEvents: IAnalyticsEventWriter;
 };
 
 export type UserWriteCapabilities = {
@@ -52,6 +62,7 @@ export type ArtistWriteCapabilities = {
   actor: Actor;
   users: IUserReader & IUserWriter;
   artists: IArtistReader & IArtistWriter;
+  artistHandleHistories: IArtistHandleHistoryWriter;
   artistProfiles: IArtistProfileReader & IArtistProfileWriter;
 };
 
@@ -69,6 +80,8 @@ export type CapabilityDeps = {
   resolveActorState(subId: string): Promise<ActorResolution>;
 
   buildPublicReadCapabilities(): PublicReadCapabilities;
+
+  buildPublicWriteCapabilities(): PublicWriteCapabilities;
 
   buildArtistReadCapabilities(actor: Actor): ArtistReadCapabilities;
 

@@ -6,11 +6,13 @@ import { handleBffError } from "../../../../../errorMap";
 
 const profileGet = vi.fn();
 const linkTypesGet = vi.fn();
+const storyQuestionsGet = vi.fn();
 
 const apiClient = {
   api: {
     artists: { ":handle": { $get: profileGet } },
     "link-types": { $get: linkTypesGet },
+    "story-questions": { $get: storyQuestionsGet },
   },
 };
 
@@ -35,16 +37,25 @@ const jsonResponse = (
 });
 
 const publishedProfile = {
+  handle: "saku",
+  artistId: "artist-1",
   profile: {
-    name: "SAKU",
-    tagline: "口ひとつで、フロアを揺らす。",
-    imageUrl: "https://example.com/saku.jpg",
-    story: "始めたきっかけ。",
-    activityInfo: "拠点: 東京 / 形態: ソロ",
-    genres: ["Beatbox"],
+    attributes: {
+      name: "SAKU",
+      imageUrl: "https://example.com/saku.jpg",
+      tagline: "口ひとつで、フロアを揺らす。",
+      genres: ["Beatbox"],
+      activityInfo: "拠点: 東京 / 形態: ソロ",
+    },
+    story: {
+      chapters: [
+        { key: "beginning", body: "始めたきっかけ。" },
+        { key: "concept", body: "表現したいこと。" },
+      ],
+    },
     links: [
-      { type: "youtube", url: "https://youtube.com/@saku", label: null },
-      { type: "other", url: "https://example.com/me", label: "個人HP" },
+      { linkTypeCode: "youtube", url: "https://youtube.com/@saku" },
+      { linkTypeCode: "other", url: "https://example.com/me" },
     ],
     published: true,
   },
@@ -55,13 +66,20 @@ const linkTypes = [
   { type: "other", label: "その他" },
 ];
 
+const storyQuestions = [
+  { code: "beginning", label: "始まりの話", required: true },
+  { code: "turning_point", label: "転機になったこと", required: false },
+  { code: "concept", label: "何を表現したいのか", required: false },
+];
+
 describe("GET /players/:handle", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     linkTypesGet.mockResolvedValue(jsonResponse({ linkTypes }));
+    storyQuestionsGet.mockResolvedValue(jsonResponse({ storyQuestions }));
   });
 
-  it("handle を api-server へ渡し、リンクのラベルを解決して返す", async () => {
+  it("handle を api-server へ渡し、§5-2 契約（AudienceArtistProfile props）へ整形して返す（章の問いは問いマスタのラベルへ解決）", async () => {
     profileGet.mockResolvedValue(jsonResponse(publishedProfile));
 
     const res = await createApp().request("/saku", { method: "GET" });
@@ -69,15 +87,25 @@ describe("GET /players/:handle", () => {
     expect(profileGet).toHaveBeenCalledWith({ param: { handle: "saku" } });
     expect(res.status).toBe(200);
     expect(await res.json()).toStrictEqual({
+      artistId: "artist-1",
       name: "SAKU",
       tagline: "口ひとつで、フロアを揺らす。",
       imageUrl: "https://example.com/saku.jpg",
-      story: "始めたきっかけ。",
-      activityInfo: "拠点: 東京 / 形態: ソロ",
       genres: ["Beatbox"],
-      links: [
-        { url: "https://youtube.com/@saku", label: "YouTube" },
-        { url: "https://example.com/me", label: "個人HP" },
+      storyChapters: [
+        { question: "始まりの話", body: "始めたきっかけ。" },
+        { question: "何を表現したいのか", body: "表現したいこと。" },
+      ],
+      translation: null,
+      listeningPoint: null,
+      offer: null,
+      supportLinks: [
+        {
+          platform: "youtube",
+          url: "https://youtube.com/@saku",
+          label: "YouTube",
+        },
+        { platform: "other", url: "https://example.com/me", label: "その他" },
       ],
     });
   });
@@ -107,6 +135,17 @@ describe("GET /players/:handle", () => {
 
   it("api-server が 5xx で失敗したら 502 を返す", async () => {
     profileGet.mockResolvedValue(
+      jsonResponse({ error: "Internal" }, { ok: false, status: 500 }),
+    );
+
+    const res = await createApp().request("/saku", { method: "GET" });
+
+    expect(res.status).toBe(502);
+  });
+
+  it("問いマスタの取得が失敗したら 502 を返す", async () => {
+    profileGet.mockResolvedValue(jsonResponse(publishedProfile));
+    storyQuestionsGet.mockResolvedValue(
       jsonResponse({ error: "Internal" }, { ok: false, status: 500 }),
     );
 

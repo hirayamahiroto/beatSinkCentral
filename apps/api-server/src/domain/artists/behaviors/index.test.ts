@@ -24,18 +24,16 @@ describe("createArtistBehaviors", () => {
     expect(artist.getHandle()).toBe("user_123");
   });
 
-  it("profileがnullの場合はgetProfile/hasProfileがnull/falseを返す", () => {
-    expect(artist.getProfile()).toBeNull();
+  it("profileがnullの場合はhasProfileがfalseを返す", () => {
     expect(artist.hasProfile()).toBe(false);
   });
 
-  it("profileがある場合はgetProfile/hasProfileが値/trueを返す", () => {
+  it("profileがある場合はhasProfileがtrueを返す", () => {
     const withProfile = reconstructArtist({
       ...baseParams,
       profile: { name: "Test Artist" },
     });
 
-    expect(withProfile.getProfile()).toStrictEqual({ name: "Test Artist" });
     expect(withProfile.hasProfile()).toBe(true);
   });
 
@@ -55,7 +53,7 @@ describe("createArtistBehaviors", () => {
 
       expect(updated.getHandle()).toBe("new_handle");
       expect(updated.getArtistId()).toBe(baseParams.artistId);
-      expect(updated.getOwnerUserId()).toBe(baseParams.ownerUserId);
+      expect(updated.toPersistence().ownerUserId).toBe(baseParams.ownerUserId);
     });
 
     it("元のArtistは不変", () => {

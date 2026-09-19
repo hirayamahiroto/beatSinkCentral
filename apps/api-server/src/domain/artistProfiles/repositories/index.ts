@@ -13,6 +13,8 @@ export type PublishedProfileSummary = {
   handle: string;
   name: string;
   imageUrl: string | null;
+  tagline: string | null;
+  genres: string[];
 };
 
 export type ListPublishedSummariesInput = {
@@ -32,7 +34,7 @@ export interface IArtistProfileWriter {
   setPublished(data: ArtistProfileSetPublishedData): Promise<ArtistProfile>;
 }
 
-export type ProfileImageUploadData = {
+type ProfileImageUploadData = {
   artistId: string;
   image: ProfileImage;
   bytes: Uint8Array;

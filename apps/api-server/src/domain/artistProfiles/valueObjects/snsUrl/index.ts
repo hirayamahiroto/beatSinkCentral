@@ -10,7 +10,7 @@ export type InvalidSnsUrlFormatError = Error & {
   readonly type: "InvalidSnsUrlFormatError";
 };
 
-export const createInvalidSnsUrlFormatError = (): InvalidSnsUrlFormatError =>
+const createInvalidSnsUrlFormatError = (): InvalidSnsUrlFormatError =>
   createTypedError("InvalidSnsUrlFormatError");
 
 const snsUrlSchema = z

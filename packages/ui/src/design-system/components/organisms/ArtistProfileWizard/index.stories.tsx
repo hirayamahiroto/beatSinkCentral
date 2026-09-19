@@ -23,6 +23,15 @@ const meta = {
       { type: "tiktok", label: "TikTok" },
       { type: "other", label: "その他" },
     ],
+    storyQuestions: [
+      {
+        code: "beginning",
+        label: "なぜビートボックスを始めたのか",
+        required: true,
+      },
+      { code: "turning_point", label: "転機になった出来事", required: false },
+      { code: "concept", label: "何を表現したいのか", required: false },
+    ],
     onSubmit: (data) => console.log("submit", data),
     onSaveDraft: (data) => console.log("draft", data),
     onUploadImage: async (file) => {
@@ -57,5 +66,17 @@ export const WithError: Story = {
     email: "saku@example.com",
     isLoading: false,
     error: "保存に失敗しました。時間をおいて再度お試しください。",
+  },
+};
+
+export const WithPartialSaveFailure: Story = {
+  args: {
+    email: "saku@example.com",
+    isLoading: false,
+    error: "Invalid snsUrl format",
+    saveProgress: {
+      savedSections: ["attributes", "chapters"],
+      failedSection: "links",
+    },
   },
 };

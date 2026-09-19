@@ -87,8 +87,7 @@ describe("useCreateUser", () => {
       await result.current.handleSubmit({ handle: "newbie" });
     });
 
-    expect(result.current.error).not.toBeNull();
-    expect(result.current.error).not.toBe("");
+    expect(result.current.error).toBe("ユーザー作成に失敗しました");
     expect(pushMock).not.toHaveBeenCalled();
     expect(result.current.isLoading).toBe(false);
   });

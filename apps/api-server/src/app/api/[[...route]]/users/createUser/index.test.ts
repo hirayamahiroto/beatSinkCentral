@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import usersCreate, { type CreateUserRequestBody } from "./index";
+import usersCreate from "./index";
 import { handleAppError } from "../../../../../errorMap";
 import { reconstructUser } from "../../../../../domain/users/factories";
 import { reconstructArtist } from "../../../../../domain/artists/factories";
 import { createEmailAlreadyTakenError } from "../../../../../domain/users/errors/emailAlreadyTaken";
+
+type CreateUserRequestBody = { email: string; handle: string };
 
 const mockUsers = {
   save: vi.fn(),
@@ -200,12 +202,27 @@ describe("User Create API", () => {
 
     it("新規登録に成功すると201とuserId/artistIdを返す", async () => {
       const res = await postCreate(validPayload);
+      const body = await res.json();
 
       expect(res.status).toBe(201);
-      expect(await res.json()).toMatchObject({
+      expect(body).toMatchObject({
         userId: expect.any(String),
         artistId: expect.any(String),
       });
+      expect(mockUsers.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: body.userId,
+          subId: "auth0|123",
+          email: validPayload.email,
+        }),
+      );
+      expect(mockArtists.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: body.artistId,
+          handle: validPayload.handle,
+          ownerUserId: body.userId,
+        }),
+      );
     });
 
     it("既に登録済みなら409を返し、保存しない", async () => {

@@ -10,7 +10,7 @@ export type InvalidHandleFormatError = Error & {
   readonly type: "InvalidHandleFormatError";
 };
 
-export const createInvalidHandleFormatError = (): InvalidHandleFormatError =>
+const createInvalidHandleFormatError = (): InvalidHandleFormatError =>
   createTypedError("InvalidHandleFormatError");
 
 const handleSchema = z

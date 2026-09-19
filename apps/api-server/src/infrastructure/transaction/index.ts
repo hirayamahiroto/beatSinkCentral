@@ -1,7 +1,7 @@
 import type { DatabaseClient } from "../../../../../packages/database/src/utils/createClient";
 import type { Result } from "../../utils/result";
 
-export type TransactionContext = Parameters<
+type TransactionContext = Parameters<
   Parameters<DatabaseClient["transaction"]>[0]
 >[0];
 

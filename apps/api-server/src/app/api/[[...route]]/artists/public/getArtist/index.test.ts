@@ -31,13 +31,13 @@ describe("GET /artists/:handle", () => {
     mockArtistProfiles.findPublishedByHandle.mockResolvedValue(
       reconstructArtistProfile({
         id: "p1",
-        artistId: "artist-1",
+        artistId: "0d7fbb2e-5f6c-4d3a-9c1e-2b8f4a6d7e90",
         published: true,
         name: "Taro",
         imageUrl: "https://example.com/a.png",
-        story: "私の歩み",
+        chapters: [{ questionCode: "beginning", body: "私の歩み" }],
         genres: ["bass"],
-        links: [{ type: "x", url: "https://x.com/taro" }],
+        links: [{ linkTypeCode: "x", url: "https://x.com/taro" }],
       }),
     );
 
@@ -46,7 +46,12 @@ describe("GET /artists/:handle", () => {
 
     expect(res.status).toBe(200);
     expect(body.handle).toBe("beatboxer_taro");
-    expect(body.profile.name).toBe("Taro");
+    expect(body.artistId).toBe("0d7fbb2e-5f6c-4d3a-9c1e-2b8f4a6d7e90");
+    expect(body.profile.attributes.name).toBe("Taro");
+    expect(body.profile.story.chapters).toStrictEqual([
+      { key: "beginning", body: "私の歩み" },
+    ]);
+    expect(body.profile.presentation).toStrictEqual({ patternCode: null });
     expect(mockArtistProfiles.findPublishedByHandle).toHaveBeenCalledWith(
       "beatboxer_taro",
     );
@@ -56,13 +61,13 @@ describe("GET /artists/:handle", () => {
     mockArtistProfiles.findPublishedByHandle.mockResolvedValue(
       reconstructArtistProfile({
         id: "p1",
-        artistId: "artist-1",
+        artistId: "0d7fbb2e-5f6c-4d3a-9c1e-2b8f4a6d7e90",
         published: true,
         name: "Taro",
         imageUrl: null,
-        story: "私の歩み",
+        chapters: [{ questionCode: "beginning", body: "私の歩み" }],
         genres: [],
-        links: [{ type: "x", url: "https://x.com/taro" }],
+        links: [{ linkTypeCode: "x", url: "https://x.com/taro" }],
       }),
     );
 
@@ -77,7 +82,12 @@ describe("GET /artists/:handle", () => {
     expect(JSON.parse(consoleError.mock.calls[0][0])).toMatchObject({
       event: "AppError",
       errorType: "ResponseContractViolationError",
-      context: { issuePaths: ["profile.imageUrl", "profile.genres"] },
+      context: {
+        issuePaths: [
+          "profile.attributes.imageUrl",
+          "profile.attributes.genres",
+        ],
+      },
     });
     consoleError.mockRestore();
   });

@@ -13,3 +13,10 @@ INSERT INTO "link_types" ("code", "label") VALUES
   ('tiktok', 'TikTok'),
   ('other', 'その他')
 ON CONFLICT ("code") DO NOTHING;
+
+INSERT INTO "presentation_patterns" ("code", "label") VALUES
+  ('interview', 'インタビュー'),
+  ('zoom_dive', 'ズーム'),
+  ('spotlight', 'スポットライト'),
+  ('editorial', '特集記事')
+ON CONFLICT ("code") DO NOTHING;

@@ -11,20 +11,19 @@ const paramSchema = z.object({
   artistId: z.string().min(1).max(255),
 });
 
-const profileLinkSchema = z.object({
-  type: z.string(),
-  url: z.string(),
-  label: z.string().nullable(),
-});
-
 const artistProfileViewSchema = z.object({
-  name: z.string().nullable(),
-  tagline: z.string().nullable(),
-  imageUrl: z.string().nullable(),
-  story: z.string().nullable(),
-  activityInfo: z.string().nullable(),
-  genres: z.array(z.string()),
-  links: z.array(profileLinkSchema),
+  attributes: z.object({
+    name: z.string().nullable(),
+    imageUrl: z.string().nullable(),
+    tagline: z.string().nullable(),
+    genres: z.array(z.string()),
+    activityInfo: z.string().nullable(),
+  }),
+  story: z.object({
+    chapters: z.array(z.object({ key: z.string(), body: z.string() })),
+  }),
+  links: z.array(z.object({ linkTypeCode: z.string(), url: z.string() })),
+  presentation: z.object({ patternCode: z.string().nullable() }),
   published: z.boolean(),
 });
 
@@ -36,10 +35,15 @@ const publishRequiredFieldSchema = z.enum([
   "links",
 ]);
 
+const publishabilitySchema = z.object({
+  ok: z.boolean(),
+  missingFields: z.array(publishRequiredFieldSchema),
+});
+
 const getProfileResponseSchema = z.object({
   handle: z.string(),
   profile: artistProfileViewSchema.nullable(),
-  missingPublishFields: z.array(publishRequiredFieldSchema).nullable(),
+  publishability: publishabilitySchema.nullable(),
 });
 
 const app = new Hono().get(

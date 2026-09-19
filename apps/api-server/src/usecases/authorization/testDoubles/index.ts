@@ -8,6 +8,7 @@ import type {
   IArtistProfileWriter,
   IProfileImageStorage,
 } from "../../../domain/artistProfiles/repositories";
+import type { IStoryQuestionReader } from "../../../domain/storyQuestions/repositories";
 import { reconstructUser } from "../../../domain/users/factories";
 import { reconstructArtist } from "../../../domain/artists/factories";
 
@@ -50,6 +51,10 @@ const createProfileImageStorageStub = (): IProfileImageStorage => ({
   upload: unusedInAuthorizationTests,
 });
 
+const createStoryQuestionReaderStub = (): IStoryQuestionReader => ({
+  findAll: async () => [],
+});
+
 const createRegistrationCapabilitiesStub = (): RegistrationCapabilities => ({
   users: {
     findBySub: async () => null,
@@ -83,6 +88,12 @@ export const createCapabilityDepsStub = (
     buildPublicReadCapabilities: () => ({
       artistProfiles: createArtistProfileReaderStub(),
       linkTypes: { findAll: async () => [] },
+      storyQuestions: createStoryQuestionReaderStub(),
+      presentationPatterns: { findAll: async () => [] },
+    }),
+
+    buildPublicWriteCapabilities: () => ({
+      analyticsEvents: { record: unusedInAuthorizationTests },
     }),
 
     buildArtistReadCapabilities: (actor) => ({
@@ -105,6 +116,7 @@ export const createCapabilityDepsStub = (
       return work({
         actor,
         ...createRegistrationCapabilitiesStub(),
+        artistHandleHistories: { record: unusedInAuthorizationTests },
         artistProfiles: {
           ...createArtistProfileReaderStub(),
           ...createArtistProfileWriterStub(),

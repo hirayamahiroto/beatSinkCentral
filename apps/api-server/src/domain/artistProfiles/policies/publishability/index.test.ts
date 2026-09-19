@@ -1,10 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
-  collectMissingPublishFields,
-  createProfileNotPublishableError,
+  assessPublishability,
   enforcePublishInvariant,
   ensurePublishable,
-  isProfileNotPublishableError,
 } from "./index";
 import { reconstructArtistProfile } from "../../factories";
 
@@ -14,26 +12,47 @@ const fullContent = {
   published: false,
   name: "Taro",
   imageUrl: "https://example.com/a.png",
-  story: "私の歩み",
+  chapters: [{ questionCode: "beginning", body: "私の歩み" }],
   genres: ["bass"],
-  links: [{ type: "x", url: "https://x.com/taro" }],
+  links: [{ linkTypeCode: "x", url: "https://x.com/taro" }],
 };
 
-describe("collectMissingPublishFields", () => {
+describe("assessPublishability の missingFields", () => {
   it("最小核が揃っていれば空配列を返す", () => {
     const profile = reconstructArtistProfile(fullContent);
 
-    expect(collectMissingPublishFields(profile)).toEqual([]);
+    expect(assessPublishability(profile).missingFields).toEqual([]);
   });
 
   it("不足しているフィールド名を列挙する", () => {
     const profile = reconstructArtistProfile({
       ...fullContent,
-      story: "",
+      chapters: [],
       links: [],
     });
 
-    expect(collectMissingPublishFields(profile)).toEqual(["story", "links"]);
+    expect(assessPublishability(profile).missingFields).toEqual([
+      "story",
+      "links",
+    ]);
+  });
+
+  it("始まりの章が無く転機・コンセプトのみでは不足扱いになる", () => {
+    const profile = reconstructArtistProfile({
+      ...fullContent,
+      chapters: [{ questionCode: "turning_point", body: "転機" }],
+    });
+
+    expect(assessPublishability(profile).missingFields).toEqual(["story"]);
+  });
+
+  it("転機・コンセプトが無くても始まりの章があれば不足扱いにならない", () => {
+    const profile = reconstructArtistProfile({
+      ...fullContent,
+      chapters: [{ questionCode: "beginning", body: "私の歩み" }],
+    });
+
+    expect(assessPublishability(profile).missingFields).toEqual([]);
   });
 
   it("タグライン・活動情報は公開ゲート対象外", () => {
@@ -43,7 +62,26 @@ describe("collectMissingPublishFields", () => {
       activityInfo: undefined,
     });
 
-    expect(collectMissingPublishFields(profile)).toEqual([]);
+    expect(assessPublishability(profile).missingFields).toEqual([]);
+  });
+});
+
+describe("assessPublishability", () => {
+  it("最小核が揃っていれば ok:true と空の missingFields を返す", () => {
+    expect(
+      assessPublishability(reconstructArtistProfile(fullContent)),
+    ).toStrictEqual({
+      ok: true,
+      missingFields: [],
+    });
+  });
+
+  it("不足があれば ok:false と不足フィールドを返す", () => {
+    expect(
+      assessPublishability(
+        reconstructArtistProfile({ ...fullContent, chapters: [], links: [] }),
+      ),
+    ).toStrictEqual({ ok: false, missingFields: ["story", "links"] });
   });
 });
 
@@ -56,38 +94,14 @@ describe("ensurePublishable", () => {
 
   it("不足があれば不足フィールドを載せた err を返す", () => {
     const result = ensurePublishable(
-      reconstructArtistProfile({ ...fullContent, story: "", links: [] }),
+      reconstructArtistProfile({ ...fullContent, chapters: [], links: [] }),
     );
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(isProfileNotPublishableError(result.error)).toBe(true);
+      expect(result.error.type).toBe("ProfileNotPublishableError");
       expect(result.error.missingFields).toEqual(["story", "links"]);
     }
-  });
-});
-
-describe("ProfileNotPublishableError", () => {
-  it("不足フィールドを保持した Error を生成する", () => {
-    const error = createProfileNotPublishableError(["story", "links"]);
-
-    expect(error).toBeInstanceOf(Error);
-    expect(error.type).toBe("ProfileNotPublishableError");
-    expect(error.missingFields).toEqual(["story", "links"]);
-  });
-
-  it("生成したエラーを型ガードで判別できる", () => {
-    expect(
-      isProfileNotPublishableError(createProfileNotPublishableError([])),
-    ).toBe(true);
-  });
-
-  it("別のエラーや非 Error は判別しない", () => {
-    expect(isProfileNotPublishableError(new Error("boom"))).toBe(false);
-    expect(
-      isProfileNotPublishableError({ type: "ProfileNotPublishableError" }),
-    ).toBe(false);
-    expect(isProfileNotPublishableError(null)).toBe(false);
   });
 });
 

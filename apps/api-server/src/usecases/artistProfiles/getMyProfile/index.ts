@@ -1,7 +1,7 @@
 import type { ArtistProfileView } from "../../../domain/artistProfiles/entities";
 import {
-  collectMissingPublishFields,
-  type PublishRequiredField,
+  assessPublishability,
+  type Publishability,
 } from "../../../domain/artistProfiles/policies/publishability";
 import type { ArtistReadCapabilities } from "../../capabilities";
 import { type Result, ok } from "../../../utils/result";
@@ -9,7 +9,7 @@ import { type Result, ok } from "../../../utils/result";
 export type GetMyProfileOutput = {
   handle: string;
   profile: ArtistProfileView | null;
-  missingPublishFields: PublishRequiredField[] | null;
+  publishability: Publishability | null;
 };
 
 type GetMyProfileCaps = Pick<
@@ -27,6 +27,6 @@ export const getMyProfile = async (
   return ok({
     handle: caps.actor.artist.getHandle(),
     profile: profile ? profile.toView() : null,
-    missingPublishFields: profile ? collectMissingPublishFields(profile) : null,
+    publishability: profile ? assessPublishability(profile) : null,
   });
 };

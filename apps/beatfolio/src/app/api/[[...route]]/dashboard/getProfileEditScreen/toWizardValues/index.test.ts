@@ -2,27 +2,37 @@ import { describe, it, expect } from "vitest";
 import { toWizardValues, type ProfileView } from "./index";
 
 const publishedProfile: ProfileView = {
-  name: "SAKU",
-  tagline: "口ひとつで、フロアを揺らす。",
-  imageUrl: "https://example.com/saku.jpg",
-  story: "始めたきっかけ。",
-  activityInfo: "拠点: 東京 / 形態: ソロ / 所属: 独立",
-  genres: ["Beatbox"],
+  attributes: {
+    name: "SAKU",
+    imageUrl: "https://example.com/saku.jpg",
+    tagline: "口ひとつで、フロアを揺らす。",
+    genres: ["Beatbox"],
+    activityInfo: "拠点: 東京 / 形態: ソロ / 所属: 独立",
+  },
+  story: {
+    chapters: [
+      { key: "beginning", body: "始めたきっかけ。" },
+      { key: "turning_point", body: "転機。" },
+    ],
+  },
   links: [
-    { type: "youtube", url: "https://youtube.com/@saku", label: null },
-    { type: "x", url: "https://x.com/saku", label: null },
+    { linkTypeCode: "youtube", url: "https://youtube.com/@saku" },
+    { linkTypeCode: "x", url: "https://x.com/saku" },
   ],
   published: true,
 };
 
 describe("toWizardValues", () => {
-  it("属性・story・activityInfo・リンクをウィザードの初期値へ変換する", () => {
+  it("属性・Story章・activityInfo・リンクをウィザードの初期値へ変換する", () => {
     expect(toWizardValues(publishedProfile)).toStrictEqual({
       name: "SAKU",
       imageUrl: "https://example.com/saku.jpg",
       tagline: "口ひとつで、フロアを揺らす。",
       genres: ["Beatbox"],
-      storyOrigin: "始めたきっかけ。",
+      chapters: {
+        beginning: "始めたきっかけ。",
+        turning_point: "転機。",
+      },
       location: "東京",
       activityForm: "solo",
       affiliation: "独立",
@@ -33,26 +43,26 @@ describe("toWizardValues", () => {
     });
   });
 
-  it("ウィザードが扱わない label は落とす", () => {
+  it("リンク種別コードはウィザードの type へ写す", () => {
     expect(
       toWizardValues({
         ...publishedProfile,
-        links: [
-          { type: "other", url: "https://example.com/me", label: "個人HP" },
-        ],
+        links: [{ linkTypeCode: "other", url: "https://example.com/me" }],
       }).links,
     ).toStrictEqual([{ type: "other", url: "https://example.com/me" }]);
   });
 
-  it("null フィールドはキーを含めず、ウィザードの既定値に委ねる", () => {
+  it("Story章が無ければ chapters キーを含めない", () => {
     expect(
       toWizardValues({
-        name: null,
-        tagline: null,
-        imageUrl: null,
-        story: null,
-        activityInfo: null,
-        genres: [],
+        attributes: {
+          name: null,
+          imageUrl: null,
+          tagline: null,
+          genres: [],
+          activityInfo: null,
+        },
+        story: { chapters: [] },
         links: [],
         published: false,
       }),

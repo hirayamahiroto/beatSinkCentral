@@ -344,6 +344,26 @@ logger.info("login", { userId, email: maskEmail(email) });
 - 新規関数を作る前に、既存関数を拡張できないか検討する
 - 重複ロジックがある場合、共通化の判断基準を明確にする（型の違い、ドメインの違いなど）
 
+### 6-1. 呼び手のない公開面を足さない 🟡 推奨
+
+- 新規の `export`・Entity の公開振る舞い・リポジトリのメソッド・権能のフィールド・drizzle-zod の `*SelectSchema` / `*InsertSchema`・index は、**その PR 内の本番コードに呼び手があるもの**だけを足す
+- 判定は機械検証に任せる。`npm run knip`（未参照の `export`・ファイル・依存）、`npm run knip:production`（テストからしか参照されない `export`）、api-server の lint（`local/entity-behavior-has-caller`: Entity の振る舞い）が 1 件でも報告したら削る。テストからしか呼ばれない公開 API は「テストのための API」であり、意図が読めない（`docs/architecture/server/architecture.md`「呼び手のない公開面は機械的に検出する」）
+- 既存の類似実装を構造の参考にしてよいが、その公開面を一式写さない。将来の要件で必要になった時点で、その PR で足す
+
+```typescript
+// NG: 先例の Entity に倣って、呼び手のない getter を一式並べる
+export type ArtistHandleHistory = {
+  getId: () => string; // 本番コードで未使用
+  getOldHandle: () => string; // 本番コードで未使用
+  toPersistence: () => ArtistHandleHistoryPersistenceData;
+};
+
+// OK: この PR で必要な振る舞いだけを公開する（Reader を足す PR で getter を足す）
+export type ArtistHandleHistory = {
+  toPersistence: () => ArtistHandleHistoryPersistenceData;
+};
+```
+
 ---
 
 ## 7. ライブラリAPIの優先使用（生SQL/低レベル記述の回避） 🟡 推奨
@@ -533,6 +553,48 @@ function canDeleteAsset(inaccessibleCount: number): boolean {
 | DB参照・更新が必要                             | データ操作層       | CRUD、重複チェック、集計クエリ       |
 | 認証・認可・キャッシュに絡む                   | エントリポイント層 | Server Action、APIハンドラ           |
 | 上記の複数entityにまたがるオーケストレーション | feature層          | 複合操作、ワークフロー               |
+
+### 9-3. packages/ui コンポーネントのローカル状態と副作用の切り分け
+
+`packages/ui` の Organism/Molecule/Atom は「表示にとじた一時的な状態」と「外部に効果が及ぶ副作用」を区別する。判断基準は **その state/effect を消したとき、表示が変わるだけか、外部への通知（analytics送信・API呼び出し・ブラウザAPI経由の検知）が欠落するか**。
+
+- **コンポーネント内部の `useState` で保持してよい**: 開閉・編集モード・入力ドラフトなど、消えても表示が変わるだけで業務上の意味を持たない一時的な状態（例: `InlineEditableField` の `isEditing`/`draft`）
+- **呼び出し側（ClientAdapter）の hook に切り出す**: ブラウザAPI依存の検知（`IntersectionObserver`/`ResizeObserver`等）、analytics送信やAPI呼び出しにつながる副作用、Next.js依存（`useRouter`等）。詳細は `docs/architecture/frontend/ui/component-design.md`「Hooksと`use client`境界の責務分離」
+
+```typescript
+// OK: 表示にとじた一時的な状態はコンポーネント内部で保持してよい
+// (InlineEditableField) 消えても「編集モードの見た目」が変わるだけで、業務上の意味は持たない
+const [isEditing, setIsEditing] = useState(false);
+const [draft, setDraft] = useState(value);
+// 実際の保存だけを onSave（呼び出し側の関数）に委譲する
+const save = async () => {
+  const ok = await onSave(draft.trim());
+  if (ok) setIsEditing(false);
+};
+
+// NG: ブラウザAPI依存の検知・analytics送信につながる副作用をコンポーネント内部に持つ
+// 消えると「章末到達の計測」自体が欠落する（表示だけの問題では済まない）
+useEffect(() => {
+  const observer = new IntersectionObserver((entries) => {
+    /* ... */ onStoryScroll(depth);
+  });
+  // ...
+}, []);
+
+// OK: 検知ロジックは ClientAdapter の hook へ切り出し、Organism は
+// ref 登録用の関数を props で受け取って呼ぶだけにする
+// packages/ui 側（Organism）
+<div ref={(el) => onChapterEndRef(index, el)} />;
+
+// apps/ 側: hooks/useStoryScrollTracking/index.ts に
+// IntersectionObserver・analytics送信の副作用を集約する
+```
+
+### チェックポイント
+
+- コンポーネントに追加した `useState`/`useEffect` は「消えたら表示が変わるだけ」か「消えたら外部への通知・計測・呼び出しが欠落する」かを確認する
+- 後者（ブラウザAPI依存の検知・analytics送信・API呼び出し・Next.js依存）が Organism/Molecule/Atom に直書きされていないか
+- 副作用を ClientAdapter の hook へ切り出す際、Organism 側は ref 登録関数など「DOM要素を橋渡しするためのprops」だけを受け取る形になっているか
 
 ---
 
@@ -747,6 +809,50 @@ type Props = { linkTypeOptions: { code: string; label: string; iconKey: string }
 
 ---
 
+## 15. テストが request/response・引数の変更を検知できる状態か 🔴 ブロッキング
+
+- request/response のフィールドが変わった（型変更・追加・削除・リネーム）とき、そのフィールドを直接 assert しているテストケースが存在するか確認する。**「`index.test.ts` が存在する」だけでは不十分**（差分カバレッジで見る）
+- 成功パスのテストは、response body の主要フィールド（少なくとも契約上重要なもの）を assert する。status code だけで済ませない
+- mock/spy への呼び出し引数を検証する際、`expect.objectContaining({...})` で一部フィールドだけ見る書き方は、見ていないフィールド（特に同じ型が並ぶもの: `anonId`/`sessionId`、`createdAt`/`updatedAt` 等）の取り違えを検知できない。フィールドを入れ替えても検知できないなら不十分
+- `tsc --noEmit` / lint / 既存テスト green は「壊れていないか」しか検知できず、「新しい振る舞い・変更されたフィールドがテストで担保されているか」は別軸で確認しないと保証されない
+
+```typescript
+// NG: story → chapters に変更されたのに、既存テストがどちらにも触れていないため
+// 新旧どちらの契約でも green で通ってしまう（変更を検知できない）
+it("保存する", async () => {
+  const res = await request("artist-1", { name: "Taro" });
+  expect(res.status).toBe(200);
+  expect(body.profile.name).toBe("Taro"); // chapters は一度も見ていない
+});
+
+// NG: objectContaining で一部フィールドだけ確認 → anonId/sessionId を
+// 入れ替えて代入するバグがあっても気づけない（どちらも string 型なので型検査もすり抜ける）
+expect(record).toHaveBeenCalledWith(
+  expect.objectContaining({ eventType: "profile_view", artistId: "artist-1" }),
+);
+
+// OK: 変更されたフィールドを含めて完全一致で検証する
+expect(record).toHaveBeenCalledWith({
+  id: expect.any(String),
+  eventType: "profile_view",
+  artistId: "artist-1",
+  anonId: "anon-1",
+  sessionId: "session-1",
+  path: "/players/handle",
+  referrer: null,
+  props: null,
+  occurredAt: expect.any(Date),
+});
+```
+
+### チェックポイント
+
+- スキーマ・型定義にフィールドの追加/変更/削除/リネームが入ったとき、既存テストがそれを検知できるか（そのフィールドを送信/assert しているか）を都度確認する
+- 成功ケースのテストが response body・mock 呼び出し引数を `objectContaining` 等の部分一致だけで済ませていないか
+- 同じ型が並ぶフィールド（`anonId`/`sessionId` 等）の取り違えを、テストが検知できる構造になっているか
+
+---
+
 ## チェック実施タイミング
 
 - 新しい関数やAPIエンドポイントを実装したとき（特に 🔴: スコープ条件・権限露出・トランザクション・型安全）
@@ -756,7 +862,9 @@ type Props = { linkTypeOptions: { code: string; label: string; iconKey: string }
 - 複数の書き込みを行うとき（トランザクション境界）
 - 既存コードに似た処理を新規に書こうとしたとき
 - hookやstateの初期値を設定するとき
+- `packages/ui` のコンポーネントに `useState`/`useEffect` を書こうとしたとき（表示にとじた一時状態か、外部に効果が及ぶ副作用かを見分ける）
 - コメントを書こうとしたとき（言い換えでないか／外部制約・業務理由か）
 - `?? 既定値` を書こうとしたとき（その値は必須か任意か）
 - 種別・媒体・分類を扱うとき（マスタ参照にできないか／種別を保存しているか・推定で復元していないか）
 - UI に表示語彙（ラベル・選択肢・アイコン）を出すとき（DB 由来か／フロントにハードコードしていないか）
+- request/response・引数のフィールドを追加/変更/削除/リネームしたとき（既存テストがその変更を検知できるか）

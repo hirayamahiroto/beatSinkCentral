@@ -3,6 +3,7 @@ import type { RequestContextEnv } from "../../../../../middlewares/requestContex
 import { resolvePublishRequirementLabels } from "../../shared/resolvePublishRequirementLabels";
 import { toUpstreamError } from "../../shared/toUpstreamError";
 import { readUpstreamJson } from "../../shared/readUpstreamJson";
+import { resolvePresentationPattern } from "../../shared/resolvePresentationPattern";
 
 const app = new Hono<RequestContextEnv>().get("/", async (c) => {
   const apiClient = c.get("apiClient");
@@ -20,15 +21,24 @@ const app = new Hono<RequestContextEnv>().get("/", async (c) => {
     return c.json({ registered: true as const, artist: null });
   }
 
-  const profileRes = await apiClient.api.artists[":artistId"].profile.$get({
-    param: { artistId: me.artist.artistId },
-  });
+  const [profileRes, presentationPatternsRes] = await Promise.all([
+    apiClient.api.artists[":artistId"].profile.$get({
+      param: { artistId: me.artist.artistId },
+    }),
+    apiClient.api["presentation-patterns"].$get(),
+  ]);
 
   if (!profileRes.ok) throw await toUpstreamError(profileRes);
+  if (!presentationPatternsRes.ok) {
+    throw await toUpstreamError(presentationPatternsRes);
+  }
 
-  const { profile, missingPublishFields } = await readUpstreamJson(profileRes);
+  const { profile, publishability } = await readUpstreamJson(profileRes);
+  const { presentationPatterns } = await readUpstreamJson(
+    presentationPatternsRes,
+  );
 
-  if (profile === null || missingPublishFields === null) {
+  if (profile === null || publishability === null) {
     return c.json({
       registered: true as const,
       artist: { handle: me.artist.handle, profile: null },
@@ -41,8 +51,15 @@ const app = new Hono<RequestContextEnv>().get("/", async (c) => {
       handle: me.artist.handle,
       profile: {
         published: profile.published,
-        missingPublishRequirements:
-          resolvePublishRequirementLabels(missingPublishFields),
+        missingPublishRequirements: resolvePublishRequirementLabels(
+          publishability.missingFields,
+        ),
+        presentation: {
+          patternCode: resolvePresentationPattern(
+            profile.presentation.patternCode,
+          ),
+          options: presentationPatterns,
+        },
       },
     },
   });

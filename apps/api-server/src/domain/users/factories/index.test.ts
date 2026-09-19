@@ -11,7 +11,7 @@ describe("User Factory", () => {
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value.getSub()).toBe("auth0|123456789");
+        expect(result.value.toPersistence().subId).toBe("auth0|123456789");
         expect(result.value.getEmail()).toBe("test@example.com");
         expect(result.value.getId()).toEqual(expect.any(String));
       }

@@ -2,14 +2,20 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { WizardValues } from "@ui/design-system/components/organisms/ArtistProfileWizard";
 import { saveMyProfile } from "../../../../../../../fetchers/artists/saveMyProfile";
+import type { SaveStepProgress } from "../../../../../../../libs/saveProfileProgress";
 import { toSaveProfileRequest } from "../../toSaveProfileRequest";
 
 const DASHBOARD_PATH = "/dashboard";
 
+export type SaveProfileError = {
+  message: string;
+  progress: SaveStepProgress | null;
+};
+
 export const useSaveProfile = () => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<SaveProfileError | null>(null);
 
   const save = async (values: WizardValues): Promise<boolean> => {
     setIsLoading(true);
@@ -20,7 +26,10 @@ export const useSaveProfile = () => {
     setIsLoading(false);
 
     if (!result.ok) {
-      setError(result.error.message);
+      setError({
+        message: result.error.message,
+        progress: result.error.progress,
+      });
       return false;
     }
 

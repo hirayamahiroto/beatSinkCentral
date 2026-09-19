@@ -64,6 +64,10 @@ describe("POST /artists/me", () => {
       json: { handle: "saku_new" },
     });
     expect(res.status).toBe(200);
+    expect(await res.json()).toStrictEqual({
+      artistId: "artist-1",
+      handle: "saku_new",
+    });
   });
 
   it("handle が空なら api-server へ渡さず 400 を返す", async () => {

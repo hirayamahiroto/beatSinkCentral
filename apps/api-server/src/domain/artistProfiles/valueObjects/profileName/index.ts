@@ -10,9 +10,8 @@ export type InvalidProfileNameFormatError = Error & {
   readonly type: "InvalidProfileNameFormatError";
 };
 
-export const createInvalidProfileNameFormatError =
-  (): InvalidProfileNameFormatError =>
-    createTypedError("InvalidProfileNameFormatError");
+const createInvalidProfileNameFormatError = (): InvalidProfileNameFormatError =>
+  createTypedError("InvalidProfileNameFormatError");
 
 const profileNameSchema = z
   .string()

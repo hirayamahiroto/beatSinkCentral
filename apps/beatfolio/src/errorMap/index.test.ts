@@ -9,6 +9,7 @@ import { createInvalidRequestFormatError } from "../app/api/[[...route]]/errors/
 import { createMyUserNotFoundError } from "../app/api/[[...route]]/errors/myUserNotFound";
 import { createMyArtistNotFoundError } from "../app/api/[[...route]]/errors/myArtistNotFound";
 import { createPlayerNotFoundError } from "../app/api/[[...route]]/errors/playerNotFound";
+import { createPartialSaveFailedError } from "../app/api/[[...route]]/errors/partialSaveFailed";
 
 const createApp = (thrown: unknown) => {
   const app = new Hono();
@@ -142,6 +143,54 @@ describe("handleBffError", () => {
       expect(await res.json()).toStrictEqual({ error, code });
     },
   );
+
+  it("部分保存の失敗は上流エラーのステータス・ボディを保ち、保存済みと失敗ステップを添える", async () => {
+    const res = await createApp(
+      createPartialSaveFailedError({
+        saved: ["attributes", "chapter:beginning"],
+        failedAt: "links",
+        upstream: createUpstreamRejectedError({
+          status: 422,
+          body: {
+            error: "Invalid snsUrl format",
+            code: "InvalidSnsUrlFormatError",
+          },
+        }),
+      }),
+    ).request("/");
+
+    expect(res.status).toBe(422);
+    expect(await res.json()).toStrictEqual({
+      error: "Invalid snsUrl format",
+      code: "InvalidSnsUrlFormatError",
+      saved: ["attributes", "chapter:beginning"],
+      failedAt: "links",
+    });
+  });
+
+  it("部分保存の失敗が上流 5xx なら 502 に畳み、ログレベルも上流に合わせて warn にし、上流を cause に残す", async () => {
+    const upstream = createUpstreamServerError(503);
+    const res = await createApp(
+      createPartialSaveFailedError({
+        saved: ["attributes"],
+        failedAt: "chapter:beginning",
+        upstream,
+      }),
+    ).request("/");
+
+    expect(res.status).toBe(502);
+    expect(await res.json()).toStrictEqual({
+      error: "Upstream request failed",
+      code: "UpstreamServerError",
+      saved: ["attributes"],
+      failedAt: "chapter:beginning",
+    });
+    expect(console.warn).toHaveBeenCalledWith("[BffError]", {
+      type: "PartialSaveFailedError",
+      status: 502,
+      cause: upstream,
+    });
+  });
 
   it("未知のエラーは 500 にし、内部情報を応答に含めない", async () => {
     const res = await createApp(

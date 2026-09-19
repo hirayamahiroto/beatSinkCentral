@@ -66,6 +66,7 @@ describe("POST /artists/me/profile/publish", () => {
       json: { published: true },
     });
     expect(res.status).toBe(200);
+    expect(await res.json()).toStrictEqual({ published: true });
   });
 
   it("published が boolean でなければ api-server へ渡さず 400 を返す", async () => {

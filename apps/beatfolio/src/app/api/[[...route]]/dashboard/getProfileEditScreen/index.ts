@@ -8,12 +8,14 @@ import { toWizardValues } from "./toWizardValues";
 const app = new Hono<RequestContextEnv>().get("/", async (c) => {
   const apiClient = c.get("apiClient");
 
-  const [meRes, linkTypesRes] = await Promise.all([
+  const [meRes, linkTypesRes, storyQuestionsRes] = await Promise.all([
     apiClient.api.users.me.$get(),
     apiClient.api["link-types"].$get(),
+    apiClient.api["story-questions"].$get(),
   ]);
   if (!meRes.ok) throw await toUpstreamError(meRes);
   if (!linkTypesRes.ok) throw await toUpstreamError(linkTypesRes);
+  if (!storyQuestionsRes.ok) throw await toUpstreamError(storyQuestionsRes);
 
   const me = await readUpstreamJson(meRes);
 
@@ -29,11 +31,13 @@ const app = new Hono<RequestContextEnv>().get("/", async (c) => {
 
   const { profile } = await readUpstreamJson(profileRes);
   const { linkTypes } = await readUpstreamJson(linkTypesRes);
+  const { storyQuestions } = await readUpstreamJson(storyQuestionsRes);
 
   return c.json({
     registered: true as const,
     email: me.email,
     linkTypeOptions: linkTypes,
+    storyQuestions,
     defaultValues: profile ? toWizardValues(profile) : null,
   });
 });

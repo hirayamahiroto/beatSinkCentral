@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   buildPublicReadCapabilities,
+  buildPublicWriteCapabilities,
   buildArtistReadCapabilities,
   buildRegistrationCapabilities,
   buildUserWriteCapabilities,
@@ -12,7 +13,11 @@ import {
   createArtistProfileReader,
   createArtistProfileWriter,
 } from "../../repositories/artistProfileRepository";
+import { createArtistHandleHistoryWriter } from "../../repositories/artistHandleHistoryRepository";
 import { createLinkTypeReader } from "../../repositories/linkTypeRepository";
+import { createAnalyticsEventWriter } from "../../repositories/analyticsEventRepository";
+import { createStoryQuestionReader } from "../../repositories/storyQuestionRepository";
+import { createPresentationPatternReader } from "../../repositories/presentationPatternRepository";
 import { reconstructUser } from "../../../domain/users/factories";
 import { reconstructArtist } from "../../../domain/artists/factories";
 
@@ -44,8 +49,24 @@ vi.mock("../../repositories/artistProfileRepository", () => ({
   })),
 }));
 
+vi.mock("../../repositories/artistHandleHistoryRepository", () => ({
+  createArtistHandleHistoryWriter: vi.fn(() => ({ record: vi.fn() })),
+}));
+
 vi.mock("../../repositories/linkTypeRepository", () => ({
   createLinkTypeReader: vi.fn(() => ({ findAll: vi.fn() })),
+}));
+
+vi.mock("../../repositories/analyticsEventRepository", () => ({
+  createAnalyticsEventWriter: vi.fn(() => ({ record: vi.fn() })),
+}));
+
+vi.mock("../../repositories/storyQuestionRepository", () => ({
+  createStoryQuestionReader: vi.fn(() => ({ findAll: vi.fn() })),
+}));
+
+vi.mock("../../repositories/presentationPatternRepository", () => ({
+  createPresentationPatternReader: vi.fn(() => ({ findAll: vi.fn() })),
 }));
 
 const executor = { marker: "executor" } as never;
@@ -76,10 +97,27 @@ describe("buildPublicReadCapabilities", () => {
     expect(Object.keys(caps).sort()).toStrictEqual([
       "artistProfiles",
       "linkTypes",
+      "presentationPatterns",
+      "storyQuestions",
     ]);
     expect(createArtistProfileReader).toHaveBeenCalledWith(executor);
     expect(createLinkTypeReader).toHaveBeenCalledWith(executor);
+    expect(createStoryQuestionReader).toHaveBeenCalledWith(executor);
+    expect(createPresentationPatternReader).toHaveBeenCalledWith(executor);
     expect(createArtistProfileWriter).not.toHaveBeenCalled();
+  });
+});
+
+describe("buildPublicWriteCapabilities", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("analyticsEventsのWriterだけを渡した executor で組み立てる", () => {
+    const caps = buildPublicWriteCapabilities(executor);
+
+    expect(Object.keys(caps).sort()).toStrictEqual(["analyticsEvents"]);
+    expect(createAnalyticsEventWriter).toHaveBeenCalledWith(executor);
   });
 });
 
@@ -95,6 +133,7 @@ describe("buildArtistReadCapabilities", () => {
     expect(caps.actor).toBe(actor);
     expect(createArtistProfileReader).toHaveBeenCalledWith(executor);
     expect(createArtistProfileWriter).not.toHaveBeenCalled();
+    expect(createStoryQuestionReader).not.toHaveBeenCalled();
   });
 });
 
@@ -124,12 +163,14 @@ describe("buildArtistWriteCapabilities", () => {
 
     expect(Object.keys(caps).sort()).toStrictEqual([
       "actor",
+      "artistHandleHistories",
       "artistProfiles",
       "artists",
       "users",
     ]);
     expect(caps.actor).toBe(actor);
     expect(createUserReader).toHaveBeenCalledWith(executor);
+    expect(createArtistHandleHistoryWriter).toHaveBeenCalledWith(executor);
     expect(createArtistProfileWriter).toHaveBeenCalledWith(executor);
   });
 });

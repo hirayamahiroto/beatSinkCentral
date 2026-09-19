@@ -10,6 +10,7 @@ import onboarding from "./onboarding";
 import dashboard from "./dashboard";
 import users from "./users";
 import artists from "./artists";
+import events from "./events";
 import { handleBffError } from "../../../errorMap";
 
 export type Env = RequestContextEnv;
@@ -23,6 +24,7 @@ const app = new Hono<Env>()
   .route("/dashboard", dashboard)
   .route("/users", users)
   .route("/artists", artists)
+  .route("/events", events)
   .onError(handleBffError);
 
 export type AppType = typeof app;

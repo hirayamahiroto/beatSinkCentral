@@ -33,7 +33,7 @@ describe("updateMyEmail", () => {
     caps.users.updateEmail.mockResolvedValue(
       reconstructUser({
         id: user.getId(),
-        subId: user.getSub(),
+        subId: user.toPersistence().subId,
         email: "new@example.com",
       }),
     );

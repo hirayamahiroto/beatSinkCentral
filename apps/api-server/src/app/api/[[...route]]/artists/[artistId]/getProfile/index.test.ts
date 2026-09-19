@@ -57,13 +57,15 @@ describe("GET /artists/:artistId/profile", () => {
     mockResolveActorState.mockResolvedValue({ status: "complete", actor });
   });
 
-  it("Actor と一致する artistId ならプロフィールを返す", async () => {
+  it("Actor と一致する artistId なら集約の構造と公開可能性を返す", async () => {
     mockArtistProfiles.findByArtistId.mockResolvedValue(
       reconstructArtistProfile({
         id: "p1",
         artistId: "artist-1",
         published: false,
         name: "Taro",
+        chapters: [{ questionCode: "beginning", body: "私の歩み" }],
+        links: [{ linkTypeCode: "x", url: "https://x.com/taro" }],
       }),
     );
 
@@ -71,14 +73,37 @@ describe("GET /artists/:artistId/profile", () => {
     const body = await res.json();
 
     expect(res.status).toBe(200);
-    expect(body.profile.name).toBe("Taro");
-    expect(body.missingPublishFields).toStrictEqual([
-      "imageUrl",
-      "story",
-      "genres",
-      "links",
-    ]);
+    expect(body).toStrictEqual({
+      handle: "beatboxer_taro",
+      profile: {
+        attributes: {
+          name: "Taro",
+          imageUrl: null,
+          tagline: null,
+          genres: [],
+          activityInfo: null,
+        },
+        story: { chapters: [{ key: "beginning", body: "私の歩み" }] },
+        links: [{ linkTypeCode: "x", url: "https://x.com/taro" }],
+        presentation: { patternCode: null },
+        published: false,
+      },
+      publishability: { ok: false, missingFields: ["imageUrl", "genres"] },
+    });
     expect(mockArtistProfiles.findByArtistId).toHaveBeenCalledWith("artist-1");
+  });
+
+  it("プロフィール未作成なら profile と publishability を null で返す", async () => {
+    mockArtistProfiles.findByArtistId.mockResolvedValue(null);
+
+    const res = await request("artist-1");
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toStrictEqual({
+      handle: "beatboxer_taro",
+      profile: null,
+      publishability: null,
+    });
   });
 
   it("Actor と一致しない artistId は 404 を返し、プロフィールを読まない", async () => {

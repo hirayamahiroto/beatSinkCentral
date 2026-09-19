@@ -1,3 +1,4 @@
+import React from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { AudienceArtistProfile } from "./index";
 
@@ -14,6 +15,8 @@ const meta = {
           "オファーの有無でページの状態が切り替わる（あり: 固定バー＋チケット CTA / なし: Story 主役で軽い応援が主 CTA）。" +
           "任意項目が空のときは区画ごと描画しない。" +
           "Story の問い・日付表示・共演者のリンク先は BFF で解決済みの値を受け取る前提で、変換ロジックは持たない。" +
+          "Story の展開状態・章末 DOM 参照・メール購読フォームの状態はすべて Controlled（props で受け取る）。" +
+          "状態の保持と計測の送信は利用側（ClientAdapter）が担う。" +
           "本人の言葉（Story）と運営の言葉（翻訳）は区画を分けて表示する。",
       },
     },
@@ -61,25 +64,52 @@ const supportLinks = [
   { label: "X", url: "https://x.com/saku" },
 ];
 
-const baseArgs = {
+type InteractiveArgs = React.ComponentProps<typeof AudienceArtistProfile>;
+
+const Interactive = (args: InteractiveArgs) => {
+  const [storyExpanded, setStoryExpanded] = React.useState(false);
+  const [email, setEmail] = React.useState("");
+  const [subscribed, setSubscribed] = React.useState(false);
+
+  return (
+    <AudienceArtistProfile
+      {...args}
+      storyExpanded={storyExpanded}
+      onExpandStory={() => setStoryExpanded(true)}
+      onChapterEndRef={() => {}}
+      email={email}
+      onEmailChange={setEmail}
+      subscribed={subscribed}
+      onSubmitSubscription={() => setSubscribed(true)}
+    />
+  );
+};
+
+const baseArgs: InteractiveArgs = {
   name: "SAKU",
   tagline: "口ひとつで、フロアを揺らす。",
   imageUrl: "/image2.jpeg",
   genres: ["Beatbox", "Bass"],
   storyChapters,
+  storyExpanded: false,
+  onExpandStory: () => {},
+  onChapterEndRef: () => {},
   translation:
     "SAKU の凄さは「低音の説得力」です。声だけとは思えない重さのベースを、曲の展開に合わせて自在に出し入れします。目を閉じて聴くとバンドがいるようにしか聞こえない、その種明かしをライブで確かめてほしいアーティストです。",
   listeningPoint,
   offer,
   supportLinks,
-  onStoryExpand: () => {},
   onOfferClick: () => {},
   onSupportClick: () => {},
-  onNotifySubscribe: () => {},
+  email: "",
+  onEmailChange: () => {},
+  subscribed: false,
+  onSubmitSubscription: () => {},
 };
 
 export const OfferActive: Story = {
   args: baseArgs,
+  render: (args) => <Interactive {...args} />,
   parameters: {
     docs: {
       description: {
@@ -95,6 +125,7 @@ export const NoOffer: Story = {
     ...baseArgs,
     offer: null,
   },
+  render: (args) => <Interactive {...args} />,
   parameters: {
     docs: {
       description: {
@@ -110,6 +141,7 @@ export const WithoutTranslation: Story = {
     ...baseArgs,
     translation: null,
   },
+  render: (args) => <Interactive {...args} />,
   parameters: {
     docs: {
       description: {
@@ -127,15 +159,21 @@ export const MinimumFields: Story = {
     imageUrl: null,
     genres: [],
     storyChapters: [storyChapters[0]],
+    storyExpanded: false,
+    onExpandStory: () => {},
+    onChapterEndRef: () => {},
     translation: null,
     listeningPoint: null,
     offer: null,
     supportLinks,
-    onStoryExpand: () => {},
     onOfferClick: () => {},
     onSupportClick: () => {},
-    onNotifySubscribe: () => {},
+    email: "",
+    onEmailChange: () => {},
+    subscribed: false,
+    onSubmitSubscription: () => {},
   },
+  render: (args) => <Interactive {...args} />,
   parameters: {
     docs: {
       description: {
