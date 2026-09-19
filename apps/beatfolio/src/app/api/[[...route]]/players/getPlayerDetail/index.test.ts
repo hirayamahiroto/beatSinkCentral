@@ -100,8 +100,12 @@ describe("GET /players/:handle", () => {
       listeningPoint: null,
       offer: null,
       supportLinks: [
-        { url: "https://youtube.com/@saku", label: "YouTube" },
-        { url: "https://example.com/me", label: "その他" },
+        {
+          platform: "youtube",
+          url: "https://youtube.com/@saku",
+          label: "YouTube",
+        },
+        { platform: "other", url: "https://example.com/me", label: "その他" },
       ],
     });
   });

@@ -1,8 +1,8 @@
+import type { ProfileViewFrom } from "./profileViewFrom";
+
 type AnalyticsEventEnvelope = {
   artistId: string | null;
 };
-
-type ProfileViewFrom = "announce" | "share" | "search" | "invite" | "none";
 
 export type AnalyticsEvent =
   | (AnalyticsEventEnvelope & { type: "profile_view"; from: ProfileViewFrom })
@@ -18,7 +18,7 @@ export type AnalyticsEvent =
   | (AnalyticsEventEnvelope & {
       type: "support_click";
       platform: string;
-      position: string;
+      position: "after-story" | "return-path";
     })
   | (AnalyticsEventEnvelope & {
       type: "listening_point_play";
@@ -50,11 +50,25 @@ const toRequestBody = (event: AnalyticsEvent): Record<string, unknown> => {
   };
 };
 
-export const track = (event: AnalyticsEvent): void => {
-  if (typeof navigator === "undefined" || !navigator.sendBeacon) return;
+const sendWithBeacon = (payload: string): boolean => {
+  if (typeof navigator.sendBeacon !== "function") return false;
+  const body = new Blob([payload], { type: "application/json" });
+  return navigator.sendBeacon(ANALYTICS_ENDPOINT, body);
+};
 
-  const body = new Blob([JSON.stringify(toRequestBody(event))], {
-    type: "application/json",
-  });
-  navigator.sendBeacon(ANALYTICS_ENDPOINT, body);
+const sendWithKeepaliveFetch = (payload: string): void => {
+  void fetch(ANALYTICS_ENDPOINT, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: payload,
+    keepalive: true,
+  }).catch(() => undefined);
+};
+
+export const track = (event: AnalyticsEvent): void => {
+  if (typeof window === "undefined") return;
+
+  const payload = JSON.stringify(toRequestBody(event));
+  if (sendWithBeacon(payload)) return;
+  sendWithKeepaliveFetch(payload);
 };

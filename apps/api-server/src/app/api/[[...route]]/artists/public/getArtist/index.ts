@@ -30,7 +30,7 @@ const publicProfileSchema = z.object({
 
 const getArtistResponseSchema = z.object({
   handle: z.string(),
-  artistId: z.string().min(1),
+  artistId: z.string().uuid(),
   profile: publicProfileSchema,
 });
 

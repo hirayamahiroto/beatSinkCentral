@@ -13,6 +13,7 @@ import { createInvalidRequestFormatError } from "../../app/api/[[...route]]/erro
 import { createRequestBodyTooLargeError } from "../../app/api/[[...route]]/errors/requestBodyTooLarge";
 import { createUnauthorizedError } from "../../middlewares/auth0/errors/unauthorized";
 import { createProfileImageUploadFailedError } from "../../domain/artistProfiles/errors/profileImageUploadFailed";
+import { createCoPerformerNotFoundError } from "../../domain/offers/errors/coPerformerNotFound";
 import { requestContextMiddleware } from "../../middlewares/requestContext";
 
 type RecordedLog = {
@@ -188,6 +189,31 @@ describe("createAppErrorHandler", () => {
         body: {
           error: "Unsupported image type",
           code: "UnsupportedImageTypeError",
+        },
+      });
+    });
+
+    it("CoPerformerNotFoundErrorを422とhandle埋め込みメッセージに変換する", async () => {
+      expect(
+        await clientResponseOf(createCoPerformerNotFoundError("hana_bb")),
+      ).toStrictEqual({
+        status: 422,
+        body: {
+          error: "Co-performer not found: hana_bb",
+          code: "CoPerformerNotFoundError",
+          details: { handle: "hana_bb" },
+        },
+      });
+    });
+
+    it("OfferDatePassedErrorを422に変換する", async () => {
+      expect(
+        await clientResponseOf(createTypedError("OfferDatePassedError")),
+      ).toStrictEqual({
+        status: 422,
+        body: {
+          error: "Offer date has already passed",
+          code: "OfferDatePassedError",
         },
       });
     });

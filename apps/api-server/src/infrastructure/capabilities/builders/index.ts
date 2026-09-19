@@ -11,6 +11,10 @@ import {
   createArtistProfileWriter,
 } from "../../repositories/artistProfileRepository";
 import { createArtistHandleHistoryWriter } from "../../repositories/artistHandleHistoryRepository";
+import {
+  createOfferReader,
+  createOfferWriter,
+} from "../../repositories/offerRepository";
 import { createLinkTypeReader } from "../../repositories/linkTypeRepository";
 import { createAnalyticsEventWriter } from "../../repositories/analyticsEventRepository";
 import { createStoryQuestionReader } from "../../repositories/storyQuestionRepository";
@@ -62,6 +66,7 @@ export const buildArtistReadCapabilities =
   (executor: Executor): ArtistReadCapabilities => ({
     actor,
     artistProfiles: createArtistProfileReader(executor),
+    offers: createOfferReader(executor),
   });
 
 export const buildUserWriteCapabilities =
@@ -80,6 +85,10 @@ export const buildArtistWriteCapabilities =
     artistProfiles: {
       ...createArtistProfileReader(executor),
       ...createArtistProfileWriter(executor),
+    },
+    offers: {
+      ...createOfferReader(executor),
+      ...createOfferWriter(executor),
     },
   });
 

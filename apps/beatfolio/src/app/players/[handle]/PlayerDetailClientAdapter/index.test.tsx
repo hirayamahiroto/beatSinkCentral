@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+import React from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   render,
@@ -62,21 +63,25 @@ const storyChapters = [
   { question: "何を表現したいのか", body: "表現したいこと。" },
 ];
 
-const renderPlayer = (chapters = storyChapters) =>
-  render(
-    <PlayerDetailClientAdapter
-      artistId="artist-1"
-      name="SAKU"
-      tagline={null}
-      imageUrl={null}
-      genres={["Beatbox"]}
-      storyChapters={chapters}
-      translation={null}
-      listeningPoint={null}
-      offer={null}
-      supportLinks={[]}
-    />,
-  );
+const baseProps: React.ComponentProps<typeof PlayerDetailClientAdapter> = {
+  artistId: "artist-1",
+  profileViewFrom: "announce",
+  name: "SAKU",
+  tagline: null,
+  imageUrl: null,
+  genres: ["Beatbox"],
+  storyChapters,
+  translation: null,
+  listeningPoint: null,
+  offer: null,
+  supportLinks: [],
+};
+
+const renderPlayer = (
+  overrides: Partial<
+    React.ComponentProps<typeof PlayerDetailClientAdapter>
+  > = {},
+) => render(<PlayerDetailClientAdapter {...baseProps} {...overrides} />);
 
 describe("PlayerDetailClientAdapter", () => {
   beforeEach(() => {
@@ -90,8 +95,76 @@ describe("PlayerDetailClientAdapter", () => {
     vi.clearAllMocks();
   });
 
+  it("表示時に profile_view を from 付きで記録する（StrictMode の二重実行でも 1 回）", () => {
+    render(
+      <React.StrictMode>
+        <PlayerDetailClientAdapter {...baseProps} />
+      </React.StrictMode>,
+    );
+
+    expect(trackMock).toHaveBeenCalledTimes(1);
+    expect(trackMock).toHaveBeenCalledWith({
+      type: "profile_view",
+      artistId: "artist-1",
+      from: "announce",
+    });
+  });
+
+  it("オファー無し期間の SNS リンクをクリックすると support_click を after-story で記録する", () => {
+    renderPlayer({
+      supportLinks: [
+        {
+          platform: "youtube",
+          url: "https://youtube.com/@saku",
+          label: "YouTube",
+        },
+      ],
+    });
+    trackMock.mockClear();
+
+    fireEvent.click(screen.getByRole("link", { name: "YouTube" }));
+
+    expect(trackMock).toHaveBeenCalledTimes(1);
+    expect(trackMock).toHaveBeenCalledWith({
+      type: "support_click",
+      artistId: "artist-1",
+      platform: "youtube",
+      position: "after-story",
+    });
+  });
+
+  it("オファーがある期間の SNS リンクをクリックすると support_click を return-path で記録する", () => {
+    renderPlayer({
+      offer: {
+        dateLabel: "2026/10/01",
+        venue: "渋谷",
+        ticketUrl: "https://example.com/ticket",
+        comment: "来てほしい",
+        performers: [],
+      },
+      supportLinks: [
+        {
+          platform: "youtube",
+          url: "https://youtube.com/@saku",
+          label: "YouTube",
+        },
+      ],
+    });
+    trackMock.mockClear();
+
+    fireEvent.click(screen.getByRole("link", { name: "YouTube" }));
+
+    expect(trackMock).toHaveBeenCalledWith({
+      type: "support_click",
+      artistId: "artist-1",
+      platform: "youtube",
+      position: "return-path",
+    });
+  });
+
   it("最初の章だけを表示し、「続きを読む」で残りの章を展開して story_expand を記録する", () => {
     renderPlayer();
+    trackMock.mockClear();
 
     expect(screen.getByText("始まりの話")).toBeInTheDocument();
     expect(screen.queryByText("転機になったこと")).not.toBeInTheDocument();
@@ -117,6 +190,7 @@ describe("PlayerDetailClientAdapter", () => {
 
   it("章末への到達を章数に対する 25/50/75/100% として story_scroll に記録し、同じ depth は一度しか送らない", () => {
     renderPlayer();
+    trackMock.mockClear();
 
     reachChapterEnd(0);
     expect(trackMock.mock.calls).toStrictEqual([
@@ -142,7 +216,8 @@ describe("PlayerDetailClientAdapter", () => {
   });
 
   it("章が 1 つなら、その章末で 25/50/75/100 を順に記録する", () => {
-    renderPlayer([storyChapters[0]]);
+    renderPlayer({ storyChapters: [storyChapters[0]] });
+    trackMock.mockClear();
 
     reachChapterEnd(0);
 

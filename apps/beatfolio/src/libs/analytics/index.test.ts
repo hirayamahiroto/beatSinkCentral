@@ -20,10 +20,19 @@ describe("track", () => {
   let sendBeacon: ReturnType<
     typeof vi.fn<(url: string, data: CapturedBlob) => boolean>
   >;
+  let fetchMock: ReturnType<
+    typeof vi.fn<(url: string, init: RequestInit) => Promise<Response>>
+  >;
 
   beforeEach(() => {
-    sendBeacon = vi.fn<(url: string, data: CapturedBlob) => boolean>();
+    sendBeacon = vi.fn<(url: string, data: CapturedBlob) => boolean>(
+      () => true,
+    );
+    fetchMock = vi.fn<(url: string, init: RequestInit) => Promise<Response>>(
+      async () => new Response(null, { status: 204 }),
+    );
     vi.stubGlobal("navigator", { sendBeacon });
+    vi.stubGlobal("fetch", fetchMock);
     vi.stubGlobal("Blob", RecordingBlob);
     Object.defineProperty(window, "location", {
       value: { pathname: "/players/handle" },
@@ -52,6 +61,7 @@ describe("track", () => {
     const [url, blob] = sendBeacon.mock.calls[0];
     expect(url).toBe("/api/events");
     expect(blob.type).toBe("application/json");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("eventType/artistId/path/referrerと種別ごとのpropsを送る", () => {
@@ -97,12 +107,53 @@ describe("track", () => {
     expect(readBeaconBody().referrer).toBeNull();
   });
 
-  it("sendBeaconが無い環境では何もしない", () => {
+  it("sendBeaconがキューに積めずfalseを返したらkeepalive付きfetchへフォールバックする", () => {
+    sendBeacon.mockReturnValue(false);
+
+    track({
+      type: "support_click",
+      artistId: "artist-1",
+      platform: "youtube",
+      position: "after-story",
+    });
+
+    expect(sendBeacon).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("/api/events");
+    expect(init.method).toBe("POST");
+    expect(init.keepalive).toBe(true);
+    expect(init.headers).toStrictEqual({
+      "content-type": "application/json",
+    });
+    expect(JSON.parse(String(init.body))).toStrictEqual({
+      eventType: "support_click",
+      artistId: "artist-1",
+      path: "/players/handle",
+      referrer: "https://example.com/announce",
+      props: { platform: "youtube", position: "after-story" },
+    });
+  });
+
+  it("sendBeaconが無い環境ではkeepalive付きfetchで送る", () => {
     vi.stubGlobal("navigator", {});
+
+    track({ type: "notify_subscribe", artistId: "artist-1" });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.keepalive).toBe(true);
+  });
+
+  it("フォールバックのfetchが失敗しても例外を外へ出さない", async () => {
+    vi.stubGlobal("navigator", {});
+    fetchMock.mockRejectedValue(new Error("network down"));
 
     expect(() =>
       track({ type: "notify_subscribe", artistId: "artist-1" }),
     ).not.toThrow();
-    expect(sendBeacon).not.toHaveBeenCalled();
+    await expect(fetchMock.mock.results[0].value).rejects.toThrow(
+      "network down",
+    );
   });
 });

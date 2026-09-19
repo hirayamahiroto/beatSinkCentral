@@ -1,10 +1,19 @@
 import { Hono } from "hono";
 import type { RequestContextEnv } from "../../../../../middlewares/requestContext";
-import { resolveLinkLabels } from "../../shared/resolveLinkLabels";
+import {
+  resolveLinkLabels,
+  type ResolvedLink,
+} from "../../shared/resolveLinkLabels";
 import { resolveStoryQuestionLabels } from "../../shared/resolveStoryQuestionLabels";
 import { toUpstreamError } from "../../shared/toUpstreamError";
 import { readUpstreamJson } from "../../shared/readUpstreamJson";
 import { createPlayerNotFoundError } from "../../errors/playerNotFound";
+
+const toSupportLink = (link: ResolvedLink) => ({
+  platform: link.type,
+  url: link.url,
+  label: link.label,
+});
 
 const app = new Hono<RequestContextEnv>().get("/:handle", async (c) => {
   const apiClient = c.get("apiClient");
@@ -40,7 +49,9 @@ const app = new Hono<RequestContextEnv>().get("/:handle", async (c) => {
     translation: null,
     listeningPoint: null,
     offer: null,
-    supportLinks: resolveLinkLabels(profile.links, linkTypes),
+    supportLinks: resolveLinkLabels(profile.links, linkTypes).map(
+      toSupportLink,
+    ),
   });
 });
 

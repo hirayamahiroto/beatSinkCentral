@@ -31,6 +31,13 @@ import type { InvalidSnsUrlFormatError } from "../../domain/artistProfiles/value
 import type { InvalidProfileLinkFormatError } from "../../domain/artistProfiles/valueObjects/profileLink";
 import type { InvalidPresentationPatternError } from "../../domain/artistProfiles/valueObjects/presentationPattern";
 import type { InvalidEventTypeFormatError } from "../../domain/analyticsEvents/valueObjects/eventType";
+import type { InvalidCalendarDateFormatError } from "../../domain/offers/valueObjects/calendarDate";
+import type { InvalidPlaceFormatError } from "../../domain/offers/valueObjects/place";
+import type { InvalidTicketUrlFormatError } from "../../domain/offers/valueObjects/ticketUrl";
+import type { InvalidOfferCommentFormatError } from "../../domain/offers/valueObjects/offerComment";
+import type { InvalidCoPerformerFormatError } from "../../domain/offers/valueObjects/coPerformer";
+import type { CoPerformerNotFoundError } from "../../domain/offers/errors/coPerformerNotFound";
+import type { OfferDatePassedError } from "../../domain/offers/policies/activity";
 import type { InvalidRequestFormatError } from "../../app/api/[[...route]]/errors/invalidRequestFormat";
 import {
   createMalformedRequestBodyError,
@@ -69,6 +76,13 @@ type AppError =
   | InvalidProfileLinkFormatError
   | InvalidPresentationPatternError
   | InvalidEventTypeFormatError
+  | InvalidCalendarDateFormatError
+  | InvalidPlaceFormatError
+  | InvalidTicketUrlFormatError
+  | InvalidOfferCommentFormatError
+  | InvalidCoPerformerFormatError
+  | CoPerformerNotFoundError
+  | OfferDatePassedError
   | UnsupportedImageTypeError
   | ImageTooLargeError
   | EmptyImageFileError
@@ -230,6 +244,43 @@ const errorMap: ErrorMap = {
   InvalidEventTypeFormatError: {
     status: 422,
     clientMessage: () => "Invalid event type",
+    logLevel: "info",
+  },
+  InvalidCalendarDateFormatError: {
+    status: 422,
+    clientMessage: () => "Invalid date format",
+    logLevel: "info",
+  },
+  InvalidPlaceFormatError: {
+    status: 422,
+    clientMessage: () => "Invalid place format",
+    logLevel: "info",
+  },
+  InvalidTicketUrlFormatError: {
+    status: 422,
+    clientMessage: () => "Invalid ticketUrl format",
+    logLevel: "info",
+  },
+  InvalidOfferCommentFormatError: {
+    status: 422,
+    clientMessage: () => "Invalid comment format",
+    logLevel: "info",
+  },
+  InvalidCoPerformerFormatError: {
+    status: 422,
+    clientMessage: () => "Invalid co-performer format",
+    logLevel: "info",
+  },
+  CoPerformerNotFoundError: {
+    status: 422,
+    clientMessage: (error) => `Co-performer not found: ${error.handle}`,
+    clientDetails: (error) => ({ handle: error.handle }),
+    logLevel: "info",
+    logFields: (error) => ({ handle: error.handle }),
+  },
+  OfferDatePassedError: {
+    status: 422,
+    clientMessage: () => "Offer date has already passed",
     logLevel: "info",
   },
   UnsupportedImageTypeError: {

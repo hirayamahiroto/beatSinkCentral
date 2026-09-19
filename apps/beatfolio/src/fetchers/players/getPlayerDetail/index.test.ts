@@ -20,7 +20,9 @@ const player = {
   translation: null,
   listeningPoint: null,
   offer: null,
-  supportLinks: [{ url: "https://youtube.com/@saku", label: "YouTube" }],
+  supportLinks: [
+    { platform: "youtube", url: "https://youtube.com/@saku", label: "YouTube" },
+  ],
 };
 
 describe("getPlayerDetail", () => {

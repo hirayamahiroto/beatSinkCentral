@@ -97,7 +97,9 @@ describe("GET /players/:handle/concept", () => {
           body: "表現したいこと。",
         },
       ],
-      links: [{ url: "https://youtube.com/@saku", label: "YouTube" }],
+      links: [
+        { type: "youtube", url: "https://youtube.com/@saku", label: "YouTube" },
+      ],
       primaryAction: null,
     });
   });

@@ -5,12 +5,23 @@ import {
   getVisibleAudienceStoryChapters,
 } from "@ui/design-system/components/organisms/AudienceArtistProfile";
 import { track } from "../../../../libs/analytics";
+import type { ProfileViewFrom } from "../../../../libs/analytics/profileViewFrom";
 import { useStoryExpansion } from "./hooks/useStoryExpansion";
 import { useNotifySubscription } from "./hooks/useNotifySubscription";
 import { useStoryScrollTracking } from "./hooks/useStoryScrollTracking";
+import { useAudienceProfileTracking } from "./hooks/useAudienceProfileTracking";
+
+type AudienceArtistProfileProps = React.ComponentProps<
+  typeof AudienceArtistProfile
+>;
+
+type TrackableSupportLink =
+  AudienceArtistProfileProps["supportLinks"][number] & {
+    platform: string;
+  };
 
 type Props = Omit<
-  React.ComponentProps<typeof AudienceArtistProfile>,
+  AudienceArtistProfileProps,
   | "storyExpanded"
   | "onExpandStory"
   | "onChapterEndRef"
@@ -20,12 +31,16 @@ type Props = Omit<
   | "onEmailChange"
   | "subscribed"
   | "onSubmitSubscription"
+  | "supportLinks"
 > & {
   artistId: string;
+  profileViewFrom: ProfileViewFrom;
+  supportLinks: TrackableSupportLink[];
 };
 
 export const PlayerDetailClientAdapter = ({
   artistId,
+  profileViewFrom,
   storyChapters,
   ...props
 }: Props) => {
@@ -51,6 +66,13 @@ export const PlayerDetailClientAdapter = ({
     submit: submitSubscription,
   } = useNotifySubscription({ onSubscribe: () => {} });
 
+  const { trackSupportClick } = useAudienceProfileTracking({
+    artistId,
+    profileViewFrom,
+    supportLinks: props.supportLinks,
+    hasOffer: props.offer !== null,
+  });
+
   return (
     <AudienceArtistProfile
       {...props}
@@ -59,7 +81,7 @@ export const PlayerDetailClientAdapter = ({
       onExpandStory={expandStory}
       onChapterEndRef={registerChapterEndElement}
       onOfferClick={() => {}}
-      onSupportClick={() => {}}
+      onSupportClick={trackSupportClick}
       email={email}
       onEmailChange={setEmail}
       subscribed={subscribed}

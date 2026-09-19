@@ -57,6 +57,17 @@ const profileView = {
   published: true,
 };
 
+const offerView = {
+  date: "2026-09-20",
+  place: "渋谷 WWW",
+  ticketUrl: "https://tickets.example.com/e/1",
+  comment: "新曲をやります",
+  coPerformers: [
+    { name: "Hana", handle: "hana_bb" },
+    { name: "Ken", handle: null },
+  ],
+};
+
 const presentationPatterns = [
   { code: "interview", label: "インタビュー" },
   { code: "spotlight", label: "スポットライト" },
@@ -77,6 +88,7 @@ describe("GET /dashboard", () => {
         handle: "saku",
         profile: profileView,
         publishability: { ok: true, missingFields: [] },
+        offer: null,
       }),
     );
 
@@ -98,7 +110,34 @@ describe("GET /dashboard", () => {
             options: presentationPatterns,
           },
         },
+        offer: null,
       },
+    });
+  });
+
+  it("有効なオファーは編集フォームの初期値へ整形して返す（未登録共演者の handle は空文字）", async () => {
+    meGet.mockResolvedValue(jsonResponse(registeredMe));
+    profileGet.mockResolvedValue(
+      jsonResponse({
+        handle: "saku",
+        profile: profileView,
+        publishability: { ok: true, missingFields: [] },
+        offer: offerView,
+      }),
+    );
+
+    const res = await createApp().request("/", { method: "GET" });
+    const body = await res.json();
+
+    expect(body.artist.offer).toStrictEqual({
+      date: "2026-09-20",
+      place: "渋谷 WWW",
+      ticketUrl: "https://tickets.example.com/e/1",
+      comment: "新曲をやります",
+      coPerformers: [
+        { name: "Hana", handle: "hana_bb" },
+        { name: "Ken", handle: "" },
+      ],
     });
   });
 
@@ -109,6 +148,7 @@ describe("GET /dashboard", () => {
         handle: "saku",
         profile: { ...profileView, presentation: { patternCode: null } },
         publishability: { ok: true, missingFields: [] },
+        offer: null,
       }),
     );
 
@@ -129,6 +169,7 @@ describe("GET /dashboard", () => {
           published: false,
         },
         publishability: { ok: false, missingFields: ["imageUrl", "links"] },
+        offer: null,
       }),
     );
 
@@ -146,11 +187,12 @@ describe("GET /dashboard", () => {
             options: presentationPatterns,
           },
         },
+        offer: null,
       },
     });
   });
 
-  it("プロフィール未作成なら profile は null で返す", async () => {
+  it("プロフィール未作成なら profile は null で返し、オファーは載せる", async () => {
     meGet.mockResolvedValue(
       jsonResponse({
         ...registeredMe,
@@ -162,6 +204,7 @@ describe("GET /dashboard", () => {
         handle: "saku",
         profile: null,
         publishability: null,
+        offer: offerView,
       }),
     );
 
@@ -169,7 +212,17 @@ describe("GET /dashboard", () => {
 
     expect(await res.json()).toStrictEqual({
       registered: true,
-      artist: { handle: "saku", profile: null },
+      artist: {
+        handle: "saku",
+        profile: null,
+        offer: {
+          ...offerView,
+          coPerformers: [
+            { name: "Hana", handle: "hana_bb" },
+            { name: "Ken", handle: "" },
+          ],
+        },
+      },
     });
   });
 
@@ -207,6 +260,7 @@ describe("GET /dashboard", () => {
         handle: "saku",
         profile: profileView,
         publishability: { ok: true, missingFields: [] },
+        offer: null,
       }),
     );
     presentationPatternsGet.mockResolvedValue(

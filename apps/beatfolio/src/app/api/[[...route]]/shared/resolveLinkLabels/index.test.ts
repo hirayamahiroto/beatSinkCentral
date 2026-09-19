@@ -17,8 +17,8 @@ describe("resolveLinkLabels", () => {
     );
 
     expect(result).toStrictEqual([
-      { url: "https://youtube.com/@saku", label: "YouTube" },
-      { url: "https://example.com/me", label: "その他" },
+      { type: "youtube", url: "https://youtube.com/@saku", label: "YouTube" },
+      { type: "other", url: "https://example.com/me", label: "その他" },
     ]);
   });
 
