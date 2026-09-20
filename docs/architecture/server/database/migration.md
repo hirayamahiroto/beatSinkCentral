@@ -58,6 +58,21 @@ npm run db:migrate -w database
 
 **重要**: `migrate` はスナップショットを参照しない。SQLファイルとジャーナルのみで動作する。
 
+## ローカル環境の初期化
+
+ローカルの Supabase（Docker）を初めて起動するとき、または DB ボリュームを削除して作り直すときは、次の順で実行する（`setup.sh` がこの順で走る）。
+
+```bash
+cd packages/database/supabase && supabase start
+cd .. && export DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres
+npm run db:migrate
+npm run db:seed
+```
+
+テーブルは Drizzle の `drizzle/migrations/` が作り、`supabase/migrations/` は使わない。そのため `supabase/config.toml` の `[db.seed]` は `enabled = false` にしており、`supabase start` / `supabase db reset` は seed.sql を実行しない。有効にすると、スキーマが空の DB に対して seed.sql が走り `relation "artist_status_masters" does not exist` で起動が失敗する。
+
+`supabase start` は既存の DB ボリュームがあればそれを再利用するため、`supabase stop --no-backup` やボリューム削除をした後だけ初期化が走る。
+
 ## 開発フロー
 
 ### 1. スキーマを変更

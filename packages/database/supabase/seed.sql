@@ -1,5 +1,5 @@
--- NOTE: このファイルはsupabase startでは実行されない（テーブル未作成のため）
--- npm run db:seed (src/seed.ts経由) で db:migrate 後に実行される
+-- config.toml の [db.seed] を無効化しているため、Supabase CLI（start / db reset）はこのファイルを実行しない。
+-- テーブルは Drizzle が作るので、npm run db:migrate の後に npm run db:seed（src/seed.ts）で投入する。
 
 INSERT INTO "artist_status_masters" ("status_code", "status_name", "description") VALUES
   ('draft', '下書き', '非公開状態。アーティストプロフィール作成直後のデフォルト状態。'),
