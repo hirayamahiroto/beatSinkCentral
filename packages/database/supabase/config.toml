@@ -57,7 +57,8 @@ schema_paths = []
 
 [db.seed]
 # If enabled, seeds the database after migrations during a db reset.
-enabled = true
+# テーブルは Drizzle（drizzle/migrations）が作るため CLI の seed は使わず、`npm run db:seed` で投入する。
+enabled = false
 # Specifies an ordered list of seed files to load during db reset.
 # Supports glob patterns relative to supabase directory: "./seeds/*.sql"
 sql_paths = ["./seed.sql"]
