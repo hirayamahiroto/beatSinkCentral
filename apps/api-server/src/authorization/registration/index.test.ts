@@ -4,12 +4,12 @@ import { createCapabilityDepsStub } from "../testDoubles";
 import {
   createHandleAlreadyTakenError,
   isHandleAlreadyTakenError,
-} from "../../../domain/artists/errors/handleAlreadyTaken";
+} from "../../domain/artists/errors/handleAlreadyTaken";
 import {
   createEmailAlreadyTakenError,
   isEmailAlreadyTakenError,
-} from "../../../domain/users/errors/emailAlreadyTaken";
-import { ok } from "../../../utils/result";
+} from "../../domain/users/errors/emailAlreadyTaken";
+import { ok } from "../../utils/result";
 
 describe("withRegistrationCapabilities", () => {
   it("Actor を要求せず登録権能で work を実行する", async () => {

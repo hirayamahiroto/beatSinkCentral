@@ -3,11 +3,12 @@ import {
   createArtistProfileNotFoundError,
   type ArtistProfileNotFoundError,
 } from "../../../domain/artistProfiles/errors/artistProfileNotFound";
+import { toView } from "../../../domain/artistProfiles/behaviors";
 import {
   createHandle,
   type InvalidHandleFormatError,
 } from "../../../domain/artists/valueObjects/handle";
-import type { PublicReadCapabilities } from "../../capabilities";
+import type { PublicReadCapabilities } from "../../../capabilities";
 import { type Result, ok, err } from "../../../utils/result";
 
 export type GetPublicProfileInput = {
@@ -39,7 +40,7 @@ export const getPublicProfile = async (
 
   return ok({
     handle: handle.value,
-    artistId: profile.getArtistId(),
-    profile: profile.toView(),
+    artistId: profile.artistId,
+    profile: toView(profile),
   });
 };

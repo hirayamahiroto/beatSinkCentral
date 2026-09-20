@@ -1,7 +1,15 @@
-import type { ArtistProfile } from "../../entities";
+import type {
+  DraftProfile,
+  ProfileContent,
+  ProfileState,
+  PublishableContent,
+  PublishedProfile,
+  StoredProfile,
+} from "../../entities";
+import { draftIfAbsent } from "../../behaviors";
 import { REQUIRED_STORY_QUESTION_CODE } from "../../valueObjects/storyChapter";
 import { createTypedError } from "../../../../utils/errors/createTypedError";
-import { type Result, ok, err } from "../../../../utils/result";
+import { type Result, ok, err, map } from "../../../../utils/result";
 
 type PublishRequiredField = "name" | "imageUrl" | "story" | "genres" | "links";
 
@@ -15,21 +23,50 @@ const createProfileNotPublishableError = (
 ): ProfileNotPublishableError =>
   createTypedError("ProfileNotPublishableError", { missingFields });
 
-const hasRequiredStoryChapter = (profile: ArtistProfile): boolean =>
-  profile
-    .getChapters()
-    .some((chapter) => chapter.questionCode === REQUIRED_STORY_QUESTION_CODE);
+const nonEmpty = <T>(items: readonly T[]): readonly [T, ...T[]] | null => {
+  const [first, ...rest] = items;
+  return first === undefined ? null : [first, ...rest];
+};
 
-const collectMissingPublishFields = (
-  profile: ArtistProfile,
-): PublishRequiredField[] => {
-  const missing: PublishRequiredField[] = [];
-  if (!profile.getName()) missing.push("name");
-  if (!profile.getImageUrl()) missing.push("imageUrl");
-  if (!hasRequiredStoryChapter(profile)) missing.push("story");
-  if (profile.getGenres().length === 0) missing.push("genres");
-  if (profile.getLinks().length === 0) missing.push("links");
-  return missing;
+const hasRequiredChapter = (content: ProfileContent): boolean =>
+  content.chapters.some(
+    (chapter) => chapter.questionCode === REQUIRED_STORY_QUESTION_CODE,
+  );
+
+export const toPublishableContent = (
+  content: ProfileContent,
+): Result<PublishableContent, ProfileNotPublishableError> => {
+  const chapters = hasRequiredChapter(content)
+    ? nonEmpty(content.chapters)
+    : null;
+  const genres = nonEmpty(content.genres);
+  const links = nonEmpty(content.links);
+
+  const missingFields: PublishRequiredField[] = [];
+  if (content.name === null) missingFields.push("name");
+  if (content.imageUrl === null) missingFields.push("imageUrl");
+  if (chapters === null) missingFields.push("story");
+  if (genres === null) missingFields.push("genres");
+  if (links === null) missingFields.push("links");
+
+  if (
+    content.name === null ||
+    content.imageUrl === null ||
+    chapters === null ||
+    genres === null ||
+    links === null
+  ) {
+    return err(createProfileNotPublishableError(missingFields));
+  }
+
+  return ok({
+    ...content,
+    name: content.name,
+    imageUrl: content.imageUrl,
+    chapters,
+    genres,
+    links,
+  });
 };
 
 export type Publishability = {
@@ -38,28 +75,45 @@ export type Publishability = {
 };
 
 export const assessPublishability = (
-  profile: ArtistProfile,
+  content: ProfileContent,
 ): Publishability => {
-  const missingFields = collectMissingPublishFields(profile);
-  return { ok: missingFields.length === 0, missingFields };
+  const publishable = toPublishableContent(content);
+  return publishable.ok
+    ? { ok: true, missingFields: [] }
+    : { ok: false, missingFields: publishable.error.missingFields };
 };
 
-const isPublishable = (profile: ArtistProfile): boolean =>
-  assessPublishability(profile).ok;
+const settle = (
+  before: StoredProfile,
+  after: ProfileContent,
+): StoredProfile => {
+  if (before.kind === "draft") return { ...before, content: after };
 
-export const enforcePublishInvariant = (
-  profile: ArtistProfile,
-): ArtistProfile =>
-  profile.isPublished() && !isPublishable(profile)
-    ? profile.unpublish()
-    : profile;
-
-export const ensurePublishable = (
-  profile: ArtistProfile,
-): Result<void, ProfileNotPublishableError> => {
-  const missingFields = collectMissingPublishFields(profile);
-  if (missingFields.length > 0) {
-    return err(createProfileNotPublishableError(missingFields));
-  }
-  return ok(undefined);
+  const publishable = toPublishableContent(after);
+  return publishable.ok
+    ? { ...before, content: publishable.value }
+    : {
+        kind: "draft",
+        id: before.id,
+        artistId: before.artistId,
+        content: after,
+      };
 };
+
+export const edit = (
+  state: ProfileState,
+  change: (content: ProfileContent) => ProfileContent,
+): StoredProfile => {
+  const stored = draftIfAbsent(state);
+  return settle(stored, change(stored.content));
+};
+
+export const publish = (
+  state: DraftProfile,
+): Result<PublishedProfile, ProfileNotPublishableError> =>
+  map(toPublishableContent(state.content), (content) => ({
+    kind: "published",
+    id: state.id,
+    artistId: state.artistId,
+    content,
+  }));

@@ -8,7 +8,7 @@ import type {
   IOfferReader,
   IOfferWriter,
 } from "../../../domain/offers/repositories";
-import type { Actor, ArtistWriteCapabilities } from "../../capabilities";
+import type { Actor, ArtistWriteCapabilities } from "../../../capabilities";
 
 const actor: Actor = {
   user: reconstructUser({

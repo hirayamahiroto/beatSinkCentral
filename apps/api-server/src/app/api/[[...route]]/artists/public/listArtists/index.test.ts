@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import listArtistsRoute from "./index";
 
 const mockArtistProfiles = {
-  findByArtistId: vi.fn(),
+  load: vi.fn(),
   findPublishedByHandle: vi.fn(),
   listPublishedSummaries: vi.fn(),
 };

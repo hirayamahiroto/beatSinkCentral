@@ -6,7 +6,7 @@ import {
 } from "../../../domain/artists/errors/handleAlreadyTaken";
 import { reconstructUser } from "../../../domain/users/factories";
 import { reconstructArtist } from "../../../domain/artists/factories";
-import type { RegistrationCapabilities } from "../../capabilities";
+import type { RegistrationCapabilities } from "../../../capabilities";
 import type {
   IUserReader,
   IUserWriter,

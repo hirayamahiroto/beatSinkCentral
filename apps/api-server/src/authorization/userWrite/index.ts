@@ -6,10 +6,10 @@ import type {
 import {
   isEmailAlreadyTakenError,
   type EmailAlreadyTakenError,
-} from "../../../domain/users/errors/emailAlreadyTaken";
+} from "../../domain/users/errors/emailAlreadyTaken";
 import { toAddressedUser } from "../resolution";
 import { catchAlreadyTaken } from "../conflict";
-import type { Result } from "../../../utils/result";
+import type { Result } from "../../utils/result";
 
 export const withUserWriteCapabilitiesById = async <T, E>(
   deps: CapabilityDeps,

@@ -2,8 +2,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { reconstructUser } from "../../../../../../domain/users/factories";
 import { reconstructArtist } from "../../../../../../domain/artists/factories";
-import { reconstructArtistProfile } from "../../../../../../domain/artistProfiles/factories";
-import type { ArtistProfilePersistenceData } from "../../../../../../domain/artistProfiles/entities";
+import { reconstructStoredProfile } from "../../../../../../domain/artistProfiles/factories";
+import { toPersistence } from "../../../../../../domain/artistProfiles/behaviors";
+import type { StoredProfile } from "../../../../../../domain/artistProfiles/entities";
 import { handleAppError } from "../../../../../../errorMap";
 import replaceLinksRoute from "./index";
 
@@ -22,10 +23,10 @@ const actor = {
 };
 
 const mockArtistProfiles = {
-  findByArtistId: vi.fn(),
+  load: vi.fn(),
   findPublishedByHandle: vi.fn(),
-  upsert: vi.fn(),
-  setPublished: vi.fn(),
+  save: vi.fn(),
+  publish: vi.fn(),
 };
 
 const mockResolveActorState = vi.fn();
@@ -67,8 +68,8 @@ describe("POST /artists/:artistId/links", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockResolveActorState.mockResolvedValue({ status: "complete", actor });
-    mockArtistProfiles.findByArtistId.mockResolvedValue(
-      reconstructArtistProfile({
+    mockArtistProfiles.load.mockResolvedValue(
+      reconstructStoredProfile({
         id: "p1",
         artistId: "artist-1",
         published: false,
@@ -76,9 +77,8 @@ describe("POST /artists/:artistId/links", () => {
         links: [{ linkTypeCode: "instagram", url: "https://instagram.com/t" }],
       }),
     );
-    mockArtistProfiles.upsert.mockImplementation(
-      async (data: ArtistProfilePersistenceData) =>
-        reconstructArtistProfile({ ...data }),
+    mockArtistProfiles.save.mockImplementation(
+      async (state: StoredProfile) => state,
     );
   });
 
@@ -88,8 +88,10 @@ describe("POST /artists/:artistId/links", () => {
 
     expect(res.status).toBe(200);
     expect(body).toStrictEqual({ links });
-    expect(mockArtistProfiles.upsert).toHaveBeenCalledTimes(1);
-    expect(mockArtistProfiles.upsert.mock.calls[0][0]).toMatchObject({
+    expect(mockArtistProfiles.save).toHaveBeenCalledTimes(1);
+    expect(
+      toPersistence(mockArtistProfiles.save.mock.calls[0][0]),
+    ).toMatchObject({
       name: "Taro",
       links,
     });
@@ -106,7 +108,7 @@ describe("POST /artists/:artistId/links", () => {
     const res = await request("artist-1", {});
 
     expect(res.status).toBe(400);
-    expect(mockArtistProfiles.upsert).not.toHaveBeenCalled();
+    expect(mockArtistProfiles.save).not.toHaveBeenCalled();
   });
 
   it("MAX_LINKS（20件）を超える links は 400 を返し、保存しない", async () => {
@@ -115,7 +117,7 @@ describe("POST /artists/:artistId/links", () => {
     });
 
     expect(res.status).toBe(400);
-    expect(mockArtistProfiles.upsert).not.toHaveBeenCalled();
+    expect(mockArtistProfiles.save).not.toHaveBeenCalled();
   });
 
   it("不正な url は 422 を返し、保存しない", async () => {
@@ -124,13 +126,13 @@ describe("POST /artists/:artistId/links", () => {
     });
 
     expect(res.status).toBe(422);
-    expect(mockArtistProfiles.upsert).not.toHaveBeenCalled();
+    expect(mockArtistProfiles.save).not.toHaveBeenCalled();
   });
 
   it("Actor と一致しない artistId は 404 を返し、保存しない", async () => {
     const res = await request("other-artist", { links });
 
     expect(res.status).toBe(404);
-    expect(mockArtistProfiles.upsert).not.toHaveBeenCalled();
+    expect(mockArtistProfiles.save).not.toHaveBeenCalled();
   });
 });

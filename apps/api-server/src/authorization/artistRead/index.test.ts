@@ -1,18 +1,18 @@
 import { describe, it, expect } from "vitest";
-import { withArtistStorageWriteCapabilitiesById } from "./index";
+import { withArtistReadCapabilitiesById } from "./index";
 import {
   createCapabilityDepsStub,
   testUser as user,
   testArtist as artist,
 } from "../testDoubles";
-import { ok } from "../../../utils/result";
+import { ok } from "../../utils/result";
 
-describe("withArtistStorageWriteCapabilitiesById", () => {
+describe("withArtistReadCapabilitiesById", () => {
   it("未登録なら work を呼ばず UserNotFoundError を返す", async () => {
     const { deps } = createCapabilityDepsStub({ status: "unregistered" });
     let workCalls = 0;
 
-    const result = await withArtistStorageWriteCapabilitiesById(
+    const result = await withArtistReadCapabilitiesById(
       deps,
       "auth0|123",
       "artist-1",
@@ -33,7 +33,7 @@ describe("withArtistStorageWriteCapabilitiesById", () => {
     const { deps } = createCapabilityDepsStub({ status: "userOnly", user });
     let workCalls = 0;
 
-    const result = await withArtistStorageWriteCapabilitiesById(
+    const result = await withArtistReadCapabilitiesById(
       deps,
       "auth0|123",
       "artist-1",
@@ -50,13 +50,13 @@ describe("withArtistStorageWriteCapabilitiesById", () => {
     expect(workCalls).toBe(0);
   });
 
-  it("パスの artistId が Actor と一致すればストレージ書き込み権能で work を実行する", async () => {
+  it("パスの artistId が Actor と一致すれば work を実行する", async () => {
     const { deps } = createCapabilityDepsStub({
       status: "complete",
       actor: { user, artist },
     });
 
-    const result = await withArtistStorageWriteCapabilitiesById(
+    const result = await withArtistReadCapabilitiesById(
       deps,
       "auth0|123",
       "artist-1",
@@ -73,7 +73,7 @@ describe("withArtistStorageWriteCapabilitiesById", () => {
     });
     let workCalls = 0;
 
-    const result = await withArtistStorageWriteCapabilitiesById(
+    const result = await withArtistReadCapabilitiesById(
       deps,
       "auth0|123",
       "other-artist",

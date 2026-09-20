@@ -1,6 +1,6 @@
 import { REQUIRED_STORY_QUESTION_CODE } from "../../../domain/artistProfiles/valueObjects/storyChapter";
 import type { StoryQuestionView } from "../../../domain/storyQuestions/entities";
-import type { PublicReadCapabilities } from "../../capabilities";
+import type { PublicReadCapabilities } from "../../../capabilities";
 import { type Result, ok } from "../../../utils/result";
 
 type StoryQuestionListItem = StoryQuestionView & {

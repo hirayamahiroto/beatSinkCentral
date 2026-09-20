@@ -21,11 +21,14 @@ const ruleIdsFor = async (filePath: string, code: string) => {
 };
 
 const USECASE = "src/usecases/artistProfiles/example/index.ts";
-const AUTHORIZATION = "src/usecases/authorization/example/index.ts";
+const AUTHORIZATION = "src/authorization/example/index.ts";
 const USECASE_TEST = "src/usecases/artistProfiles/example/index.test.ts";
+
+const RESOLUTION = "src/authorization/resolution/index.ts";
 
 const BOUNDARY = "local/usecase-capability-boundary";
 const PARAMETER = "local/usecase-capability-parameter";
+const SUBJECT_NOT_FOUND = "local/usecase-subject-not-found";
 
 describe("local/usecase-capability-boundary", () => {
   it("infrastructure 層への import を検出する", async () => {
@@ -259,6 +262,73 @@ describe("local/usecase-capability-parameter", () => {
   });
 });
 
+describe("local/usecase-subject-not-found", () => {
+  it("usecase が Actor 系の NotFound エラーを生成するための import を検出する", async () => {
+    const ruleIds = await ruleIdsFor(
+      USECASE,
+      [
+        `import { createArtistNotFoundError } from "../../../domain/artists/errors/artistNotFound";`,
+        `import type { ArtistWriteCapabilities } from "../../../capabilities";`,
+        `export const run = async (caps: ArtistWriteCapabilities) =>`,
+        `  caps.actor ? null : createArtistNotFoundError();`,
+        ``,
+      ].join("\n"),
+    );
+
+    expect(ruleIds).toContain(SUBJECT_NOT_FOUND);
+  });
+
+  it("型としての参照（import type / inline type）は許可する", async () => {
+    const ruleIds = await ruleIdsFor(
+      AUTHORIZATION,
+      [
+        `import type { ArtistProfileNotFoundError } from "../../../domain/artistProfiles/errors/artistProfileNotFound";`,
+        `import { type UserNotFoundError } from "../../../domain/users/errors/userNotFound";`,
+        `export type E = ArtistProfileNotFoundError | UserNotFoundError;`,
+        ``,
+      ].join("\n"),
+    );
+
+    expect(ruleIds).not.toContain(SUBJECT_NOT_FOUND);
+  });
+
+  it("経路モジュール（authorization）でも値の import は検出する", async () => {
+    const ruleIds = await ruleIdsFor(
+      AUTHORIZATION,
+      `import { createUserNotFoundError } from "../../../domain/users/errors/userNotFound";\n`,
+    );
+
+    expect(ruleIds).toContain(SUBJECT_NOT_FOUND);
+  });
+
+  it("解決結果を畳む resolution だけは生成を許可する", async () => {
+    const ruleIds = await ruleIdsFor(
+      RESOLUTION,
+      `import { createUserNotFoundError } from "../../../domain/users/errors/userNotFound";\n`,
+    );
+
+    expect(ruleIds).not.toContain(SUBJECT_NOT_FOUND);
+  });
+
+  it("集約の状態に由来する NotFound（ArtistProfile 等）は usecase が遷移の選択として生成してよい", async () => {
+    const ruleIds = await ruleIdsFor(
+      USECASE,
+      `import { createArtistProfileNotFoundError } from "../../../domain/artistProfiles/errors/artistProfileNotFound";\n`,
+    );
+
+    expect(ruleIds).not.toContain(SUBJECT_NOT_FOUND);
+  });
+
+  it("NotFound 以外のドメインエラーの生成は対象外", async () => {
+    const ruleIds = await ruleIdsFor(
+      USECASE,
+      `import { createHandleAlreadyTakenError } from "../../../domain/artists/errors/handleAlreadyTaken";\n`,
+    );
+
+    expect(ruleIds).not.toContain(SUBJECT_NOT_FOUND);
+  });
+});
+
 const ENTITY = "src/domain/example/entities/index.ts";
 const ENTITY_BEHAVIOR = "local/entity-behavior-has-caller";
 
@@ -315,7 +385,7 @@ describe("local/entity-behavior-has-caller", () => {
     const messages = await entityBehaviorMessagesIn({
       [ENTITY]: EXAMPLE_ENTITY,
       "src/usecases/example/index.test.ts": `example.getId(); example.getName(); example.toPersistence();\n`,
-      "src/usecases/authorization/testDoubles/index.ts": `example.getId(); example.getName(); example.toPersistence();\n`,
+      "src/authorization/testDoubles/index.ts": `example.getId(); example.getName(); example.toPersistence();\n`,
     });
 
     expect(messages).toHaveLength(3);

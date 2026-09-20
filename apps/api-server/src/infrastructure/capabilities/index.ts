@@ -14,7 +14,7 @@ import {
   buildArtistWriteCapabilities,
   buildArtistStorageWriteCapabilities,
 } from "./builders";
-import type { CapabilityDeps } from "../../usecases/capabilities";
+import type { CapabilityDeps } from "../../capabilities";
 
 export const getCapabilityDeps = (() => {
   let deps: CapabilityDeps | null = null;

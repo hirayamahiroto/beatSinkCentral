@@ -2,8 +2,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { reconstructUser } from "../../../../../../domain/users/factories";
 import { reconstructArtist } from "../../../../../../domain/artists/factories";
-import { reconstructArtistProfile } from "../../../../../../domain/artistProfiles/factories";
-import type { ArtistProfilePersistenceData } from "../../../../../../domain/artistProfiles/entities";
+import { reconstructStoredProfile } from "../../../../../../domain/artistProfiles/factories";
+import { toPersistence } from "../../../../../../domain/artistProfiles/behaviors";
+import type { StoredProfile } from "../../../../../../domain/artistProfiles/entities";
 import { handleAppError } from "../../../../../../errorMap";
 import writeStoryChapterRoute from "./index";
 
@@ -22,10 +23,10 @@ const actor = {
 };
 
 const mockArtistProfiles = {
-  findByArtistId: vi.fn(),
+  load: vi.fn(),
   findPublishedByHandle: vi.fn(),
-  upsert: vi.fn(),
-  setPublished: vi.fn(),
+  save: vi.fn(),
+  publish: vi.fn(),
 };
 
 const mockResolveActorState = vi.fn();
@@ -62,8 +63,8 @@ describe("POST /artists/:artistId/story/chapters/:chapterKey", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockResolveActorState.mockResolvedValue({ status: "complete", actor });
-    mockArtistProfiles.findByArtistId.mockResolvedValue(
-      reconstructArtistProfile({
+    mockArtistProfiles.load.mockResolvedValue(
+      reconstructStoredProfile({
         id: "p1",
         artistId: "artist-1",
         published: false,
@@ -71,9 +72,8 @@ describe("POST /artists/:artistId/story/chapters/:chapterKey", () => {
         chapters: [{ questionCode: "beginning", body: "私の歩み" }],
       }),
     );
-    mockArtistProfiles.upsert.mockImplementation(
-      async (data: ArtistProfilePersistenceData) =>
-        reconstructArtistProfile({ ...data }),
+    mockArtistProfiles.save.mockImplementation(
+      async (state: StoredProfile) => state,
     );
   });
 
@@ -90,8 +90,10 @@ describe("POST /artists/:artistId/story/chapters/:chapterKey", () => {
         ],
       },
     });
-    expect(mockArtistProfiles.upsert).toHaveBeenCalledTimes(1);
-    expect(mockArtistProfiles.upsert.mock.calls[0][0]).toMatchObject({
+    expect(mockArtistProfiles.save).toHaveBeenCalledTimes(1);
+    expect(
+      toPersistence(mockArtistProfiles.save.mock.calls[0][0]),
+    ).toMatchObject({
       name: "Taro",
       chapters: [
         { questionCode: "beginning", body: "私の歩み" },
@@ -112,21 +114,21 @@ describe("POST /artists/:artistId/story/chapters/:chapterKey", () => {
     const res = await request("artist-1", "unknown", { body: "本文" });
 
     expect(res.status).toBe(422);
-    expect(mockArtistProfiles.upsert).not.toHaveBeenCalled();
+    expect(mockArtistProfiles.save).not.toHaveBeenCalled();
   });
 
   it("body が無ければ 400 を返し、保存しない", async () => {
     const res = await request("artist-1", "beginning", {});
 
     expect(res.status).toBe(400);
-    expect(mockArtistProfiles.upsert).not.toHaveBeenCalled();
+    expect(mockArtistProfiles.save).not.toHaveBeenCalled();
   });
 
   it("Actor と一致しない artistId は 404 を返し、保存しない", async () => {
     const res = await request("other-artist", "beginning", { body: "本文" });
 
     expect(res.status).toBe(404);
-    expect(mockArtistProfiles.upsert).not.toHaveBeenCalled();
+    expect(mockArtistProfiles.save).not.toHaveBeenCalled();
   });
 
   it("actor が解決できなければ 404 を返し、保存しない", async () => {
@@ -135,6 +137,6 @@ describe("POST /artists/:artistId/story/chapters/:chapterKey", () => {
     const res = await request("artist-1", "beginning", { body: "本文" });
 
     expect(res.status).toBe(404);
-    expect(mockArtistProfiles.upsert).not.toHaveBeenCalled();
+    expect(mockArtistProfiles.save).not.toHaveBeenCalled();
   });
 });

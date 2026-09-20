@@ -3,10 +3,11 @@ import {
   type ArtistProfileNotFoundError,
 } from "../../../domain/artistProfiles/errors/artistProfileNotFound";
 import {
-  ensurePublishable,
+  publish,
   type ProfileNotPublishableError,
 } from "../../../domain/artistProfiles/policies/publishability";
-import type { ArtistWriteCapabilities } from "../../capabilities";
+import { unpublish } from "../../../domain/artistProfiles/behaviors";
+import type { ArtistWriteCapabilities } from "../../../capabilities";
 import { type Result, ok, err } from "../../../utils/result";
 
 export type PublishMyProfileInput = {
@@ -30,20 +31,24 @@ export const publishMyProfile = async (
   caps: PublishMyProfileCaps,
   input: PublishMyProfileInput,
 ): Promise<Result<PublishMyProfileOutput, PublishMyProfileError>> => {
-  const artistId = caps.actor.artist.getArtistId();
+  const state = await caps.artistProfiles.load(caps.actor.artist.getArtistId());
 
-  const profile = await caps.artistProfiles.findByArtistId(artistId);
-  if (!profile) return err(createArtistProfileNotFoundError());
+  switch (state.kind) {
+    case "noProfile":
+      return err(createArtistProfileNotFoundError());
 
-  if (input.published) {
-    const publishable = ensurePublishable(profile);
-    if (!publishable.ok) return publishable;
+    case "draft": {
+      if (!input.published) return ok({ published: false });
+      const published = publish(state);
+      if (!published.ok) return published;
+      await caps.artistProfiles.publish(published.value);
+      return ok({ published: true });
+    }
+
+    case "published": {
+      if (input.published) return ok({ published: true });
+      await caps.artistProfiles.save(unpublish(state));
+      return ok({ published: false });
+    }
   }
-
-  const saved = await caps.artistProfiles.setPublished({
-    artistId,
-    published: input.published,
-  });
-
-  return ok({ published: saved.isPublished() });
 };

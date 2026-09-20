@@ -4,7 +4,7 @@ import { reconstructUser } from "../../../domain/users/factories";
 import { reconstructArtist } from "../../../domain/artists/factories";
 import { reconstructOffer } from "../../../domain/offers/factories";
 import type { IOfferReader } from "../../../domain/offers/repositories";
-import type { Actor, ArtistReadCapabilities } from "../../capabilities";
+import type { Actor, ArtistReadCapabilities } from "../../../capabilities";
 
 const actor: Actor = {
   user: reconstructUser({

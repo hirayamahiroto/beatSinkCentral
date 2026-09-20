@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
 import { reconstructUser } from "../../../../../../domain/users/factories";
 import { reconstructArtist } from "../../../../../../domain/artists/factories";
-import { reconstructArtistProfile } from "../../../../../../domain/artistProfiles/factories";
+import { reconstructStoredProfile } from "../../../../../../domain/artistProfiles/factories";
 import { reconstructOffer } from "../../../../../../domain/offers/factories";
 import { handleAppError } from "../../../../../../errorMap";
 import getProfileRoute from "./index";
@@ -22,7 +22,7 @@ const actor = {
 };
 
 const mockArtistProfiles = {
-  findByArtistId: vi.fn(),
+  load: vi.fn(),
   findPublishedByHandle: vi.fn(),
 };
 
@@ -71,8 +71,8 @@ describe("GET /artists/:artistId/profile", () => {
   });
 
   it("Actor と一致する artistId なら集約の構造と公開可能性を返す", async () => {
-    mockArtistProfiles.findByArtistId.mockResolvedValue(
-      reconstructArtistProfile({
+    mockArtistProfiles.load.mockResolvedValue(
+      reconstructStoredProfile({
         id: "p1",
         artistId: "artist-1",
         published: false,
@@ -104,11 +104,14 @@ describe("GET /artists/:artistId/profile", () => {
       publishability: { ok: false, missingFields: ["imageUrl", "genres"] },
       offer: null,
     });
-    expect(mockArtistProfiles.findByArtistId).toHaveBeenCalledWith("artist-1");
+    expect(mockArtistProfiles.load).toHaveBeenCalledWith("artist-1");
   });
 
   it("開催日前のオファーがあれば offer として集約と同じ応答に載せる", async () => {
-    mockArtistProfiles.findByArtistId.mockResolvedValue(null);
+    mockArtistProfiles.load.mockResolvedValue({
+      kind: "noProfile",
+      artistId: "artist-1",
+    });
     mockOffers.findLatestByArtistId.mockResolvedValue(
       reconstructOffer({
         id: "offer-1",
@@ -142,7 +145,10 @@ describe("GET /artists/:artistId/profile", () => {
   });
 
   it("プロフィール未作成なら profile と publishability を null で返す", async () => {
-    mockArtistProfiles.findByArtistId.mockResolvedValue(null);
+    mockArtistProfiles.load.mockResolvedValue({
+      kind: "noProfile",
+      artistId: "artist-1",
+    });
 
     const res = await request("artist-1");
 
@@ -159,7 +165,7 @@ describe("GET /artists/:artistId/profile", () => {
     const res = await request("other-artist");
 
     expect(res.status).toBe(404);
-    expect(mockArtistProfiles.findByArtistId).not.toHaveBeenCalled();
+    expect(mockArtistProfiles.load).not.toHaveBeenCalled();
     expect(mockOffers.findLatestByArtistId).not.toHaveBeenCalled();
   });
 
@@ -169,6 +175,6 @@ describe("GET /artists/:artistId/profile", () => {
     const res = await request("artist-1");
 
     expect(res.status).toBe(404);
-    expect(mockArtistProfiles.findByArtistId).not.toHaveBeenCalled();
+    expect(mockArtistProfiles.load).not.toHaveBeenCalled();
   });
 });

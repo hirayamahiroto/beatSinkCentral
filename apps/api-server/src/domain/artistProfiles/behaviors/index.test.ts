@@ -1,8 +1,20 @@
 import { describe, it, expect } from "vitest";
 import {
+  changeImage,
+  choosePresentationPattern,
+  clearStoryChapter,
+  draftIfAbsent,
+  replaceLinks,
+  reviseAttributes,
+  toPersistence,
+  toView,
+  unpublish,
+  writeStoryChapter,
+} from "./index";
+import {
   createProfileAttributes,
   createProfileLinks,
-  reconstructArtistProfile,
+  reconstructStoredProfile,
 } from "../factories";
 import { createStoryChapter } from "../valueObjects/storyChapter";
 import { createImageUrl } from "../valueObjects/imageUrl";
@@ -12,7 +24,7 @@ const expectOk = <T, E>(
   result: { ok: true; value: T } | { ok: false; error: E },
 ): T => unwrapOrThrow(result, "expected ok");
 
-const profile = reconstructArtistProfile({
+const published = reconstructStoredProfile({
   id: "profile-1",
   artistId: "artist-1",
   published: true,
@@ -28,28 +40,136 @@ const profile = reconstructArtistProfile({
   links: [{ linkTypeCode: "x", url: "https://x.com/taro" }],
 });
 
-describe("createArtistProfileBehaviors", () => {
-  it("getter がプリミティブ値を返す（内部の VO 構造を露出しない）", () => {
-    expect(profile.getName()).toBe("Taro");
-    expect(profile.toView().attributes.tagline).toBe("音で旅する");
-    expect(profile.getImageUrl()).toBe("https://example.com/a.png");
-    expect(profile.toView().attributes.activityInfo).toBe("東京 / ソロ");
-    expect(profile.getGenres()).toEqual(["bass", "inward"]);
-    expect(profile.getLinks()).toStrictEqual([
-      { linkTypeCode: "x", url: "https://x.com/taro" },
-    ]);
-    expect(profile.isPublished()).toBe(true);
+const content = published.content;
+
+describe("draftIfAbsent", () => {
+  it("noProfile は ID を生成した全構造が空の下書きに起こす", () => {
+    const draft = draftIfAbsent({ kind: "noProfile", artistId: "artist-2" });
+
+    expect(draft.kind).toBe("draft");
+    expect(draft.id).toBeTruthy();
+    expect(draft.artistId).toBe("artist-2");
+    expect(toView(draft)).toStrictEqual({
+      attributes: {
+        name: null,
+        imageUrl: null,
+        tagline: null,
+        genres: [],
+        activityInfo: null,
+      },
+      story: { chapters: [] },
+      links: [],
+      presentation: { patternCode: null },
+      published: false,
+    });
   });
 
-  it("getChapters は問いの固定順（始まり→転機→コンセプト）で並べ替えて返す", () => {
-    expect(profile.getChapters()).toEqual([
-      { questionCode: "beginning", body: "私の歩み" },
-      { questionCode: "turning_point", body: "転機" },
+  it("存在する状態はそのまま返す", () => {
+    expect(draftIfAbsent(published)).toBe(published);
+  });
+});
+
+describe("内容の書き換え（状態に無関心な純粋関数）", () => {
+  it("reviseAttributes は属性だけを差し替え、画像・章・リンクには触れない", () => {
+    const revised = reviseAttributes(
+      content,
+      expectOk(
+        createProfileAttributes({
+          name: "Jiro",
+          tagline: null,
+          genres: ["loop"],
+          activityInfo: null,
+        }),
+      ),
+    );
+
+    expect(revised.name?.value).toBe("Jiro");
+    expect(revised.tagline).toBeNull();
+    expect(revised.genres.map((genre) => genre.value)).toEqual(["loop"]);
+    expect(revised.activityInfo).toBeNull();
+    expect(revised.imageUrl).toBe(content.imageUrl);
+    expect(revised.chapters).toBe(content.chapters);
+    expect(revised.links).toBe(content.links);
+    expect(content.name?.value).toBe("Taro");
+  });
+
+  it("writeStoryChapter は同じ問いの章を上書きし、他の章は保持する", () => {
+    const written = writeStoryChapter(
+      content,
+      expectOk(
+        createStoryChapter({ questionCode: "beginning", body: "書き直し" }),
+      ),
+    );
+
+    expect(
+      written.chapters.map((chapter) => [chapter.questionCode, chapter.body]),
+    ).toEqual([
+      ["turning_point", "転機"],
+      ["beginning", "書き直し"],
     ]);
   });
 
-  it("toView は集約の構造（attributes / story / links / published）で返す", () => {
-    expect(profile.toView()).toStrictEqual({
+  it("clearStoryChapter は指定した問いの章だけを消す", () => {
+    const cleared = clearStoryChapter(content, "turning_point");
+
+    expect(cleared.chapters.map((chapter) => chapter.questionCode)).toEqual([
+      "beginning",
+    ]);
+    expect(clearStoryChapter(content, "concept").chapters).toEqual(
+      content.chapters,
+    );
+  });
+
+  it("replaceLinks はリンク集合を丸ごと差し替え、入力順を保つ", () => {
+    const replaced = replaceLinks(
+      content,
+      expectOk(
+        createProfileLinks([
+          { linkTypeCode: "youtube", url: "https://youtube.com/@taro" },
+          { linkTypeCode: "x", url: "https://x.com/taro2" },
+        ]),
+      ),
+    );
+
+    expect(replaced.links.map((link) => link.linkTypeCode)).toEqual([
+      "youtube",
+      "x",
+    ]);
+    expect(replaceLinks(content, []).links).toEqual([]);
+  });
+
+  it("choosePresentationPattern / changeImage はその構造だけを差し替える", () => {
+    expect(
+      choosePresentationPattern(content, "editorial").presentationPattern,
+    ).toBe("editorial");
+    expect(
+      changeImage(
+        content,
+        expectOk(createImageUrl("https://example.com/b.png")),
+      ).imageUrl?.value,
+    ).toBe("https://example.com/b.png");
+    expect(content.presentationPattern).toBeNull();
+  });
+});
+
+describe("unpublish", () => {
+  it("公開中から ID と内容を保ったまま下書きへ戻す", () => {
+    if (published.kind !== "published") throw new Error("fixture");
+
+    const draft = unpublish(published);
+
+    expect(draft).toStrictEqual({
+      kind: "draft",
+      id: "profile-1",
+      artistId: "artist-1",
+      content: published.content,
+    });
+  });
+});
+
+describe("toView / toPersistence", () => {
+  it("toView は集約の構造で返し、章は問いの固定順に並べ、published は kind から決める", () => {
+    expect(toView(published)).toStrictEqual({
       attributes: {
         name: "Taro",
         imageUrl: "https://example.com/a.png",
@@ -69,141 +189,22 @@ describe("createArtistProfileBehaviors", () => {
     });
   });
 
-  it("choosePresentationPattern は表現パターンだけを差し替えた新しい Entity を返し、元は不変", () => {
-    const chosen = profile.choosePresentationPattern("editorial");
-
-    expect(chosen.toView().presentation.patternCode).toBe("editorial");
-    expect(chosen.toView().presentation).toStrictEqual({
-      patternCode: "editorial",
-    });
-    expect(chosen.toPersistence().presentationPatternCode).toBe("editorial");
-    expect(chosen.getName()).toBe("Taro");
-    expect(chosen.getLinks()).toStrictEqual(profile.getLinks());
-    expect(profile.toView().presentation.patternCode).toBeNull();
-  });
-
-  it("unpublish は published=false の新しい Entity を返し、元は不変", () => {
-    expect(profile.unpublish().isPublished()).toBe(false);
-    expect(profile.isPublished()).toBe(true);
-  });
-
-  it("未設定フィールドは null もしくは空配列を返す", () => {
-    const draft = reconstructArtistProfile({
-      id: "profile-2",
-      artistId: "artist-2",
-      published: false,
-    });
-    expect(draft.getName()).toBeNull();
-    expect(draft.getChapters()).toEqual([]);
-    expect(draft.getGenres()).toEqual([]);
-  });
-
-  describe("reviseAttributes", () => {
-    it("属性だけを差し替え、画像・章・リンク・公開状態には触れない", () => {
-      const revised = profile.reviseAttributes(
-        expectOk(
-          createProfileAttributes({
-            name: "Jiro",
-            tagline: null,
-            genres: ["loop"],
-            activityInfo: null,
-          }),
-        ),
-      );
-
-      expect(revised.getName()).toBe("Jiro");
-      expect(revised.toView().attributes.tagline).toBeNull();
-      expect(revised.getGenres()).toEqual(["loop"]);
-      expect(revised.toView().attributes.activityInfo).toBeNull();
-      expect(revised.getImageUrl()).toBe("https://example.com/a.png");
-      expect(revised.getChapters()).toEqual(profile.getChapters());
-      expect(revised.getLinks()).toEqual(profile.getLinks());
-      expect(revised.isPublished()).toBe(true);
-      expect(profile.getName()).toBe("Taro");
-    });
-  });
-
-  describe("writeStoryChapter", () => {
-    it("同じ問いの章は上書きし、他の章は保持する", () => {
-      const written = profile.writeStoryChapter(
-        expectOk(
-          createStoryChapter({ questionCode: "beginning", body: "書き直し" }),
-        ),
-      );
-
-      expect(written.getChapters()).toEqual([
-        { questionCode: "beginning", body: "書き直し" },
-        { questionCode: "turning_point", body: "転機" },
-      ]);
-      expect(profile.getChapters()[0]?.body).toBe("私の歩み");
-    });
-
-    it("新しい問いの章は追加され、固定順に並ぶ", () => {
-      const written = profile.writeStoryChapter(
-        expectOk(
-          createStoryChapter({
-            questionCode: "concept",
-            body: "表現したいこと",
-          }),
-        ),
-      );
-
-      expect(written.getChapters()).toEqual([
+  it("toPersistence はプリミティブな永続化データを返す", () => {
+    expect(toPersistence(published)).toStrictEqual({
+      id: "profile-1",
+      artistId: "artist-1",
+      name: "Taro",
+      tagline: "音で旅する",
+      imageUrl: "https://example.com/a.png",
+      chapters: [
         { questionCode: "beginning", body: "私の歩み" },
         { questionCode: "turning_point", body: "転機" },
-        { questionCode: "concept", body: "表現したいこと" },
-      ]);
-    });
-  });
-
-  describe("clearStoryChapter", () => {
-    it("指定した問いの章だけを消す", () => {
-      const cleared = profile.clearStoryChapter("turning_point");
-
-      expect(cleared.getChapters()).toEqual([
-        { questionCode: "beginning", body: "私の歩み" },
-      ]);
-    });
-
-    it("存在しない問いを消しても他の章は変わらない", () => {
-      expect(profile.clearStoryChapter("concept").getChapters()).toEqual(
-        profile.getChapters(),
-      );
-    });
-  });
-
-  describe("replaceLinks", () => {
-    it("リンク集合を丸ごと差し替え、順序は入力順を保つ", () => {
-      const replaced = profile.replaceLinks(
-        expectOk(
-          createProfileLinks([
-            { linkTypeCode: "youtube", url: "https://youtube.com/@taro" },
-            { linkTypeCode: "x", url: "https://x.com/taro2" },
-          ]),
-        ),
-      );
-
-      expect(replaced.getLinks()).toStrictEqual([
-        { linkTypeCode: "youtube", url: "https://youtube.com/@taro" },
-        { linkTypeCode: "x", url: "https://x.com/taro2" },
-      ]);
-      expect(replaced.getName()).toBe("Taro");
-    });
-
-    it("空配列で全リンクを消せる", () => {
-      expect(profile.replaceLinks([]).getLinks()).toEqual([]);
-    });
-  });
-
-  describe("changeImage", () => {
-    it("画像 URL だけを差し替える", () => {
-      const changed = profile.changeImage(
-        expectOk(createImageUrl("https://example.com/b.png")),
-      );
-
-      expect(changed.getImageUrl()).toBe("https://example.com/b.png");
-      expect(changed.getName()).toBe("Taro");
-      expect(profile.getImageUrl()).toBe("https://example.com/a.png");
+      ],
+      activityInfo: "東京 / ソロ",
+      genres: ["bass", "inward"],
+      links: [{ linkTypeCode: "x", url: "https://x.com/taro" }],
+      presentationPatternCode: null,
+      published: true,
     });
   });
 });

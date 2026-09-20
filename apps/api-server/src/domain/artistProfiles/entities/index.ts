@@ -1,14 +1,58 @@
 import type { ProfileName } from "../valueObjects/profileName";
 import type { Tagline } from "../valueObjects/tagline";
 import type { ImageUrl } from "../valueObjects/imageUrl";
-import type {
-  StoryChapter,
-  StoryQuestionCode,
-} from "../valueObjects/storyChapter";
+import type { StoryChapter } from "../valueObjects/storyChapter";
 import type { ActivityInfo } from "../valueObjects/activityInfo";
 import type { Genre } from "../valueObjects/genre";
 import type { ProfileLink } from "../valueObjects/profileLink";
 import type { PresentationPatternCode } from "../valueObjects/presentationPattern";
+
+export type ProfileContent = {
+  readonly name: ProfileName | null;
+  readonly tagline: Tagline | null;
+  readonly imageUrl: ImageUrl | null;
+  readonly chapters: readonly StoryChapter[];
+  readonly activityInfo: ActivityInfo | null;
+  readonly genres: readonly Genre[];
+  readonly links: readonly ProfileLink[];
+  readonly presentationPattern: PresentationPatternCode | null;
+};
+
+export type PublishableContent = ProfileContent & {
+  readonly name: ProfileName;
+  readonly imageUrl: ImageUrl;
+  readonly chapters: readonly [StoryChapter, ...StoryChapter[]];
+  readonly genres: readonly [Genre, ...Genre[]];
+  readonly links: readonly [ProfileLink, ...ProfileLink[]];
+};
+
+export type ArtistProfileAttributes = Pick<
+  ProfileContent,
+  "name" | "tagline" | "genres" | "activityInfo"
+>;
+
+type NoProfile = {
+  readonly kind: "noProfile";
+  readonly artistId: string;
+};
+
+export type DraftProfile = {
+  readonly kind: "draft";
+  readonly id: string;
+  readonly artistId: string;
+  readonly content: ProfileContent;
+};
+
+export type PublishedProfile = {
+  readonly kind: "published";
+  readonly id: string;
+  readonly artistId: string;
+  readonly content: PublishableContent;
+};
+
+export type ProfileState = NoProfile | DraftProfile | PublishedProfile;
+
+export type StoredProfile = DraftProfile | PublishedProfile;
 
 export type ProfileLinkData = {
   linkTypeCode: string;
@@ -19,25 +63,6 @@ export type StoryChapterData = {
   questionCode: string;
   body: string;
 };
-
-export type ArtistProfileState = {
-  readonly id: string;
-  readonly artistId: string;
-  readonly name: ProfileName | null;
-  readonly tagline: Tagline | null;
-  readonly imageUrl: ImageUrl | null;
-  readonly chapters: readonly StoryChapter[];
-  readonly activityInfo: ActivityInfo | null;
-  readonly genres: readonly Genre[];
-  readonly links: readonly ProfileLink[];
-  readonly presentationPattern: PresentationPatternCode | null;
-  readonly published: boolean;
-};
-
-export type ArtistProfileAttributes = Pick<
-  ArtistProfileState,
-  "name" | "tagline" | "genres" | "activityInfo"
->;
 
 export type ArtistProfilePersistenceData = {
   id: string;
@@ -80,26 +105,4 @@ export type ArtistProfileView = {
   links: ProfileLinkData[];
   presentation: ArtistProfilePresentationView;
   published: boolean;
-};
-
-export type ArtistProfile = {
-  getId: () => string;
-  getArtistId: () => string;
-  getName: () => string | null;
-  getImageUrl: () => string | null;
-  getChapters: () => StoryChapterData[];
-  getGenres: () => string[];
-  getLinks: () => ProfileLinkData[];
-  isPublished: () => boolean;
-  unpublish: () => ArtistProfile;
-  reviseAttributes: (attributes: ArtistProfileAttributes) => ArtistProfile;
-  writeStoryChapter: (chapter: StoryChapter) => ArtistProfile;
-  clearStoryChapter: (questionCode: StoryQuestionCode) => ArtistProfile;
-  replaceLinks: (links: readonly ProfileLink[]) => ArtistProfile;
-  choosePresentationPattern: (
-    pattern: PresentationPatternCode,
-  ) => ArtistProfile;
-  changeImage: (imageUrl: ImageUrl) => ArtistProfile;
-  toPersistence: () => ArtistProfilePersistenceData;
-  toView: () => ArtistProfileView;
 };

@@ -2,7 +2,7 @@ import {
   createEmail,
   type InvalidEmailFormatError,
 } from "../../../domain/users/valueObjects/email";
-import type { UserWriteCapabilities } from "../../capabilities";
+import type { UserWriteCapabilities } from "../../../capabilities";
 import { type Result, ok } from "../../../utils/result";
 
 export type UpdateMyEmailInput = {

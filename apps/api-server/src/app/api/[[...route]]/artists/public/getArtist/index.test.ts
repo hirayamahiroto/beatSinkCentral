@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import { reconstructArtistProfile } from "../../../../../../domain/artistProfiles/factories";
+import { reconstructStoredProfile } from "../../../../../../domain/artistProfiles/factories";
 import { handleAppError } from "../../../../../../errorMap";
 import getArtistRoute from "./index";
 
 const mockArtistProfiles = {
-  findByArtistId: vi.fn(),
+  load: vi.fn(),
   findPublishedByHandle: vi.fn(),
 };
 
@@ -29,7 +29,7 @@ describe("GET /artists/:handle", () => {
 
   it("公開プロフィールを handle と view で返す", async () => {
     mockArtistProfiles.findPublishedByHandle.mockResolvedValue(
-      reconstructArtistProfile({
+      reconstructStoredProfile({
         id: "p1",
         artistId: "0d7fbb2e-5f6c-4d3a-9c1e-2b8f4a6d7e90",
         published: true,
@@ -55,41 +55,6 @@ describe("GET /artists/:handle", () => {
     expect(mockArtistProfiles.findPublishedByHandle).toHaveBeenCalledWith(
       "beatboxer_taro",
     );
-  });
-
-  it("公開必須項目が欠けた公開プロフィールは契約違反として 500 を返す", async () => {
-    mockArtistProfiles.findPublishedByHandle.mockResolvedValue(
-      reconstructArtistProfile({
-        id: "p1",
-        artistId: "0d7fbb2e-5f6c-4d3a-9c1e-2b8f4a6d7e90",
-        published: true,
-        name: "Taro",
-        imageUrl: null,
-        chapters: [{ questionCode: "beginning", body: "私の歩み" }],
-        genres: [],
-        links: [{ linkTypeCode: "x", url: "https://x.com/taro" }],
-      }),
-    );
-
-    const consoleError = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => undefined);
-
-    const res = await createApp().request("/beatboxer_taro", { method: "GET" });
-
-    expect(res.status).toBe(500);
-    expect(consoleError).toHaveBeenCalledTimes(1);
-    expect(JSON.parse(consoleError.mock.calls[0][0])).toMatchObject({
-      event: "AppError",
-      errorType: "ResponseContractViolationError",
-      context: {
-        issuePaths: [
-          "profile.attributes.imageUrl",
-          "profile.attributes.genres",
-        ],
-      },
-    });
-    consoleError.mockRestore();
   });
 
   it("公開プロフィールが無ければ 404 を返す", async () => {

@@ -1,27 +1,24 @@
-import type { User } from "../../domain/users/entities";
-import type { Artist } from "../../domain/artists/entities";
+import type { User } from "../domain/users/entities";
+import type { Artist } from "../domain/artists/entities";
 import type {
   IArtistProfileReader,
   IArtistProfileWriter,
   IProfileImageStorage,
-} from "../../domain/artistProfiles/repositories";
-import type { IUserReader, IUserWriter } from "../../domain/users/repositories";
+} from "../domain/artistProfiles/repositories";
+import type { IUserReader, IUserWriter } from "../domain/users/repositories";
 import type {
   IArtistReader,
   IArtistWriter,
-} from "../../domain/artists/repositories";
-import type { IArtistHandleHistoryWriter } from "../../domain/artistHandleHistories/repositories";
-import type {
-  IOfferReader,
-  IOfferWriter,
-} from "../../domain/offers/repositories";
-import type { ILinkTypeReader } from "../../domain/linkTypes/repositories";
-import type { IAnalyticsEventWriter } from "../../domain/analyticsEvents/repositories";
-import type { IStoryQuestionReader } from "../../domain/storyQuestions/repositories";
-import type { IPresentationPatternReader } from "../../domain/presentationPatterns/repositories";
-import type { UserNotFoundError } from "../../domain/users/errors/userNotFound";
-import type { ArtistNotFoundError } from "../../domain/artists/errors/artistNotFound";
-import type { Result } from "../../utils/result";
+} from "../domain/artists/repositories";
+import type { IArtistHandleHistoryWriter } from "../domain/artistHandleHistories/repositories";
+import type { IOfferReader, IOfferWriter } from "../domain/offers/repositories";
+import type { ILinkTypeReader } from "../domain/linkTypes/repositories";
+import type { IAnalyticsEventWriter } from "../domain/analyticsEvents/repositories";
+import type { IStoryQuestionReader } from "../domain/storyQuestions/repositories";
+import type { IPresentationPatternReader } from "../domain/presentationPatterns/repositories";
+import type { UserNotFoundError } from "../domain/users/errors/userNotFound";
+import type { ArtistNotFoundError } from "../domain/artists/errors/artistNotFound";
+import type { Result } from "../utils/result";
 
 export type Actor = {
   readonly user: User;

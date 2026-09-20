@@ -36,12 +36,15 @@ import {
   createPresentationPatternCode,
   type InvalidPresentationPatternError,
 } from "../valueObjects/presentationPattern";
-import { createArtistProfileBehaviors } from "../behaviors";
 import type {
-  ArtistProfile,
   ArtistProfileAttributes,
-  ArtistProfileState,
+  ProfileContent,
+  StoredProfile,
 } from "../entities";
+import {
+  toPublishableContent,
+  type ProfileNotPublishableError,
+} from "../policies/publishability";
 import {
   type Result,
   ok,
@@ -122,23 +125,16 @@ type ArtistProfileContent = ArtistProfileAttributesContent & {
   presentationPatternCode?: string | null;
 };
 
-export type ArtistProfileContentError =
+type ArtistProfileContentError =
   | ArtistProfileAttributesError
   | InvalidImageUrlFormatError
   | InvalidStoryChapterFormatError
   | CreateProfileLinkError
   | InvalidPresentationPatternError;
 
-type ProfileIdentity = {
-  id: string;
-  artistId: string;
-  published: boolean;
-};
-
-const buildState = (
-  base: ProfileIdentity,
+const buildContent = (
   content: ArtistProfileContent,
-): Result<ArtistProfileState, ArtistProfileContentError> =>
+): Result<ProfileContent, ArtistProfileContentError> =>
   map(
     all({
       attributes: createProfileAttributes(content),
@@ -154,9 +150,6 @@ const buildState = (
       ),
     }),
     ({ attributes, imageUrl, chapters, links, presentationPattern }) => ({
-      id: base.id,
-      artistId: base.artistId,
-      published: base.published,
       ...attributes,
       imageUrl,
       chapters,
@@ -165,47 +158,34 @@ const buildState = (
     }),
   );
 
-export type CreateDraftArtistProfileParams = {
-  artistId: string;
-};
-
-export const createDraftArtistProfile = (
-  params: CreateDraftArtistProfileParams,
-): ArtistProfile =>
-  createArtistProfileBehaviors({
-    id: crypto.randomUUID(),
-    artistId: params.artistId,
-    published: false,
-    name: null,
-    tagline: null,
-    imageUrl: null,
-    chapters: [],
-    activityInfo: null,
-    genres: [],
-    links: [],
-    presentationPattern: null,
-  });
-
 export type ReconstructArtistProfileParams = ArtistProfileContent & {
   id: string;
   artistId: string;
   published: boolean;
 };
 
-export const reconstructArtistProfile = (
+const toStoredProfile = (
   params: ReconstructArtistProfileParams,
-): ArtistProfile =>
-  unwrapOrThrow(
-    map(
-      buildState(
-        {
-          id: params.id,
-          artistId: params.artistId,
-          published: params.published,
-        },
-        params,
-      ),
-      createArtistProfileBehaviors,
-    ),
-    "reconstructArtistProfile: stored profile has invalid field values",
+  content: ProfileContent,
+): Result<StoredProfile, ProfileNotPublishableError> => {
+  const identity = { id: params.id, artistId: params.artistId };
+  if (!params.published) return ok({ kind: "draft", ...identity, content });
+  return map(toPublishableContent(content), (publishable) => ({
+    kind: "published",
+    ...identity,
+    content: publishable,
+  }));
+};
+
+export const reconstructStoredProfile = (
+  params: ReconstructArtistProfileParams,
+): StoredProfile => {
+  const content = unwrapOrThrow(
+    buildContent(params),
+    "reconstructStoredProfile: stored profile has invalid field values",
   );
+  return unwrapOrThrow(
+    toStoredProfile(params, content),
+    "reconstructStoredProfile: published profile lacks required fields",
+  );
+};

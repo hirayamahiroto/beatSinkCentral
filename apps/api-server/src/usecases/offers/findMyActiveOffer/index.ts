@@ -1,6 +1,6 @@
 import type { Offer } from "../../../domain/offers/entities";
 import { isOfferActiveAt } from "../../../domain/offers/policies/activity";
-import type { ArtistReadCapabilities } from "../../capabilities";
+import type { ArtistReadCapabilities } from "../../../capabilities";
 
 type FindMyActiveOfferCaps = Pick<ArtistReadCapabilities, "actor" | "offers">;
 

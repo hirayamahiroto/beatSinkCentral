@@ -1,6 +1,6 @@
 import type { IUserReader } from "../../../domain/users/repositories";
 import type { IArtistReader } from "../../../domain/artists/repositories";
-import type { ActorResolution } from "../../../usecases/capabilities";
+import type { ActorResolution } from "../../../capabilities";
 
 export type ActorStateReaders = {
   users: IUserReader;

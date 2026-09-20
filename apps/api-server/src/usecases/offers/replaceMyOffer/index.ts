@@ -19,7 +19,7 @@ import {
   ensureOfferDateNotPassed,
   type OfferDatePassedError,
 } from "../../../domain/offers/policies/activity";
-import type { ArtistWriteCapabilities } from "../../capabilities";
+import type { ArtistWriteCapabilities } from "../../../capabilities";
 import { findMyActiveOffer } from "../findMyActiveOffer";
 import { type Result, ok, err, map, traverse } from "../../../utils/result";
 

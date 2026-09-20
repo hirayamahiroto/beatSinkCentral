@@ -4,7 +4,10 @@ import { reconstructUser } from "../../../domain/users/factories";
 import { reconstructArtist } from "../../../domain/artists/factories";
 import { createProfileImageUploadFailedError } from "../../../domain/artistProfiles/errors/profileImageUploadFailed";
 import type { IProfileImageStorage } from "../../../domain/artistProfiles/repositories";
-import type { Actor, ArtistStorageWriteCapabilities } from "../../capabilities";
+import type {
+  Actor,
+  ArtistStorageWriteCapabilities,
+} from "../../../capabilities";
 import { ok, err } from "../../../utils/result";
 
 const existingUser = reconstructUser({

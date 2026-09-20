@@ -1,14 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { listPublicProfiles } from "./index";
 import type { IArtistProfileReader } from "../../../domain/artistProfiles/repositories";
-import type { PublicReadCapabilities } from "../../capabilities";
+import type { PublicReadCapabilities } from "../../../capabilities";
 
 const createCaps = () =>
   ({
     artistProfiles: {
-      findByArtistId: vi.fn<IArtistProfileReader["findByArtistId"]>(
-        async () => null,
-      ),
+      load: vi.fn<IArtistProfileReader["load"]>(async (artistId) => ({
+        kind: "noProfile",
+        artistId,
+      })),
       findPublishedByHandle: vi.fn<
         IArtistProfileReader["findPublishedByHandle"]
       >(async () => null),

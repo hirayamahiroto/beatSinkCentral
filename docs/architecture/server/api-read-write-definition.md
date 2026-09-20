@@ -61,24 +61,25 @@
 
 - **入力はその構造の項目だけ。** 属性の更新に Story を渡さない。渡せない型にする。
 - **集合は集合ごと差し替える。** SNS リンクは 1 本ずつ足す／消すではなく `links[]` を丸ごと受ける（順序も本人が決めるため）。要素単位の操作が必要になったら `links/:linkId/delete` を足す。
-- **不変条件は各更新で拒否しない。** 公開可能性を理由に更新を弾くのは `publish` のときだけ（`ensurePublishable` の位置は変えない）。下書き中は部分的な状態を許す。ただし公開中のプロフィールが更新で公開条件を割ったときは非公開へ降ろす（`enforcePublishInvariant`）。公開 read の契約（`name` 必須等）を守るためで、更新自体は成功する。
+- **不変条件は各更新で拒否しない。** 公開可能性を理由に更新を弾くのは `publish` のときだけ（`DraftProfile → Result<PublishedProfile, ProfileNotPublishableError>`）。下書き中は部分的な状態を許す。ただし公開中のプロフィールが更新で公開条件を割ったときは下書きへ降ろす（`edit` の戻り値が `DraftProfile` になる）。公開 read の契約（`name` 必須等）を守るためで、更新自体は成功する。
 - 更新の成功応答は、**更新した構造だけ**を返す（集約全体を返さない）。全体が必要なら取得 API を呼ぶ。
 - 更新の名前は行為にする（`updateAttributes` / `writeStoryChapter` / `replaceLinks`）。画面名・ボタン名を入れない。
 
 ### ドメイン層との対応
 
-集約は `ArtistProfile` 一つのまま。更新 API ごとに**集約の一部だけを受け取る振る舞い**を置き、残りの状態には触らない。
+集約の状態は状態ユニオン `ProfileState`（`noProfile` / `draft` / `published`）で表し、更新は「読む（`load`）→ 純粋な遷移（`edit`）→ 書く（`save`）」の順に組む。更新 API ごとに**内容（`ProfileContent`）の一部だけを書き換える純粋関数**を `behaviors` に置き、残りの内容には触らない。
 
-| 更新 API            | 振る舞い                                        | 受け取るもの                           |
-| ------------------- | ----------------------------------------------- | -------------------------------------- |
-| `updateAttributes`  | `ArtistProfile.reviseAttributes(content)`       | name / tagline / genres / activityInfo |
-| `writeStoryChapter` | `ArtistProfile.writeStoryChapter(chapter)`      | questionCode / body                    |
-| `replaceLinks`      | `ArtistProfile.replaceLinks(links)`             | links[]                                |
-| `profile/image`     | `ArtistProfile.changeImage(imageUrl)`           | imageUrl                               |
-| `presentation`      | `ArtistProfile.choosePresentationPattern(code)` | patternCode                            |
+| 更新 API            | 内容の書き換え                                                                                  | 受け取るもの                           |
+| ------------------- | ----------------------------------------------------------------------------------------------- | -------------------------------------- |
+| `updateAttributes`  | `reviseAttributes(content, attributes)`                                                         | name / tagline / genres / activityInfo |
+| `writeStoryChapter` | `writeStoryChapter(content, chapter)`。本文が空なら `clearStoryChapter(content, questionCode)`  | questionCode / body                    |
+| `replaceLinks`      | `replaceLinks(content, links)`                                                                  | links[]                                |
+| `profile/image`     | `changeImage(content, imageUrl)`                                                                | imageUrl                               |
+| `presentation`      | `choosePresentationPattern(content, pattern)`                                                   | patternCode                            |
+| `profile/publish`   | `publish(state: DraftProfile)` / `unpublish(state: PublishedProfile)`（内容ではなく状態の遷移） | published                              |
 
-- 集約が未作成なら `createDraftArtistProfile({ artistId })` で空の下書きを作ってから振る舞いを適用する。どの構造から書き始めてもよい。
-- リポジトリの `upsert` は集約全体のままでよい。振る舞いが返す集約をそのまま保存する。部分更新の最適化は必要になってから。
+- 内容の書き換えは `edit(state, change)` に渡す。集約が無ければ `edit` が空の下書きを起こしてから適用するので、どの構造から書き始めてもよい。公開中に必須条件を割れば戻り値が `DraftProfile` になり、そのまま `save` する。
+- リポジトリの書き口は `save(StoredProfile)` と `publish(PublishedProfile)` の 2 つ。`save` は公開状態を立てない（下書きへ降ろすことはある）。`publish` は必須条件が揃った `PublishedProfile` しか受けないため、条件を満たさない公開は型で書けない。部分更新の最適化は必要になってから。
 - 画像は外部ストレージへのアップロードとプロフィールへの URL 書き込みを分け、前者をトランザクションの外で行う（`code-review-checklist.md` §10）。ルートが「アップロード → URL を集約へ書く」の順に 2 つの usecase を呼ぶ。
 
 ### ルート構成

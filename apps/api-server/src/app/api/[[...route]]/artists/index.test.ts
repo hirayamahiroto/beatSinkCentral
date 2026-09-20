@@ -4,7 +4,7 @@ import artists from "./index";
 import { handleAppError } from "../../../../errorMap";
 
 const mockArtistProfiles = {
-  findByArtistId: vi.fn(),
+  load: vi.fn(),
   findPublishedByHandle: vi.fn(),
   listPublishedSummaries: vi.fn(),
 };

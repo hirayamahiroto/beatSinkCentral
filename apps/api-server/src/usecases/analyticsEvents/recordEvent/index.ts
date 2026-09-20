@@ -3,7 +3,7 @@ import {
   type RecordEventInput,
 } from "../../../domain/analyticsEvents/factories";
 import type { InvalidEventTypeFormatError } from "../../../domain/analyticsEvents/valueObjects/eventType";
-import type { PublicWriteCapabilities } from "../../capabilities";
+import type { PublicWriteCapabilities } from "../../../capabilities";
 import { type Result, ok } from "../../../utils/result";
 
 export type RecordEventUsecaseInput = RecordEventInput;

@@ -4,9 +4,9 @@ import type {
   CreateProfileLinkError,
   ProfileLinkInput,
 } from "../../../domain/artistProfiles/valueObjects/profileLink";
-import type { ArtistWriteCapabilities } from "../../capabilities";
-import { loadOrDraftMyProfile } from "../loadOrDraftMyProfile";
-import { persistMyProfile } from "../persistMyProfile";
+import { replaceLinks, toView } from "../../../domain/artistProfiles/behaviors";
+import { edit } from "../../../domain/artistProfiles/policies/publishability";
+import type { ArtistWriteCapabilities } from "../../../capabilities";
 import { type Result, ok } from "../../../utils/result";
 
 export type ReplaceMyLinksInput = {
@@ -31,8 +31,10 @@ export const replaceMyLinks = async (
   const links = createProfileLinks(input.links);
   if (!links.ok) return links;
 
-  const profile = await loadOrDraftMyProfile(caps);
-  const saved = await persistMyProfile(caps, profile.replaceLinks(links.value));
+  const state = await caps.artistProfiles.load(caps.actor.artist.getArtistId());
+  const saved = await caps.artistProfiles.save(
+    edit(state, (content) => replaceLinks(content, links.value)),
+  );
 
-  return ok({ links: saved.getLinks() });
+  return ok({ links: toView(saved).links });
 };

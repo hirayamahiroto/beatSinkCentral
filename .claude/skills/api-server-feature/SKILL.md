@@ -124,10 +124,14 @@ flowchart TD
 依存方向に沿って作る。外側から作ると内側の変更で作り直しになる。
 
 ```
-DBスキーマ + migration → VO → entity(型) → behaviors → factory
-  → policy → repository(interface) → repository(impl) → container
+（主体や対象が 2 つ以上の状態を持つなら）状態ユニオン + 遷移シグネチャを型だけで先に書く
+  → DBスキーマ + migration → VO → entity(型) → behaviors → factory
+  → policy → repository(interface) → repository(impl)
+  → capabilities(権能型) → authorization(経路) → infrastructure/capabilities(組み立て)
   → usecase → route → errorMap → 認証スコープ
 ```
+
+**状態設計を先に置く理由**: 「無ければ下書き」「無ければ 404」のような主体の状態判定を usecase ごとに書くと、書き方が揺れて漏れる。同じ主体への同じ前提が 2 つ以上の usecase に現れるなら、状態ユニオンと畳み込み関数（`authorization/resolution`）に寄せ、usecase は解決済みの主体を権能で受け取る（`docs/architecture/server/architecture.md`「Actor の解決は状態ユニオンで表す」）。1 つの usecase に閉じる前提は、その usecase の `err` に残す。
 
 各 module を作ったら **同階層に `index.test.ts` を必ず置く**（[[feedback_test_every_module]]）。
 型だけの module（entity の型定義・repository interface）は対象外。

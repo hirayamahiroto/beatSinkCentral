@@ -1,20 +1,96 @@
 import type {
-  ArtistProfile,
   ArtistProfileAttributes,
-  ArtistProfileState,
   ArtistProfilePersistenceData,
   ArtistProfileView,
+  DraftProfile,
+  ProfileContent,
   ProfileLinkData,
+  ProfileState,
+  PublishedProfile,
+  StoredProfile,
   StoryChapterData,
 } from "../entities";
 import type { ImageUrl } from "../valueObjects/imageUrl";
 import type { ProfileLink } from "../valueObjects/profileLink";
 import type { PresentationPatternCode } from "../valueObjects/presentationPattern";
-import type {
-  StoryChapter,
-  StoryQuestionCode,
+import {
+  STORY_QUESTION_CODES,
+  type StoryChapter,
+  type StoryQuestionCode,
 } from "../valueObjects/storyChapter";
-import { STORY_QUESTION_CODES } from "../valueObjects/storyChapter";
+
+const emptyProfileContent: ProfileContent = {
+  name: null,
+  tagline: null,
+  imageUrl: null,
+  chapters: [],
+  activityInfo: null,
+  genres: [],
+  links: [],
+  presentationPattern: null,
+};
+
+const beginDraft = (artistId: string): DraftProfile => ({
+  kind: "draft",
+  id: crypto.randomUUID(),
+  artistId,
+  content: emptyProfileContent,
+});
+
+export const draftIfAbsent = (state: ProfileState): StoredProfile =>
+  state.kind === "noProfile" ? beginDraft(state.artistId) : state;
+
+const withoutChapter = (
+  chapters: readonly StoryChapter[],
+  questionCode: StoryQuestionCode,
+): StoryChapter[] =>
+  chapters.filter((chapter) => chapter.questionCode !== questionCode);
+
+export const reviseAttributes = (
+  content: ProfileContent,
+  attributes: ArtistProfileAttributes,
+): ProfileContent => ({ ...content, ...attributes });
+
+export const writeStoryChapter = (
+  content: ProfileContent,
+  chapter: StoryChapter,
+): ProfileContent => ({
+  ...content,
+  chapters: [
+    ...withoutChapter(content.chapters, chapter.questionCode),
+    chapter,
+  ],
+});
+
+export const clearStoryChapter = (
+  content: ProfileContent,
+  questionCode: StoryQuestionCode,
+): ProfileContent => ({
+  ...content,
+  chapters: withoutChapter(content.chapters, questionCode),
+});
+
+export const replaceLinks = (
+  content: ProfileContent,
+  links: readonly ProfileLink[],
+): ProfileContent => ({ ...content, links });
+
+export const choosePresentationPattern = (
+  content: ProfileContent,
+  pattern: PresentationPatternCode,
+): ProfileContent => ({ ...content, presentationPattern: pattern });
+
+export const changeImage = (
+  content: ProfileContent,
+  imageUrl: ImageUrl,
+): ProfileContent => ({ ...content, imageUrl });
+
+export const unpublish = (state: PublishedProfile): DraftProfile => ({
+  kind: "draft",
+  id: state.id,
+  artistId: state.artistId,
+  content: state.content,
+});
 
 const valueOrNull = (vo: { readonly value: string } | null): string | null =>
   vo === null ? null : vo.value;
@@ -29,85 +105,40 @@ const toOrderedChapters = (
       : [];
   });
 
-const withoutChapter = (
-  chapters: readonly StoryChapter[],
-  questionCode: StoryQuestionCode,
-): StoryChapter[] =>
-  chapters.filter((chapter) => chapter.questionCode !== questionCode);
+const toLinkData = (links: readonly ProfileLink[]): ProfileLinkData[] =>
+  links.map((link) => ({ linkTypeCode: link.linkTypeCode, url: link.url }));
 
-export const createArtistProfileBehaviors = (
-  state: ArtistProfileState,
-): ArtistProfile => {
-  const toLinks = (): ProfileLinkData[] =>
-    state.links.map((link) => ({
-      linkTypeCode: link.linkTypeCode,
-      url: link.url,
-    }));
+export const toView = (state: StoredProfile): ArtistProfileView => ({
+  attributes: {
+    name: valueOrNull(state.content.name),
+    imageUrl: valueOrNull(state.content.imageUrl),
+    tagline: valueOrNull(state.content.tagline),
+    genres: state.content.genres.map((genre) => genre.value),
+    activityInfo: valueOrNull(state.content.activityInfo),
+  },
+  story: {
+    chapters: toOrderedChapters(state.content.chapters).map((chapter) => ({
+      key: chapter.questionCode,
+      body: chapter.body,
+    })),
+  },
+  links: toLinkData(state.content.links),
+  presentation: { patternCode: state.content.presentationPattern },
+  published: state.kind === "published",
+});
 
-  const toView = (): ArtistProfileView => ({
-    attributes: {
-      name: valueOrNull(state.name),
-      imageUrl: valueOrNull(state.imageUrl),
-      tagline: valueOrNull(state.tagline),
-      genres: state.genres.map((genre) => genre.value),
-      activityInfo: valueOrNull(state.activityInfo),
-    },
-    story: {
-      chapters: toOrderedChapters(state.chapters).map((chapter) => ({
-        key: chapter.questionCode,
-        body: chapter.body,
-      })),
-    },
-    links: toLinks(),
-    presentation: { patternCode: state.presentationPattern },
-    published: state.published,
-  });
-
-  return {
-    getId: () => state.id,
-    getArtistId: () => state.artistId,
-    getName: () => valueOrNull(state.name),
-    getImageUrl: () => valueOrNull(state.imageUrl),
-    getChapters: () => toOrderedChapters(state.chapters),
-    getGenres: () => state.genres.map((genre) => genre.value),
-    getLinks: toLinks,
-    isPublished: () => state.published,
-    unpublish: () =>
-      createArtistProfileBehaviors({ ...state, published: false }),
-    reviseAttributes: (attributes: ArtistProfileAttributes) =>
-      createArtistProfileBehaviors({ ...state, ...attributes }),
-    writeStoryChapter: (chapter: StoryChapter) =>
-      createArtistProfileBehaviors({
-        ...state,
-        chapters: [
-          ...withoutChapter(state.chapters, chapter.questionCode),
-          chapter,
-        ],
-      }),
-    clearStoryChapter: (questionCode: StoryQuestionCode) =>
-      createArtistProfileBehaviors({
-        ...state,
-        chapters: withoutChapter(state.chapters, questionCode),
-      }),
-    replaceLinks: (links: readonly ProfileLink[]) =>
-      createArtistProfileBehaviors({ ...state, links }),
-    choosePresentationPattern: (pattern: PresentationPatternCode) =>
-      createArtistProfileBehaviors({ ...state, presentationPattern: pattern }),
-    changeImage: (imageUrl: ImageUrl) =>
-      createArtistProfileBehaviors({ ...state, imageUrl }),
-    toPersistence: (): ArtistProfilePersistenceData => ({
-      id: state.id,
-      artistId: state.artistId,
-      name: valueOrNull(state.name),
-      tagline: valueOrNull(state.tagline),
-      imageUrl: valueOrNull(state.imageUrl),
-      chapters: toOrderedChapters(state.chapters),
-      activityInfo: valueOrNull(state.activityInfo),
-      genres: state.genres.map((genre) => genre.value),
-      links: toLinks(),
-      presentationPatternCode: state.presentationPattern,
-      published: state.published,
-    }),
-    toView,
-  };
-};
+export const toPersistence = (
+  state: StoredProfile,
+): ArtistProfilePersistenceData => ({
+  id: state.id,
+  artistId: state.artistId,
+  name: valueOrNull(state.content.name),
+  tagline: valueOrNull(state.content.tagline),
+  imageUrl: valueOrNull(state.content.imageUrl),
+  chapters: toOrderedChapters(state.content.chapters),
+  activityInfo: valueOrNull(state.content.activityInfo),
+  genres: state.content.genres.map((genre) => genre.value),
+  links: toLinkData(state.content.links),
+  presentationPatternCode: state.content.presentationPattern,
+  published: state.kind === "published",
+});

@@ -3,7 +3,7 @@ import {
   type ProfileImageError,
 } from "../../../domain/artistProfiles/valueObjects/profileImage";
 import type { ProfileImageUploadFailedError } from "../../../domain/artistProfiles/errors/profileImageUploadFailed";
-import type { ArtistStorageWriteCapabilities } from "../../capabilities";
+import type { ArtistStorageWriteCapabilities } from "../../../capabilities";
 import { type Result, ok, err } from "../../../utils/result";
 
 export type UploadMyProfileImageInput = {

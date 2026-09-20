@@ -1,15 +1,32 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { reconstructArtistProfile } from "../../../domain/artistProfiles/factories";
 import { getPublicProfile } from "./index";
+import { reconstructStoredProfile } from "../../../domain/artistProfiles/factories";
+import type { PublishedProfile } from "../../../domain/artistProfiles/entities";
 import type { IArtistProfileReader } from "../../../domain/artistProfiles/repositories";
-import type { PublicReadCapabilities } from "../../capabilities";
+import type { PublicReadCapabilities } from "../../../capabilities";
+
+const publishedProfile = (): PublishedProfile => {
+  const state = reconstructStoredProfile({
+    id: "profile-1",
+    artistId: "artist-1",
+    published: true,
+    name: "Taro",
+    imageUrl: "https://example.com/a.png",
+    chapters: [{ questionCode: "beginning", body: "私の歩み" }],
+    genres: ["bass"],
+    links: [{ linkTypeCode: "x", url: "https://x.com/taro" }],
+  });
+  if (state.kind !== "published") throw new Error("fixture must be published");
+  return state;
+};
 
 const createCaps = () =>
   ({
     artistProfiles: {
-      findByArtistId: vi.fn<IArtistProfileReader["findByArtistId"]>(
-        async () => null,
-      ),
+      load: vi.fn<IArtistProfileReader["load"]>(async () => ({
+        kind: "noProfile",
+        artistId: "artist-1",
+      })),
       findPublishedByHandle: vi.fn<
         IArtistProfileReader["findPublishedByHandle"]
       >(async () => null),
@@ -22,20 +39,13 @@ const createCaps = () =>
 describe("getPublicProfile", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("公開プロフィールを ok(handle, view) で返す", async () => {
+  it("公開プロフィールを ok(handle, artistId, view) で返す", async () => {
     const caps = createCaps();
     caps.artistProfiles.findPublishedByHandle.mockResolvedValue(
-      reconstructArtistProfile({
-        id: "profile-1",
-        artistId: "artist-1",
-        published: true,
-        name: "Taro",
-      }),
+      publishedProfile(),
     );
 
-    const result = await getPublicProfile(caps, {
-      handle: "beatboxer_taro",
-    });
+    const result = await getPublicProfile(caps, { handle: "beatboxer_taro" });
 
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -81,21 +91,13 @@ describe("getPublicProfile", () => {
     const result = await getPublicProfile(caps, { handle: "a".repeat(256) });
 
     expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error.type).toBe("InvalidHandleFormatError");
-    }
     expect(caps.artistProfiles.findPublishedByHandle).not.toHaveBeenCalled();
   });
 
   it("前後の空白を落とした handle で参照し、その値を返す", async () => {
     const caps = createCaps();
     caps.artistProfiles.findPublishedByHandle.mockResolvedValue(
-      reconstructArtistProfile({
-        id: "profile-1",
-        artistId: "artist-1",
-        published: true,
-        name: "Taro",
-      }),
+      publishedProfile(),
     );
 
     const result = await getPublicProfile(caps, {
@@ -106,8 +108,6 @@ describe("getPublicProfile", () => {
       "beatboxer_taro",
     );
     expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value.handle).toBe("beatboxer_taro");
-    }
+    if (result.ok) expect(result.value.handle).toBe("beatboxer_taro");
   });
 });

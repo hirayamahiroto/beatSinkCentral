@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { reconstructUser } from "../../../../../../domain/users/factories";
 import { reconstructArtist } from "../../../../../../domain/artists/factories";
-import { reconstructArtistProfile } from "../../../../../../domain/artistProfiles/factories";
-import type { ArtistProfilePersistenceData } from "../../../../../../domain/artistProfiles/entities";
+import { toPersistence } from "../../../../../../domain/artistProfiles/behaviors";
+import type { StoredProfile } from "../../../../../../domain/artistProfiles/entities";
 import { handleAppError } from "../../../../../../errorMap";
 import choosePresentationPatternRoute from "./index";
 
@@ -22,10 +22,10 @@ const actor = {
 };
 
 const mockArtistProfiles = {
-  findByArtistId: vi.fn(),
+  load: vi.fn(),
   findPublishedByHandle: vi.fn(),
-  upsert: vi.fn(),
-  setPublished: vi.fn(),
+  save: vi.fn(),
+  publish: vi.fn(),
 };
 
 const mockResolveActorState = vi.fn();
@@ -62,10 +62,12 @@ describe("POST /artists/:artistId/presentation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockResolveActorState.mockResolvedValue({ status: "complete", actor });
-    mockArtistProfiles.findByArtistId.mockResolvedValue(null);
-    mockArtistProfiles.upsert.mockImplementation(
-      async (data: ArtistProfilePersistenceData) =>
-        reconstructArtistProfile({ ...data }),
+    mockArtistProfiles.load.mockResolvedValue({
+      kind: "noProfile",
+      artistId: "artist-1",
+    });
+    mockArtistProfiles.save.mockImplementation(
+      async (state: StoredProfile) => state,
     );
   });
 
@@ -77,7 +79,8 @@ describe("POST /artists/:artistId/presentation", () => {
       presentation: { patternCode: "zoom_dive" },
     });
     expect(
-      mockArtistProfiles.upsert.mock.calls[0][0].presentationPatternCode,
+      toPersistence(mockArtistProfiles.save.mock.calls[0][0])
+        .presentationPatternCode,
     ).toBe("zoom_dive");
   });
 
@@ -89,20 +92,20 @@ describe("POST /artists/:artistId/presentation", () => {
       error: "Invalid presentation pattern",
       code: "InvalidPresentationPatternError",
     });
-    expect(mockArtistProfiles.upsert).not.toHaveBeenCalled();
+    expect(mockArtistProfiles.save).not.toHaveBeenCalled();
   });
 
   it("patternCode が無ければ 400 を返す", async () => {
     const res = await request("artist-1", {});
 
     expect(res.status).toBe(400);
-    expect(mockArtistProfiles.upsert).not.toHaveBeenCalled();
+    expect(mockArtistProfiles.save).not.toHaveBeenCalled();
   });
 
   it("Actor と一致しない artistId は 404 を返し、保存しない", async () => {
     const res = await request("artist-other", { patternCode: "interview" });
 
     expect(res.status).toBe(404);
-    expect(mockArtistProfiles.upsert).not.toHaveBeenCalled();
+    expect(mockArtistProfiles.save).not.toHaveBeenCalled();
   });
 });

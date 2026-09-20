@@ -1,13 +1,11 @@
-import type { ArtistProfile, ArtistProfilePersistenceData } from "../entities";
+import type {
+  ProfileState,
+  PublishedProfile,
+  StoredProfile,
+} from "../entities";
 import type { ProfileImage } from "../valueObjects/profileImage";
 import type { ProfileImageUploadFailedError } from "../errors/profileImageUploadFailed";
 import type { Result } from "../../../utils/result";
-export type ArtistProfileSaveData = ArtistProfilePersistenceData;
-
-export type ArtistProfileSetPublishedData = {
-  artistId: string;
-  published: boolean;
-};
 
 export type PublishedProfileSummary = {
   handle: string;
@@ -22,16 +20,16 @@ export type ListPublishedSummariesInput = {
 };
 
 export interface IArtistProfileReader {
-  findByArtistId(artistId: string): Promise<ArtistProfile | null>;
-  findPublishedByHandle(handle: string): Promise<ArtistProfile | null>;
+  load(artistId: string): Promise<ProfileState>;
+  findPublishedByHandle(handle: string): Promise<PublishedProfile | null>;
   listPublishedSummaries(
     input: ListPublishedSummariesInput,
   ): Promise<PublishedProfileSummary[]>;
 }
 
 export interface IArtistProfileWriter {
-  upsert(data: ArtistProfileSaveData): Promise<ArtistProfile>;
-  setPublished(data: ArtistProfileSetPublishedData): Promise<ArtistProfile>;
+  save(state: StoredProfile): Promise<StoredProfile>;
+  publish(state: PublishedProfile): Promise<PublishedProfile>;
 }
 
 type ProfileImageUploadData = {

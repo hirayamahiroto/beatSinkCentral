@@ -4,7 +4,7 @@ import type {
   ResolveActorError,
 } from "../../capabilities";
 import { toAddressedActor } from "../resolution";
-import type { Result } from "../../../utils/result";
+import type { Result } from "../../utils/result";
 
 export const withArtistStorageWriteCapabilitiesById = async <T, E>(
   deps: CapabilityDeps,

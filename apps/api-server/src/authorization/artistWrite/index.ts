@@ -9,7 +9,7 @@ import {
   isAlreadyTakenError,
   type AlreadyTakenError,
 } from "../conflict";
-import type { Result } from "../../../utils/result";
+import type { Result } from "../../utils/result";
 
 export const withArtistWriteCapabilitiesById = async <T, E>(
   deps: CapabilityDeps,

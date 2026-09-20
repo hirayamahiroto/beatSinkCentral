@@ -1,28 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { replaceMyLinks } from "./index";
-import { reconstructUser } from "../../../domain/users/factories";
-import { reconstructArtist } from "../../../domain/artists/factories";
-import { reconstructArtistProfile } from "../../../domain/artistProfiles/factories";
-import type { ArtistProfilePersistenceData } from "../../../domain/artistProfiles/entities";
+import { reconstructStoredProfile } from "../../../domain/artistProfiles/factories";
+import { toPersistence } from "../../../domain/artistProfiles/behaviors";
+import type { ProfileState } from "../../../domain/artistProfiles/entities";
 import type {
   IArtistProfileReader,
   IArtistProfileWriter,
 } from "../../../domain/artistProfiles/repositories";
-import type { Actor, ArtistWriteCapabilities } from "../../capabilities";
+import type { ArtistWriteCapabilities } from "../../../capabilities";
+import { testUser, testArtist } from "../../../authorization/testDoubles";
 
-const actor: Actor = {
-  user: reconstructUser({
-    id: "user-1",
-    subId: "auth0|123",
-    email: "test@example.com",
-  }),
-  artist: reconstructArtist({
-    artistId: "artist-1",
-    handle: "beatboxer_taro",
-    ownerUserId: "user-1",
-    profile: null,
-  }),
-};
+const actor = { user: testUser, artist: testArtist };
 
 const publishedContent = {
   id: "profile-existing",
@@ -35,31 +23,28 @@ const publishedContent = {
   links: [{ linkTypeCode: "x", url: "https://x.com/taro" }],
 };
 
-const echoUpsert = async (data: ArtistProfilePersistenceData) =>
-  reconstructArtistProfile({ ...data });
-
-const createCaps = () =>
+const createCaps = (
+  state: ProfileState = { kind: "noProfile", artistId: "artist-1" },
+) =>
   ({
     actor,
     artistProfiles: {
-      findByArtistId: vi.fn<IArtistProfileReader["findByArtistId"]>(
-        async () => null,
-      ),
+      load: vi.fn<IArtistProfileReader["load"]>(async () => state),
       findPublishedByHandle: vi.fn<
         IArtistProfileReader["findPublishedByHandle"]
       >(async () => null),
       listPublishedSummaries: vi.fn<
         IArtistProfileReader["listPublishedSummaries"]
       >(async () => []),
-      upsert: vi.fn<IArtistProfileWriter["upsert"]>(echoUpsert),
-      setPublished: vi.fn<IArtistProfileWriter["setPublished"]>(),
+      save: vi.fn<IArtistProfileWriter["save"]>(async (saved) => saved),
+      publish: vi.fn<IArtistProfileWriter["publish"]>(),
     },
   }) satisfies Pick<ArtistWriteCapabilities, "actor" | "artistProfiles">;
 
 describe("replaceMyLinks", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("プロフィール未作成なら下書きを作ってリンクを保存し、links だけを返す", async () => {
+  it("プロフィール未作成なら下書きを起こしてリンクを保存し、links だけを返す", async () => {
     const caps = createCaps();
 
     const result = await replaceMyLinks(caps, {
@@ -69,54 +54,44 @@ describe("replaceMyLinks", () => {
       ],
     });
 
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value).toStrictEqual({
+    expect(result).toStrictEqual({
+      ok: true,
+      value: {
         links: [
           { linkTypeCode: "youtube", url: "https://youtube.com/@taro" },
           { linkTypeCode: "x", url: "https://x.com/taro" },
         ],
-      });
-    }
-    expect(caps.artistProfiles.upsert.mock.calls[0][0].artistId).toBe(
-      "artist-1",
-    );
+      },
+    });
+    expect(caps.artistProfiles.save.mock.calls[0][0].artistId).toBe("artist-1");
   });
 
   it("既存プロフィールのリンク集合を丸ごと差し替え、他の構造は保持する", async () => {
-    const caps = createCaps();
-    caps.artistProfiles.findByArtistId.mockResolvedValue(
-      reconstructArtistProfile(publishedContent),
-    );
+    const caps = createCaps(reconstructStoredProfile(publishedContent));
 
     await replaceMyLinks(caps, {
       links: [{ linkTypeCode: "instagram", url: "https://instagram.com/taro" }],
     });
 
-    expect(caps.artistProfiles.findByArtistId).toHaveBeenCalledWith("artist-1");
-    const persisted = caps.artistProfiles.upsert.mock.calls[0][0];
-    expect(persisted.id).toBe("profile-existing");
-    expect(persisted.links).toEqual([
+    const saved = toPersistence(caps.artistProfiles.save.mock.calls[0][0]);
+    expect(saved.id).toBe("profile-existing");
+    expect(saved.links).toEqual([
       { linkTypeCode: "instagram", url: "https://instagram.com/taro" },
     ]);
-    expect(persisted.name).toBe("Taro");
-    expect(persisted.chapters).toEqual([
+    expect(saved.name).toBe("Taro");
+    expect(saved.chapters).toEqual([
       { questionCode: "beginning", body: "私の歩み" },
     ]);
-    expect(persisted.published).toBe(true);
+    expect(saved.published).toBe(true);
   });
 
-  it("公開中にリンクを全て消したら非公開へ降ろして保存する", async () => {
-    const caps = createCaps();
-    caps.artistProfiles.findByArtistId.mockResolvedValue(
-      reconstructArtistProfile(publishedContent),
-    );
+  it("公開中にリンクを全て消したら下書きに落として保存する", async () => {
+    const caps = createCaps(reconstructStoredProfile(publishedContent));
 
     const result = await replaceMyLinks(caps, { links: [] });
 
-    expect(caps.artistProfiles.upsert.mock.calls[0][0].published).toBe(false);
-    expect(result.ok).toBe(true);
-    if (result.ok) expect(result.value.links).toEqual([]);
+    expect(caps.artistProfiles.save.mock.calls[0][0].kind).toBe("draft");
+    expect(result).toStrictEqual({ ok: true, value: { links: [] } });
   });
 
   it("不正な url は err(InvalidSnsUrlFormatError)（参照も保存もしない）", async () => {
@@ -130,7 +105,7 @@ describe("replaceMyLinks", () => {
     if (!result.ok) {
       expect(result.error.type).toBe("InvalidSnsUrlFormatError");
     }
-    expect(caps.artistProfiles.findByArtistId).not.toHaveBeenCalled();
-    expect(caps.artistProfiles.upsert).not.toHaveBeenCalled();
+    expect(caps.artistProfiles.load).not.toHaveBeenCalled();
+    expect(caps.artistProfiles.save).not.toHaveBeenCalled();
   });
 });

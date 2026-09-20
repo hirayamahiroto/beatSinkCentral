@@ -4,7 +4,7 @@ import {
   type InvalidHandleFormatError,
 } from "../../../domain/artists/valueObjects/handle";
 import { changeArtistHandle } from "../../../domain/services/artistHandleChange";
-import type { ArtistWriteCapabilities } from "../../capabilities";
+import type { ArtistWriteCapabilities } from "../../../capabilities";
 import { type Result, ok } from "../../../utils/result";
 
 export type UpdateMyHandleInput = {

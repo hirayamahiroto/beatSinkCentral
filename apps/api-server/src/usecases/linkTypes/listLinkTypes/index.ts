@@ -1,5 +1,5 @@
 import type { LinkTypeView } from "../../../domain/linkTypes/entities";
-import type { PublicReadCapabilities } from "../../capabilities";
+import type { PublicReadCapabilities } from "../../../capabilities";
 import { type Result, ok } from "../../../utils/result";
 
 export type ListLinkTypesOutput = {

@@ -1,28 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { updateMyAttributes } from "./index";
-import { reconstructUser } from "../../../domain/users/factories";
-import { reconstructArtist } from "../../../domain/artists/factories";
-import { reconstructArtistProfile } from "../../../domain/artistProfiles/factories";
-import type { ArtistProfilePersistenceData } from "../../../domain/artistProfiles/entities";
+import { reconstructStoredProfile } from "../../../domain/artistProfiles/factories";
+import { toPersistence } from "../../../domain/artistProfiles/behaviors";
+import type { ProfileState } from "../../../domain/artistProfiles/entities";
 import type {
   IArtistProfileReader,
   IArtistProfileWriter,
 } from "../../../domain/artistProfiles/repositories";
-import type { Actor, ArtistWriteCapabilities } from "../../capabilities";
+import type { ArtistWriteCapabilities } from "../../../capabilities";
+import { testUser, testArtist } from "../../../authorization/testDoubles";
 
-const actor: Actor = {
-  user: reconstructUser({
-    id: "user-1",
-    subId: "auth0|123",
-    email: "test@example.com",
-  }),
-  artist: reconstructArtist({
-    artistId: "artist-1",
-    handle: "beatboxer_taro",
-    ownerUserId: "user-1",
-    profile: null,
-  }),
-};
+const actor = { user: testUser, artist: testArtist };
 
 const publishedContent = {
   id: "profile-existing",
@@ -35,31 +23,28 @@ const publishedContent = {
   links: [{ linkTypeCode: "x", url: "https://x.com/taro" }],
 };
 
-const echoUpsert = async (data: ArtistProfilePersistenceData) =>
-  reconstructArtistProfile({ ...data });
-
-const createCaps = () =>
+const createCaps = (
+  state: ProfileState = { kind: "noProfile", artistId: "artist-1" },
+) =>
   ({
     actor,
     artistProfiles: {
-      findByArtistId: vi.fn<IArtistProfileReader["findByArtistId"]>(
-        async () => null,
-      ),
+      load: vi.fn<IArtistProfileReader["load"]>(async () => state),
       findPublishedByHandle: vi.fn<
         IArtistProfileReader["findPublishedByHandle"]
       >(async () => null),
       listPublishedSummaries: vi.fn<
         IArtistProfileReader["listPublishedSummaries"]
       >(async () => []),
-      upsert: vi.fn<IArtistProfileWriter["upsert"]>(echoUpsert),
-      setPublished: vi.fn<IArtistProfileWriter["setPublished"]>(),
+      save: vi.fn<IArtistProfileWriter["save"]>(async (saved) => saved),
+      publish: vi.fn<IArtistProfileWriter["publish"]>(),
     },
   }) satisfies Pick<ArtistWriteCapabilities, "actor" | "artistProfiles">;
 
 describe("updateMyAttributes", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("プロフィール未作成なら下書きを作って属性を保存し、attributes だけを返す", async () => {
+  it("プロフィール未作成なら下書きを起こして属性を保存し、attributes だけを返す", async () => {
     const caps = createCaps();
 
     const result = await updateMyAttributes(caps, {
@@ -69,9 +54,9 @@ describe("updateMyAttributes", () => {
       activityInfo: "東京 / ソロ",
     });
 
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value).toStrictEqual({
+    expect(result).toStrictEqual({
+      ok: true,
+      value: {
         attributes: {
           name: "Taro",
           imageUrl: null,
@@ -79,24 +64,24 @@ describe("updateMyAttributes", () => {
           genres: ["bass", "inward"],
           activityInfo: "東京 / ソロ",
         },
-      });
-    }
-    const persisted = caps.artistProfiles.upsert.mock.calls[0][0];
-    expect(persisted.artistId).toBe("artist-1");
-    expect(persisted.published).toBe(false);
+      },
+    });
+    expect(caps.artistProfiles.load).toHaveBeenCalledExactlyOnceWith(
+      "artist-1",
+    );
+    const saved = caps.artistProfiles.save.mock.calls[0][0];
+    expect(saved.kind).toBe("draft");
+    expect(saved.artistId).toBe("artist-1");
   });
 
   it("既存プロフィールがある場合は ID・画像・章・リンク・公開状態を保持して属性だけ更新する", async () => {
-    const caps = createCaps();
-    caps.artistProfiles.findByArtistId.mockResolvedValue(
-      reconstructArtistProfile(publishedContent),
-    );
+    const caps = createCaps(reconstructStoredProfile(publishedContent));
 
     await updateMyAttributes(caps, { name: "New Name", genres: ["loop"] });
 
-    expect(caps.artistProfiles.findByArtistId).toHaveBeenCalledWith("artist-1");
-    const persisted = caps.artistProfiles.upsert.mock.calls[0][0];
-    expect(persisted).toStrictEqual({
+    expect(
+      toPersistence(caps.artistProfiles.save.mock.calls[0][0]),
+    ).toStrictEqual({
       id: "profile-existing",
       artistId: "artist-1",
       name: "New Name",
@@ -111,15 +96,12 @@ describe("updateMyAttributes", () => {
     });
   });
 
-  it("公開中の更新で公開条件を割ったら非公開へ降ろして保存する", async () => {
-    const caps = createCaps();
-    caps.artistProfiles.findByArtistId.mockResolvedValue(
-      reconstructArtistProfile(publishedContent),
-    );
+  it("公開中の更新で公開条件を割ったら下書きに落として保存する", async () => {
+    const caps = createCaps(reconstructStoredProfile(publishedContent));
 
     const result = await updateMyAttributes(caps, { name: null });
 
-    expect(caps.artistProfiles.upsert.mock.calls[0][0].published).toBe(false);
+    expect(caps.artistProfiles.save.mock.calls[0][0].kind).toBe("draft");
     expect(result.ok).toBe(true);
   });
 
@@ -132,7 +114,7 @@ describe("updateMyAttributes", () => {
     if (!result.ok) {
       expect(result.error.type).toBe("InvalidProfileNameFormatError");
     }
-    expect(caps.artistProfiles.findByArtistId).not.toHaveBeenCalled();
-    expect(caps.artistProfiles.upsert).not.toHaveBeenCalled();
+    expect(caps.artistProfiles.load).not.toHaveBeenCalled();
+    expect(caps.artistProfiles.save).not.toHaveBeenCalled();
   });
 });

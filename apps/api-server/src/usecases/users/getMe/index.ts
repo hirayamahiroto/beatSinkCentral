@@ -1,4 +1,4 @@
-import type { IdentityCapabilities } from "../../capabilities";
+import type { IdentityCapabilities } from "../../../capabilities";
 import { type Result, ok } from "../../../utils/result";
 
 type GetMeOutputNotRegistered = {

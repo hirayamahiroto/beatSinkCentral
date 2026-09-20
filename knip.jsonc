@@ -11,7 +11,7 @@
   "workspaces": {
     "apps/api-server": {
       // テスト専用ヘルパは production でも entry として残す（テストからしか呼ばれない export の検出対象から外す）
-      "entry": ["src/usecases/**/testDoubles/**/*.ts!"],
+      "entry": ["src/authorization/testDoubles/**/*.ts!"],
       // "database" は tsconfig paths で packages/database の実ファイルへ解決されるため、依存としては未使用に見える
       "ignoreDependencies": ["database"],
     },

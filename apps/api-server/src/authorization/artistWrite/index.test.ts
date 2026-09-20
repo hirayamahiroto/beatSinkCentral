@@ -8,12 +8,12 @@ import {
 import {
   createHandleAlreadyTakenError,
   isHandleAlreadyTakenError,
-} from "../../../domain/artists/errors/handleAlreadyTaken";
+} from "../../domain/artists/errors/handleAlreadyTaken";
 import {
   createEmailAlreadyTakenError,
   isEmailAlreadyTakenError,
-} from "../../../domain/users/errors/emailAlreadyTaken";
-import { ok } from "../../../utils/result";
+} from "../../domain/users/errors/emailAlreadyTaken";
+import { ok } from "../../utils/result";
 
 describe("withArtistWriteCapabilitiesById", () => {
   it("未登録ならトランザクション境界を張らず UserNotFoundError を返す", async () => {

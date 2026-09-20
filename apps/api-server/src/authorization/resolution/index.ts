@@ -4,10 +4,10 @@ import type {
   ResolveActorError,
   ResolveUserError,
 } from "../../capabilities";
-import type { User } from "../../../domain/users/entities";
-import { createUserNotFoundError } from "../../../domain/users/errors/userNotFound";
-import { createArtistNotFoundError } from "../../../domain/artists/errors/artistNotFound";
-import { type Result, ok, err } from "../../../utils/result";
+import type { User } from "../../domain/users/entities";
+import { createUserNotFoundError } from "../../domain/users/errors/userNotFound";
+import { createArtistNotFoundError } from "../../domain/artists/errors/artistNotFound";
+import { type Result, ok, err } from "../../utils/result";
 
 const toActor = (
   resolution: ActorResolution,

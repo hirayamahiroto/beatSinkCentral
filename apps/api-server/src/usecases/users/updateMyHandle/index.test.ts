@@ -11,7 +11,7 @@ import type {
   IArtistWriter,
 } from "../../../domain/artists/repositories";
 import type { IArtistHandleHistoryWriter } from "../../../domain/artistHandleHistories/repositories";
-import type { ArtistWriteCapabilities } from "../../capabilities";
+import type { ArtistWriteCapabilities } from "../../../capabilities";
 
 const user = reconstructUser({
   id: "550e8400-e29b-41d4-a716-446655440000",

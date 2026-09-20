@@ -1,5 +1,5 @@
 import type { PublishedProfileSummary } from "../../../domain/artistProfiles/repositories";
-import type { PublicReadCapabilities } from "../../capabilities";
+import type { PublicReadCapabilities } from "../../../capabilities";
 import { type Result, ok } from "../../../utils/result";
 
 const MAX_PROFILES = 100;

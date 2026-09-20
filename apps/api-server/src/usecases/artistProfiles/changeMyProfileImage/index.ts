@@ -2,9 +2,9 @@ import {
   createImageUrl,
   type InvalidImageUrlFormatError,
 } from "../../../domain/artistProfiles/valueObjects/imageUrl";
-import type { ArtistWriteCapabilities } from "../../capabilities";
-import { loadOrDraftMyProfile } from "../loadOrDraftMyProfile";
-import { persistMyProfile } from "../persistMyProfile";
+import { changeImage } from "../../../domain/artistProfiles/behaviors";
+import { edit } from "../../../domain/artistProfiles/policies/publishability";
+import type { ArtistWriteCapabilities } from "../../../capabilities";
 import { type Result, ok } from "../../../utils/result";
 
 export type ChangeMyProfileImageInput = {
@@ -29,8 +29,10 @@ export const changeMyProfileImage = async (
   const imageUrl = createImageUrl(input.imageUrl);
   if (!imageUrl.ok) return imageUrl;
 
-  const profile = await loadOrDraftMyProfile(caps);
-  await persistMyProfile(caps, profile.changeImage(imageUrl.value));
+  const state = await caps.artistProfiles.load(caps.actor.artist.getArtistId());
+  await caps.artistProfiles.save(
+    edit(state, (content) => changeImage(content, imageUrl.value)),
+  );
 
   return ok({ imageUrl: imageUrl.value.value });
 };

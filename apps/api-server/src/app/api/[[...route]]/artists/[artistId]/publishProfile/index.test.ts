@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { reconstructUser } from "../../../../../../domain/users/factories";
 import { reconstructArtist } from "../../../../../../domain/artists/factories";
-import { reconstructArtistProfile } from "../../../../../../domain/artistProfiles/factories";
+import { reconstructStoredProfile } from "../../../../../../domain/artistProfiles/factories";
+import type { PublishedProfile } from "../../../../../../domain/artistProfiles/entities";
 import { handleAppError } from "../../../../../../errorMap";
 import publishProfileRoute from "./index";
 
@@ -21,10 +22,10 @@ const actor = {
 };
 
 const mockArtistProfiles = {
-  findByArtistId: vi.fn(),
+  load: vi.fn(),
   findPublishedByHandle: vi.fn(),
-  upsert: vi.fn(),
-  setPublished: vi.fn(),
+  save: vi.fn(),
+  publish: vi.fn(),
 };
 
 const mockResolveActorState = vi.fn();
@@ -58,7 +59,7 @@ const request = (artistId: string, body: unknown) =>
   });
 
 const publishableProfile = () =>
-  reconstructArtistProfile({
+  reconstructStoredProfile({
     id: "p1",
     artistId: "artist-1",
     published: false,
@@ -73,14 +74,9 @@ describe("POST /artists/:artistId/profile/publish", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockResolveActorState.mockResolvedValue({ status: "complete", actor });
-    mockArtistProfiles.findByArtistId.mockResolvedValue(publishableProfile());
-    mockArtistProfiles.setPublished.mockImplementation(async () =>
-      reconstructArtistProfile({
-        id: "p1",
-        artistId: "artist-1",
-        published: true,
-        name: "Taro",
-      }),
+    mockArtistProfiles.load.mockResolvedValue(publishableProfile());
+    mockArtistProfiles.publish.mockImplementation(
+      async (state: PublishedProfile) => state,
     );
   });
 
@@ -90,17 +86,15 @@ describe("POST /artists/:artistId/profile/publish", () => {
 
     expect(res.status).toBe(200);
     expect(body).toStrictEqual({ published: true });
-    expect(mockArtistProfiles.setPublished).toHaveBeenCalledWith({
-      artistId: "artist-1",
-      published: true,
-    });
+    expect(mockArtistProfiles.publish).toHaveBeenCalledTimes(1);
+    expect(mockArtistProfiles.publish.mock.calls[0][0].kind).toBe("published");
   });
 
   it("Actor と一致しない artistId は 404 を返し、切り替えない", async () => {
     const res = await request("other-artist", { published: true });
 
     expect(res.status).toBe(404);
-    expect(mockArtistProfiles.setPublished).not.toHaveBeenCalled();
+    expect(mockArtistProfiles.publish).not.toHaveBeenCalled();
   });
 
   it("actor が解決できなければ 404 を返す", async () => {
@@ -109,6 +103,6 @@ describe("POST /artists/:artistId/profile/publish", () => {
     const res = await request("artist-1", { published: true });
 
     expect(res.status).toBe(404);
-    expect(mockArtistProfiles.setPublished).not.toHaveBeenCalled();
+    expect(mockArtistProfiles.publish).not.toHaveBeenCalled();
   });
 });

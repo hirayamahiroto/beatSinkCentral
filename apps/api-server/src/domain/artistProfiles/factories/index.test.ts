@@ -2,9 +2,9 @@ import { describe, it, expect } from "vitest";
 import {
   createProfileAttributes,
   createProfileLinks,
-  createDraftArtistProfile,
-  reconstructArtistProfile,
+  reconstructStoredProfile,
 } from "./index";
+import { toView } from "../behaviors";
 import { unwrapOrThrow } from "../../../utils/result";
 
 const expectOk = <T, E>(
@@ -104,47 +104,54 @@ describe("createProfileLinks", () => {
   });
 });
 
-describe("createDraftArtistProfile", () => {
-  it("ID を生成し、全構造が空の非公開下書きを返す", () => {
-    const profile = createDraftArtistProfile({ artistId: "artist-1" });
-
-    expect(profile.getId()).toBeTruthy();
-    expect(profile.getArtistId()).toBe("artist-1");
-    expect(profile.isPublished()).toBe(false);
-    expect(profile.toView()).toStrictEqual({
-      attributes: {
-        name: null,
-        imageUrl: null,
-        tagline: null,
-        genres: [],
-        activityInfo: null,
-      },
-      story: { chapters: [] },
-      links: [],
-      presentation: { patternCode: null },
+describe("reconstructStoredProfile", () => {
+  it("published=false の行は draft として復元する", () => {
+    const state = reconstructStoredProfile({
+      id: "profile-1",
+      artistId: "artist-1",
       published: false,
+      name: "Taro",
+      genres: ["bass"],
     });
-  });
-});
 
-describe("reconstructArtistProfile", () => {
-  it("ID と published を引数から復元する", () => {
-    const profile = reconstructArtistProfile({
+    expect(state.kind).toBe("draft");
+    expect(state.id).toBe("profile-1");
+    expect(state.artistId).toBe("artist-1");
+    expect(state.content.name?.value).toBe("Taro");
+  });
+
+  it("published=true で最小核が揃った行は published として復元し、内容は非 null に絞られる", () => {
+    const state = reconstructStoredProfile({
       id: "profile-1",
       artistId: "artist-1",
       published: true,
       name: "Taro",
+      imageUrl: "https://example.com/a.png",
+      chapters: [{ questionCode: "beginning", body: "私の歩み" }],
       genres: ["bass"],
       links: [{ linkTypeCode: "x", url: "https://x.com/taro" }],
     });
 
-    expect(profile.getId()).toBe("profile-1");
-    expect(profile.isPublished()).toBe(true);
-    expect(profile.getName()).toBe("Taro");
+    expect(state.kind).toBe("published");
+    if (state.kind === "published") {
+      expect(state.content.name.value).toBe("Taro");
+      expect(state.content.links[0].url).toBe("https://x.com/taro");
+    }
   });
 
-  it("複数章を渡すと問いの固定順で並べ替えて保持する", () => {
-    const profile = reconstructArtistProfile({
+  it("published=true なのに最小核が欠けた行はスローする（不変条件の破れ）", () => {
+    expect(() =>
+      reconstructStoredProfile({
+        id: "profile-1",
+        artistId: "artist-1",
+        published: true,
+        name: "Taro",
+      }),
+    ).toThrow("published profile lacks required fields");
+  });
+
+  it("複数章を渡しても toView は問いの固定順で並べる", () => {
+    const state = reconstructStoredProfile({
       id: "profile-1",
       artistId: "artist-1",
       published: false,
@@ -155,22 +162,22 @@ describe("reconstructArtistProfile", () => {
       ],
     });
 
-    expect(profile.getChapters()).toEqual([
-      { questionCode: "beginning", body: "始まり" },
-      { questionCode: "turning_point", body: "転機" },
-      { questionCode: "concept", body: "表現したいこと" },
+    expect(toView(state).story.chapters).toEqual([
+      { key: "beginning", body: "始まり" },
+      { key: "turning_point", body: "転機" },
+      { key: "concept", body: "表現したいこと" },
     ]);
   });
 
   it("本文が空の章は保持しない", () => {
-    const profile = reconstructArtistProfile({
+    const state = reconstructStoredProfile({
       id: "profile-1",
       artistId: "artist-1",
       published: false,
       chapters: [{ questionCode: "beginning", body: "  " }],
     });
 
-    expect(profile.getChapters()).toEqual([]);
+    expect(state.content.chapters).toEqual([]);
   });
 
   it.each([
@@ -192,68 +199,26 @@ describe("reconstructArtistProfile", () => {
       "不正な url のリンク",
       { links: [{ linkTypeCode: "x", url: "not-a-url" }] },
     ],
+    ["未知の presentationPatternCode", { presentationPatternCode: "carousel" }],
   ])("%s を含む永続化データはスローする（データ破損）", (_, content) => {
     expect(() =>
-      reconstructArtistProfile({
+      reconstructStoredProfile({
         id: "profile-1",
         artistId: "artist-1",
         published: false,
         ...content,
       }),
-    ).toThrow();
+    ).toThrow("invalid field values");
   });
 
-  it("toPersistence はプリミティブな永続化データを返す", () => {
-    const profile = reconstructArtistProfile({
-      id: "profile-1",
-      artistId: "artist-1",
-      published: false,
-      name: "Taro",
-      genres: ["bass", "inward"],
-      links: [{ linkTypeCode: "x", url: "https://x.com/taro" }],
-    });
-
-    expect(profile.toPersistence()).toStrictEqual({
-      id: "profile-1",
-      artistId: "artist-1",
-      name: "Taro",
-      tagline: null,
-      imageUrl: null,
-      chapters: [],
-      activityInfo: null,
-      genres: ["bass", "inward"],
-      links: [{ linkTypeCode: "x", url: "https://x.com/taro" }],
-      presentationPatternCode: null,
-      published: false,
-    });
-  });
-
-  it("presentationPatternCode を復元し、未知のコードは復元失敗として throw する", () => {
-    const profile = reconstructArtistProfile({
+  it("presentationPatternCode を復元する", () => {
+    const state = reconstructStoredProfile({
       id: "profile-1",
       artistId: "artist-1",
       published: false,
       presentationPatternCode: "spotlight",
     });
 
-    expect(profile.toView().presentation.patternCode).toBe("spotlight");
-    expect(() =>
-      reconstructArtistProfile({
-        id: "profile-1",
-        artistId: "artist-1",
-        published: false,
-        presentationPatternCode: "carousel",
-      }),
-    ).toThrow();
-  });
-
-  it("publish() は published を true にした新しい Entity を返す", () => {
-    const profile = reconstructArtistProfile({
-      id: "profile-1",
-      artistId: "artist-1",
-      published: false,
-    });
-
-    expect(profile.isPublished()).toBe(false);
+    expect(state.content.presentationPattern).toBe("spotlight");
   });
 });

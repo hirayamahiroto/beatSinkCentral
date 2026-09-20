@@ -7,6 +7,7 @@ import {
   desc,
   inArray,
   sql,
+  type SQL,
 } from "drizzle-orm";
 import {
   artistsTable,
@@ -21,18 +22,19 @@ import {
 import type {
   IArtistProfileReader,
   IArtistProfileWriter,
-  ArtistProfileSaveData,
-  ArtistProfileSetPublishedData,
   ListPublishedSummariesInput,
   PublishedProfileSummary,
 } from "../../../domain/artistProfiles/repositories";
 import type {
-  ArtistProfile,
+  ArtistProfilePersistenceData,
   ProfileLinkData,
+  ProfileState,
+  PublishedProfile,
+  StoredProfile,
   StoryChapterData,
 } from "../../../domain/artistProfiles/entities";
-import { reconstructArtistProfile } from "../../../domain/artistProfiles/factories";
-import { createArtistProfileNotFoundError } from "../../../domain/artistProfiles/errors/artistProfileNotFound";
+import { reconstructStoredProfile } from "../../../domain/artistProfiles/factories";
+import { toPersistence } from "../../../domain/artistProfiles/behaviors";
 import { createInvalidProfileLinkFormatError } from "../../../domain/artistProfiles/valueObjects/profileLink";
 import { createInvalidStoryChapterFormatError } from "../../../domain/artistProfiles/valueObjects/storyChapter";
 import { createInvalidPresentationPatternError } from "../../../domain/artistProfiles/valueObjects/presentationPattern";
@@ -128,26 +130,13 @@ const loadChildren = async (executor: Executor, profileId: string) => {
   };
 };
 
-const loadPresentationPatternCode = async (
-  executor: Executor,
-  profileId: string,
-): Promise<string | null> => {
-  const [row] = await executor
-    .select({ code: presentationPatternsTable.code })
-    .from(artistProfilesTable)
-    .innerJoin(...presentationPatternJoin)
-    .where(eq(artistProfilesTable.id, profileId))
-    .limit(1);
-  return row ? row.code : null;
-};
-
-const toEntity = (
+const toStoredProfile = (
   row: ProfileRow,
   genres: string[],
   links: ProfileLinkData[],
   chapters: StoryChapterData[],
-): ArtistProfile =>
-  reconstructArtistProfile({
+): StoredProfile =>
+  reconstructStoredProfile({
     id: row.id,
     artistId: row.artistId,
     published: row.published,
@@ -264,10 +253,68 @@ const replaceChildren = async (
   }
 };
 
+type PublishedColumnsOnConflict = {
+  published: boolean | SQL;
+  publishedAt: Date | SQL | null;
+};
+
+const writeProfile = async (
+  executor: Executor,
+  data: ArtistProfilePersistenceData,
+  publishedAt: Date | null,
+  onConflict: PublishedColumnsOnConflict,
+): Promise<StoredProfile> => {
+  const presentationPatternId = await resolvePresentationPatternId(
+    executor,
+    data.presentationPatternCode,
+  );
+  const [row] = await executor
+    .insert(artistProfilesTable)
+    .values({
+      id: data.id,
+      artistId: data.artistId,
+      name: data.name,
+      tagline: data.tagline,
+      imageUrl: data.imageUrl,
+      activityInfo: data.activityInfo,
+      presentationPatternId,
+      published: data.published,
+      publishedAt,
+    })
+    .onConflictDoUpdate({
+      target: artistProfilesTable.artistId,
+      set: {
+        name: data.name,
+        tagline: data.tagline,
+        imageUrl: data.imageUrl,
+        activityInfo: data.activityInfo,
+        presentationPatternId,
+        published: onConflict.published,
+        publishedAt: onConflict.publishedAt,
+        updatedAt: new Date(),
+      },
+    })
+    .returning(writtenProfileColumns);
+
+  await replaceChildren(
+    executor,
+    row.id,
+    data.genres,
+    data.links,
+    data.chapters,
+  );
+  return toStoredProfile(
+    { ...row, presentationPatternCode: data.presentationPatternCode },
+    data.genres,
+    data.links,
+    data.chapters,
+  );
+};
+
 export const createArtistProfileReader = (
   executor: Executor,
 ): IArtistProfileReader => ({
-  async findByArtistId(artistId: string): Promise<ArtistProfile | null> {
+  async load(artistId: string): Promise<ProfileState> {
     const [row] = await executor
       .select(profileColumns)
       .from(artistProfilesTable)
@@ -279,13 +326,15 @@ export const createArtistProfileReader = (
         ),
       )
       .limit(1);
-    if (!row) return null;
+    if (!row) return { kind: "noProfile", artistId };
 
     const { genres, links, chapters } = await loadChildren(executor, row.id);
-    return toEntity(row, genres, links, chapters);
+    return toStoredProfile(row, genres, links, chapters);
   },
 
-  async findPublishedByHandle(handle: string): Promise<ArtistProfile | null> {
+  async findPublishedByHandle(
+    handle: string,
+  ): Promise<PublishedProfile | null> {
     const [row] = await executor
       .select(profileColumns)
       .from(artistProfilesTable)
@@ -305,7 +354,8 @@ export const createArtistProfileReader = (
     if (!row) return null;
 
     const { genres, links, chapters } = await loadChildren(executor, row.id);
-    return toEntity(row, genres, links, chapters);
+    const state = toStoredProfile(row, genres, links, chapters);
+    return state.kind === "published" ? state : null;
   },
 
   async listPublishedSummaries({
@@ -358,82 +408,24 @@ export const createArtistProfileReader = (
 export const createArtistProfileWriter = (
   executor: Executor,
 ): IArtistProfileWriter => ({
-  async upsert(data: ArtistProfileSaveData): Promise<ArtistProfile> {
-    const presentationPatternId = await resolvePresentationPatternId(
-      executor,
-      data.presentationPatternCode,
-    );
-    const [row] = await executor
-      .insert(artistProfilesTable)
-      .values({
-        id: data.id,
-        artistId: data.artistId,
-        name: data.name,
-        tagline: data.tagline,
-        imageUrl: data.imageUrl,
-        activityInfo: data.activityInfo,
-        presentationPatternId,
-        published: data.published,
-      })
-      .onConflictDoUpdate({
-        target: artistProfilesTable.artistId,
-        set: {
-          name: data.name,
-          tagline: data.tagline,
-          imageUrl: data.imageUrl,
-          activityInfo: data.activityInfo,
-          presentationPatternId,
-          published: sql`${artistProfilesTable.published} and excluded.published`,
-          publishedAt: sql`case when excluded.published then ${artistProfilesTable.publishedAt} else null end`,
-          updatedAt: new Date(),
-        },
-      })
-      .returning(writtenProfileColumns);
-
-    await replaceChildren(
-      executor,
-      row.id,
-      data.genres,
-      data.links,
-      data.chapters,
-    );
-    return toEntity(
-      { ...row, presentationPatternCode: data.presentationPatternCode },
-      data.genres,
-      data.links,
-      data.chapters,
-    );
+  async save(state: StoredProfile): Promise<StoredProfile> {
+    return writeProfile(executor, toPersistence(state), null, {
+      published: sql`${artistProfilesTable.published} and excluded.published`,
+      publishedAt: sql`case when excluded.published then ${artistProfilesTable.publishedAt} else null end`,
+    });
   },
 
-  async setPublished(
-    data: ArtistProfileSetPublishedData,
-  ): Promise<ArtistProfile> {
-    const [row] = await executor
-      .update(artistProfilesTable)
-      .set({
-        published: data.published,
-        publishedAt: data.published ? new Date() : null,
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(artistProfilesTable.artistId, data.artistId),
-          isNull(artistProfilesTable.deletedAt),
-        ),
-      )
-      .returning(writtenProfileColumns);
-    if (!row) throw createArtistProfileNotFoundError();
-
-    const [{ genres, links, chapters }, presentationPatternCode] =
-      await Promise.all([
-        loadChildren(executor, row.id),
-        loadPresentationPatternCode(executor, row.id),
-      ]);
-    return toEntity(
-      { ...row, presentationPatternCode },
-      genres,
-      links,
-      chapters,
+  async publish(state: PublishedProfile): Promise<PublishedProfile> {
+    const publishedAt = new Date();
+    const saved = await writeProfile(
+      executor,
+      toPersistence(state),
+      publishedAt,
+      { published: true, publishedAt },
     );
+    if (saved.kind !== "published") {
+      throw new Error("publish: written row was not returned as published");
+    }
+    return saved;
   },
 });

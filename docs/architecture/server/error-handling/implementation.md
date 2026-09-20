@@ -35,7 +35,7 @@ TypeScript は戻り値を捨てる呼び出し自体は防げないため、「
 3つ目は Drizzle の `transaction` が **throw でしかロールバックしない**という外部制約による。書き込みが制約で弾かれた事実を `err` で返すとトランザクションが中途半端に確定してしまうため、例外として境界の外まで抜けさせ、**境界を張っているヘルパ**（`withUserWriteCapabilitiesById` / `withArtistWriteCapabilitiesById` / `withRegistrationCapabilities`）が受けて `err` に戻す。**業務エラーを throw のまま外に流すのではなく、境界の外側で `Result` の中に必ず畳み込む**（詳細は [database/concurrency.md](../database/concurrency.md#一意制約違反の扱い) 参照）。usecase 側に `try/catch` は置かない。
 
 ```typescript
-// usecases/authorization
+// authorization
 const catchTakenHandle = async <T, E>(
   run: () => Promise<Result<T, E>>,
 ): Promise<Result<T, E | HandleAlreadyTakenError>> => {
@@ -416,7 +416,7 @@ export const validateRequest = <Schema extends ZodSchema>(
 import { Hono } from "hono";
 import { z } from "zod";
 import { getCapabilityDeps } from "../../../../../infrastructure/capabilities";
-import { withRegistrationCapabilities } from "../../../../../usecases/authorization";
+import { withRegistrationCapabilities } from "../../../../../authorization/registration";
 import { createUser } from "../../../../../usecases/users/createUser";
 import { validateRequest } from "../../validators/validateRequest";
 import { handleAppError } from "../../../../../errorMap";

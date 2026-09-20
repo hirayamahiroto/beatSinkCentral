@@ -1,30 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { reconstructUser } from "../../../domain/users/factories";
-import { reconstructArtist } from "../../../domain/artists/factories";
-import { reconstructArtistProfile } from "../../../domain/artistProfiles/factories";
 import { publishMyProfile } from "./index";
+import { reconstructStoredProfile } from "../../../domain/artistProfiles/factories";
+import type { ProfileState } from "../../../domain/artistProfiles/entities";
 import type {
   IArtistProfileReader,
   IArtistProfileWriter,
 } from "../../../domain/artistProfiles/repositories";
-import type { Actor, ArtistWriteCapabilities } from "../../capabilities";
+import type { ArtistWriteCapabilities } from "../../../capabilities";
+import { testUser, testArtist } from "../../../authorization/testDoubles";
 
-const actor: Actor = {
-  user: reconstructUser({
-    id: "550e8400-e29b-41d4-a716-446655440000",
-    subId: "auth0|123456789",
-    email: "test@example.com",
-  }),
-  artist: reconstructArtist({
-    artistId: "artist-1",
-    handle: "beatboxer_taro",
-    ownerUserId: "550e8400-e29b-41d4-a716-446655440000",
-    profile: null,
-  }),
-};
+const actor = { user: testUser, artist: testArtist };
 
-const publishableProfile = (published = false) =>
-  reconstructArtistProfile({
+const publishable = (published: boolean) =>
+  reconstructStoredProfile({
     id: "profile-1",
     artistId: "artist-1",
     published,
@@ -35,50 +23,43 @@ const publishableProfile = (published = false) =>
     links: [{ linkTypeCode: "x", url: "https://x.com/taro" }],
   });
 
-const createCaps = () =>
+const createCaps = (state: ProfileState) =>
   ({
     actor,
     artistProfiles: {
-      findByArtistId: vi.fn<IArtistProfileReader["findByArtistId"]>(
-        async () => null,
-      ),
+      load: vi.fn<IArtistProfileReader["load"]>(async () => state),
       findPublishedByHandle: vi.fn<
         IArtistProfileReader["findPublishedByHandle"]
       >(async () => null),
       listPublishedSummaries: vi.fn<
         IArtistProfileReader["listPublishedSummaries"]
       >(async () => []),
-      upsert: vi.fn<IArtistProfileWriter["upsert"]>(),
-      setPublished: vi.fn<IArtistProfileWriter["setPublished"]>(),
+      save: vi.fn<IArtistProfileWriter["save"]>(async (saved) => saved),
+      publish: vi.fn<IArtistProfileWriter["publish"]>(async (saved) => saved),
     },
   }) satisfies Pick<ArtistWriteCapabilities, "actor" | "artistProfiles">;
 
 describe("publishMyProfile", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("最小核が揃っていれば公開でき、ok(published=true) を返す", async () => {
-    const caps = createCaps();
-    caps.artistProfiles.findByArtistId.mockResolvedValue(publishableProfile());
-    caps.artistProfiles.setPublished.mockResolvedValue(
-      publishableProfile(true),
-    );
+  it("最小核が揃った下書きは公開し、ok(published=true) を返す", async () => {
+    const caps = createCaps(publishable(false));
 
     const result = await publishMyProfile(caps, { published: true });
 
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value).toEqual({ published: true });
-    }
-    expect(caps.artistProfiles.setPublished).toHaveBeenCalledWith({
-      artistId: "artist-1",
-      published: true,
-    });
+    expect(result).toStrictEqual({ ok: true, value: { published: true } });
+    expect(caps.artistProfiles.load).toHaveBeenCalledExactlyOnceWith(
+      "artist-1",
+    );
+    const published = caps.artistProfiles.publish.mock.calls[0][0];
+    expect(published.kind).toBe("published");
+    expect(published.id).toBe("profile-1");
+    expect(caps.artistProfiles.save).not.toHaveBeenCalled();
   });
 
-  it("最小核が欠けている状態で公開しようとすると err(ProfileNotPublishableError)", async () => {
-    const caps = createCaps();
-    caps.artistProfiles.findByArtistId.mockResolvedValue(
-      reconstructArtistProfile({
+  it("最小核が欠けた下書きを公開しようとすると err(ProfileNotPublishableError)", async () => {
+    const caps = createCaps(
+      reconstructStoredProfile({
         id: "profile-1",
         artistId: "artist-1",
         published: false,
@@ -96,38 +77,38 @@ describe("publishMyProfile", () => {
         missingFields: ["imageUrl", "story", "genres", "links"],
       });
     }
-    expect(caps.artistProfiles.setPublished).not.toHaveBeenCalled();
+    expect(caps.artistProfiles.publish).not.toHaveBeenCalled();
   });
 
-  it("非公開化は最小核を検証せず常に可能", async () => {
-    const caps = createCaps();
-    caps.artistProfiles.findByArtistId.mockResolvedValue(
-      reconstructArtistProfile({
-        id: "profile-1",
-        artistId: "artist-1",
-        published: true,
-        name: "Taro",
-      }),
-    );
-    caps.artistProfiles.setPublished.mockResolvedValue(
-      reconstructArtistProfile({
-        id: "profile-1",
-        artistId: "artist-1",
-        published: false,
-        name: "Taro",
-      }),
-    );
+  it("公開中を非公開にすると下書きとして保存し、ok(published=false) を返す", async () => {
+    const caps = createCaps(publishable(true));
 
     const result = await publishMyProfile(caps, { published: false });
 
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value).toEqual({ published: false });
-    }
+    expect(result).toStrictEqual({ ok: true, value: { published: false } });
+    const saved = caps.artistProfiles.save.mock.calls[0][0];
+    expect(saved.kind).toBe("draft");
+    expect(saved.id).toBe("profile-1");
+    expect(caps.artistProfiles.publish).not.toHaveBeenCalled();
+  });
+
+  it("すでに目的の状態なら書き込まずにその状態を返す（冪等）", async () => {
+    const alreadyPublished = createCaps(publishable(true));
+    const alreadyDraft = createCaps(publishable(false));
+
+    expect(
+      await publishMyProfile(alreadyPublished, { published: true }),
+    ).toStrictEqual({ ok: true, value: { published: true } });
+    expect(
+      await publishMyProfile(alreadyDraft, { published: false }),
+    ).toStrictEqual({ ok: true, value: { published: false } });
+    expect(alreadyPublished.artistProfiles.publish).not.toHaveBeenCalled();
+    expect(alreadyPublished.artistProfiles.save).not.toHaveBeenCalled();
+    expect(alreadyDraft.artistProfiles.save).not.toHaveBeenCalled();
   });
 
   it("プロフィール未作成なら err(ArtistProfileNotFoundError)", async () => {
-    const caps = createCaps();
+    const caps = createCaps({ kind: "noProfile", artistId: "artist-1" });
 
     const result = await publishMyProfile(caps, { published: true });
 
@@ -135,6 +116,7 @@ describe("publishMyProfile", () => {
     if (!result.ok) {
       expect(result.error.type).toBe("ArtistProfileNotFoundError");
     }
-    expect(caps.artistProfiles.setPublished).not.toHaveBeenCalled();
+    expect(caps.artistProfiles.publish).not.toHaveBeenCalled();
+    expect(caps.artistProfiles.save).not.toHaveBeenCalled();
   });
 });

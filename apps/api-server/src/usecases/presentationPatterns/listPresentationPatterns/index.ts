@@ -1,5 +1,5 @@
 import type { PresentationPatternView } from "../../../domain/presentationPatterns/entities";
-import type { PublicReadCapabilities } from "../../capabilities";
+import type { PublicReadCapabilities } from "../../../capabilities";
 import { type Result, ok } from "../../../utils/result";
 
 export type ListPresentationPatternsOutput = {

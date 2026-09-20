@@ -1,12 +1,12 @@
 import {
   isHandleAlreadyTakenError,
   type HandleAlreadyTakenError,
-} from "../../../domain/artists/errors/handleAlreadyTaken";
+} from "../../domain/artists/errors/handleAlreadyTaken";
 import {
   isEmailAlreadyTakenError,
   type EmailAlreadyTakenError,
-} from "../../../domain/users/errors/emailAlreadyTaken";
-import { type Result, err } from "../../../utils/result";
+} from "../../domain/users/errors/emailAlreadyTaken";
+import { type Result, err } from "../../utils/result";
 
 export type AlreadyTakenError =
   | HandleAlreadyTakenError

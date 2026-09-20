@@ -3,12 +3,12 @@ import { catchAlreadyTaken, isAlreadyTakenError } from "./index";
 import {
   createHandleAlreadyTakenError,
   isHandleAlreadyTakenError,
-} from "../../../domain/artists/errors/handleAlreadyTaken";
+} from "../../domain/artists/errors/handleAlreadyTaken";
 import {
   createEmailAlreadyTakenError,
   isEmailAlreadyTakenError,
-} from "../../../domain/users/errors/emailAlreadyTaken";
-import { ok } from "../../../utils/result";
+} from "../../domain/users/errors/emailAlreadyTaken";
+import { ok } from "../../utils/result";
 
 describe("isAlreadyTakenError", () => {
   it("handle / email の衝突を判別する", () => {

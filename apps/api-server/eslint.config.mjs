@@ -7,6 +7,7 @@ import {
   responseValidationPendingWarn,
   usecaseCapabilityRules,
   usecaseCapabilityParameterExempt,
+  usecaseSubjectNotFoundExempt,
   entityBehaviorRules,
 } from "../../eslint.rules.mjs";
 
@@ -24,7 +25,7 @@ const eslintConfig = [
     "src/infrastructure/repositories/*/index.test.ts",
     "src/infrastructure/transaction/index.test.ts",
     "src/middlewares/auth0/errors/unauthorized/index.ts",
-    "src/usecases/authorization/conflict/index.ts",
+    "src/authorization/conflict/index.ts",
     "src/utils/result/index.ts",
   ]),
   responseValidationRules([
@@ -45,13 +46,17 @@ const eslintConfig = [
     "src/app/api/\\[\\[...route\\]\\]/artists/me/profile/image/post/index.ts",
     "src/app/api/\\[\\[...route\\]\\]/artists/me/profile/publish/post/index.ts",
   ]),
-  usecaseCapabilityRules(["src/usecases/**/*.ts"]),
+  usecaseCapabilityRules([
+    "src/usecases/**/*.ts",
+    "src/authorization/**/*.ts",
+    "src/capabilities/**/*.ts",
+  ]),
   usecaseCapabilityParameterExempt([
-    "src/usecases/authorization/**/*.ts",
-    "src/usecases/capabilities/**/*.ts",
-    "src/usecases/**/testDoubles/**/*.ts",
+    "src/authorization/**/*.ts",
+    "src/capabilities/**/*.ts",
     "src/usecases/**/*.test.ts",
   ]),
+  usecaseSubjectNotFoundExempt(["src/authorization/resolution/**/*.ts"]),
   entityBehaviorRules(["src/domain/*/entities/index.ts"]),
 ];
 

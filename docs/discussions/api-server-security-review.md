@@ -10,16 +10,16 @@ Issue #158（api-server の Next.js 剥がし）に着手する前に、現在�
 
 ## 調査範囲
 
-| 対象                     | 見たもの                                                                                             |
-| ------------------------ | ---------------------------------------------------------------------------------------------------- |
-| 認証・認可               | `middlewares/auth0`, `infrastructure/auth0`, `usecases/authorization`, `infrastructure/capabilities` |
-| Basic 認証               | `middleware.ts`, `middlewares/basicAuth`                                                             |
-| 入力検証                 | 全 11 エンドポイントの zod スキーマ、`domain/**/valueObjects/**`                                     |
-| データアクセスのスコープ | `infrastructure/repositories/**`                                                                     |
-| ログ・エラー応答         | `errorMap`, `utils/logger`, `utils/requestContext`                                                   |
-| BFF ↔ api-server の境界 | `apps/beatfolio/src/utils/client`, `apps/beatfolio/src/middleware.ts`                                |
-| 依存パッケージ           | `npm audit`（ルートワークスペース）                                                                  |
-| シークレットの扱い       | `infrastructure/*.tf`, `.gitignore`, git 追跡状況                                                    |
+| 対象                     | 見たもの                                                                                    |
+| ------------------------ | ------------------------------------------------------------------------------------------- |
+| 認証・認可               | `middlewares/auth0`, `infrastructure/auth0`, `authorization`, `infrastructure/capabilities` |
+| Basic 認証               | `middleware.ts`, `middlewares/basicAuth`                                                    |
+| 入力検証                 | 全 11 エンドポイントの zod スキーマ、`domain/**/valueObjects/**`                            |
+| データアクセスのスコープ | `infrastructure/repositories/**`                                                            |
+| ログ・エラー応答         | `errorMap`, `utils/logger`, `utils/requestContext`                                          |
+| BFF ↔ api-server の境界 | `apps/beatfolio/src/utils/client`, `apps/beatfolio/src/middleware.ts`                       |
+| 依存パッケージ           | `npm audit`（ルートワークスペース）                                                         |
+| シークレットの扱い       | `infrastructure/*.tf`, `.gitignore`, git 追跡状況                                           |
 
 調査は**静的な読み取りと局所的な実行確認のみ**。稼働環境への能動的なテスト（実際のリクエスト送信、preview へのペネトレーション）は行っていない。
 

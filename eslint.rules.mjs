@@ -218,7 +218,7 @@ export const responseValidationPendingWarn = (files) => ({
 // 留まっていた2点 —— (1) usecase が権能を経由せず DB へ到達しない、
 // (2) 第1引数が権能型である —— を AST 上の形として検出する。
 const USECASE_CAPABILITY_BOUNDARY_MESSAGE =
-  "usecases/ から infrastructure 層・DB / ストレージクライアントを直接 import しない。" +
+  "usecases/・authorization/・capabilities/ から infrastructure 層・DB / ストレージクライアントを直接 import しない。" +
   "DB への到達手段は第1引数で受け取る権能（capabilities）だけに限る。";
 
 // 変数・テンプレートリテラルで組み立てた import 先は静的に確認できず、
@@ -230,7 +230,7 @@ const USECASE_UNRESOLVABLE_IMPORT_MESSAGE =
 
 const USECASE_CAPABILITY_PARAMETER_MESSAGE =
   "usecase のエクスポート関数は第1引数で権能（capabilities）を受け取る。" +
-  "型注釈は usecases/capabilities から import した権能型（`caps: XxxCapabilities`）か、" +
+  "型注釈は capabilities/ から import した権能型（`caps: XxxCapabilities`）か、" +
   "それを Pick / Omit 等で包んだ型にする。";
 
 // usecases/ から見て「権能を迂回して DB へ到達しうる」入口。
@@ -293,7 +293,7 @@ const CAPABILITY_WRAPPER_TYPES = new Set([
 
 // 権能型かどうかは型名の接尾辞では判定しない。`FakeCaps` のような名前を付けた
 // 構造型（raw な db を持つ型）でルールを通過できてしまうため、権能型の定義元
-// （usecases/capabilities）から来ている型だけを権能型として認める。
+// （src/capabilities）から来ている型だけを権能型として認める。
 const CAPABILITY_MODULE_SOURCE = /(^|\/)capabilities(\/|$)/;
 
 const isCapabilityModuleSource = (source) =>
@@ -479,10 +479,46 @@ const usecaseCapabilityParameterRule = {
   },
 };
 
+const USECASE_SUBJECT_NOT_FOUND_MESSAGE =
+  "主体（User / Artist）の NotFound エラーは authorization/resolution だけが生成する。" +
+  "usecase は Actor の有無を判定せず、経路モジュールが解決済みの Actor を権能で受け取る。";
+
+// Actor を構成する主体の `create*NotFoundError` の import 元。型（`import type` /
+// inline `type`）の参照は経路モジュールの Error 型合成に必要なので許し、値の import
+// （= 生成）だけを見る。集約の状態（ArtistProfile の有無など）は usecase が load した
+// 状態ユニオンから遷移を選ぶ責務のため、対象にしない。
+const SUBJECT_NOT_FOUND_ERROR_SOURCE =
+  /(^|\/)errors\/(userNotFound|artistNotFound)$/;
+
+const isSubjectNotFoundErrorSource = (source) =>
+  typeof source === "string" && SUBJECT_NOT_FOUND_ERROR_SOURCE.test(source);
+
+const hasValueSpecifier = (node) =>
+  node.importKind !== "type" &&
+  node.specifiers.some((specifier) => specifier.importKind !== "type");
+
+const usecaseSubjectNotFoundRule = {
+  meta: {
+    type: "problem",
+    docs: { description: USECASE_SUBJECT_NOT_FOUND_MESSAGE },
+    schema: [],
+  },
+  create(context) {
+    return {
+      ImportDeclaration(node) {
+        if (!isSubjectNotFoundErrorSource(node.source.value)) return;
+        if (!hasValueSpecifier(node)) return;
+        context.report({ node, message: USECASE_SUBJECT_NOT_FOUND_MESSAGE });
+      },
+    };
+  },
+};
+
 const usecaseCapabilityPlugin = {
   rules: {
     "usecase-capability-boundary": usecaseCapabilityBoundaryRule,
     "usecase-capability-parameter": usecaseCapabilityParameterRule,
+    "usecase-subject-not-found": usecaseSubjectNotFoundRule,
   },
 };
 
@@ -492,11 +528,21 @@ export const usecaseCapabilityRules = (files) => ({
   rules: {
     "local/usecase-capability-boundary": "error",
     "local/usecase-capability-parameter": "error",
+    "local/usecase-subject-not-found": "error",
   },
 });
 
-// 権能を「組み立てる／定義する」側（経路モジュールは CapabilityDeps を受け、
-// resolution / conflict は純粋関数）と、テスト・テストダブルは、第1引数で権能を
+// 主体の解決結果を失敗に畳む側（resolution）だけが NotFound を生成する。
+export const usecaseSubjectNotFoundExempt = (files) => ({
+  files,
+  plugins: { local: usecaseCapabilityPlugin },
+  rules: {
+    "local/usecase-subject-not-found": "off",
+  },
+});
+
+// 権能を「組み立てる／定義する」側（authorization/ の経路モジュールは CapabilityDeps を受け、
+// resolution / conflict は純粋関数。capabilities/ は型定義）と、テストは、第1引数で権能を
 // 受け取る形にはならない。DB への直接到達の禁止（boundary）は外さない。
 export const usecaseCapabilityParameterExempt = (files) => ({
   files,
@@ -640,7 +686,10 @@ const hookHasTestRule = {
   },
   create(context) {
     const filename = context.filename;
-    if (basename(filename) !== "index.ts" && basename(filename) !== "index.tsx") {
+    if (
+      basename(filename) !== "index.ts" &&
+      basename(filename) !== "index.tsx"
+    ) {
       return {};
     }
 

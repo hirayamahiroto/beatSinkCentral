@@ -43,13 +43,13 @@ vi.mock("../../repositories/artistRepository", () => ({
 
 vi.mock("../../repositories/artistProfileRepository", () => ({
   createArtistProfileReader: vi.fn(() => ({
-    findByArtistId: vi.fn(),
+    load: vi.fn(),
     findPublishedByHandle: vi.fn(),
     listPublishedSummaries: vi.fn(),
   })),
   createArtistProfileWriter: vi.fn(() => ({
-    upsert: vi.fn(),
-    setPublished: vi.fn(),
+    save: vi.fn(),
+    publish: vi.fn(),
   })),
 }));
 

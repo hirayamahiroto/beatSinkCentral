@@ -7,7 +7,7 @@ import {
   isAlreadyTakenError,
   type AlreadyTakenError,
 } from "../conflict";
-import type { Result } from "../../../utils/result";
+import type { Result } from "../../utils/result";
 
 export const withRegistrationCapabilities = <T, E>(
   deps: CapabilityDeps,

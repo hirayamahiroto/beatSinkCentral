@@ -2,7 +2,7 @@ import {
   registerNewUser,
   type RegisterNewUserError,
 } from "../../../domain/services/userRegistration";
-import type { RegistrationCapabilities } from "../../capabilities";
+import type { RegistrationCapabilities } from "../../../capabilities";
 import { type Result, ok } from "../../../utils/result";
 
 export type CreateUserInput = {

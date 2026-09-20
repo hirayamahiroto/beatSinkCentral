@@ -3,9 +3,12 @@ import {
   createPresentationPatternCode,
   type InvalidPresentationPatternError,
 } from "../../../domain/artistProfiles/valueObjects/presentationPattern";
-import type { ArtistWriteCapabilities } from "../../capabilities";
-import { loadOrDraftMyProfile } from "../loadOrDraftMyProfile";
-import { persistMyProfile } from "../persistMyProfile";
+import {
+  choosePresentationPattern as choosePattern,
+  toView,
+} from "../../../domain/artistProfiles/behaviors";
+import { edit } from "../../../domain/artistProfiles/policies/publishability";
+import type { ArtistWriteCapabilities } from "../../../capabilities";
 import { type Result, ok } from "../../../utils/result";
 
 export type ChoosePresentationPatternInput = {
@@ -32,11 +35,10 @@ export const choosePresentationPattern = async (
   const pattern = createPresentationPatternCode(input.patternCode);
   if (!pattern.ok) return pattern;
 
-  const profile = await loadOrDraftMyProfile(caps);
-  const saved = await persistMyProfile(
-    caps,
-    profile.choosePresentationPattern(pattern.value),
+  const state = await caps.artistProfiles.load(caps.actor.artist.getArtistId());
+  const saved = await caps.artistProfiles.save(
+    edit(state, (content) => choosePattern(content, pattern.value)),
   );
 
-  return ok({ presentation: saved.toView().presentation });
+  return ok({ presentation: toView(saved).presentation });
 };

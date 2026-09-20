@@ -4,8 +4,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { reconstructUser } from "../../../../../../domain/users/factories";
 import { reconstructArtist } from "../../../../../../domain/artists/factories";
-import { reconstructArtistProfile } from "../../../../../../domain/artistProfiles/factories";
-import type { ArtistProfilePersistenceData } from "../../../../../../domain/artistProfiles/entities";
+import { reconstructStoredProfile } from "../../../../../../domain/artistProfiles/factories";
+import { toPersistence } from "../../../../../../domain/artistProfiles/behaviors";
+import type { StoredProfile } from "../../../../../../domain/artistProfiles/entities";
 import { handleAppError } from "../../../../../../errorMap";
 import { ok, err } from "../../../../../../utils/result";
 import { createProfileImageUploadFailedError } from "../../../../../../domain/artistProfiles/errors/profileImageUploadFailed";
@@ -28,10 +29,10 @@ const actor = {
 const mockUpload = vi.fn();
 const mockResolveActorState = vi.fn();
 const mockArtistProfiles = {
-  findByArtistId: vi.fn(),
+  load: vi.fn(),
   findPublishedByHandle: vi.fn(),
-  upsert: vi.fn(),
-  setPublished: vi.fn(),
+  save: vi.fn(),
+  publish: vi.fn(),
 };
 
 vi.mock("../../../../../../infrastructure/capabilities", () => ({
@@ -81,10 +82,12 @@ describe("POST /artists/:artistId/profile/image", () => {
     mockUpload.mockResolvedValue(
       ok({ publicUrl: "https://example.supabase.co/public/a.jpg" }),
     );
-    mockArtistProfiles.findByArtistId.mockResolvedValue(null);
-    mockArtistProfiles.upsert.mockImplementation(
-      async (data: ArtistProfilePersistenceData) =>
-        reconstructArtistProfile({ ...data }),
+    mockArtistProfiles.load.mockResolvedValue({
+      kind: "noProfile",
+      artistId: "artist-1",
+    });
+    mockArtistProfiles.save.mockImplementation(
+      async (state: StoredProfile) => state,
     );
   });
 
@@ -105,16 +108,18 @@ describe("POST /artists/:artistId/profile/image", () => {
       extension: "jpg",
     });
     expect(bytes).toBeInstanceOf(Uint8Array);
-    expect(mockArtistProfiles.upsert).toHaveBeenCalledTimes(1);
-    expect(mockArtistProfiles.upsert.mock.calls[0][0]).toMatchObject({
+    expect(mockArtistProfiles.save).toHaveBeenCalledTimes(1);
+    expect(
+      toPersistence(mockArtistProfiles.save.mock.calls[0][0]),
+    ).toMatchObject({
       artistId: "artist-1",
       imageUrl: "https://example.supabase.co/public/a.jpg",
     });
   });
 
   it("既存プロフィールがあれば画像だけを差し替える", async () => {
-    mockArtistProfiles.findByArtistId.mockResolvedValue(
-      reconstructArtistProfile({
+    mockArtistProfiles.load.mockResolvedValue(
+      reconstructStoredProfile({
         id: "p1",
         artistId: "artist-1",
         published: false,
@@ -126,7 +131,9 @@ describe("POST /artists/:artistId/profile/image", () => {
     const res = await request("artist-1", createImageFile());
 
     expect(res.status).toBe(200);
-    expect(mockArtistProfiles.upsert.mock.calls[0][0]).toMatchObject({
+    expect(
+      toPersistence(mockArtistProfiles.save.mock.calls[0][0]),
+    ).toMatchObject({
       id: "p1",
       name: "Taro",
       imageUrl: "https://example.supabase.co/public/a.jpg",
@@ -202,6 +209,6 @@ describe("POST /artists/:artistId/profile/image", () => {
     const res = await request("artist-1", createImageFile());
 
     expect(res.status).toBe(502);
-    expect(mockArtistProfiles.upsert).not.toHaveBeenCalled();
+    expect(mockArtistProfiles.save).not.toHaveBeenCalled();
   });
 });
