@@ -7,27 +7,43 @@ import {
 import saveMyProfile from "./index";
 import { handleBffError } from "../../../../../../errorMap";
 import { createUpstreamUnavailableError } from "../../../../../../utils/client/errors/upstreamUnavailable";
+import {
+  createEndpointMock,
+  upstreamJsonResponse,
+  type ApiServerClient,
+  type ApiServerClientMock,
+} from "../../../../../../utils/client/testDoubles";
 
-const { meGet, attributesPost, chapterPost, linksPost } = vi.hoisted(() => ({
-  meGet: vi.fn(),
-  attributesPost: vi.fn(),
-  chapterPost: vi.fn(),
-  linksPost: vi.fn(),
-}));
+const meGet =
+  createEndpointMock<ApiServerClient["api"]["users"]["me"]["$get"]>();
+const attributesPost =
+  createEndpointMock<
+    ApiServerClient["api"]["artists"][":artistId"]["attributes"]["$post"]
+  >();
+const chapterPost =
+  createEndpointMock<
+    ApiServerClient["api"]["artists"][":artistId"]["story"]["chapters"][":chapterKey"]["$post"]
+  >();
+const linksPost =
+  createEndpointMock<
+    ApiServerClient["api"]["artists"][":artistId"]["links"]["$post"]
+  >();
 
-vi.mock("../../../../../../utils/client", () => ({
-  createApiServerClient: () => ({
-    api: {
-      users: { me: { $get: meGet } },
-      artists: {
-        ":artistId": {
-          attributes: { $post: attributesPost },
-          story: { chapters: { ":chapterKey": { $post: chapterPost } } },
-          links: { $post: linksPost },
-        },
+const apiServerClient = {
+  api: {
+    users: { me: { $get: meGet } },
+    artists: {
+      ":artistId": {
+        attributes: { $post: attributesPost },
+        story: { chapters: { ":chapterKey": { $post: chapterPost } } },
+        links: { $post: linksPost },
       },
     },
-  }),
+  },
+} satisfies ApiServerClientMock;
+
+vi.mock("../../../../../../utils/client", () => ({
+  createApiServerClient: () => apiServerClient,
 }));
 
 const createApp = () => {
@@ -45,15 +61,6 @@ const request = (body: unknown) =>
     body: JSON.stringify(body),
   });
 
-const jsonResponse = (
-  body: unknown,
-  init: { ok?: boolean; status?: number } = {},
-) => ({
-  ok: init.ok ?? true,
-  status: init.status ?? 200,
-  json: async () => body,
-});
-
 const fullBody = {
   name: "SAKU",
   tagline: "口ひとつで、フロアを揺らす。",
@@ -70,16 +77,28 @@ describe("POST /artists/me/profile", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     meGet.mockResolvedValue(
-      jsonResponse({
+      upstreamJsonResponse({
         registered: true,
         userId: "user-1",
         email: "saku@example.com",
         artist: { artistId: "artist-1", handle: "saku", hasProfile: true },
       }),
     );
-    attributesPost.mockResolvedValue(jsonResponse({ attributes: {} }));
-    chapterPost.mockResolvedValue(jsonResponse({ story: { chapters: [] } }));
-    linksPost.mockResolvedValue(jsonResponse({ links: [] }));
+    attributesPost.mockResolvedValue(
+      upstreamJsonResponse({
+        attributes: {
+          name: "SAKU",
+          imageUrl: null,
+          tagline: "口ひとつで、フロアを揺らす。",
+          genres: ["Beatbox"],
+          activityInfo: "拠点: 東京 / 形態: ソロ",
+        },
+      }),
+    );
+    chapterPost.mockResolvedValue(
+      upstreamJsonResponse({ story: { chapters: [] } }),
+    );
+    linksPost.mockResolvedValue(upstreamJsonResponse({ links: [] }));
   });
 
   it("画面の入力を属性 → 章ごと → リンクの順に構造ごとの更新 API へ振り分け、204 を返す", async () => {
@@ -124,7 +143,7 @@ describe("POST /artists/me/profile", () => {
   });
 
   it("artist 未登録なら api-server へ渡さず 404 を返す", async () => {
-    meGet.mockResolvedValue(jsonResponse({ registered: false }));
+    meGet.mockResolvedValue(upstreamJsonResponse({ registered: false }));
 
     const res = await request(fullBody);
 
@@ -176,9 +195,9 @@ describe("POST /artists/me/profile", () => {
 
   it("属性の更新が失敗したら章・リンクは送らず、ステータスごと透過し、保存済みは空で返す", async () => {
     attributesPost.mockResolvedValue(
-      jsonResponse(
+      upstreamJsonResponse(
         { error: "Invalid name format", code: "InvalidProfileNameFormatError" },
-        { ok: false, status: 422 },
+        422,
       ),
     );
 
@@ -197,12 +216,12 @@ describe("POST /artists/me/profile", () => {
 
   it("章の更新が失敗したら残りの章とリンクは送らず、保存済みの属性と失敗した章を返す", async () => {
     chapterPost.mockResolvedValueOnce(
-      jsonResponse(
+      upstreamJsonResponse(
         {
           error: "Invalid story chapter format",
           code: "InvalidStoryChapterFormatError",
         },
-        { ok: false, status: 422 },
+        422,
       ),
     );
 
@@ -221,10 +240,7 @@ describe("POST /artists/me/profile", () => {
 
   it("リンクの更新が 5xx なら 502 に畳み、属性と全章を保存済みとして返す", async () => {
     linksPost.mockResolvedValue(
-      jsonResponse(
-        { error: "Internal Server Error" },
-        { ok: false, status: 500 },
-      ),
+      upstreamJsonResponse({ error: "Internal Server Error" }, 500),
     );
 
     const res = await request(fullBody);

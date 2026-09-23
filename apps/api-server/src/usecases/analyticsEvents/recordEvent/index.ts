@@ -16,7 +16,7 @@ export const recordEvent = async (
   caps: RecordEventCaps,
   input: RecordEventUsecaseInput,
 ): Promise<Result<void, RecordEventError>> => {
-  const event = createAnalyticsEvent(input);
+  const event = createAnalyticsEvent(input, new Date());
   if (!event.ok) return event;
 
   await caps.analyticsEvents.record(event.value.toPersistence());

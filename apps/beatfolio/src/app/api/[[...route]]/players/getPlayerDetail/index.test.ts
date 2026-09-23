@@ -1,40 +1,45 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import type { RequestContextEnv } from "../../../../../middlewares/requestContext";
+import {
+  requestContextMiddleware,
+  type RequestContextEnv,
+} from "../../../../../middlewares/requestContext";
 import getPlayerDetail from "./index";
 import { handleBffError } from "../../../../../errorMap";
+import {
+  createEndpointMock,
+  upstreamJsonResponse,
+  type ApiServerClient,
+  type ApiServerClientMock,
+  type UpstreamSuccessBody,
+} from "../../../../../utils/client/testDoubles";
 
-const profileGet = vi.fn();
-const linkTypesGet = vi.fn();
-const storyQuestionsGet = vi.fn();
+const profileGet =
+  createEndpointMock<ApiServerClient["api"]["artists"][":handle"]["$get"]>();
+const linkTypesGet =
+  createEndpointMock<ApiServerClient["api"]["link-types"]["$get"]>();
+const storyQuestionsGet =
+  createEndpointMock<ApiServerClient["api"]["story-questions"]["$get"]>();
 
-const apiClient = {
+const apiServerClient = {
   api: {
     artists: { ":handle": { $get: profileGet } },
     "link-types": { $get: linkTypesGet },
     "story-questions": { $get: storyQuestionsGet },
   },
-};
+} satisfies ApiServerClientMock;
+
+vi.mock("../../../../../utils/client", () => ({
+  createApiServerClient: () => apiServerClient,
+}));
 
 const createApp = () => {
   const app = new Hono<RequestContextEnv>();
-  app.use("*", async (c, next) => {
-    c.set("apiClient", apiClient as never);
-    await next();
-  });
+  app.use("*", requestContextMiddleware);
   app.route("/", getPlayerDetail);
   app.onError(handleBffError);
   return app;
 };
-
-const jsonResponse = (
-  body: unknown,
-  init: { ok?: boolean; status?: number } = {},
-) => ({
-  ok: init.ok ?? true,
-  status: init.status ?? 200,
-  json: async () => body,
-});
 
 const publishedProfile = {
   handle: "saku",
@@ -57,9 +62,12 @@ const publishedProfile = {
       { linkTypeCode: "youtube", url: "https://youtube.com/@saku" },
       { linkTypeCode: "other", url: "https://example.com/me" },
     ],
+    presentation: { patternCode: null },
     published: true,
   },
-};
+} satisfies UpstreamSuccessBody<
+  ApiServerClient["api"]["artists"][":handle"]["$get"]
+>;
 
 const linkTypes = [
   { type: "youtube", label: "YouTube" },
@@ -75,12 +83,14 @@ const storyQuestions = [
 describe("GET /players/:handle", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    linkTypesGet.mockResolvedValue(jsonResponse({ linkTypes }));
-    storyQuestionsGet.mockResolvedValue(jsonResponse({ storyQuestions }));
+    linkTypesGet.mockResolvedValue(upstreamJsonResponse({ linkTypes }));
+    storyQuestionsGet.mockResolvedValue(
+      upstreamJsonResponse({ storyQuestions }),
+    );
   });
 
   it("handle を api-server へ渡し、§5-2 契約（AudienceArtistProfile props）へ整形して返す（章の問いは問いマスタのラベルへ解決）", async () => {
-    profileGet.mockResolvedValue(jsonResponse(publishedProfile));
+    profileGet.mockResolvedValue(upstreamJsonResponse(publishedProfile));
 
     const res = await createApp().request("/saku", { method: "GET" });
 
@@ -112,7 +122,7 @@ describe("GET /players/:handle", () => {
 
   it("published のみ返す api-server が 404 なら 404 を維持する", async () => {
     profileGet.mockResolvedValue(
-      jsonResponse({ error: "Not found" }, { ok: false, status: 404 }),
+      upstreamJsonResponse({ error: "Not found" }, 404),
     );
 
     const res = await createApp().request("/unknown", { method: "GET" });
@@ -122,10 +132,7 @@ describe("GET /players/:handle", () => {
 
   it("書式不正な handle で api-server が 422 なら 404 を返す", async () => {
     profileGet.mockResolvedValue(
-      jsonResponse(
-        { error: "Invalid handle format" },
-        { ok: false, status: 422 },
-      ),
+      upstreamJsonResponse({ error: "Invalid handle format" }, 422),
     );
 
     const res = await createApp().request("/not-an-id", { method: "GET" });
@@ -135,7 +142,7 @@ describe("GET /players/:handle", () => {
 
   it("api-server が 5xx で失敗したら 502 を返す", async () => {
     profileGet.mockResolvedValue(
-      jsonResponse({ error: "Internal" }, { ok: false, status: 500 }),
+      upstreamJsonResponse({ error: "Internal" }, 500),
     );
 
     const res = await createApp().request("/saku", { method: "GET" });
@@ -144,9 +151,9 @@ describe("GET /players/:handle", () => {
   });
 
   it("問いマスタの取得が失敗したら 502 を返す", async () => {
-    profileGet.mockResolvedValue(jsonResponse(publishedProfile));
+    profileGet.mockResolvedValue(upstreamJsonResponse(publishedProfile));
     storyQuestionsGet.mockResolvedValue(
-      jsonResponse({ error: "Internal" }, { ok: false, status: 500 }),
+      upstreamJsonResponse({ error: "Internal" }, 500),
     );
 
     const res = await createApp().request("/saku", { method: "GET" });

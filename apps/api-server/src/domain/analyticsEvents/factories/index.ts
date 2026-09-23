@@ -40,6 +40,7 @@ const toStoredProps = (
 
 export const createAnalyticsEvent = (
   input: RecordEventInput,
+  occurredAt: Date,
 ): Result<AnalyticsEvent, InvalidEventTypeFormatError> => {
   const eventType = createEventType(input.eventType);
   if (!eventType.ok) return eventType;
@@ -54,7 +55,7 @@ export const createAnalyticsEvent = (
     referrer: input.referrer,
     from: extractFrom(input.eventType, input.props),
     props: toStoredProps(input.eventType, input.props),
-    occurredAt: new Date(),
+    occurredAt,
   };
 
   return ok(createAnalyticsEventBehaviors(state));
