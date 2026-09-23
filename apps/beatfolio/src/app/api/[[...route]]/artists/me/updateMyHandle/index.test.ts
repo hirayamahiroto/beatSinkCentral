@@ -6,19 +6,26 @@ import {
 } from "../../../../../../middlewares/requestContext";
 import updateMyHandle from "./index";
 import { handleBffError } from "../../../../../../errorMap";
+import {
+  createEndpointMock,
+  type ApiServerClient,
+  type ApiServerClientMock,
+} from "../../../../../../utils/client/testDoubles";
 
-const { meGet, handlePost } = vi.hoisted(() => ({
-  meGet: vi.fn(),
-  handlePost: vi.fn(),
-}));
+const meGet =
+  createEndpointMock<ApiServerClient["api"]["users"]["me"]["$get"]>();
+const handlePost =
+  createEndpointMock<ApiServerClient["api"]["artists"][":artistId"]["$post"]>();
+
+const apiServerClient = {
+  api: {
+    users: { me: { $get: meGet } },
+    artists: { ":artistId": { $post: handlePost } },
+  },
+} satisfies ApiServerClientMock;
 
 vi.mock("../../../../../../utils/client", () => ({
-  createApiServerClient: () => ({
-    api: {
-      users: { me: { $get: meGet } },
-      artists: { ":artistId": { $post: handlePost } },
-    },
-  }),
+  createApiServerClient: () => apiServerClient,
 }));
 
 const createApp = () => {

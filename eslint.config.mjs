@@ -21,7 +21,6 @@ const eslintConfig = [
   ...storybook.configs["flat/recommended"],
   typeSafetyRules,
   typeSafetyPendingWarn([
-    "apps/beatfolio/src/app/api/**/index.test.ts",
     "apps/beatfolio/src/errorMap/index.ts",
     "apps/beatfolio/src/utils/client/errors/upstreamUnavailable/index.ts",
   ]),

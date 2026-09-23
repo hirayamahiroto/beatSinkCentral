@@ -6,25 +6,35 @@ import {
 } from "../../../../../middlewares/requestContext";
 import getProfileEdit from "./index";
 import { handleBffError } from "../../../../../errorMap";
+import {
+  createEndpointMock,
+  upstreamJsonResponse,
+  type ApiServerClient,
+  type ApiServerClientMock,
+} from "../../../../../utils/client/testDoubles";
 
-const { meGet, profileGet, linkTypesGet, storyQuestionsGet } = vi.hoisted(
-  () => ({
-    meGet: vi.fn(),
-    profileGet: vi.fn(),
-    linkTypesGet: vi.fn(),
-    storyQuestionsGet: vi.fn(),
-  }),
-);
+const meGet =
+  createEndpointMock<ApiServerClient["api"]["users"]["me"]["$get"]>();
+const profileGet =
+  createEndpointMock<
+    ApiServerClient["api"]["artists"][":artistId"]["profile"]["$get"]
+  >();
+const linkTypesGet =
+  createEndpointMock<ApiServerClient["api"]["link-types"]["$get"]>();
+const storyQuestionsGet =
+  createEndpointMock<ApiServerClient["api"]["story-questions"]["$get"]>();
+
+const apiServerClient = {
+  api: {
+    users: { me: { $get: meGet } },
+    artists: { ":artistId": { profile: { $get: profileGet } } },
+    "link-types": { $get: linkTypesGet },
+    "story-questions": { $get: storyQuestionsGet },
+  },
+} satisfies ApiServerClientMock;
 
 vi.mock("../../../../../utils/client", () => ({
-  createApiServerClient: () => ({
-    api: {
-      users: { me: { $get: meGet } },
-      artists: { ":artistId": { profile: { $get: profileGet } } },
-      "link-types": { $get: linkTypesGet },
-      "story-questions": { $get: storyQuestionsGet },
-    },
-  }),
+  createApiServerClient: () => apiServerClient,
 }));
 
 const createApp = () => {
@@ -34,15 +44,6 @@ const createApp = () => {
   app.onError(handleBffError);
   return app;
 };
-
-const jsonResponse = (
-  body: unknown,
-  init: { ok?: boolean; status?: number } = {},
-) => ({
-  ok: init.ok ?? true,
-  status: init.status ?? 200,
-  json: async () => body,
-});
 
 const registeredMe = {
   registered: true,
@@ -65,14 +66,16 @@ const storyQuestions = [
 describe("GET /dashboard/profile/edit", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    meGet.mockResolvedValue(jsonResponse(registeredMe));
-    linkTypesGet.mockResolvedValue(jsonResponse({ linkTypes }));
-    storyQuestionsGet.mockResolvedValue(jsonResponse({ storyQuestions }));
+    meGet.mockResolvedValue(upstreamJsonResponse(registeredMe));
+    linkTypesGet.mockResolvedValue(upstreamJsonResponse({ linkTypes }));
+    storyQuestionsGet.mockResolvedValue(
+      upstreamJsonResponse({ storyQuestions }),
+    );
   });
 
   it("email・選択肢・問いマスタ・ウィザード初期値を1つの画面用データにまとめて返す", async () => {
     profileGet.mockResolvedValue(
-      jsonResponse({
+      upstreamJsonResponse({
         handle: "saku",
         profile: {
           attributes: {
@@ -88,9 +91,11 @@ describe("GET /dashboard/profile/edit", () => {
           links: [
             { linkTypeCode: "youtube", url: "https://youtube.com/@saku" },
           ],
+          presentation: { patternCode: null },
           published: true,
         },
         publishability: { ok: true, missingFields: [] },
+        offer: null,
       }),
     );
 
@@ -121,7 +126,12 @@ describe("GET /dashboard/profile/edit", () => {
 
   it("プロフィール未作成でも問いマスタは返し、defaultValues は null で返す", async () => {
     profileGet.mockResolvedValue(
-      jsonResponse({ handle: "saku", profile: null, publishability: null }),
+      upstreamJsonResponse({
+        handle: "saku",
+        profile: null,
+        publishability: null,
+        offer: null,
+      }),
     );
 
     const res = await createApp().request("/", { method: "GET" });
@@ -136,7 +146,7 @@ describe("GET /dashboard/profile/edit", () => {
   });
 
   it("未登録なら registered:false だけを返す", async () => {
-    meGet.mockResolvedValue(jsonResponse({ registered: false }));
+    meGet.mockResolvedValue(upstreamJsonResponse({ registered: false }));
 
     const res = await createApp().request("/", { method: "GET" });
 
@@ -146,7 +156,7 @@ describe("GET /dashboard/profile/edit", () => {
 
   it("登録済みでも artist が無ければ 404 を返す", async () => {
     meGet.mockResolvedValue(
-      jsonResponse({
+      upstreamJsonResponse({
         registered: true,
         userId: "user-1",
         email: "saku@example.com",
@@ -162,7 +172,7 @@ describe("GET /dashboard/profile/edit", () => {
 
   it("いずれかの api-server 呼び出しが失敗したら 502 を返す", async () => {
     profileGet.mockResolvedValue(
-      jsonResponse({ error: "Internal" }, { ok: false, status: 500 }),
+      upstreamJsonResponse({ error: "Internal" }, 500),
     );
 
     const res = await createApp().request("/", { method: "GET" });
@@ -172,7 +182,7 @@ describe("GET /dashboard/profile/edit", () => {
 
   it("問いマスタの取得が失敗したら 502 を返す", async () => {
     storyQuestionsGet.mockResolvedValue(
-      jsonResponse({ error: "Internal" }, { ok: false, status: 500 }),
+      upstreamJsonResponse({ error: "Internal" }, 500),
     );
 
     const res = await createApp().request("/", { method: "GET" });

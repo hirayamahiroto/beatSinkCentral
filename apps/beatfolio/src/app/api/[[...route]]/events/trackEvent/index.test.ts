@@ -6,15 +6,22 @@ import {
 } from "../../../../../middlewares/requestContext";
 import trackEvent from "./index";
 import { handleBffError } from "../../../../../errorMap";
+import {
+  createEndpointMock,
+  upstreamNoContentResponse,
+  type ApiServerClient,
+  type ApiServerClientMock,
+} from "../../../../../utils/client/testDoubles";
 
-const { eventsPost } = vi.hoisted(() => ({
-  eventsPost: vi.fn(),
-}));
+const eventsPost =
+  createEndpointMock<ApiServerClient["api"]["events"]["$post"]>();
+
+const apiServerClient = {
+  api: { events: { $post: eventsPost } },
+} satisfies ApiServerClientMock;
 
 vi.mock("../../../../../utils/client", () => ({
-  createApiServerClient: () => ({
-    api: { events: { $post: eventsPost } },
-  }),
+  createApiServerClient: () => apiServerClient,
 }));
 
 const createApp = () => {
@@ -43,7 +50,7 @@ const request = (body: unknown, headers: Record<string, string> = {}) =>
 describe("POST /events (BFF trackEvent)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    eventsPost.mockResolvedValue({ ok: true, status: 204 });
+    eventsPost.mockResolvedValue(upstreamNoContentResponse());
   });
 
   it("検証を通った内容にanonId/sessionIdを補って204を返す", async () => {

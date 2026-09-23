@@ -1,37 +1,39 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import type { RequestContextEnv } from "../../../../../middlewares/requestContext";
+import {
+  requestContextMiddleware,
+  type RequestContextEnv,
+} from "../../../../../middlewares/requestContext";
 import listPlayers from "./index";
 import { createUpstreamUnavailableError } from "../../../../../utils/client/errors/upstreamUnavailable";
 import { handleBffError } from "../../../../../errorMap";
+import {
+  createEndpointMock,
+  upstreamJsonResponse,
+  type ApiServerClient,
+  type ApiServerClientMock,
+} from "../../../../../utils/client/testDoubles";
 
-const artistsGet = vi.fn();
+const artistsGet =
+  createEndpointMock<ApiServerClient["api"]["artists"]["$get"]>();
 
-const apiClient = {
+const apiServerClient = {
   api: {
     artists: { $get: artistsGet },
   },
-};
+} satisfies ApiServerClientMock;
+
+vi.mock("../../../../../utils/client", () => ({
+  createApiServerClient: () => apiServerClient,
+}));
 
 const createApp = () => {
   const app = new Hono<RequestContextEnv>();
-  app.use("*", async (c, next) => {
-    c.set("apiClient", apiClient as never);
-    await next();
-  });
+  app.use("*", requestContextMiddleware);
   app.route("/", listPlayers);
   app.onError(handleBffError);
   return app;
 };
-
-const jsonResponse = (
-  body: unknown,
-  init: { ok?: boolean; status?: number } = {},
-) => ({
-  ok: init.ok ?? true,
-  status: init.status ?? 200,
-  json: async () => body,
-});
 
 describe("GET /players", () => {
   beforeEach(() => {
@@ -40,7 +42,7 @@ describe("GET /players", () => {
 
   it("api-server の公開プロフィール一覧を players として返す", async () => {
     artistsGet.mockResolvedValue(
-      jsonResponse({
+      upstreamJsonResponse({
         profiles: [
           {
             handle: "saku",
@@ -84,7 +86,7 @@ describe("GET /players", () => {
   });
 
   it("公開プロフィールが無いときは空配列を返す", async () => {
-    artistsGet.mockResolvedValue(jsonResponse({ profiles: [] }));
+    artistsGet.mockResolvedValue(upstreamJsonResponse({ profiles: [] }));
 
     const res = await createApp().request("/", { method: "GET" });
 
@@ -94,7 +96,7 @@ describe("GET /players", () => {
 
   it("api-server が失敗したら 502 を返す", async () => {
     artistsGet.mockResolvedValue(
-      jsonResponse({ error: "Internal" }, { ok: false, status: 500 }),
+      upstreamJsonResponse({ error: "Internal" }, 500),
     );
 
     const res = await createApp().request("/", { method: "GET" });
