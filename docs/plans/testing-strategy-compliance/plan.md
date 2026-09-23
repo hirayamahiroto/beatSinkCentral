@@ -104,11 +104,13 @@ Phase A（基盤・小・即効）      Phase B（契約を型で縛る）      
 
 ## 5. 要判断事項（着手前に決める）
 
-| #   | 論点                                                                                                                 | 推奨                                                                                                                                                                                                   | 影響する PR |
-| --- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------- |
-| 1   | Issue 6: `clock` / `idGen` を caps に持たせるか                                                                      | **決定**: 持たせない。`architecture.md` が ID 採番を factory に閉じる理由（採番責務の所在）を明示しており、testing 側の docs をそろえる（#325）。時刻は factory で取らず殻で取得して引数で渡す（#324） | B1-0, B1-1  |
-| 2   | Issue 4: CI の DB を Postgres service container + drizzle migrate にするか、Supabase CLI（`supabase start`）にするか | Postgres service container。起動が速く、`db:migrate` の経路をそのまま使える。Storage 等 Supabase 固有機能に依存するテストが必要になった時点で見直す                                                    | C1-0        |
-| 3   | Issue 3 を Issue 4 の前に部分着手するか                                                                              | しない。回数検証だけ先に消す価値は小さく、C1 後にまとめて撤去する方が差分が読みやすい                                                                                                                  | C2-1        |
-| 4   | `packages/ui` の `test` script                                                                                       | テストが 0 件のあいだは script を削除し、Storybook / Chromatic を検証手段とする旨を `strategy.md` に一行書く                                                                                           | A2-2        |
-| 5   | Issue 7 の middlewares / `libs/auth0` / `utils/config`                                                               | 「テスト不要」の候補。Auth0 SDK と env 読み出しの薄い殻は §7-3「書かなくてよい対象」に該当する見込み。判定は D1-4 で行う                                                                               | D1-4        |
-| 6   | `guidelines.md` / `test-cases.md` を作るか                                                                           | 作らない。`strategy.md` §12 と checklist §15 が役割を吸収している                                                                                                                                      | A1-1        |
+6 件すべて決定済み。決定の本文・理由・却下した案は `docs/decisions/`（ADR）に置き、本書はリンクだけを持つ。
+
+| #   | 論点                                                   | ADR                                                                                                         | 影響する PR |
+| --- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- | ----------- |
+| 1   | Issue 6: `clock` / `idGen` を caps に持たせるか        | [0001](../../decisions/0001-domain-factory-clock-idgen.md) — 持たせない（#325 / #324 で実施済み）           | B1-0, B1-1  |
+| 2   | Issue 4: CI の DB 起動方式                             | [0002](../../decisions/0002-integration-test-db-postgres-service-container.md) — Postgres service container | C1-0        |
+| 3   | Issue 3 を Issue 4 の前に部分着手するか                | [0003](../../decisions/0003-repository-mock-removal-after-integration.md) — しない                          | C2-1        |
+| 4   | `packages/ui` の `test` script                         | [0004](../../decisions/0004-packages-ui-test-script.md) — 0 件のあいだ削除                                  | A2-2        |
+| 5   | Issue 7 の middlewares / `libs/auth0` / `utils/config` | [0005](../../decisions/0005-thin-shells-without-tests.md) — 殻は書かない（#328 で実施済み）                 | D1-4        |
+| 6   | `guidelines.md` / `test-cases.md` を作るか             | [0006](../../decisions/0006-no-guidelines-and-test-cases-docs.md) — 作らない（#320 で実施済み）             | A1-1        |
