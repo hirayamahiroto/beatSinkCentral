@@ -6,19 +6,29 @@ import {
 } from "../../../../../../middlewares/requestContext";
 import saveMyOffer from "./index";
 import { handleBffError } from "../../../../../../errorMap";
+import {
+  createEndpointMock,
+  upstreamJsonResponse,
+  type ApiServerClient,
+  type ApiServerClientMock,
+} from "../../../../../../utils/client/testDoubles";
 
-const { meGet, offersPost } = vi.hoisted(() => ({
-  meGet: vi.fn(),
-  offersPost: vi.fn(),
-}));
+const meGet =
+  createEndpointMock<ApiServerClient["api"]["users"]["me"]["$get"]>();
+const offersPost =
+  createEndpointMock<
+    ApiServerClient["api"]["artists"][":artistId"]["offers"]["$post"]
+  >();
+
+const apiServerClient = {
+  api: {
+    users: { me: { $get: meGet } },
+    artists: { ":artistId": { offers: { $post: offersPost } } },
+  },
+} satisfies ApiServerClientMock;
 
 vi.mock("../../../../../../utils/client", () => ({
-  createApiServerClient: () => ({
-    api: {
-      users: { me: { $get: meGet } },
-      artists: { ":artistId": { offers: { $post: offersPost } } },
-    },
-  }),
+  createApiServerClient: () => apiServerClient,
 }));
 
 const createApp = () => {
@@ -35,15 +45,6 @@ const request = (body: unknown) =>
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
-
-const jsonResponse = (
-  body: unknown,
-  init: { ok?: boolean; status?: number } = {},
-) => ({
-  ok: init.ok ?? true,
-  status: init.status ?? 200,
-  json: async () => body,
-});
 
 const offerInput = {
   date: "2026-09-20",
@@ -64,14 +65,14 @@ describe("POST /artists/me/offer", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     meGet.mockResolvedValue(
-      jsonResponse({
+      upstreamJsonResponse({
         registered: true,
         userId: "user-1",
         email: "saku@example.com",
         artist: { artistId: "artist-1", handle: "saku", hasProfile: true },
       }),
     );
-    offersPost.mockResolvedValue(jsonResponse({ offer: offerView }));
+    offersPost.mockResolvedValue(upstreamJsonResponse({ offer: offerView }));
   });
 
   it("自分の artistId を解決してオファーを api-server へ送り、応答を透過する", async () => {
@@ -103,12 +104,12 @@ describe("POST /artists/me/offer", () => {
 
   it("api-server の 422 はステータスとボディを透過する", async () => {
     offersPost.mockResolvedValue(
-      jsonResponse(
+      upstreamJsonResponse(
         {
           error: "Co-performer not found: hana_bb",
           code: "CoPerformerNotFoundError",
         },
-        { ok: false, status: 422 },
+        422,
       ),
     );
 
@@ -122,7 +123,7 @@ describe("POST /artists/me/offer", () => {
   });
 
   it("artist 未登録なら 404 を返す", async () => {
-    meGet.mockResolvedValue(jsonResponse({ registered: false }));
+    meGet.mockResolvedValue(upstreamJsonResponse({ registered: false }));
 
     const res = await request(offerInput);
 

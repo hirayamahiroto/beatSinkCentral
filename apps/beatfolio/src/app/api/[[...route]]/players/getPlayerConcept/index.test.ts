@@ -1,43 +1,49 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import type { RequestContextEnv } from "../../../../../middlewares/requestContext";
+import {
+  requestContextMiddleware,
+  type RequestContextEnv,
+} from "../../../../../middlewares/requestContext";
 import getPlayerConcept from "./index";
 import { handleBffError } from "../../../../../errorMap";
+import {
+  createEndpointMock,
+  upstreamJsonResponse,
+  type ApiServerClient,
+  type ApiServerClientMock,
+  type UpstreamSuccessBody,
+} from "../../../../../utils/client/testDoubles";
 
-const profileGet = vi.fn();
-const linkTypesGet = vi.fn();
-const storyQuestionsGet = vi.fn();
+const profileGet =
+  createEndpointMock<ApiServerClient["api"]["artists"][":handle"]["$get"]>();
+const linkTypesGet =
+  createEndpointMock<ApiServerClient["api"]["link-types"]["$get"]>();
+const storyQuestionsGet =
+  createEndpointMock<ApiServerClient["api"]["story-questions"]["$get"]>();
 
-const apiClient = {
+const apiServerClient = {
   api: {
     artists: { ":handle": { $get: profileGet } },
     "link-types": { $get: linkTypesGet },
     "story-questions": { $get: storyQuestionsGet },
   },
-};
+} satisfies ApiServerClientMock;
+
+vi.mock("../../../../../utils/client", () => ({
+  createApiServerClient: () => apiServerClient,
+}));
 
 const createApp = () => {
   const app = new Hono<RequestContextEnv>();
-  app.use("*", async (c, next) => {
-    c.set("apiClient", apiClient as never);
-    await next();
-  });
+  app.use("*", requestContextMiddleware);
   app.route("/", getPlayerConcept);
   app.onError(handleBffError);
   return app;
 };
 
-const jsonResponse = (
-  body: unknown,
-  init: { ok?: boolean; status?: number } = {},
-) => ({
-  ok: init.ok ?? true,
-  status: init.status ?? 200,
-  json: async () => body,
-});
-
 const publishedProfile = {
   handle: "saku",
+  artistId: "0d7fbb2e-5f6c-4d3a-9c1e-2b8f4a6d7e90",
   profile: {
     attributes: {
       name: "SAKU",
@@ -56,27 +62,31 @@ const publishedProfile = {
     presentation: { patternCode: "spotlight" },
     published: true,
   },
-};
+} satisfies UpstreamSuccessBody<
+  ApiServerClient["api"]["artists"][":handle"]["$get"]
+>;
 
 describe("GET /players/:handle/concept", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     linkTypesGet.mockResolvedValue(
-      jsonResponse({ linkTypes: [{ type: "youtube", label: "YouTube" }] }),
+      upstreamJsonResponse({
+        linkTypes: [{ type: "youtube", label: "YouTube" }],
+      }),
     );
     storyQuestionsGet.mockResolvedValue(
-      jsonResponse({
+      upstreamJsonResponse({
         storyQuestions: [
-          { code: "beginning", label: "始まり" },
-          { code: "turning_point", label: "転機" },
-          { code: "concept", label: "何を表現したいのか" },
+          { code: "beginning", label: "始まり", required: true },
+          { code: "turning_point", label: "転機", required: false },
+          { code: "concept", label: "何を表現したいのか", required: true },
         ],
       }),
     );
   });
 
   it("選んだ表現パターンと、章ラベル・リンクラベルを解決した没入ページ用データを返す", async () => {
-    profileGet.mockResolvedValue(jsonResponse(publishedProfile));
+    profileGet.mockResolvedValue(upstreamJsonResponse(publishedProfile));
 
     const res = await createApp().request("/saku/concept");
 
@@ -106,7 +116,7 @@ describe("GET /players/:handle/concept", () => {
 
   it("表現パターン未選択なら interview を既定にする", async () => {
     profileGet.mockResolvedValue(
-      jsonResponse({
+      upstreamJsonResponse({
         ...publishedProfile,
         profile: {
           ...publishedProfile.profile,
@@ -122,7 +132,7 @@ describe("GET /players/:handle/concept", () => {
 
   it("UI 未実装の表現パターンは契約違反として 502 を返す", async () => {
     profileGet.mockResolvedValue(
-      jsonResponse({
+      upstreamJsonResponse({
         ...publishedProfile,
         profile: {
           ...publishedProfile.profile,
@@ -142,12 +152,12 @@ describe("GET /players/:handle/concept", () => {
 
   it("未公開・不在の handle は 404 を返す", async () => {
     profileGet.mockResolvedValue(
-      jsonResponse(
+      upstreamJsonResponse(
         {
           error: "Artist profile not found",
           code: "ArtistProfileNotFoundError",
         },
-        { ok: false, status: 404 },
+        404,
       ),
     );
 
@@ -162,7 +172,7 @@ describe("GET /players/:handle/concept", () => {
 
   it("api-server が 5xx なら 502 を返す", async () => {
     profileGet.mockResolvedValue(
-      jsonResponse({ error: "Internal" }, { ok: false, status: 500 }),
+      upstreamJsonResponse({ error: "Internal" }, 500),
     );
 
     const res = await createApp().request("/saku/concept");

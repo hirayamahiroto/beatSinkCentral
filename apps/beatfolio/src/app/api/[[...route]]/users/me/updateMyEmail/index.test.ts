@@ -6,21 +6,28 @@ import {
 } from "../../../../../../middlewares/requestContext";
 import updateMyEmail from "./index";
 import { handleBffError } from "../../../../../../errorMap";
+import {
+  createEndpointMock,
+  type ApiServerClient,
+  type ApiServerClientMock,
+} from "../../../../../../utils/client/testDoubles";
 
-const { meGet, emailPost } = vi.hoisted(() => ({
-  meGet: vi.fn(),
-  emailPost: vi.fn(),
-}));
+const meGet =
+  createEndpointMock<ApiServerClient["api"]["users"]["me"]["$get"]>();
+const emailPost =
+  createEndpointMock<ApiServerClient["api"]["users"][":userId"]["$post"]>();
+
+const apiServerClient = {
+  api: {
+    users: {
+      me: { $get: meGet },
+      ":userId": { $post: emailPost },
+    },
+  },
+} satisfies ApiServerClientMock;
 
 vi.mock("../../../../../../utils/client", () => ({
-  createApiServerClient: () => ({
-    api: {
-      users: {
-        me: { $get: meGet },
-        ":userId": { $post: emailPost },
-      },
-    },
-  }),
+  createApiServerClient: () => apiServerClient,
 }));
 
 const createApp = () => {

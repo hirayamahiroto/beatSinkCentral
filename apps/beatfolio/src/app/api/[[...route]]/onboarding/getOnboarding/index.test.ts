@@ -1,39 +1,43 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import type { RequestContextEnv } from "../../../../../middlewares/requestContext";
+import {
+  requestContextMiddleware,
+  type RequestContextEnv,
+} from "../../../../../middlewares/requestContext";
 import getOnboarding from "./index";
 import { handleBffError } from "../../../../../errorMap";
+import {
+  createEndpointMock,
+  upstreamJsonResponse,
+  type ApiServerClient,
+  type ApiServerClientMock,
+} from "../../../../../utils/client/testDoubles";
 
-const meGet = vi.fn();
+const meGet =
+  createEndpointMock<ApiServerClient["api"]["users"]["me"]["$get"]>();
 
-const apiClient = { api: { users: { me: { $get: meGet } } } };
+const apiServerClient = {
+  api: { users: { me: { $get: meGet } } },
+} satisfies ApiServerClientMock;
+
+vi.mock("../../../../../utils/client", () => ({
+  createApiServerClient: () => apiServerClient,
+}));
 
 const createApp = () => {
   const app = new Hono<RequestContextEnv>();
-  app.use("*", async (c, next) => {
-    c.set("apiClient", apiClient as never);
-    await next();
-  });
+  app.use("*", requestContextMiddleware);
   app.route("/", getOnboarding);
   app.onError(handleBffError);
   return app;
 };
-
-const jsonResponse = (
-  body: unknown,
-  init: { ok?: boolean; status?: number } = {},
-) => ({
-  ok: init.ok ?? true,
-  status: init.status ?? 200,
-  json: async () => body,
-});
 
 describe("GET /onboarding", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("登録済みかどうかだけを返し、ユーザー情報を露出しない", async () => {
     meGet.mockResolvedValue(
-      jsonResponse({
+      upstreamJsonResponse({
         registered: true,
         userId: "user-1",
         email: "saku@example.com",
@@ -48,7 +52,7 @@ describe("GET /onboarding", () => {
   });
 
   it("未登録なら registered:false を返す", async () => {
-    meGet.mockResolvedValue(jsonResponse({ registered: false }));
+    meGet.mockResolvedValue(upstreamJsonResponse({ registered: false }));
 
     const res = await createApp().request("/", { method: "GET" });
 
@@ -56,9 +60,7 @@ describe("GET /onboarding", () => {
   });
 
   it("api-server が 5xx なら 502 を返す", async () => {
-    meGet.mockResolvedValue(
-      jsonResponse({ error: "Internal" }, { ok: false, status: 500 }),
-    );
+    meGet.mockResolvedValue(upstreamJsonResponse({ error: "Internal" }, 500));
 
     const res = await createApp().request("/", { method: "GET" });
 
@@ -67,9 +69,9 @@ describe("GET /onboarding", () => {
 
   it("api-server の 4xx はステータスと code を透過する", async () => {
     meGet.mockResolvedValue(
-      jsonResponse(
+      upstreamJsonResponse(
         { error: "Unauthorized", code: "UnauthorizedError" },
-        { ok: false, status: 401 },
+        401,
       ),
     );
 

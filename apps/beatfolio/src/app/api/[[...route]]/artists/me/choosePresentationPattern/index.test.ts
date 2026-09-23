@@ -6,19 +6,29 @@ import {
 } from "../../../../../../middlewares/requestContext";
 import choosePresentationPattern from "./index";
 import { handleBffError } from "../../../../../../errorMap";
+import {
+  createEndpointMock,
+  upstreamJsonResponse,
+  type ApiServerClient,
+  type ApiServerClientMock,
+} from "../../../../../../utils/client/testDoubles";
 
-const { meGet, presentationPost } = vi.hoisted(() => ({
-  meGet: vi.fn(),
-  presentationPost: vi.fn(),
-}));
+const meGet =
+  createEndpointMock<ApiServerClient["api"]["users"]["me"]["$get"]>();
+const presentationPost =
+  createEndpointMock<
+    ApiServerClient["api"]["artists"][":artistId"]["presentation"]["$post"]
+  >();
+
+const apiServerClient = {
+  api: {
+    users: { me: { $get: meGet } },
+    artists: { ":artistId": { presentation: { $post: presentationPost } } },
+  },
+} satisfies ApiServerClientMock;
 
 vi.mock("../../../../../../utils/client", () => ({
-  createApiServerClient: () => ({
-    api: {
-      users: { me: { $get: meGet } },
-      artists: { ":artistId": { presentation: { $post: presentationPost } } },
-    },
-  }),
+  createApiServerClient: () => apiServerClient,
 }));
 
 const createApp = () => {
@@ -36,20 +46,11 @@ const request = (body: unknown) =>
     body: JSON.stringify(body),
   });
 
-const jsonResponse = (
-  body: unknown,
-  init: { ok?: boolean; status?: number } = {},
-) => ({
-  ok: init.ok ?? true,
-  status: init.status ?? 200,
-  json: async () => body,
-});
-
 describe("POST /artists/me/presentation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     meGet.mockResolvedValue(
-      jsonResponse({
+      upstreamJsonResponse({
         registered: true,
         userId: "user-1",
         email: "saku@example.com",
@@ -57,7 +58,7 @@ describe("POST /artists/me/presentation", () => {
       }),
     );
     presentationPost.mockResolvedValue(
-      jsonResponse({ presentation: { patternCode: "editorial" } }),
+      upstreamJsonResponse({ presentation: { patternCode: "editorial" } }),
     );
   });
 
@@ -83,12 +84,12 @@ describe("POST /artists/me/presentation", () => {
 
   it("api-server の 422 はステータスとボディを透過する", async () => {
     presentationPost.mockResolvedValue(
-      jsonResponse(
+      upstreamJsonResponse(
         {
           error: "Invalid presentation pattern",
           code: "InvalidPresentationPatternError",
         },
-        { ok: false, status: 422 },
+        422,
       ),
     );
 
@@ -102,7 +103,7 @@ describe("POST /artists/me/presentation", () => {
   });
 
   it("artist 未登録なら 404 を返す", async () => {
-    meGet.mockResolvedValue(jsonResponse({ registered: false }));
+    meGet.mockResolvedValue(upstreamJsonResponse({ registered: false }));
 
     const res = await request({ patternCode: "editorial" });
 

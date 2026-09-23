@@ -8,19 +8,28 @@ import {
 } from "../../../../../../middlewares/requestContext";
 import uploadProfileImage from "./index";
 import { handleBffError } from "../../../../../../errorMap";
+import {
+  createEndpointMock,
+  type ApiServerClient,
+  type ApiServerClientMock,
+} from "../../../../../../utils/client/testDoubles";
 
-const { meGet, imagePost } = vi.hoisted(() => ({
-  meGet: vi.fn(),
-  imagePost: vi.fn(),
-}));
+const meGet =
+  createEndpointMock<ApiServerClient["api"]["users"]["me"]["$get"]>();
+const imagePost =
+  createEndpointMock<
+    ApiServerClient["api"]["artists"][":artistId"]["profile"]["image"]["$post"]
+  >();
+
+const apiServerClient = {
+  api: {
+    users: { me: { $get: meGet } },
+    artists: { ":artistId": { profile: { image: { $post: imagePost } } } },
+  },
+} satisfies ApiServerClientMock;
 
 vi.mock("../../../../../../utils/client", () => ({
-  createApiServerClient: () => ({
-    api: {
-      users: { me: { $get: meGet } },
-      artists: { ":artistId": { profile: { image: { $post: imagePost } } } },
-    },
-  }),
+  createApiServerClient: () => apiServerClient,
 }));
 
 const createApp = () => {
