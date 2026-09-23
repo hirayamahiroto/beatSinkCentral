@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { createAnalyticsEvent, type RecordEventInput } from "./index";
 
+const OCCURRED_AT = new Date("2026-09-10T03:00:00.000Z");
+
 const buildInput = (
   overrides: Partial<RecordEventInput> = {},
 ): RecordEventInput => ({
@@ -16,7 +18,7 @@ const buildInput = (
 
 describe("createAnalyticsEvent", () => {
   it("有効な入力でAnalyticsEventを作成する", () => {
-    const result = createAnalyticsEvent(buildInput());
+    const result = createAnalyticsEvent(buildInput(), OCCURRED_AT);
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -33,6 +35,7 @@ describe("createAnalyticsEvent", () => {
         path: "/players/handle",
         referrer: "https://example.com",
       }),
+      OCCURRED_AT,
     );
 
     expect(result.ok).toBe(true);
@@ -46,7 +49,7 @@ describe("createAnalyticsEvent", () => {
   });
 
   it("profile_viewはpropsのfromを実カラムへ昇格し、propsから取り除く", () => {
-    const result = createAnalyticsEvent(buildInput());
+    const result = createAnalyticsEvent(buildInput(), OCCURRED_AT);
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -61,6 +64,7 @@ describe("createAnalyticsEvent", () => {
         eventType: "story_scroll",
         props: { depth: 50 },
       }),
+      OCCURRED_AT,
     );
 
     expect(result.ok).toBe(true);
@@ -73,6 +77,7 @@ describe("createAnalyticsEvent", () => {
   it("propsが空オブジェクトならnullとして保存する", () => {
     const result = createAnalyticsEvent(
       buildInput({ eventType: "story_expand", props: {} }),
+      OCCURRED_AT,
     );
 
     expect(result.ok).toBe(true);
@@ -87,6 +92,7 @@ describe("createAnalyticsEvent", () => {
         artistId: null,
         props: { inviterArtistId: "artist-2" },
       }),
+      OCCURRED_AT,
     );
 
     expect(result.ok).toBe(true);
@@ -99,6 +105,7 @@ describe("createAnalyticsEvent", () => {
   it("未知のeventTypeはInvalidEventTypeFormatErrorをerrで返す", () => {
     const result = createAnalyticsEvent(
       buildInput({ eventType: "unknown_event" }),
+      OCCURRED_AT,
     );
 
     expect(result.ok).toBe(false);
@@ -106,15 +113,11 @@ describe("createAnalyticsEvent", () => {
     expect(result.error.type).toBe("InvalidEventTypeFormatError");
   });
 
-  it("occurredAtを現在時刻として設定する", () => {
-    const before = new Date();
-    const result = createAnalyticsEvent(buildInput());
-    const after = new Date();
+  it("渡された発生時刻をそのまま occurredAt に設定する", () => {
+    const result = createAnalyticsEvent(buildInput(), OCCURRED_AT);
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    const { occurredAt } = result.value.toPersistence();
-    expect(occurredAt.getTime()).toBeGreaterThanOrEqual(before.getTime());
-    expect(occurredAt.getTime()).toBeLessThanOrEqual(after.getTime());
+    expect(result.value.toPersistence().occurredAt).toStrictEqual(OCCURRED_AT);
   });
 });

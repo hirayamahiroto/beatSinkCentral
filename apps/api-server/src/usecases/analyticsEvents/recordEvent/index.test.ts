@@ -1,5 +1,7 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { recordEvent, type RecordEventUsecaseInput } from "./index";
+
+const NOW = new Date("2026-09-10T03:00:00.000Z");
 
 const buildInput = (
   overrides: Partial<RecordEventUsecaseInput> = {},
@@ -15,7 +17,16 @@ const buildInput = (
 });
 
 describe("recordEvent", () => {
-  it("有効な入力でイベントをrecordし、okを返す", async () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("有効な入力でイベントを現在時刻付きでrecordし、okを返す", async () => {
     const record = vi.fn().mockResolvedValue(undefined);
 
     const result = await recordEvent(
@@ -35,7 +46,7 @@ describe("recordEvent", () => {
       referrer: null,
       from: "announce",
       props: null,
-      occurredAt: expect.any(Date),
+      occurredAt: NOW,
     });
   });
 
