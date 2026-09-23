@@ -82,13 +82,13 @@ Phase A（基盤・小・即効）      Phase B（契約を型で縛る）      
 
 ### Phase D
 
-| PR             | 内容                                                                                                                                                                                   | 規模 |
-| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
-| D1-1 (Issue 7) | api-server: `presentation-patterns/listPresentationPatterns` に同型ルートと同じ形のテスト                                                                                              | S    |
-| D1-2 (Issue 7) | beatfolio BFF: `users/createUser`、`errors/*` 7 件                                                                                                                                     | S    |
-| D1-3 (Issue 7) | beatfolio ClientAdapter: `PlayerDetailClientAdapter` の形にそろえて 7 件（Profile Wizard / PresentationPattern / ProfilePublish / OfferEditor / Onboarding / Players / PlayerConcept） | M    |
-| D1-4 (Issue 7) | middlewares 4 件・`libs/auth0`・`utils/config` は「テスト不要」か判定し、不要なら理由を `strategy.md` §7-3「書かなくてよい対象」に追記。必要なら書く                                   | S    |
-| D1-5           | `apps/api-server/.../test/get` サンプルルートの削除（knip で呼び手なしなら）                                                                                                           | S    |
+| PR             | 内容                                                                                                                                                                     | 規模 |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---- |
+| D1-1 (Issue 7) | **対象外**: `presentation-patterns/listPresentationPatterns` は親ディレクトリの `presentation-patterns/index.test.ts` がマウント経由で検証している                       | —    |
+| D1-2 (Issue 7) | **完了（#326、ベースは #322）**: BFF `users/createUser`、`errors/*` 7 件                                                                                                 | S    |
+| D1-3 (Issue 7) | **完了（#327）**: ClientAdapter 5 件（ProfileWizard / PresentationPattern / ProfilePublish / OfferEditor / Onboarding）。Players / PlayerConcept は props 素通しで対象外 | M    |
+| D1-4 (Issue 7) | **完了（#328）**: middlewares 4 件はテストを追加。`libs/auth0` / `utils/config` / 素通し ClientAdapter は「書かなくてよいもの」として `strategy.md` §11 に明文化         | S    |
+| D1-5           | `apps/api-server/.../test/get` サンプルルートの削除（knip で呼び手なしなら）                                                                                             | S    |
 
 ---
 
