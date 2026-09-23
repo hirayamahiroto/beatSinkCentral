@@ -94,4 +94,4 @@ DB まわり — [`architecture/server/database/`](./architecture/server/databas
 - 該当ドキュメントが無い設計判断が必要になったら、コードに落とす前にドキュメント側を整える
 - **時間軸を名前に入れるのは `plans/` の中だけ**。`product/` と `architecture/` は恒久的な名前にする
 - 検討中のものは `discussions/` に置き、規範と混ぜない
-- **決めたことは `decisions/` に 1 決定 1 ファイル（ADR）で書く**（決定・理由・却下した案・影響する規範）。`plans/` や Issue に決定の本文を書かず、ADR へのリンクだけ置く
+- **決めたことは `decisions/` に 1 決定 1 ファイル（ADR）で書く**（背景・決定・理由・却下した案・結果・影響する規範）。`plans/` や Issue に決定の本文を書かず、ADR へのリンクだけ置く
