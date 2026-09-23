@@ -6,6 +6,7 @@ import { toPersistence } from "../../../../../../domain/artistProfiles/behaviors
 import type { StoredProfile } from "../../../../../../domain/artistProfiles/entities";
 import { handleAppError } from "../../../../../../errorMap";
 import choosePresentationPatternRoute from "./index";
+import { createCapabilityDepsMock } from "../../../../../../infrastructure/capabilities/testDoubles";
 
 const actor = {
   user: reconstructUser({
@@ -21,23 +22,10 @@ const actor = {
   }),
 };
 
-const mockArtistProfiles = {
-  load: vi.fn(),
-  findPublishedByHandle: vi.fn(),
-  save: vi.fn(),
-  publish: vi.fn(),
-};
-
-const mockResolveActorState = vi.fn();
+const { deps, artistProfiles, resolveActorState } = createCapabilityDepsMock();
 
 vi.mock("../../../../../../infrastructure/capabilities", () => ({
-  getCapabilityDeps: () => ({
-    resolveActorState: (subId: string) => mockResolveActorState(subId),
-    runWithArtistWriteCapabilities: (
-      a: unknown,
-      work: (caps: unknown) => Promise<unknown>,
-    ) => work({ actor: a, artistProfiles: mockArtistProfiles }),
-  }),
+  getCapabilityDeps: () => deps,
 }));
 
 const createApp = (sub: string) => {
@@ -61,12 +49,12 @@ const request = (artistId: string, body: unknown) =>
 describe("POST /artists/:artistId/presentation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveActorState.mockResolvedValue({ status: "complete", actor });
-    mockArtistProfiles.load.mockResolvedValue({
+    resolveActorState.mockResolvedValue({ status: "complete", actor });
+    artistProfiles.load.mockResolvedValue({
       kind: "noProfile",
       artistId: "artist-1",
     });
-    mockArtistProfiles.save.mockImplementation(
+    artistProfiles.save.mockImplementation(
       async (state: StoredProfile) => state,
     );
   });
@@ -79,7 +67,7 @@ describe("POST /artists/:artistId/presentation", () => {
       presentation: { patternCode: "zoom_dive" },
     });
     expect(
-      toPersistence(mockArtistProfiles.save.mock.calls[0][0])
+      toPersistence(artistProfiles.save.mock.calls[0][0])
         .presentationPatternCode,
     ).toBe("zoom_dive");
   });
@@ -92,20 +80,20 @@ describe("POST /artists/:artistId/presentation", () => {
       error: "Invalid presentation pattern",
       code: "InvalidPresentationPatternError",
     });
-    expect(mockArtistProfiles.save).not.toHaveBeenCalled();
+    expect(artistProfiles.save).not.toHaveBeenCalled();
   });
 
   it("patternCode が無ければ 400 を返す", async () => {
     const res = await request("artist-1", {});
 
     expect(res.status).toBe(400);
-    expect(mockArtistProfiles.save).not.toHaveBeenCalled();
+    expect(artistProfiles.save).not.toHaveBeenCalled();
   });
 
   it("Actor と一致しない artistId は 404 を返し、保存しない", async () => {
     const res = await request("artist-other", { patternCode: "interview" });
 
     expect(res.status).toBe(404);
-    expect(mockArtistProfiles.save).not.toHaveBeenCalled();
+    expect(artistProfiles.save).not.toHaveBeenCalled();
   });
 });

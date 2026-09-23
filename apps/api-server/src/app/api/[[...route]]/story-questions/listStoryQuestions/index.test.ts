@@ -1,13 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import listStoryQuestionsRoute from "./index";
+import { createCapabilityDepsMock } from "../../../../../infrastructure/capabilities/testDoubles";
 
-const mockStoryQuestions = { findAll: vi.fn() };
+const { deps, storyQuestions } = createCapabilityDepsMock();
 
 vi.mock("../../../../../infrastructure/capabilities", () => ({
-  getCapabilityDeps: () => ({
-    buildPublicReadCapabilities: () => ({ storyQuestions: mockStoryQuestions }),
-  }),
+  getCapabilityDeps: () => deps,
 }));
 
 const createApp = () => {
@@ -20,7 +19,7 @@ describe("GET /story-questions", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("問いマスタの一覧を必須フラグ付きで返す", async () => {
-    mockStoryQuestions.findAll.mockResolvedValue([
+    storyQuestions.findAll.mockResolvedValue([
       { code: "beginning", label: "始まり" },
       { code: "turning_point", label: "転機" },
     ]);

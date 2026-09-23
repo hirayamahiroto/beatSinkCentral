@@ -11,6 +11,7 @@ import { handleAppError } from "../../../../../../errorMap";
 import { ok, err } from "../../../../../../utils/result";
 import { createProfileImageUploadFailedError } from "../../../../../../domain/artistProfiles/errors/profileImageUploadFailed";
 import uploadProfileImageRoute from "./index";
+import { createCapabilityDepsMock } from "../../../../../../infrastructure/capabilities/testDoubles";
 
 const actor = {
   user: reconstructUser({
@@ -26,27 +27,11 @@ const actor = {
   }),
 };
 
-const mockUpload = vi.fn();
-const mockResolveActorState = vi.fn();
-const mockArtistProfiles = {
-  load: vi.fn(),
-  findPublishedByHandle: vi.fn(),
-  save: vi.fn(),
-  publish: vi.fn(),
-};
+const { deps, artistProfiles, profileImages, resolveActorState } =
+  createCapabilityDepsMock();
 
 vi.mock("../../../../../../infrastructure/capabilities", () => ({
-  getCapabilityDeps: () => ({
-    resolveActorState: (subId: string) => mockResolveActorState(subId),
-    buildArtistStorageWriteCapabilities: (a: unknown) => ({
-      actor: a,
-      profileImages: { upload: mockUpload },
-    }),
-    runWithArtistWriteCapabilities: (
-      a: unknown,
-      work: (caps: unknown) => Promise<unknown>,
-    ) => work({ actor: a, artistProfiles: mockArtistProfiles }),
-  }),
+  getCapabilityDeps: () => deps,
 }));
 
 const createApp = (sub: string) => {
@@ -78,15 +63,15 @@ const createImageFile = ({
 describe("POST /artists/:artistId/profile/image", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveActorState.mockResolvedValue({ status: "complete", actor });
-    mockUpload.mockResolvedValue(
+    resolveActorState.mockResolvedValue({ status: "complete", actor });
+    profileImages.upload.mockResolvedValue(
       ok({ publicUrl: "https://example.supabase.co/public/a.jpg" }),
     );
-    mockArtistProfiles.load.mockResolvedValue({
+    artistProfiles.load.mockResolvedValue({
       kind: "noProfile",
       artistId: "artist-1",
     });
-    mockArtistProfiles.save.mockImplementation(
+    artistProfiles.save.mockImplementation(
       async (state: StoredProfile) => state,
     );
   });
@@ -99,8 +84,8 @@ describe("POST /artists/:artistId/profile/image", () => {
     expect(body).toStrictEqual({
       imageUrl: "https://example.supabase.co/public/a.jpg",
     });
-    expect(mockUpload).toHaveBeenCalledTimes(1);
-    const [{ artistId, image, bytes }] = mockUpload.mock.calls[0];
+    expect(profileImages.upload).toHaveBeenCalledTimes(1);
+    const [{ artistId, image, bytes }] = profileImages.upload.mock.calls[0];
     expect(artistId).toBe("artist-1");
     expect(image).toStrictEqual({
       contentType: "image/jpeg",
@@ -108,17 +93,15 @@ describe("POST /artists/:artistId/profile/image", () => {
       extension: "jpg",
     });
     expect(bytes).toBeInstanceOf(Uint8Array);
-    expect(mockArtistProfiles.save).toHaveBeenCalledTimes(1);
-    expect(
-      toPersistence(mockArtistProfiles.save.mock.calls[0][0]),
-    ).toMatchObject({
+    expect(artistProfiles.save).toHaveBeenCalledTimes(1);
+    expect(toPersistence(artistProfiles.save.mock.calls[0][0])).toMatchObject({
       artistId: "artist-1",
       imageUrl: "https://example.supabase.co/public/a.jpg",
     });
   });
 
   it("既存プロフィールがあれば画像だけを差し替える", async () => {
-    mockArtistProfiles.load.mockResolvedValue(
+    artistProfiles.load.mockResolvedValue(
       reconstructStoredProfile({
         id: "p1",
         artistId: "artist-1",
@@ -131,9 +114,7 @@ describe("POST /artists/:artistId/profile/image", () => {
     const res = await request("artist-1", createImageFile());
 
     expect(res.status).toBe(200);
-    expect(
-      toPersistence(mockArtistProfiles.save.mock.calls[0][0]),
-    ).toMatchObject({
+    expect(toPersistence(artistProfiles.save.mock.calls[0][0])).toMatchObject({
       id: "p1",
       name: "Taro",
       imageUrl: "https://example.supabase.co/public/a.jpg",
@@ -144,23 +125,23 @@ describe("POST /artists/:artistId/profile/image", () => {
     const res = await request("other-artist", createImageFile());
 
     expect(res.status).toBe(404);
-    expect(mockUpload).not.toHaveBeenCalled();
+    expect(profileImages.upload).not.toHaveBeenCalled();
   });
 
   it("actor が解決できなければ 404 を返し、アップロードしない", async () => {
-    mockResolveActorState.mockResolvedValue({ status: "unregistered" });
+    resolveActorState.mockResolvedValue({ status: "unregistered" });
 
     const res = await request("artist-1", createImageFile());
 
     expect(res.status).toBe(404);
-    expect(mockUpload).not.toHaveBeenCalled();
+    expect(profileImages.upload).not.toHaveBeenCalled();
   });
 
   it("file がファイルでなければ 400 を返し、アップロードしない", async () => {
     const res = await request("artist-1", "not-a-file");
 
     expect(res.status).toBe(400);
-    expect(mockUpload).not.toHaveBeenCalled();
+    expect(profileImages.upload).not.toHaveBeenCalled();
   });
 
   it("サポート外の contentType は 422 を返し、アップロードしない", async () => {
@@ -170,7 +151,7 @@ describe("POST /artists/:artistId/profile/image", () => {
     );
 
     expect(res.status).toBe(422);
-    expect(mockUpload).not.toHaveBeenCalled();
+    expect(profileImages.upload).not.toHaveBeenCalled();
   });
 
   it("サイズ上限超過は 413 を返し、アップロードしない", async () => {
@@ -180,7 +161,7 @@ describe("POST /artists/:artistId/profile/image", () => {
     );
 
     expect(res.status).toBe(413);
-    expect(mockUpload).not.toHaveBeenCalled();
+    expect(profileImages.upload).not.toHaveBeenCalled();
   });
 
   it("本文上限を超えるリクエストは 413 を返し、multipart を解析しない", async () => {
@@ -190,25 +171,25 @@ describe("POST /artists/:artistId/profile/image", () => {
     );
 
     expect(res.status).toBe(413);
-    expect(mockResolveActorState).not.toHaveBeenCalled();
-    expect(mockUpload).not.toHaveBeenCalled();
+    expect(resolveActorState).not.toHaveBeenCalled();
+    expect(profileImages.upload).not.toHaveBeenCalled();
   });
 
   it("空ファイルは 422 を返し、アップロードしない", async () => {
     const res = await request("artist-1", createImageFile({ size: 0 }));
 
     expect(res.status).toBe(422);
-    expect(mockUpload).not.toHaveBeenCalled();
+    expect(profileImages.upload).not.toHaveBeenCalled();
   });
 
   it("ストレージの失敗は 502 を返す", async () => {
-    mockUpload.mockResolvedValue(
+    profileImages.upload.mockResolvedValue(
       err(createProfileImageUploadFailedError("Bucket not found")),
     );
 
     const res = await request("artist-1", createImageFile());
 
     expect(res.status).toBe(502);
-    expect(mockArtistProfiles.save).not.toHaveBeenCalled();
+    expect(artistProfiles.save).not.toHaveBeenCalled();
   });
 });

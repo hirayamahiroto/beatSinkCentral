@@ -1,13 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import listLinkTypesRoute from "./index";
+import { createCapabilityDepsMock } from "../../../../../infrastructure/capabilities/testDoubles";
 
-const mockLinkTypes = { findAll: vi.fn() };
+const { deps, linkTypes } = createCapabilityDepsMock();
 
 vi.mock("../../../../../infrastructure/capabilities", () => ({
-  getCapabilityDeps: () => ({
-    buildPublicReadCapabilities: () => ({ linkTypes: mockLinkTypes }),
-  }),
+  getCapabilityDeps: () => deps,
 }));
 
 const createApp = () => {
@@ -20,7 +19,7 @@ describe("GET /link-types", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("リンク種別マスタの一覧を返す", async () => {
-    mockLinkTypes.findAll.mockResolvedValue([
+    linkTypes.findAll.mockResolvedValue([
       { type: "youtube", label: "YouTube" },
       { type: "x", label: "X" },
     ]);

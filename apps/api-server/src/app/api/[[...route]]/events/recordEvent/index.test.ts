@@ -2,15 +2,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { handleAppError } from "../../../../../errorMap";
 import recordEventRoute from "./index";
+import { createCapabilityDepsMock } from "../../../../../infrastructure/capabilities/testDoubles";
 
-const mockRecord = vi.fn();
+const { deps, analyticsEvents } = createCapabilityDepsMock();
 
 vi.mock("../../../../../infrastructure/capabilities", () => ({
-  getCapabilityDeps: () => ({
-    buildPublicWriteCapabilities: () => ({
-      analyticsEvents: { record: mockRecord },
-    }),
-  }),
+  getCapabilityDeps: () => deps,
 }));
 
 const createApp = () => {
@@ -40,15 +37,15 @@ const request = (body: unknown, headers: Record<string, string> = {}) =>
 describe("POST /events", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockRecord.mockResolvedValue(undefined);
+    analyticsEvents.record.mockResolvedValue(undefined);
   });
 
   it("有効なpayloadは204を返し、イベントをrecordする", async () => {
     const res = await request(validProfileViewBody);
 
     expect(res.status).toBe(204);
-    expect(mockRecord).toHaveBeenCalledTimes(1);
-    expect(mockRecord).toHaveBeenCalledWith({
+    expect(analyticsEvents.record).toHaveBeenCalledTimes(1);
+    expect(analyticsEvents.record).toHaveBeenCalledWith({
       id: expect.any(String),
       eventType: "profile_view",
       artistId: validProfileViewBody.artistId,
@@ -69,7 +66,7 @@ describe("POST /events", () => {
     });
 
     expect(res.status).toBe(400);
-    expect(mockRecord).not.toHaveBeenCalled();
+    expect(analyticsEvents.record).not.toHaveBeenCalled();
   });
 
   it("propsの型が不一致なら400を返し、DBに到達しない", async () => {
@@ -80,7 +77,7 @@ describe("POST /events", () => {
     });
 
     expect(res.status).toBe(400);
-    expect(mockRecord).not.toHaveBeenCalled();
+    expect(analyticsEvents.record).not.toHaveBeenCalled();
   });
 
   it("artist_idが必要なイベントでnullなら400を返し、DBに到達しない", async () => {
@@ -90,7 +87,7 @@ describe("POST /events", () => {
     });
 
     expect(res.status).toBe(400);
-    expect(mockRecord).not.toHaveBeenCalled();
+    expect(analyticsEvents.record).not.toHaveBeenCalled();
   });
 
   it("bot User-Agentからの送信は204を返すが、recordを呼ばない", async () => {
@@ -100,7 +97,7 @@ describe("POST /events", () => {
     });
 
     expect(res.status).toBe(204);
-    expect(mockRecord).not.toHaveBeenCalled();
+    expect(analyticsEvents.record).not.toHaveBeenCalled();
   });
 
   it("x-forwarded-user-agentがbotパターンならrecordを呼ばない", async () => {
@@ -110,7 +107,7 @@ describe("POST /events", () => {
     });
 
     expect(res.status).toBe(204);
-    expect(mockRecord).not.toHaveBeenCalled();
+    expect(analyticsEvents.record).not.toHaveBeenCalled();
   });
 
   it("通常のUser-Agentは記録される", async () => {
@@ -120,7 +117,7 @@ describe("POST /events", () => {
     });
 
     expect(res.status).toBe(204);
-    expect(mockRecord).toHaveBeenCalledTimes(1);
+    expect(analyticsEvents.record).toHaveBeenCalledTimes(1);
   });
 
   it("リクエストボディが大きすぎる場合は413を返す", async () => {
@@ -130,6 +127,6 @@ describe("POST /events", () => {
     });
 
     expect(res.status).toBe(413);
-    expect(mockRecord).not.toHaveBeenCalled();
+    expect(analyticsEvents.record).not.toHaveBeenCalled();
   });
 });

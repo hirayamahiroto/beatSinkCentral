@@ -1,24 +1,21 @@
 import { describe, it, expect, vi } from "vitest";
 import { Hono } from "hono";
-import presentationPatterns from "./index";
+import presentationPatternsRoute from "./index";
+import { createCapabilityDepsMock } from "../../../../infrastructure/capabilities/testDoubles";
 
-const findAll = vi.fn();
+const { deps, presentationPatterns } = createCapabilityDepsMock();
 
 vi.mock("../../../../infrastructure/capabilities", () => ({
-  getCapabilityDeps: () => ({
-    buildPublicReadCapabilities: () => ({
-      presentationPatterns: { findAll },
-    }),
-  }),
+  getCapabilityDeps: () => deps,
 }));
 
 describe("GET /presentation-patterns", () => {
   it("認証なしで表現パターンマスタを返す", async () => {
     const rows = [{ code: "interview", label: "インタビュー" }];
-    findAll.mockResolvedValue(rows);
+    presentationPatterns.findAll.mockResolvedValue(rows);
     const app = new Hono().route(
       "/presentation-patterns",
-      presentationPatterns,
+      presentationPatternsRoute,
     );
 
     const res = await app.request("/presentation-patterns");

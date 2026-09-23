@@ -5,23 +5,12 @@ import { reconstructArtist } from "../../../../../../domain/artists/factories";
 import { createEmailAlreadyTakenError } from "../../../../../../domain/users/errors/emailAlreadyTaken";
 import { handleAppError } from "../../../../../../errorMap";
 import updateEmailRoute from "./index";
+import { createCapabilityDepsMock } from "../../../../../../infrastructure/capabilities/testDoubles";
 
-const mockUsers = {
-  findBySub: vi.fn(),
-  save: vi.fn(),
-  updateEmail: vi.fn(),
-};
-
-const mockResolveActorState = vi.fn();
+const { deps, resolveActorState, users } = createCapabilityDepsMock();
 
 vi.mock("../../../../../../infrastructure/capabilities", () => ({
-  getCapabilityDeps: () => ({
-    resolveActorState: (subId: string) => mockResolveActorState(subId),
-    runWithUserWriteCapabilities: (
-      user: unknown,
-      work: (caps: unknown) => Promise<unknown>,
-    ) => work({ user, users: mockUsers }),
-  }),
+  getCapabilityDeps: () => deps,
 }));
 
 const user = reconstructUser({
@@ -58,14 +47,14 @@ const postEmail = (userId: string, email: string) =>
 describe("POST /users/:userId", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveActorState.mockResolvedValue({
+    resolveActorState.mockResolvedValue({
       status: "complete",
       actor: { user, artist },
     });
   });
 
   it("本人と一致する userId ならemailを更新して200と更新後の値を返す", async () => {
-    mockUsers.updateEmail.mockResolvedValue(
+    users.updateEmail.mockResolvedValue(
       reconstructUser({
         id: "user-1",
         subId: "auth0|123",
@@ -80,15 +69,15 @@ describe("POST /users/:userId", () => {
       userId: "user-1",
       email: "new@example.com",
     });
-    expect(mockUsers.updateEmail).toHaveBeenCalledWith({
+    expect(users.updateEmail).toHaveBeenCalledWith({
       id: "user-1",
       email: "new@example.com",
     });
   });
 
   it("アーティストが未作成でもemailを更新して200を返す", async () => {
-    mockResolveActorState.mockResolvedValue({ status: "userOnly", user });
-    mockUsers.updateEmail.mockResolvedValue(
+    resolveActorState.mockResolvedValue({ status: "userOnly", user });
+    users.updateEmail.mockResolvedValue(
       reconstructUser({
         id: "user-1",
         subId: "auth0|123",
@@ -103,7 +92,7 @@ describe("POST /users/:userId", () => {
       userId: "user-1",
       email: "new@example.com",
     });
-    expect(mockUsers.updateEmail).toHaveBeenCalledWith({
+    expect(users.updateEmail).toHaveBeenCalledWith({
       id: "user-1",
       email: "new@example.com",
     });
@@ -117,11 +106,11 @@ describe("POST /users/:userId", () => {
       error: "User not found",
       code: "UserNotFoundError",
     });
-    expect(mockUsers.updateEmail).not.toHaveBeenCalled();
+    expect(users.updateEmail).not.toHaveBeenCalled();
   });
 
   it("ユーザーが未登録なら404を返す", async () => {
-    mockResolveActorState.mockResolvedValue({ status: "unregistered" });
+    resolveActorState.mockResolvedValue({ status: "unregistered" });
 
     const res = await postEmail("user-1", "new@example.com");
 
@@ -130,11 +119,11 @@ describe("POST /users/:userId", () => {
       error: "User not found",
       code: "UserNotFoundError",
     });
-    expect(mockUsers.updateEmail).not.toHaveBeenCalled();
+    expect(users.updateEmail).not.toHaveBeenCalled();
   });
 
   it("emailが他ユーザーに使われていたら409を返し、emailを露出しない", async () => {
-    mockUsers.updateEmail.mockRejectedValue(createEmailAlreadyTakenError());
+    users.updateEmail.mockRejectedValue(createEmailAlreadyTakenError());
 
     const res = await postEmail("user-1", "taken@example.com");
 
@@ -153,13 +142,13 @@ describe("POST /users/:userId", () => {
       error: "Invalid email format",
       code: "InvalidEmailFormatError",
     });
-    expect(mockUsers.updateEmail).not.toHaveBeenCalled();
+    expect(users.updateEmail).not.toHaveBeenCalled();
   });
 
   it("emailが空文字列なら400を返す", async () => {
     const res = await postEmail("user-1", "");
 
     expect(res.status).toBe(400);
-    expect(mockUsers.updateEmail).not.toHaveBeenCalled();
+    expect(users.updateEmail).not.toHaveBeenCalled();
   });
 });
