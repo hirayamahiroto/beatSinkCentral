@@ -63,14 +63,14 @@ Phase A（基盤・小・即効）      Phase B（契約を型で縛る）      
 
 ### Phase B
 
-| PR             | 内容                                                                                                                                                                                                                         | 規模 | 完了条件                                                                 |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ------------------------------------------------------------------------ |
-| B1-0 (Issue 6) | `docs/architecture/server/architecture.md` の capabilities 節に `clock: () => Date` / `idGen: () => string` を追加する設計を書く。factory の引数で受けるか caps 経由かを決める                                               | S    | ドキュメント合意                                                         |
-| B1-1 (Issue 6) | 実装。domain factories 7 箇所と usecases/offers 2 箇所から直接呼び出しを除き、`analyticsEvents/factories/index.test.ts` の実時間サンドイッチを固定値注入に置換。`vi.spyOn(crypto, "randomUUID")` / `vi.useFakeTimers` を撤去 | M    | grep で `new Date()` / `crypto.randomUUID()` が domain / usecases に無い |
-| B2-1 (Issue 1) | `apps/api-server/src/app/api/[[...route]]/fixtures.ts`（または各 feature 配下）に `createMockReader<I>()` 相当のヘルパーを置き、artists 配下 9 ファイルを移行                                                                | M    | `IArtistProfileReader` にメソッドを足すと該当テストがコンパイルで落ちる  |
-| B2-2 (Issue 1) | 残り 9 ファイル（users / story-questions / link-types / public）を移行                                                                                                                                                       | S    | 18 ファイルすべて `satisfies`                                            |
-| B3-1 (Issue 2) | `jsonResponse<T>()` を型引数付きにし、hono の `InferResponseType` で上流レスポンス型を参照するヘルパーを `fixtures.ts` に置く。artists/me 配下 6 ファイルを移行                                                              | M    | api-server 側でフィールドをリネームすると BFF テストがコンパイルで落ちる |
-| B3-2 (Issue 2) | 残り 3 ファイル（users/me / events / dashboard）。手書きの `api.users.me.$get` 構造を `RequestContextEnv` 経由の型付き偽クライアント注入に置換できるか検討し、できなければ `satisfies DeepPartial<...>` で縛る               | S    | 手書き構造が無いか、型検査されている                                     |
+| PR             | 内容                                                                                                                                                                                                                                          | 規模 | 完了条件                                                                 |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ------------------------------------------------------------------------ |
+| B1-0 (Issue 6) | **決定済み（2026-09-23、#325）**: `architecture.md` の立場（ID 採番は factory に閉じ、テストではスタブ）を採り、`strategy.md` / `background.md` をそろえる。caps に `clock` / `idGen` は足さない                                              | S    | 規範の食い違いが無い                                                     |
+| B1-1 (Issue 6) | **完了（#324）**: 実装は `analyticsEvents` factory の `new Date()` 1 箇所のみ（`occurredAt` を usecase から渡す）。offers usecase の `new Date()` は殻での取得で違反ではない。factory 7 箇所の `crypto.randomUUID()` は規範適合として現状維持 | S    | domain factory に `new Date()` が無い                                    |
+| B2-1 (Issue 1) | `apps/api-server/src/app/api/[[...route]]/fixtures.ts`（または各 feature 配下）に `createMockReader<I>()` 相当のヘルパーを置き、artists 配下 9 ファイルを移行                                                                                 | M    | `IArtistProfileReader` にメソッドを足すと該当テストがコンパイルで落ちる  |
+| B2-2 (Issue 1) | 残り 9 ファイル（users / story-questions / link-types / public）を移行                                                                                                                                                                        | S    | 18 ファイルすべて `satisfies`                                            |
+| B3-1 (Issue 2) | `jsonResponse<T>()` を型引数付きにし、hono の `InferResponseType` で上流レスポンス型を参照するヘルパーを `fixtures.ts` に置く。artists/me 配下 6 ファイルを移行                                                                               | M    | api-server 側でフィールドをリネームすると BFF テストがコンパイルで落ちる |
+| B3-2 (Issue 2) | 残り 3 ファイル（users/me / events / dashboard）。手書きの `api.users.me.$get` 構造を `RequestContextEnv` 経由の型付き偽クライアント注入に置換できるか検討し、できなければ `satisfies DeepPartial<...>` で縛る                                | S    | 手書き構造が無いか、型検査されている                                     |
 
 ### Phase C
 
@@ -96,7 +96,7 @@ Phase A（基盤・小・即効）      Phase B（契約を型で縛る）      
 
 1. 本計画に合意後、Issue 1〜8 を GitHub に起票し、統合 Issue で束ねる（本書 §3 の PR 分割を各 Issue の「PR 分割」節に転記）
 2. Phase A の 4 PR を最初の 1 週で終える。ここまでで CI が「テストが走る・型が検査される」状態になる
-3. Phase B は B1-0 の設計合意を取りつつ B2-1 から着手。B1 が先に入れば B2 は B1 後の型で書く
+3. Phase B は B2-1 → B3 → B1 の順で完了（#321 / #322 / #324 / #325）
 4. Phase C は C1-0 で方式を固めてから。C2 は C1-1 が終わるまで着手しない
 5. Phase D は Phase A 完了後、空いた時間で随時
 
@@ -104,11 +104,11 @@ Phase A（基盤・小・即効）      Phase B（契約を型で縛る）      
 
 ## 5. 要判断事項（着手前に決める）
 
-| #   | 論点                                                                                                                 | 推奨                                                                                                                                                | 影響する PR       |
-| --- | -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
-| 1   | Issue 6: `clock` / `idGen` を caps に持たせ usecase から factory へ渡すか、factory 引数に直接受けるか                | caps に持たせる。DI 境界が capabilities に集約されている現状の設計と一致し、usecase テストの `createCaps()` に固定値を足すだけで済む                | B1-0, B1-1, B2-\* |
-| 2   | Issue 4: CI の DB を Postgres service container + drizzle migrate にするか、Supabase CLI（`supabase start`）にするか | Postgres service container。起動が速く、`db:migrate` の経路をそのまま使える。Storage 等 Supabase 固有機能に依存するテストが必要になった時点で見直す | C1-0              |
-| 3   | Issue 3 を Issue 4 の前に部分着手するか                                                                              | しない。回数検証だけ先に消す価値は小さく、C1 後にまとめて撤去する方が差分が読みやすい                                                               | C2-1              |
-| 4   | `packages/ui` の `test` script                                                                                       | テストが 0 件のあいだは script を削除し、Storybook / Chromatic を検証手段とする旨を `strategy.md` に一行書く                                        | A2-2              |
-| 5   | Issue 7 の middlewares / `libs/auth0` / `utils/config`                                                               | 「テスト不要」の候補。Auth0 SDK と env 読み出しの薄い殻は §7-3「書かなくてよい対象」に該当する見込み。判定は D1-4 で行う                            | D1-4              |
-| 6   | `guidelines.md` / `test-cases.md` を作るか                                                                           | 作らない。`strategy.md` §12 と checklist §15 が役割を吸収している                                                                                   | A1-1              |
+| #   | 論点                                                                                                                 | 推奨                                                                                                                                                                                                   | 影響する PR |
+| --- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------- |
+| 1   | Issue 6: `clock` / `idGen` を caps に持たせるか                                                                      | **決定**: 持たせない。`architecture.md` が ID 採番を factory に閉じる理由（採番責務の所在）を明示しており、testing 側の docs をそろえる（#325）。時刻は factory で取らず殻で取得して引数で渡す（#324） | B1-0, B1-1  |
+| 2   | Issue 4: CI の DB を Postgres service container + drizzle migrate にするか、Supabase CLI（`supabase start`）にするか | Postgres service container。起動が速く、`db:migrate` の経路をそのまま使える。Storage 等 Supabase 固有機能に依存するテストが必要になった時点で見直す                                                    | C1-0        |
+| 3   | Issue 3 を Issue 4 の前に部分着手するか                                                                              | しない。回数検証だけ先に消す価値は小さく、C1 後にまとめて撤去する方が差分が読みやすい                                                                                                                  | C2-1        |
+| 4   | `packages/ui` の `test` script                                                                                       | テストが 0 件のあいだは script を削除し、Storybook / Chromatic を検証手段とする旨を `strategy.md` に一行書く                                                                                           | A2-2        |
+| 5   | Issue 7 の middlewares / `libs/auth0` / `utils/config`                                                               | 「テスト不要」の候補。Auth0 SDK と env 読み出しの薄い殻は §7-3「書かなくてよい対象」に該当する見込み。判定は D1-4 で行う                                                                               | D1-4        |
+| 6   | `guidelines.md` / `test-cases.md` を作るか                                                                           | 作らない。`strategy.md` §12 と checklist §15 が役割を吸収している                                                                                                                                      | A1-1        |
