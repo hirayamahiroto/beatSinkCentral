@@ -4,7 +4,7 @@
 
 本プロジェクトは DDD + クリーンアーキテクチャを採用しており、テスト戦略もその構造に沿って設計する。
 
-整備の段階的な進め方は `docs/testing/README.md` の「整備フェーズ」を参照。方針の背景（どの流派に立ち、なぜ純粋性を隔離の基準にするか）は [`background.md`](./background.md) を参照。本ドキュメントは **Phase 1(Unit Test の整備)** 期の主指針にあたる。
+整備の段階的な進め方は [`README.md`](./README.md) の「整備フェーズ」を参照。方針の背景（どの流派に立ち、なぜ純粋性を隔離の基準にするか）は [`background.md`](./background.md) を参照。本ドキュメントは **Phase 1(Unit Test の整備)** 期の主指針にあたる。
 
 ---
 
@@ -233,13 +233,41 @@
 
 ```typescript
 // ✅ 良い: Repository の契約(findBySub というメソッドがあり、User | null を返す)をモック
-const userRepository = { findBySub: vi.fn().mockResolvedValue(null) };
+const users = {
+  findBySub: vi.fn<IUserReader["findBySub"]>().mockResolvedValue(null),
+} satisfies IUserReader;
 
 // ❌ 悪い: 内部で使っている SQL クエリ関数をモック
 vi.spyOn(internalSqlBuilder, "select").mockReturnValue(...);
 ```
 
 前者はリファクタに強い(Repository が内部でどう動いても壊れない)。後者は実装を変えると必ず壊れる。
+
+### モックは依存先のインターフェース型を参照する
+
+モックは **依存先のインターフェース型に縛って書く**。型なしの `vi.fn()` を並べたオブジェクトは、契約(メソッド名・引数・戻り値)が変わっても黙って通り続ける。
+
+- メソッドは `vi.fn<I["method"]>()` で宣言し、`mockResolvedValue` に渡す値が契約の戻り値型と一致することをコンパイラに検査させる
+- モック全体は `satisfies I`(必要な範囲だけなら `satisfies Pick<I, "method">`)で縛り、メソッドの追加・リネームをコンパイルエラーで検知する
+- `vi.mock()` のファクトリが返すオブジェクトも、差し替え対象モジュールの公開型(`CapabilityDeps` 等)に `satisfies` で縛る
+- プロセス境界(BFF → api-server)をまたぐ上流レスポンスのフィクスチャは、クライアントの型(hono の `InferResponseType`)から導出し、手書きのボディで組まない
+
+型に縛ることで、フィクスチャの前提(「この関数は published なプロフィールしか返さない」など)を実装者の暗黙知からコンパイラのルールへ移せる。
+
+```typescript
+// ❌ 悪い: 契約が変わっても落ちない
+const mockArtistProfiles = { load: vi.fn(), findPublishedByHandle: vi.fn() };
+
+// ✅ 良い: メソッドの追加・戻り値型の変更をコンパイルで検知する
+const artistProfiles = {
+  load: vi.fn<IArtistProfileReader["load"]>(),
+  findPublishedByHandle: vi.fn<IArtistProfileReader["findPublishedByHandle"]>(),
+  listPublishedSummaries:
+    vi.fn<IArtistProfileReader["listPublishedSummaries"]>(),
+} satisfies IArtistProfileReader;
+```
+
+型付きモックの生成は各テストファイルで繰り返さず、テストダブル(`src/**/testDoubles/`)にヘルパー化する。テストダブルは lint と knip で本番コードから除外される。
 
 ### モックの「嘘」への対処
 
@@ -364,7 +392,7 @@ Integration / E2E を書くかどうかは、以下の観点で判断する:
 
 ## 8. エラーハンドリングのテストパターン
 
-本プロジェクトでは typed AppError と errorMap による HTTP 変換の分離設計を採用している(詳細: `docs/server-architecture/error-handling/implementation.md`)。テストもこの分離に沿って書く。
+本プロジェクトでは typed AppError と errorMap による HTTP 変換の分離設計を採用している(詳細: [`docs/architecture/server/error-handling/implementation.md`](../server/error-handling/implementation.md))。テストもこの分離に沿って書く。
 
 ### 層ごとの検証
 
@@ -426,6 +454,11 @@ createUser/
 ├── index.ts
 └── index.test.ts
 ```
+
+例外として、対象が `index.ts` 以外のファイル名を持つ場合は `{name}.ts` に対して `{name}.test.ts` を同ディレクトリに置く。
+
+- フレームワークが配置を固定するファイル(Next.js の `middleware.ts` → `middleware.test.ts`)
+- 1 ディレクトリに責務の異なる複数モジュールを置くことを選んだ場合(`appBaseUrl/resolve.ts` → `appBaseUrl/resolve.test.ts`)
 
 ### 命名
 
@@ -571,4 +604,4 @@ it("getter", () => {
 
 ### 補足
 
-本ドキュメントは方針である。**具体的なコード例は `docs/testing/guidelines.md`**(別途整備)、**チェックリストは `docs/templates/test-cases.md`**(別途整備)を参照。
+本ドキュメントは方針である。アンチパターンの具体例はセクション 12、レビュー時のチェック観点は [`.claude/rules/code-review-checklist.md`](../../../.claude/rules/code-review-checklist.md) の「15. テストが request/response・引数の変更を検知できる状態か」を参照。レイヤー別ガイドラインとテストケーステンプレートは別冊にせず、本ドキュメントとチェックリストに吸収した。
