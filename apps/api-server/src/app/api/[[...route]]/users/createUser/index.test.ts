@@ -5,28 +5,14 @@ import { handleAppError } from "../../../../../errorMap";
 import { reconstructUser } from "../../../../../domain/users/factories";
 import { reconstructArtist } from "../../../../../domain/artists/factories";
 import { createEmailAlreadyTakenError } from "../../../../../domain/users/errors/emailAlreadyTaken";
+import { createCapabilityDepsMock } from "../../../../../infrastructure/capabilities/testDoubles";
 
 type CreateUserRequestBody = { email: string; handle: string };
 
-const mockUsers = {
-  save: vi.fn(),
-  findBySub: vi.fn(),
-  updateEmail: vi.fn(),
-};
-
-const mockArtists = {
-  save: vi.fn(),
-  findByUserId: vi.fn(),
-  findByHandle: vi.fn(),
-  updateHandle: vi.fn(),
-};
+const { deps, artists, users } = createCapabilityDepsMock();
 
 vi.mock("../../../../../infrastructure/capabilities", () => ({
-  getCapabilityDeps: () => ({
-    runWithRegistrationCapabilities: (
-      work: (caps: unknown) => Promise<unknown>,
-    ) => work({ users: mockUsers, artists: mockArtists }),
-  }),
+  getCapabilityDeps: () => deps,
 }));
 
 const app = new Hono().route("/", usersCreate).onError(handleAppError);
@@ -194,10 +180,17 @@ describe("User Create API", () => {
 
     beforeEach(() => {
       vi.clearAllMocks();
-      mockUsers.findBySub.mockResolvedValue(null);
-      mockArtists.findByHandle.mockResolvedValue(null);
-      mockUsers.save.mockResolvedValue(undefined);
-      mockArtists.save.mockResolvedValue(undefined);
+      users.findBySub.mockResolvedValue(null);
+      artists.findByHandle.mockResolvedValue(null);
+      users.save.mockImplementation(async (data) => reconstructUser(data));
+      artists.save.mockImplementation(async (data) =>
+        reconstructArtist({
+          artistId: data.id,
+          handle: data.handle,
+          ownerUserId: data.ownerUserId,
+          profile: null,
+        }),
+      );
     });
 
     it("新規登録に成功すると201とuserId/artistIdを返す", async () => {
@@ -209,14 +202,14 @@ describe("User Create API", () => {
         userId: expect.any(String),
         artistId: expect.any(String),
       });
-      expect(mockUsers.save).toHaveBeenCalledWith(
+      expect(users.save).toHaveBeenCalledWith(
         expect.objectContaining({
           id: body.userId,
           subId: "auth0|123",
           email: validPayload.email,
         }),
       );
-      expect(mockArtists.save).toHaveBeenCalledWith(
+      expect(artists.save).toHaveBeenCalledWith(
         expect.objectContaining({
           id: body.artistId,
           handle: validPayload.handle,
@@ -226,7 +219,7 @@ describe("User Create API", () => {
     });
 
     it("既に登録済みなら409を返し、保存しない", async () => {
-      mockUsers.findBySub.mockResolvedValue(
+      users.findBySub.mockResolvedValue(
         reconstructUser({
           id: "user-1",
           subId: "auth0|123",
@@ -241,11 +234,11 @@ describe("User Create API", () => {
         error: "User already registered",
         code: "UserAlreadyRegisteredError",
       });
-      expect(mockUsers.save).not.toHaveBeenCalled();
+      expect(users.save).not.toHaveBeenCalled();
     });
 
     it("handleが使用済みなら409と衝突したhandleを含むメッセージを返す", async () => {
-      mockArtists.findByHandle.mockResolvedValue(
+      artists.findByHandle.mockResolvedValue(
         reconstructArtist({
           artistId: "artist-1",
           handle: validPayload.handle,
@@ -260,11 +253,11 @@ describe("User Create API", () => {
       expect(await res.json()).toMatchObject({
         error: expect.stringContaining(validPayload.handle),
       });
-      expect(mockArtists.save).not.toHaveBeenCalled();
+      expect(artists.save).not.toHaveBeenCalled();
     });
 
     it("emailが他ユーザーに使われていたら409を返し、emailを露出しない", async () => {
-      mockUsers.save.mockRejectedValue(createEmailAlreadyTakenError());
+      users.save.mockRejectedValue(createEmailAlreadyTakenError());
 
       const res = await postCreate(validPayload);
 
@@ -273,7 +266,7 @@ describe("User Create API", () => {
         error: "Email already taken",
         code: "EmailAlreadyTakenError",
       });
-      expect(mockArtists.save).not.toHaveBeenCalled();
+      expect(artists.save).not.toHaveBeenCalled();
     });
 
     it("handleがVOの形式に反する場合は422を返し、保存しない", async () => {
@@ -287,7 +280,7 @@ describe("User Create API", () => {
         error: "Invalid handle format",
         code: "InvalidHandleFormatError",
       });
-      expect(mockArtists.save).not.toHaveBeenCalled();
+      expect(artists.save).not.toHaveBeenCalled();
     });
   });
 });

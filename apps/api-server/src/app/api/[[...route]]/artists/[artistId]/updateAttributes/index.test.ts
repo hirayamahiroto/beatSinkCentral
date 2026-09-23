@@ -7,6 +7,7 @@ import { toPersistence } from "../../../../../../domain/artistProfiles/behaviors
 import type { StoredProfile } from "../../../../../../domain/artistProfiles/entities";
 import { handleAppError } from "../../../../../../errorMap";
 import updateAttributesRoute from "./index";
+import { createCapabilityDepsMock } from "../../../../../../infrastructure/capabilities/testDoubles";
 
 const actor = {
   user: reconstructUser({
@@ -22,23 +23,10 @@ const actor = {
   }),
 };
 
-const mockArtistProfiles = {
-  load: vi.fn(),
-  findPublishedByHandle: vi.fn(),
-  save: vi.fn(),
-  publish: vi.fn(),
-};
-
-const mockResolveActorState = vi.fn();
+const { deps, artistProfiles, resolveActorState } = createCapabilityDepsMock();
 
 vi.mock("../../../../../../infrastructure/capabilities", () => ({
-  getCapabilityDeps: () => ({
-    resolveActorState: (subId: string) => mockResolveActorState(subId),
-    runWithArtistWriteCapabilities: (
-      a: unknown,
-      work: (caps: unknown) => Promise<unknown>,
-    ) => work({ actor: a, artistProfiles: mockArtistProfiles }),
-  }),
+  getCapabilityDeps: () => deps,
 }));
 
 const createApp = (sub: string) => {
@@ -62,12 +50,12 @@ const request = (artistId: string, body: unknown) =>
 describe("POST /artists/:artistId/attributes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveActorState.mockResolvedValue({ status: "complete", actor });
-    mockArtistProfiles.load.mockResolvedValue({
+    resolveActorState.mockResolvedValue({ status: "complete", actor });
+    artistProfiles.load.mockResolvedValue({
       kind: "noProfile",
       artistId: "artist-1",
     });
-    mockArtistProfiles.save.mockImplementation(
+    artistProfiles.save.mockImplementation(
       async (state: StoredProfile) => state,
     );
   });
@@ -91,10 +79,8 @@ describe("POST /artists/:artistId/attributes", () => {
         activityInfo: "東京 / ソロ",
       },
     });
-    expect(mockArtistProfiles.save).toHaveBeenCalledTimes(1);
-    expect(
-      toPersistence(mockArtistProfiles.save.mock.calls[0][0]),
-    ).toMatchObject({
+    expect(artistProfiles.save).toHaveBeenCalledTimes(1);
+    expect(toPersistence(artistProfiles.save.mock.calls[0][0])).toMatchObject({
       artistId: "artist-1",
       name: "Taro",
       genres: ["bass"],
@@ -102,7 +88,7 @@ describe("POST /artists/:artistId/attributes", () => {
   });
 
   it("他の構造（imageUrl / chapters / links）はボディに渡しても無視される", async () => {
-    mockArtistProfiles.load.mockResolvedValue(
+    artistProfiles.load.mockResolvedValue(
       reconstructStoredProfile({
         id: "p1",
         artistId: "artist-1",
@@ -121,9 +107,7 @@ describe("POST /artists/:artistId/attributes", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(
-      toPersistence(mockArtistProfiles.save.mock.calls[0][0]),
-    ).toMatchObject({
+    expect(toPersistence(artistProfiles.save.mock.calls[0][0])).toMatchObject({
       imageUrl: "https://example.com/keep.png",
       chapters: [{ questionCode: "beginning", body: "保持される章" }],
       links: [],
@@ -139,7 +123,7 @@ describe("POST /artists/:artistId/attributes", () => {
       const res = await request("artist-1", body);
 
       expect(res.status).toBe(400);
-      expect(mockArtistProfiles.save).not.toHaveBeenCalled();
+      expect(artistProfiles.save).not.toHaveBeenCalled();
     },
   );
 
@@ -147,16 +131,16 @@ describe("POST /artists/:artistId/attributes", () => {
     const res = await request("other-artist", { name: "Taro", genres: [] });
 
     expect(res.status).toBe(404);
-    expect(mockArtistProfiles.save).not.toHaveBeenCalled();
+    expect(artistProfiles.save).not.toHaveBeenCalled();
   });
 
   it("actor が解決できなければ 404 を返し、保存しない", async () => {
-    mockResolveActorState.mockResolvedValue({ status: "unregistered" });
+    resolveActorState.mockResolvedValue({ status: "unregistered" });
 
     const res = await request("artist-1", { name: "Taro", genres: [] });
 
     expect(res.status).toBe(404);
-    expect(mockArtistProfiles.save).not.toHaveBeenCalled();
+    expect(artistProfiles.save).not.toHaveBeenCalled();
   });
 
   it("入力が不正なら 422 を返し、保存しない", async () => {
@@ -166,7 +150,7 @@ describe("POST /artists/:artistId/attributes", () => {
     });
 
     expect(res.status).toBe(422);
-    expect(mockArtistProfiles.save).not.toHaveBeenCalled();
+    expect(artistProfiles.save).not.toHaveBeenCalled();
   });
 
   it("MAX_GENRES（20件）を超える genres はリクエストスキーマ違反として 400 を返し、保存しない", async () => {
@@ -176,6 +160,6 @@ describe("POST /artists/:artistId/attributes", () => {
     });
 
     expect(res.status).toBe(400);
-    expect(mockArtistProfiles.save).not.toHaveBeenCalled();
+    expect(artistProfiles.save).not.toHaveBeenCalled();
   });
 });

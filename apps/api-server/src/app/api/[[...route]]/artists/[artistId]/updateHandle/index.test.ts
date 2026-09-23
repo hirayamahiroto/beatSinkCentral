@@ -4,33 +4,13 @@ import { reconstructUser } from "../../../../../../domain/users/factories";
 import { reconstructArtist } from "../../../../../../domain/artists/factories";
 import { handleAppError } from "../../../../../../errorMap";
 import updateHandleRoute from "./index";
+import { createCapabilityDepsMock } from "../../../../../../infrastructure/capabilities/testDoubles";
 
-const mockArtists = {
-  save: vi.fn(),
-  findByUserId: vi.fn(),
-  findByHandle: vi.fn(),
-  updateHandle: vi.fn(),
-};
-
-const mockArtistHandleHistories = {
-  record: vi.fn(),
-};
-
-const mockResolveActorState = vi.fn();
+const { deps, artistHandleHistories, artists, resolveActorState } =
+  createCapabilityDepsMock();
 
 vi.mock("../../../../../../infrastructure/capabilities", () => ({
-  getCapabilityDeps: () => ({
-    resolveActorState: (subId: string) => mockResolveActorState(subId),
-    runWithArtistWriteCapabilities: (
-      actor: unknown,
-      work: (caps: unknown) => Promise<unknown>,
-    ) =>
-      work({
-        actor,
-        artists: mockArtists,
-        artistHandleHistories: mockArtistHandleHistories,
-      }),
-  }),
+  getCapabilityDeps: () => deps,
 }));
 
 const owner = reconstructUser({
@@ -67,11 +47,11 @@ const request = (artistId: string, body: unknown) =>
 describe("POST /artists/:artistId", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveActorState.mockResolvedValue({
+    resolveActorState.mockResolvedValue({
       status: "complete",
       actor: { user: owner, artist: ownedArtist },
     });
-    mockArtists.updateHandle.mockImplementation(async () =>
+    artists.updateHandle.mockImplementation(async () =>
       reconstructArtist({
         artistId: "artist-1",
         handle: "new_handle",
@@ -87,11 +67,11 @@ describe("POST /artists/:artistId", () => {
 
     expect(res.status).toBe(200);
     expect(body).toEqual({ artistId: "artist-1", handle: "new_handle" });
-    expect(mockArtists.updateHandle).toHaveBeenCalledWith({
+    expect(artists.updateHandle).toHaveBeenCalledWith({
       artistId: "artist-1",
       handle: "new_handle",
     });
-    expect(mockArtistHandleHistories.record).toHaveBeenCalledExactlyOnceWith({
+    expect(artistHandleHistories.record).toHaveBeenCalledExactlyOnceWith({
       id: expect.any(String),
       artistId: "artist-1",
       oldHandle: "old_handle",
@@ -104,23 +84,23 @@ describe("POST /artists/:artistId", () => {
     const res = await request("other-artist", { handle: "new_handle" });
 
     expect(res.status).toBe(404);
-    expect(mockArtists.updateHandle).not.toHaveBeenCalled();
-    expect(mockArtistHandleHistories.record).not.toHaveBeenCalled();
+    expect(artists.updateHandle).not.toHaveBeenCalled();
+    expect(artistHandleHistories.record).not.toHaveBeenCalled();
   });
 
   it("actor が解決できなければ 404 を返す", async () => {
-    mockResolveActorState.mockResolvedValue({ status: "unregistered" });
+    resolveActorState.mockResolvedValue({ status: "unregistered" });
 
     const res = await request("artist-1", { handle: "new_handle" });
 
     expect(res.status).toBe(404);
-    expect(mockArtists.updateHandle).not.toHaveBeenCalled();
+    expect(artists.updateHandle).not.toHaveBeenCalled();
   });
 
   it("handle が空なら 400 を返し、更新しない", async () => {
     const res = await request("artist-1", { handle: "" });
 
     expect(res.status).toBe(400);
-    expect(mockArtists.updateHandle).not.toHaveBeenCalled();
+    expect(artists.updateHandle).not.toHaveBeenCalled();
   });
 });

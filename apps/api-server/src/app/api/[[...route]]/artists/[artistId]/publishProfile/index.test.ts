@@ -6,6 +6,7 @@ import { reconstructStoredProfile } from "../../../../../../domain/artistProfile
 import type { PublishedProfile } from "../../../../../../domain/artistProfiles/entities";
 import { handleAppError } from "../../../../../../errorMap";
 import publishProfileRoute from "./index";
+import { createCapabilityDepsMock } from "../../../../../../infrastructure/capabilities/testDoubles";
 
 const actor = {
   user: reconstructUser({
@@ -21,23 +22,10 @@ const actor = {
   }),
 };
 
-const mockArtistProfiles = {
-  load: vi.fn(),
-  findPublishedByHandle: vi.fn(),
-  save: vi.fn(),
-  publish: vi.fn(),
-};
-
-const mockResolveActorState = vi.fn();
+const { deps, artistProfiles, resolveActorState } = createCapabilityDepsMock();
 
 vi.mock("../../../../../../infrastructure/capabilities", () => ({
-  getCapabilityDeps: () => ({
-    resolveActorState: (subId: string) => mockResolveActorState(subId),
-    runWithArtistWriteCapabilities: (
-      a: unknown,
-      work: (caps: unknown) => Promise<unknown>,
-    ) => work({ actor: a, artistProfiles: mockArtistProfiles }),
-  }),
+  getCapabilityDeps: () => deps,
 }));
 
 const createApp = (sub: string) => {
@@ -73,9 +61,9 @@ const publishableProfile = () =>
 describe("POST /artists/:artistId/profile/publish", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveActorState.mockResolvedValue({ status: "complete", actor });
-    mockArtistProfiles.load.mockResolvedValue(publishableProfile());
-    mockArtistProfiles.publish.mockImplementation(
+    resolveActorState.mockResolvedValue({ status: "complete", actor });
+    artistProfiles.load.mockResolvedValue(publishableProfile());
+    artistProfiles.publish.mockImplementation(
       async (state: PublishedProfile) => state,
     );
   });
@@ -86,23 +74,23 @@ describe("POST /artists/:artistId/profile/publish", () => {
 
     expect(res.status).toBe(200);
     expect(body).toStrictEqual({ published: true });
-    expect(mockArtistProfiles.publish).toHaveBeenCalledTimes(1);
-    expect(mockArtistProfiles.publish.mock.calls[0][0].kind).toBe("published");
+    expect(artistProfiles.publish).toHaveBeenCalledTimes(1);
+    expect(artistProfiles.publish.mock.calls[0][0].kind).toBe("published");
   });
 
   it("Actor と一致しない artistId は 404 を返し、切り替えない", async () => {
     const res = await request("other-artist", { published: true });
 
     expect(res.status).toBe(404);
-    expect(mockArtistProfiles.publish).not.toHaveBeenCalled();
+    expect(artistProfiles.publish).not.toHaveBeenCalled();
   });
 
   it("actor が解決できなければ 404 を返す", async () => {
-    mockResolveActorState.mockResolvedValue({ status: "unregistered" });
+    resolveActorState.mockResolvedValue({ status: "unregistered" });
 
     const res = await request("artist-1", { published: true });
 
     expect(res.status).toBe(404);
-    expect(mockArtistProfiles.publish).not.toHaveBeenCalled();
+    expect(artistProfiles.publish).not.toHaveBeenCalled();
   });
 });

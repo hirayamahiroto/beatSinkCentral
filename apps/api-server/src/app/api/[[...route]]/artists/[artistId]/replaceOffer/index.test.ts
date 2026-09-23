@@ -5,6 +5,7 @@ import { reconstructArtist } from "../../../../../../domain/artists/factories";
 import { reconstructOffer } from "../../../../../../domain/offers/factories";
 import { handleAppError } from "../../../../../../errorMap";
 import replaceOfferRoute from "./index";
+import { createCapabilityDepsMock } from "../../../../../../infrastructure/capabilities/testDoubles";
 
 const actor = {
   user: reconstructUser({
@@ -27,25 +28,10 @@ const hana = reconstructArtist({
   profile: { name: "Hana" },
 });
 
-const mockArtists = {
-  findByHandles: vi.fn(),
-};
-
-const mockOffers = {
-  findLatestByArtistId: vi.fn(),
-  upsert: vi.fn(),
-};
-
-const mockResolveActorState = vi.fn();
+const { deps, artists, offers, resolveActorState } = createCapabilityDepsMock();
 
 vi.mock("../../../../../../infrastructure/capabilities", () => ({
-  getCapabilityDeps: () => ({
-    resolveActorState: (subId: string) => mockResolveActorState(subId),
-    runWithArtistWriteCapabilities: (
-      a: unknown,
-      work: (caps: unknown) => Promise<unknown>,
-    ) => work({ actor: a, artists: mockArtists, offers: mockOffers }),
-  }),
+  getCapabilityDeps: () => deps,
 }));
 
 const createApp = (sub: string) => {
@@ -82,10 +68,10 @@ describe("POST /artists/:artistId/offers", () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-10T03:00:00.000Z"));
-    mockResolveActorState.mockResolvedValue({ status: "complete", actor });
-    mockArtists.findByHandles.mockResolvedValue([hana]);
-    mockOffers.findLatestByArtistId.mockResolvedValue(null);
-    mockOffers.upsert.mockResolvedValue(undefined);
+    resolveActorState.mockResolvedValue({ status: "complete", actor });
+    artists.findByHandles.mockResolvedValue([hana]);
+    offers.findLatestByArtistId.mockResolvedValue(null);
+    offers.upsert.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -109,8 +95,8 @@ describe("POST /artists/:artistId/offers", () => {
         ],
       },
     });
-    expect(mockOffers.upsert).toHaveBeenCalledTimes(1);
-    expect(mockOffers.upsert.mock.calls[0][0]).toStrictEqual({
+    expect(offers.upsert).toHaveBeenCalledTimes(1);
+    expect(offers.upsert.mock.calls[0][0]).toStrictEqual({
       id: expect.any(String),
       artistId: "artist-1",
       date: "2026-09-20",
@@ -125,7 +111,7 @@ describe("POST /artists/:artistId/offers", () => {
   });
 
   it("有効なオファーがあれば同じ id で差し替える", async () => {
-    mockOffers.findLatestByArtistId.mockResolvedValue(
+    offers.findLatestByArtistId.mockResolvedValue(
       reconstructOffer({
         id: "offer-existing",
         artistId: "artist-1",
@@ -140,47 +126,47 @@ describe("POST /artists/:artistId/offers", () => {
     const res = await request("artist-1", validBody);
 
     expect(res.status).toBe(200);
-    expect(mockOffers.upsert.mock.calls[0][0].id).toBe("offer-existing");
+    expect(offers.upsert.mock.calls[0][0].id).toBe("offer-existing");
   });
 
   it("共演者の handle が見つからなければ 422 を返し、保存しない", async () => {
-    mockArtists.findByHandles.mockResolvedValue([]);
+    artists.findByHandles.mockResolvedValue([]);
 
     const res = await request("artist-1", validBody);
     const body = await res.json();
 
     expect(res.status).toBe(422);
     expect(body.code).toBe("CoPerformerNotFoundError");
-    expect(mockOffers.upsert).not.toHaveBeenCalled();
+    expect(offers.upsert).not.toHaveBeenCalled();
   });
 
   it("日付の形式が不正なら 422 を返し、保存しない", async () => {
     const res = await request("artist-1", { ...validBody, date: "9/20" });
 
     expect(res.status).toBe(422);
-    expect(mockOffers.upsert).not.toHaveBeenCalled();
+    expect(offers.upsert).not.toHaveBeenCalled();
   });
 
   it("必須項目が欠けていれば 400 を返し、保存しない", async () => {
     const res = await request("artist-1", { date: "2026-09-20" });
 
     expect(res.status).toBe(400);
-    expect(mockOffers.upsert).not.toHaveBeenCalled();
+    expect(offers.upsert).not.toHaveBeenCalled();
   });
 
   it("Actor と一致しない artistId は 404 を返し、保存しない", async () => {
     const res = await request("other-artist", validBody);
 
     expect(res.status).toBe(404);
-    expect(mockOffers.upsert).not.toHaveBeenCalled();
+    expect(offers.upsert).not.toHaveBeenCalled();
   });
 
   it("actor が解決できなければ 404 を返し、保存しない", async () => {
-    mockResolveActorState.mockResolvedValue({ status: "unregistered" });
+    resolveActorState.mockResolvedValue({ status: "unregistered" });
 
     const res = await request("artist-1", validBody);
 
     expect(res.status).toBe(404);
-    expect(mockOffers.upsert).not.toHaveBeenCalled();
+    expect(offers.upsert).not.toHaveBeenCalled();
   });
 });

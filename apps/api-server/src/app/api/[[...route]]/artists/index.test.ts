@@ -2,23 +2,16 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import artists from "./index";
 import { handleAppError } from "../../../../errorMap";
-
-const mockArtistProfiles = {
-  load: vi.fn(),
-  findPublishedByHandle: vi.fn(),
-  listPublishedSummaries: vi.fn(),
-};
+import { createCapabilityDepsMock } from "../../../../infrastructure/capabilities/testDoubles";
 
 vi.mock("../../../../infrastructure/auth0", () => ({
   getAuth0: () => ({ getSession: async () => null }),
 }));
 
+const { deps, artistProfiles } = createCapabilityDepsMock();
+
 vi.mock("../../../../infrastructure/capabilities", () => ({
-  getCapabilityDeps: () => ({
-    buildPublicReadCapabilities: () => ({
-      artistProfiles: mockArtistProfiles,
-    }),
-  }),
+  getCapabilityDeps: () => deps,
 }));
 
 const createApp = () =>
@@ -49,7 +42,7 @@ describe("/artists ルーターの合成", () => {
   });
 
   it("公開プロフィール一覧は認証を要求しない", async () => {
-    mockArtistProfiles.listPublishedSummaries.mockResolvedValue([]);
+    artistProfiles.listPublishedSummaries.mockResolvedValue([]);
 
     const res = await createApp().request("/artists", { method: "GET" });
 
@@ -57,7 +50,7 @@ describe("/artists ルーターの合成", () => {
   });
 
   it("公開プロフィール詳細は認証を要求しない", async () => {
-    mockArtistProfiles.findPublishedByHandle.mockResolvedValue(null);
+    artistProfiles.findPublishedByHandle.mockResolvedValue(null);
 
     const res = await createApp().request("/artists/taro", { method: "GET" });
 

@@ -3,13 +3,12 @@ import { Hono } from "hono";
 import { reconstructUser } from "../../../../../domain/users/factories";
 import { reconstructArtist } from "../../../../../domain/artists/factories";
 import getMeRoute from "./index";
+import { createCapabilityDepsMock } from "../../../../../infrastructure/capabilities/testDoubles";
 
-const mockResolveActorState = vi.fn();
+const { deps, resolveActorState } = createCapabilityDepsMock();
 
 vi.mock("../../../../../infrastructure/capabilities", () => ({
-  getCapabilityDeps: () => ({
-    resolveActorState: (subId: string) => mockResolveActorState(subId),
-  }),
+  getCapabilityDeps: () => deps,
 }));
 
 const user = reconstructUser({
@@ -43,7 +42,7 @@ describe("GET /users/me", () => {
   });
 
   it("未登録ユーザーの場合は404にせずregistered:falseを返す", async () => {
-    mockResolveActorState.mockResolvedValue({ status: "unregistered" });
+    resolveActorState.mockResolvedValue({ status: "unregistered" });
     const app = createAppWithAuth({ sub: "auth0|unknown" });
 
     const res = await app.request("/", { method: "GET" });
@@ -53,7 +52,7 @@ describe("GET /users/me", () => {
   });
 
   it("登録済みでartist未紐付けの場合はartist:nullを返す", async () => {
-    mockResolveActorState.mockResolvedValue({ status: "userOnly", user });
+    resolveActorState.mockResolvedValue({ status: "userOnly", user });
     const app = createAppWithAuth({ sub: "auth0|123" });
 
     const res = await app.request("/", { method: "GET" });
@@ -68,7 +67,7 @@ describe("GET /users/me", () => {
   });
 
   it("登録済みでartistが紐付いている場合はartist情報を返す", async () => {
-    mockResolveActorState.mockResolvedValue({
+    resolveActorState.mockResolvedValue({
       status: "complete",
       actor: { user, artist },
     });
@@ -90,11 +89,11 @@ describe("GET /users/me", () => {
   });
 
   it("セッションの sub で Actor を解決する", async () => {
-    mockResolveActorState.mockResolvedValue({ status: "unregistered" });
+    resolveActorState.mockResolvedValue({ status: "unregistered" });
     const app = createAppWithAuth({ sub: "auth0|999" });
 
     await app.request("/", { method: "GET" });
 
-    expect(mockResolveActorState).toHaveBeenCalledWith("auth0|999");
+    expect(resolveActorState).toHaveBeenCalledWith("auth0|999");
   });
 });
