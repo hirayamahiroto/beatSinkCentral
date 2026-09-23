@@ -104,13 +104,13 @@ Phase A（基盤・小・即効）      Phase B（契約を型で縛る）      
 
 ## 5. 要判断事項（着手前に決める）
 
-6 件すべて決定済み。決定の本文・理由・却下した案は `docs/decisions/`（ADR）に置き、本書はリンクだけを持つ。
+6 件すべて決定済み。決定の本文・理由・却下した案は `docs/adr/`（ADR）に置き、本書はリンクだけを持つ。
 
-| #   | 論点                                                   | ADR                                                                                                         | 影響する PR |
-| --- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- | ----------- |
-| 1   | Issue 6: `clock` / `idGen` を caps に持たせるか        | [0001](../../decisions/0001-domain-factory-clock-idgen.md) — 持たせない（#325 / #324 で実施済み）           | B1-0, B1-1  |
-| 2   | Issue 4: CI の DB 起動方式                             | [0002](../../decisions/0002-integration-test-db-postgres-service-container.md) — Postgres service container | C1-0        |
-| 3   | Issue 3 を Issue 4 の前に部分着手するか                | [0003](../../decisions/0003-repository-mock-removal-after-integration.md) — しない                          | C2-1        |
-| 4   | `packages/ui` の `test` script                         | [0004](../../decisions/0004-packages-ui-test-script.md) — 0 件のあいだ削除                                  | A2-2        |
-| 5   | Issue 7 の middlewares / `libs/auth0` / `utils/config` | [0005](../../decisions/0005-thin-shells-without-tests.md) — 殻は書かない（#328 で実施済み）                 | D1-4        |
-| 6   | `guidelines.md` / `test-cases.md` を作るか             | [0006](../../decisions/0006-no-guidelines-and-test-cases-docs.md) — 作らない（#320 で実施済み）             | A1-1        |
+| #   | 論点                                                   | ADR                                                                                                   | 影響する PR |
+| --- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- | ----------- |
+| 1   | Issue 6: `clock` / `idGen` を caps に持たせるか        | [0001](../../adr/0001-domain-factory-clock-idgen.md) — 持たせない（#325 / #324 で実施済み）           | B1-0, B1-1  |
+| 2   | Issue 4: CI の DB 起動方式                             | [0002](../../adr/0002-integration-test-db-postgres-service-container.md) — Postgres service container | C1-0        |
+| 3   | Issue 3 を Issue 4 の前に部分着手するか                | [0003](../../adr/0003-repository-mock-removal-after-integration.md) — しない                          | C2-1        |
+| 4   | `packages/ui` の `test` script                         | [0004](../../adr/0004-packages-ui-test-script.md) — 0 件のあいだ削除                                  | A2-2        |
+| 5   | Issue 7 の middlewares / `libs/auth0` / `utils/config` | [0005](../../adr/0005-thin-shells-without-tests.md) — 殻は書かない（#328 で実施済み）                 | D1-4        |
+| 6   | `guidelines.md` / `test-cases.md` を作るか             | [0006](../../adr/0006-no-guidelines-and-test-cases-docs.md) — 作らない（#320 で実施済み）             | A1-1        |

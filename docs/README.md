@@ -10,9 +10,9 @@
 | [`architecture/`](./architecture/) | **どう作るか** — 技術規範         | 恒久                       |
 | [`plans/`](./plans/)               | **いつ作るか** — ロードマップ・実装計画   | 時限（完了したら参照しない） |
 | [`discussions/`](./discussions/)   | **検討中** — 調査・提案・未合意   | 合意したら ADR を切り、上の3つへ昇格 |
-| [`decisions/`](./decisions/)       | **なぜそう決めたか** — 設計判断の記録（ADR） | 恒久（置換されても消さない） |
+| [`adr/`](./adr/)       | **なぜそう決めたか** — 設計判断の記録（ADR） | 恒久（置換されても消さない） |
 
-`plans/` と `discussions/` は**規範ではない**。実装判断の根拠にしてよいのは `product/` と `architecture/` だけ。`decisions/` も規範ではなく、規範がその形になった理由・却下した案・影響範囲を持つ（形式と運用は [decisions/README.md](./decisions/README.md)）。
+`plans/` と `discussions/` は**規範ではない**。実装判断の根拠にしてよいのは `product/` と `architecture/` だけ。`adr/` も規範ではなく、規範がその形になった理由・却下した案・影響範囲を持つ（形式と運用は [adr/README.md](./adr/README.md)）。
 
 ---
 
@@ -94,4 +94,4 @@ DB まわり — [`architecture/server/database/`](./architecture/server/databas
 - 該当ドキュメントが無い設計判断が必要になったら、コードに落とす前にドキュメント側を整える
 - **時間軸を名前に入れるのは `plans/` の中だけ**。`product/` と `architecture/` は恒久的な名前にする
 - 検討中のものは `discussions/` に置き、規範と混ぜない
-- **決めたことは `decisions/` に 1 決定 1 ファイル（ADR）で書く**（背景・決定・理由・却下した案・結果・影響する規範）。`plans/` や Issue に決定の本文を書かず、ADR へのリンクだけ置く
+- **決めたことは `adr/` に 1 決定 1 ファイル（ADR）で書く**（背景・決定・理由・却下した案・結果・影響する規範）。`plans/` や Issue に決定の本文を書かず、ADR へのリンクだけ置く
