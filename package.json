@@ -19,7 +19,9 @@
     "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,json,md}\"",
     "prepare": "husky",
     "token-report": "node scripts/token-usage-report/index.mjs",
-    "token-report:test": "node --test scripts/token-usage-report/lib.test.mjs"
+    "token-report:test": "node --test scripts/token-usage-report/lib.test.mjs",
+    "test:audit": "node scripts/test-audit/index.mjs",
+    "test:audit:ci": "node scripts/test-audit/index.mjs --strict"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
