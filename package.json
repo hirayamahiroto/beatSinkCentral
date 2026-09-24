@@ -21,7 +21,8 @@
     "token-report": "node scripts/token-usage-report/index.mjs",
     "token-report:test": "node --test scripts/token-usage-report/lib.test.mjs",
     "test:audit": "node scripts/test-audit/index.mjs",
-    "test:audit:ci": "node scripts/test-audit/index.mjs --strict"
+    "test:audit:ci": "node scripts/test-audit/index.mjs --strict",
+    "test:audit:record": "node scripts/test-audit/index.mjs --out reports/test-audit"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

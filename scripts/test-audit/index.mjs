@@ -5,8 +5,17 @@
 //
 //   --json    Markdown の代わりに JSON を出す（ダッシュボード / 推移記録用）
 //   --strict  構造違反（純粋モジュールのモック、型なし殻モック）が 1 件でもあれば exit 1（CI ゲート用）
+//   --out <dir>  日時付きの .md / .json と latest.md / latest.json を <dir> に書き出す（ローカルで推移を溜める用）
 
-import { readdirSync, readFileSync, existsSync, statSync } from "node:fs";
+import {
+  readdirSync,
+  readFileSync,
+  existsSync,
+  statSync,
+  mkdirSync,
+  writeFileSync,
+} from "node:fs";
+import { execSync } from "node:child_process";
 import { join, dirname, resolve, relative, sep } from "node:path";
 
 const args = process.argv.slice(2);
@@ -317,9 +326,7 @@ const summary = {
   },
 };
 
-if (flag("--json")) {
-  console.log(JSON.stringify(summary, null, 2));
-} else {
+const renderMarkdown = () => {
   const pct = (r) => (r == null ? "-" : `${Math.round(r * 100)}%`);
   const lines = [];
   lines.push(
@@ -405,7 +412,39 @@ if (flag("--json")) {
     "テストのないモジュール",
     missingTests.map((x) => `${x.file} [${x.layer}] ${x.lines} 行`),
   );
-  console.log(lines.join("\n"));
+  return lines.join("\n");
+};
+
+const markdown = renderMarkdown();
+const outDir = opt("--out", null);
+if (outDir) {
+  const dir = resolve(ROOT, outDir);
+  mkdirSync(dir, { recursive: true });
+  const recordedAt = new Date();
+  const stamp = recordedAt.toISOString().slice(0, 19).replace(/:/g, "-");
+  const commit = execSync("git rev-parse --short HEAD", { cwd: ROOT })
+    .toString()
+    .trim();
+  const json = JSON.stringify(
+    { recordedAt: recordedAt.toISOString(), commit, ...summary },
+    null,
+    2,
+  );
+  for (const [name, body] of [
+    [`${stamp}.md`, markdown],
+    [`${stamp}.json`, json],
+    ["latest.md", markdown],
+    ["latest.json", json],
+  ]) {
+    writeFileSync(join(dir, name), body + "\n");
+  }
+  console.log(
+    `wrote ${relative(ROOT, dir)}/${stamp}.{md,json} (commit ${commit})`,
+  );
+} else if (flag("--json")) {
+  console.log(JSON.stringify(summary, null, 2));
+} else {
+  console.log(markdown);
 }
 
 if (flag("--strict")) {

@@ -14,9 +14,16 @@
 node scripts/test-audit/index.mjs            # Markdown レポート
 node scripts/test-audit/index.mjs --json     # 推移記録・ダッシュボード用
 node scripts/test-audit/index.mjs --strict   # 構造違反があれば exit 1（CI）
+node scripts/test-audit/index.mjs --out reports/test-audit   # 日時付き .md/.json を溜める（ローカル）
 ```
 
-依存なし。ルートの `package.json` から `npm run test:audit` / `npm run test:audit:ci`（`--strict`）で呼べる。
+依存なし。ルートの `package.json` から `npm run test:audit` / `npm run test:audit:ci`（`--strict`）/ `npm run test:audit:record`（`--out reports/test-audit`）で呼べる。
+
+### 推移の記録先（ローカル）
+
+`test:audit:record` は `reports/test-audit/`（gitignore 済み）に `<ISO 日時>.md` / `<ISO 日時>.json` と `latest.md` / `latest.json` を書く。JSON には `recordedAt` と `commit`（short SHA）が入るので、複数回分を並べれば commit 単位の推移になる。リポジトリや CI には溜めない（溜め先を変えるときは `--out` を差し替える）。
+
+Stryker のレポート（`apps/api-server/reports/mutation/`）も gitignore 済みのローカル出力だが、実行ごとに上書きされる。
 
 ### 出す指標と対応する条件
 
