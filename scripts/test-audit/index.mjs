@@ -43,6 +43,15 @@ const LAYER_OF = (rel) => {
 };
 const COMPOSITION_LAYERS = new Set(["route", "usecase", "bff", "hook"]);
 const FACTORY_PREFIXES = ["reconstruct", "create", "build"];
+// テストを書かない対象（strategy.md §11 / ADR 0004 / ADR 0005）
+const NO_TEST_EXEMPT = [
+  /\/testDoubles\//,
+  /^packages\/ui\//,
+  /\/libs\/auth0\//,
+  /\/utils\/config\//,
+  /\/infrastructure\/(auth0|database|storage|appBaseUrl)\//,
+  /^packages\/database\/src\/utils\/createClient\//,
+];
 // -------------------------------------------------------------------
 
 const walk = (dir, out = []) => {
@@ -171,23 +180,19 @@ for (const t of tests) {
 }
 
 // ---------- 指標 4: テストのないモジュール ----------
+const stripComments = (src) =>
+  src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 const isTypeOnlyOrBarrel = (src) => {
-  const lines = src
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => l && !l.startsWith("//"));
-  return lines.every(
-    (l) =>
-      /^(import|export)\b.*\bfrom\b/.test(l) ||
-      /^export\s+(type|interface)\b/.test(l) ||
-      /^(export\s+)?(type|interface)\b/.test(l) ||
-      /^[}\]);]*$/.test(l) ||
-      /^[A-Za-z_$][\w$]*\??:\s/.test(l) || // interface のメンバ行
-      /^(readonly\s+)?[A-Za-z_$][\w$]*\s*\(.*\)\s*:/.test(l) || // メソッドシグネチャ
-      /^\|/.test(l) ||
-      /^[<>=&|]/.test(l),
+  const code = stripComments(src);
+  return (
+    !/\b(const|let|var|function|class|enum)\b/.test(code) &&
+    !/export\s+default\b/.test(code)
   );
 };
+const isMountOnlyRoute = (src) =>
+  /\.route\(/.test(src) && !/\.(get|post|put|patch|delete|all)\(/.test(src);
+const isPassThroughClientAdapter = (relPath, src) =>
+  /ClientAdapter\/index\.tsx$/.test(relPath) && !/\buse[A-Z]\w*\(/.test(src);
 const missingTests = [];
 for (const s of sources) {
   const dir = dirname(s);
@@ -197,7 +202,11 @@ for (const s of sources) {
   )
     continue;
   const src = read(s);
+  const relPath = rel(s);
+  if (NO_TEST_EXEMPT.some((re) => re.test(relPath))) continue;
   if (isTypeOnlyOrBarrel(src)) continue;
+  if (isMountOnlyRoute(src)) continue;
+  if (isPassThroughClientAdapter(relPath, src)) continue;
   missingTests.push({
     file: rel(s),
     layer: LAYER_OF("/" + rel(s)),
@@ -214,7 +223,7 @@ for (const t of tests) {
   const titles = itTitles(src);
   const invalid = titles.filter((x) => /不正|無効|超える|形式|書式/.test(x));
   const reasons = [];
-  if (invalid.length >= 3)
+  if (invalid.length >= 3 && layer === "usecase")
     reasons.push(`異常系バリエーション ${invalid.length} 件`);
   if (/error\.message\)\.to(Be|Match|Contain)/.test(src))
     reasons.push("error.message を検証");
@@ -247,7 +256,9 @@ const clockLeaks = [];
 for (const s of sources) {
   const src = read(s);
   const hasClock = /new Date\(\)|Date\.now\(\)/.test(src);
-  const hasRandom = /randomUUID\(\)|Math\.random\(\)/.test(src);
+  const hasUuid = /randomUUID\(\)/.test(src);
+  const hasMathRandom = /Math\.random\(\)/.test(src);
+  const hasRandom = hasUuid || hasMathRandom;
   if (!hasClock && !hasRandom) continue;
   const layer = LAYER_OF("/" + rel(s));
   const t = [
@@ -262,7 +273,9 @@ for (const s of sources) {
     clock: hasClock,
     random: hasRandom,
     testControls: controlled,
-    inPureLayer: layer === "domain" || layer === "usecase",
+    violation:
+      (layer === "domain" && (hasClock || hasMathRandom)) ||
+      (layer === "usecase" && hasMathRandom),
   });
 }
 
@@ -363,7 +376,7 @@ const renderMarkdown = () => {
     `| Repository テストのビルダ呼び出し検証 | ${builderCallAsserts.length} ファイル | 0 |`,
   );
   lines.push(
-    `| 時刻・乱数を直接呼ぶ純粋層モジュール | ${clockLeaks.filter((c) => c.inPureLayer).length} | 0 |`,
+    `| 時刻・乱数を直接呼ぶ純粋層モジュール | ${clockLeaks.filter((c) => c.violation).length} | 0 |`,
   );
   lines.push(`| テストのないモジュール | ${missingTests.length} | 0 |`);
   lines.push(``);
@@ -411,7 +424,7 @@ const renderMarkdown = () => {
     "時刻・乱数の直接呼び出し",
     clockLeaks.map(
       (x) =>
-        `${x.file} [${x.layer}] ${x.clock ? "Date " : ""}${x.random ? "random " : ""}${x.testControls ? "(テストで制御あり)" : "(テストで制御なし)"}`,
+        `${x.file} [${x.layer}] ${x.clock ? "Date " : ""}${x.random ? "random " : ""}${x.testControls ? "(テストで制御あり)" : "(テストで制御なし)"}${x.violation ? " ← 違反" : ""}`,
     ),
   );
   section(

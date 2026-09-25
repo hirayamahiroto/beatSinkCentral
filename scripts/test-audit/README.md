@@ -55,11 +55,11 @@ Stryker のレポート（`apps/api-server/reports/mutation/`）も gitignore �
 | 純粋モジュールをモックしているテスト数 | A | `vi.mock` の対象パスが `domain/` `usecases/` 配下 | 確定 |
 | 殻モックの型付き率（層別） | B | 合成点テストで `vi.fn()` が 0 かつ `vi.fn<…>` / `satisfies` がある。`*/testDoubles/*` 経由ならそのモジュールを見る | 確定 |
 | フィクスチャの factory 導出率 | C | `mockResolvedValue(` の引数が `reconstruct*` / `create*` / `build*` か、オブジェクトリテラルか | **疑いまで**。BFF の上流レスポンスなど、集約でない値のリテラルも数える |
-| 責務漏れの疑い | D | 合成点テストに異常系タイトルが 3 件以上、`error.message` の検証、usecase での status 検証 | **疑いまで**。確定はレビュー |
+| 責務漏れの疑い | D | usecase テストに異常系タイトルが 3 件以上（エントリ層の形式検証は自層の責務なので対象外）、`error.message` の検証、usecase での status 検証 | **疑いまで**。確定はレビュー |
 | 殻の契約カバー率 | E | usecase / route で `mockResolvedValue` 等の台本が書かれたメソッドが、`*.integration.test.ts` に登場するか | Phase 2 導入後に意味を持つ |
 | Repository テストのビルダ呼び出し検証 | §5 ❌例 / §12-1 / §12-4 | `toHaveBeenCalledTimes`、`mockResolvedValueOnce` の連鎖 | 確定 |
-| 時刻・乱数の直接呼び出し | §2 / §9 | `new Date()` `Date.now()` `randomUUID()` を含む純粋層モジュール | 確定 |
-| テストのないモジュール | §11 | `index.ts` に `index.test.ts(x)` がない（型のみ・バレルは除外） | ほぼ確定 |
+| 時刻・乱数の直接呼び出し | §2 / §9 / ADR 0001 | 一覧は `new Date()` `Date.now()` `randomUUID()` `Math.random()` を含む全モジュール。違反として数えるのは domain の時刻・`Math.random()` と usecase の `Math.random()` だけ（`randomUUID()` は純粋扱い、usecase の時刻取得は殻の責務） | 確定 |
+| テストのないモジュール | §11 / ADR 0004 / ADR 0005 | `index.ts` に `index.test.ts(x)` がない。型のみ・バレル、マウントのみのルート、props 素通しの ClientAdapter、`NO_TEST_EXEMPT`（testDoubles / packages/ui / 薄い殻）は除外 | ほぼ確定 |
 
 「確定」の指標は lint 化して違反を入れさせないほうが安い。ESLint の `no-restricted-syntax` で A はそのまま書ける:
 
@@ -94,6 +94,7 @@ Stryker のレポート（`apps/api-server/reports/mutation/`）も gitignore �
 - `LAYER_OF` — パスから層を判定する関数
 - `COMPOSITION_LAYERS` — 合成点として扱う層（B / C / D の対象）
 - `FACTORY_PREFIXES` — factory と見なす関数名の接頭辞
+- `NO_TEST_EXEMPT` — テストを書かない対象のパス（§11 / ADR 0004 / ADR 0005）
 
 ## 2. 検知力: Stryker
 
