@@ -3,7 +3,10 @@ import { replaceMyOffer } from "./index";
 import { reconstructUser } from "../../../domain/users/factories";
 import { reconstructArtist } from "../../../domain/artists/factories";
 import { reconstructOffer } from "../../../domain/offers/factories";
-import type { IArtistReader } from "../../../domain/artists/repositories";
+import type {
+  IArtistReader,
+  IArtistWriter,
+} from "../../../domain/artists/repositories";
 import type {
   IOfferReader,
   IOfferWriter,
@@ -60,8 +63,8 @@ const createCaps = () =>
       findByUserId: vi.fn<IArtistReader["findByUserId"]>(async () => null),
       findByHandle: vi.fn<IArtistReader["findByHandle"]>(async () => null),
       findByHandles: vi.fn<IArtistReader["findByHandles"]>(async () => []),
-      save: vi.fn(),
-      updateHandle: vi.fn(),
+      save: vi.fn<IArtistWriter["save"]>(),
+      updateHandle: vi.fn<IArtistWriter["updateHandle"]>(),
     },
     offers: {
       findLatestByArtistId: vi.fn<IOfferReader["findLatestByArtistId"]>(
