@@ -10,6 +10,8 @@ import {
   createEndpointMock,
   type ApiServerClient,
   type ApiServerClientMock,
+  upstreamErrorResponse,
+  upstreamJsonResponse,
 } from "../../../../../../utils/client/testDoubles";
 
 const meGet =
@@ -46,21 +48,17 @@ const request = (body: unknown) =>
 describe("POST /artists/me", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    meGet.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({
+    meGet.mockResolvedValue(
+      upstreamJsonResponse({
         registered: true,
         userId: "user-1",
         email: "saku@example.com",
         artist: { artistId: "artist-1", handle: "saku", hasProfile: true },
       }),
-    });
-    handlePost.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({ artistId: "artist-1", handle: "saku_new" }),
-    });
+    );
+    handlePost.mockResolvedValue(
+      upstreamJsonResponse({ artistId: "artist-1", handle: "saku_new" }),
+    );
   });
 
   it("検証を通った handle を自分の artistId 宛てで api-server へ渡す", async () => {
@@ -85,11 +83,7 @@ describe("POST /artists/me", () => {
   });
 
   it("artist 未登録なら api-server へ渡さず 404 を返す", async () => {
-    meGet.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({ registered: false }),
-    });
+    meGet.mockResolvedValue(upstreamJsonResponse({ registered: false }));
 
     const res = await request({ handle: "saku_new" });
 
@@ -98,14 +92,15 @@ describe("POST /artists/me", () => {
   });
 
   it("api-server のエラーはステータスごと透過する", async () => {
-    handlePost.mockResolvedValue({
-      ok: false,
-      status: 409,
-      json: async () => ({
-        error: "handle already taken",
-        code: "HandleAlreadyTakenError",
-      }),
-    });
+    handlePost.mockResolvedValue(
+      upstreamJsonResponse(
+        {
+          error: "handle already taken",
+          code: "HandleAlreadyTakenError",
+        },
+        409,
+      ),
+    );
 
     const res = await request({ handle: "saku_new" });
 
@@ -117,11 +112,9 @@ describe("POST /artists/me", () => {
   });
 
   it("code の無い 4xx は契約違反として 502 にする", async () => {
-    handlePost.mockResolvedValue({
-      ok: false,
-      status: 409,
-      json: async () => ({ error: "handle already taken" }),
-    });
+    handlePost.mockResolvedValue(
+      upstreamErrorResponse({ error: "handle already taken" }, 409),
+    );
 
     const res = await request({ handle: "saku_new" });
 

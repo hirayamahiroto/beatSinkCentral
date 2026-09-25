@@ -122,7 +122,13 @@ describe("GET /players/:handle", () => {
 
   it("published のみ返す api-server が 404 なら 404 を維持する", async () => {
     profileGet.mockResolvedValue(
-      upstreamJsonResponse({ error: "Not found" }, 404),
+      upstreamJsonResponse(
+        {
+          error: "Artist profile not found",
+          code: "ArtistProfileNotFoundError",
+        },
+        404,
+      ),
     );
 
     const res = await createApp().request("/unknown", { method: "GET" });
@@ -132,7 +138,10 @@ describe("GET /players/:handle", () => {
 
   it("書式不正な handle で api-server が 422 なら 404 を返す", async () => {
     profileGet.mockResolvedValue(
-      upstreamJsonResponse({ error: "Invalid handle format" }, 422),
+      upstreamJsonResponse(
+        { error: "Invalid handle format", code: "InvalidHandleFormatError" },
+        422,
+      ),
     );
 
     const res = await createApp().request("/not-an-id", { method: "GET" });

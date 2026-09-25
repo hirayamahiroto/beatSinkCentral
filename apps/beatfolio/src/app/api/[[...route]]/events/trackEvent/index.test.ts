@@ -11,6 +11,7 @@ import {
   upstreamNoContentResponse,
   type ApiServerClient,
   type ApiServerClientMock,
+  upstreamJsonResponse,
 } from "../../../../../utils/client/testDoubles";
 
 const eventsPost =
@@ -92,14 +93,15 @@ describe("POST /events (BFF trackEvent)", () => {
   });
 
   it("api-serverのエラーはステータスごと透過する", async () => {
-    eventsPost.mockResolvedValue({
-      ok: false,
-      status: 400,
-      json: async () => ({
-        error: "Invalid request",
-        code: "InvalidRequestFormatError",
-      }),
-    });
+    eventsPost.mockResolvedValue(
+      upstreamJsonResponse(
+        {
+          error: "Invalid request",
+          code: "InvalidRequestFormatError",
+        },
+        400,
+      ),
+    );
 
     const res = await request(validBody);
 
