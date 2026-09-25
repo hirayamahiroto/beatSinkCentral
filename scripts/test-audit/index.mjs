@@ -48,7 +48,12 @@ const FACTORY_PREFIXES = ["reconstruct", "create", "build"];
 const walk = (dir, out = []) => {
   if (!existsSync(dir)) return out;
   for (const name of readdirSync(dir)) {
-    if (name === "node_modules" || name === ".next" || name === "dist")
+    if (
+      name === "node_modules" ||
+      name === ".next" ||
+      name === "dist" ||
+      name === ".stryker-tmp"
+    )
       continue;
     const p = join(dir, name);
     const st = statSync(p);
@@ -81,7 +86,8 @@ for (const t of tests) {
     const resolved = target.startsWith(".")
       ? "/" + rel(resolve(dirname(t), target))
       : "/" + target;
-    if (PURE_SEGMENTS.some((s) => resolved.includes(s))) {
+    const probe = resolved.endsWith("/") ? resolved : resolved + "/";
+    if (PURE_SEGMENTS.some((s) => probe.includes(s))) {
       pureModuleMocks.push({ file: rel(t), target });
     }
   }
@@ -452,5 +458,5 @@ if (flag("--strict")) {
     (n, v) => n + v.files.length,
     0,
   );
-  if (pureModuleMocks.length > 0 || untypedTotal > 0) process.exit(1);
+  if (pureModuleMocks.length > 0 || untypedTotal > 0) process.exitCode = 1;
 }

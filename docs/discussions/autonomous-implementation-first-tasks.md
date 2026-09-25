@@ -42,7 +42,7 @@
 
 #### T1. CI の穴を埋め、`ci.yml` に一本化する
 
-- **何を**: ルートで `turbo run lint test check-types build` を全 workspace に対して走らせる `ci.yml` を作り、`api-server.yml` / `beatfolio.yml` と `deploy-preview.yml` 内のテスト重複を解消する。Chromatic の paths を `packages/ui/**` に直す（使わないなら削除）。`.nvmrc` と `engines` を置き、全ワークフローが `node-version-file` で読む
+- **何を**: ルートで `turbo run lint test check-types build` を全 workspace に対して走らせる `ci.yml` を作り、`api-server.yml` / `beatfolio.yml` / `deploy-preview.yml` の lint・build・test を `ci.yml` に寄せる。テストの重複は `api-server.yml` と `deploy-preview.yml` の api-server テストのみ（beatfolio のテストは `deploy-preview.yml` の `test-beatfolio` だけが走っている）。Chromatic の paths を `packages/ui/**` に直す（使わないなら削除）。`.nvmrc` と `engines` を置き、全ワークフローが `node-version-file` で読む
 - **なぜ**: `packages/database` と `packages/ui` の vitest が CI で走っていない（`--filter=api-server` は依存を含まない）。beatfolio は lint と build のみ。Chromatic は存在しないパスを見ていて一度も起動していない。Node が 20 / 22.12.0 / `env.NODE_VERSION` で不揃い
 - **完了条件**: 全 workspace の `test` が PR の CI で実行され、ジョブ名が固定される（T2 が参照するため）。同じテストが 1 PR で 2 回走らない
 - **設計**: 不要
@@ -52,7 +52,7 @@
 
 - **何を**: required status checks に T1 のジョブを登録する。conversation resolution（未解決スレッドがあればマージ不可）を有効にする。管理者バイパスを外す。単独開発で自己承認できない「承認 1 件必須」は外し、契約ファイル（schema / API zod / props 型）に触れる PR のみ承認必須にする（CODEOWNERS か後続の判定で）
 - **なぜ**: 現在は CI が赤でもマージでき、承認要件は毎回バイパスで越えている。13 件のレビュー無しマージはこの構造の結果
-- **完了条件**: CI が赤の PR、未解決スレッドのある PR がマージできない。`gh api .../rulesets/8830922` に `required_status_checks` が含まれる
+- **完了条件**: CI が赤の PR、未解決スレッドのある PR がマージできない。`gh api .../rulesets/8830922` に `required_status_checks` が含まれ、`bypass_actors` に管理者が含まれない。契約ファイルに触れる PR だけが承認必須になっている（CODEOWNERS か判定ジョブで確認できる）
 - **設計**: 不要
 - **依存**: T1
 

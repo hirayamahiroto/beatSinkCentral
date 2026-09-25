@@ -9,7 +9,6 @@ const config = {
   testRunner: "vitest",
   vitest: { configFile: "vitest.config.mts" },
   coverageAnalysis: "perTest",
-  incremental: true,
   incrementalFile: ".stryker-tmp/incremental.json",
   reporters: ["clear-text", "html", "json"],
   htmlReporter: { fileName: "reports/mutation/index.html" },
