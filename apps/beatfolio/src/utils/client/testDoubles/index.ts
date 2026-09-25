@@ -52,3 +52,13 @@ export const upstreamNoContentResponse = (): UpstreamNoContentStub => ({
   status: 204,
   json: async () => undefined,
 });
+
+export const upstreamMalformedJsonResponse = (
+  status = 200,
+): UpstreamResponseStub<never> => ({
+  ok: status >= 200 && status < 300,
+  status,
+  json: async () => {
+    throw new SyntaxError("Unexpected end of JSON input");
+  },
+});

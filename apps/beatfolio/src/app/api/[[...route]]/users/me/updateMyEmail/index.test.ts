@@ -10,6 +10,7 @@ import {
   createEndpointMock,
   type ApiServerClient,
   type ApiServerClientMock,
+  upstreamJsonResponse,
 } from "../../../../../../utils/client/testDoubles";
 
 const meGet =
@@ -48,21 +49,17 @@ const request = (body: unknown) =>
 describe("POST /users/me", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    meGet.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({
+    meGet.mockResolvedValue(
+      upstreamJsonResponse({
         registered: true,
         userId: "user-1",
         email: "saku@example.com",
         artist: null,
       }),
-    });
-    emailPost.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({ userId: "user-1", email: "new@example.com" }),
-    });
+    );
+    emailPost.mockResolvedValue(
+      upstreamJsonResponse({ userId: "user-1", email: "new@example.com" }),
+    );
   });
 
   it("検証を通った email を自分の userId 宛てで api-server へ渡す", async () => {
@@ -87,11 +84,7 @@ describe("POST /users/me", () => {
   });
 
   it("user 未登録なら api-server へ渡さず 404 を返す", async () => {
-    meGet.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({ registered: false }),
-    });
+    meGet.mockResolvedValue(upstreamJsonResponse({ registered: false }));
 
     const res = await request({ email: "new@example.com" });
 
@@ -100,14 +93,15 @@ describe("POST /users/me", () => {
   });
 
   it("api-server のエラーはステータスごと透過する", async () => {
-    emailPost.mockResolvedValue({
-      ok: false,
-      status: 409,
-      json: async () => ({
-        error: "Email already taken",
-        code: "EmailAlreadyTakenError",
-      }),
-    });
+    emailPost.mockResolvedValue(
+      upstreamJsonResponse(
+        {
+          error: "Email already taken",
+          code: "EmailAlreadyTakenError",
+        },
+        409,
+      ),
+    );
 
     const res = await request({ email: "taken@example.com" });
 

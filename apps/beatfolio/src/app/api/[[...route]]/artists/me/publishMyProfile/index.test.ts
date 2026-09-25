@@ -10,6 +10,7 @@ import {
   createEndpointMock,
   type ApiServerClient,
   type ApiServerClientMock,
+  upstreamJsonResponse,
 } from "../../../../../../utils/client/testDoubles";
 
 const meGet =
@@ -50,21 +51,15 @@ const request = (body: unknown) =>
 describe("POST /artists/me/profile/publish", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    meGet.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({
+    meGet.mockResolvedValue(
+      upstreamJsonResponse({
         registered: true,
         userId: "user-1",
         email: "saku@example.com",
         artist: { artistId: "artist-1", handle: "saku", hasProfile: true },
       }),
-    });
-    publishPost.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({ published: true }),
-    });
+    );
+    publishPost.mockResolvedValue(upstreamJsonResponse({ published: true }));
   });
 
   it("検証を通った published を自分の artistId 宛てで api-server へ渡す", async () => {
@@ -86,11 +81,7 @@ describe("POST /artists/me/profile/publish", () => {
   });
 
   it("artist 未登録なら api-server へ渡さず 404 を返す", async () => {
-    meGet.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({ registered: false }),
-    });
+    meGet.mockResolvedValue(upstreamJsonResponse({ registered: false }));
 
     const res = await request({ published: true });
 
@@ -99,14 +90,15 @@ describe("POST /artists/me/profile/publish", () => {
   });
 
   it("api-server のエラーはステータスごと透過する", async () => {
-    publishPost.mockResolvedValue({
-      ok: false,
-      status: 404,
-      json: async () => ({
-        error: "Profile not found",
-        code: "ArtistProfileNotFoundError",
-      }),
-    });
+    publishPost.mockResolvedValue(
+      upstreamJsonResponse(
+        {
+          error: "Profile not found",
+          code: "ArtistProfileNotFoundError",
+        },
+        404,
+      ),
+    );
 
     const res = await request({ published: true });
 
@@ -118,15 +110,16 @@ describe("POST /artists/me/profile/publish", () => {
   });
 
   it("公開条件を満たさない拒否は不足項目を表示ラベルに解決して返す", async () => {
-    publishPost.mockResolvedValue({
-      ok: false,
-      status: 422,
-      json: async () => ({
-        error: "Profile is not publishable: required fields are missing",
-        code: "ProfileNotPublishableError",
-        details: { missingFields: ["imageUrl", "links"] },
-      }),
-    });
+    publishPost.mockResolvedValue(
+      upstreamJsonResponse(
+        {
+          error: "Profile is not publishable: required fields are missing",
+          code: "ProfileNotPublishableError",
+          details: { missingFields: ["imageUrl", "links"] },
+        },
+        422,
+      ),
+    );
 
     const res = await request({ published: true });
 

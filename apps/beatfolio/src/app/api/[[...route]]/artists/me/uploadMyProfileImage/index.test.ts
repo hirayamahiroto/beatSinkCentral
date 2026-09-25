@@ -12,6 +12,7 @@ import {
   createEndpointMock,
   type ApiServerClient,
   type ApiServerClientMock,
+  upstreamJsonResponse,
 } from "../../../../../../utils/client/testDoubles";
 
 const meGet =
@@ -52,23 +53,19 @@ const imageFile = () =>
 describe("POST /artists/me/profile/image", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    meGet.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({
+    meGet.mockResolvedValue(
+      upstreamJsonResponse({
         registered: true,
         userId: "user-1",
         email: "saku@example.com",
         artist: { artistId: "artist-1", handle: "saku", hasProfile: true },
       }),
-    });
-    imagePost.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({
+    );
+    imagePost.mockResolvedValue(
+      upstreamJsonResponse({
         imageUrl: "https://example.supabase.co/public/a.jpg",
       }),
-    });
+    );
   });
 
   it("検証を通ったファイルを自分の artistId 宛てで api-server へ渡す", async () => {
@@ -92,11 +89,7 @@ describe("POST /artists/me/profile/image", () => {
   });
 
   it("artist 未登録なら api-server へ渡さず 404 を返す", async () => {
-    meGet.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({ registered: false }),
-    });
+    meGet.mockResolvedValue(upstreamJsonResponse({ registered: false }));
 
     const res = await request(imageFile());
 
@@ -105,14 +98,15 @@ describe("POST /artists/me/profile/image", () => {
   });
 
   it("api-server のエラーはステータスごと透過する", async () => {
-    imagePost.mockResolvedValue({
-      ok: false,
-      status: 413,
-      json: async () => ({
-        error: "Image file is too large",
-        code: "ImageTooLargeError",
-      }),
-    });
+    imagePost.mockResolvedValue(
+      upstreamJsonResponse(
+        {
+          error: "Image file is too large",
+          code: "ImageTooLargeError",
+        },
+        413,
+      ),
+    );
 
     const res = await request(imageFile());
 

@@ -9,6 +9,7 @@ import { handleBffError } from "../../../../../errorMap";
 import {
   createEndpointMock,
   upstreamJsonResponse,
+  upstreamMalformedJsonResponse,
   type ApiServerClient,
   type ApiServerClientMock,
 } from "../../../../../utils/client/testDoubles";
@@ -107,13 +108,7 @@ describe("POST /users", () => {
   });
 
   it("成功応答のボディが JSON として読めなければ契約違反として 502 を返す", async () => {
-    usersPost.mockResolvedValue({
-      ok: true,
-      status: 201,
-      json: async () => {
-        throw new SyntaxError("Unexpected end of JSON input");
-      },
-    });
+    usersPost.mockResolvedValue(upstreamMalformedJsonResponse(201));
 
     const res = await request(validBody);
 
