@@ -144,13 +144,18 @@ flowchart TD
 
 ```bash
 npm test -- --filter api-server           # 全テスト green
-cd apps/api-server && npx tsc --noEmit    # 型（vitest は型を見ないので必須）
-cd apps/api-server && npx next lint       # lint（Entity の振る舞いの呼び手は local/entity-behavior-has-caller が見る）
+(cd apps/api-server && npx tsc --noEmit)  # 型（vitest は型を見ないので必須）
+(cd apps/api-server && npx next lint)     # lint（Entity の振る舞いの呼び手は local/entity-behavior-has-caller が見る）
 npm run knip                              # 呼び手のない export・ファイル・依存
 npm run knip:production                   # テストからしか参照されない export
+npm run test:audit                        # テストの偽パス発生源（指標 A〜E 等）
+(cd apps/api-server && npm run test:mutation:incremental) # domain / usecase / route を変更したとき
 ```
 
 - 新規 module すべてに test があるか。
+- `test:audit` の指標が**変更前より悪化していないか**（手書きフィクスチャ C の増加、台本化した殻メソッド E の増加など）。純粋モジュールのモック（A）と型なしモック（B）は lint（`local-test/*`）が先に止める。
+- mutation の survived が出たら `test-hardening` スキルの分類（アサーションが弱い / 等価変異 / static mutant の偽 survived）で読み、**アサーションが弱いものだけ**テストを足す。数字を上げるためのテストは書かない（`strategy.md` §6）。
+- 足したテストが**壊れた実装で落ちる**ことを確かめる。不具合の修正なら修正前のコードで、新しい振る舞いなら上の mutation で確かめる（`strategy.md` §11「書いたテストが検知できることを確かめる」）。
 - 自分が足した `export`・Entity の振る舞い・`*Schema` が knip / lint の出力に**新たに**現れていないか。手動 grep で代替しない（`docs/architecture/server/architecture.md`「呼び手のない公開面は機械的に検出する」）。
 - `tsc` の**既存エラー**（無関係なテストモック等）と**自分の変更起因**のエラーを切り分ける（`git status` で diff 範囲を確認）。
 

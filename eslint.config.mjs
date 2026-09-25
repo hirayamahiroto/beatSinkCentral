@@ -9,6 +9,7 @@ import {
   typeSafetyPendingWarn,
   bffRouteStatusRules,
   hookTestRules,
+  testDoubleRules,
 } from "./eslint.rules.mjs";
 
 const eslintConfig = [
@@ -26,6 +27,10 @@ const eslintConfig = [
   ]),
   bffRouteStatusRules("apps/beatfolio"),
   hookTestRules(["apps/beatfolio/src/app/**/hooks/**/*.ts"]),
+  testDoubleRules([
+    "apps/beatfolio/src/**/*.{test.ts,test.tsx}",
+    "apps/beatfolio/src/**/testDoubles/**/*.ts",
+  ]),
 ];
 
 export default eslintConfig;

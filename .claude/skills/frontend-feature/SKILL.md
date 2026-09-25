@@ -141,14 +141,17 @@ Atomic Design の順＝**部品から外側へ**。
 ## Step 4. 検証する
 
 ```bash
-cd packages/ui && npx tsc --noEmit          # 型
-cd apps/beatfolio && npx tsc --noEmit       # アプリ側を変更したなら
-cd apps/beatfolio && npx vitest run         # テスト
-cd apps/beatfolio && npx next build         # ルート構成の検証（page を足したとき）
-cd packages/ui && npm run storybook         # 目視（:6006）
+(cd packages/ui && npx tsc --noEmit)        # 型
+(cd apps/beatfolio && npx tsc --noEmit)     # アプリ側を変更したなら
+(cd apps/beatfolio && npx vitest run)       # テスト
+(cd apps/beatfolio && npx next build)       # ルート構成の検証（page を足したとき）
+(cd packages/ui && npm run storybook)       # 目視（:6006）
+npm run test:audit                          # テストの偽パス発生源（BFF / hook テストを変更したとき）
 ```
 
 - 描画する atom/molecule/organism すべてに `index.stories.tsx` があるか。
+- `test:audit` の指標が**変更前より悪化していないか**。BFF の上流モックは型付きダブル（`utils/client/testDoubles`）から作り、手書きのボディで組まない（指標 B / C）。型なしのモックは lint（`local-test/no-untyped-double`）が先に止める。
+- 足したテストが**壊れた実装で落ちる**ことを確かめる。不具合の修正なら修正前のコードで落ちることを見る。beatfolio には Stryker が無いので、新しい振る舞いは条件の反転などを手で入れて確かめ、必ず元に戻す（`strategy.md` §11「書いたテストが検知できることを確かめる」）。
 
 ### Step 4b. `code-review-checklist` Skill を呼ぶ（必須・省略しない）
 

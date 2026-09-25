@@ -11,6 +11,15 @@ describe("createImageUrl", () => {
     }
   });
 
+  it("前後の空白を正規化する", () => {
+    const result = createImageUrl("  https://example.com/a.png  ");
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.value).toBe("https://example.com/a.png");
+    }
+  });
+
   it("URL でない文字列は err を返す", () => {
     expect(createImageUrl("not-a-url").ok).toBe(false);
   });

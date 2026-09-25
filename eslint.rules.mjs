@@ -755,3 +755,120 @@ export const bffRouteStatusRules = (appDir) => ({
   },
   rules: { "local-bff/no-status-in-route": "error" },
 });
+
+// なぜ lint か: 純粋モジュール（domain / usecases）をダブルで隠すと、実装を壊しても
+// テストが通る（偽パス）。scripts/test-audit は正規表現で数えるだけで、
+// vi.spyOn / vi.doMock / vi.mock(import(...)) の形はすり抜けられる。
+// 形が確定している違反は AST で判定して、入れさせない（strategy.md §5、background.md §3）。
+const PURE_MODULE_DOUBLE_MESSAGE =
+  "純粋モジュール（domain / usecases）はモック・スパイしない。実物を呼ぶ（docs/architecture/testing/strategy.md §5）。";
+
+const UNTYPED_DOUBLE_MESSAGE =
+  'vi.fn の型引数に any を使わない。依存先の契約型（vi.fn<I["method"]>()）で縛る（docs/architecture/testing/strategy.md §5）。';
+
+const PURE_MODULE_PATH = /\/src\/(domain|usecases)(\/|$)/;
+
+const resolvesToPureModule = (filename, spec) => {
+  if (typeof spec !== "string") return false;
+  if (spec.startsWith("@/"))
+    return PURE_MODULE_PATH.test(`/src/${spec.slice(2)}`);
+  if (!spec.startsWith(".")) return false;
+  const resolved = join(dirname(filename), spec).split(sep).join("/");
+  return PURE_MODULE_PATH.test(resolved);
+};
+
+const moduleSpecifierOf = (arg) => {
+  if (arg?.type === "Literal") return arg.value;
+  if (arg?.type === "ImportExpression" && arg.source.type === "Literal")
+    return arg.source.value;
+  return null;
+};
+
+const isViCall = (node, names) =>
+  node.callee.type === "MemberExpression" &&
+  node.callee.object.type === "Identifier" &&
+  node.callee.object.name === "vi" &&
+  node.callee.property.type === "Identifier" &&
+  names.includes(node.callee.property.name);
+
+const rootIdentifierOf = (node) => {
+  let current = node;
+  while (current?.type === "MemberExpression") current = current.object;
+  return current?.type === "Identifier" ? current : null;
+};
+
+const noPureModuleDoubleRule = {
+  meta: {
+    type: "problem",
+    docs: { description: PURE_MODULE_DOUBLE_MESSAGE },
+    schema: [],
+  },
+  create(context) {
+    const filename = context.filename;
+    // 名前ではなく束縛で照合する。同名の引数・ローカル変数への spyOn を誤検出しない
+    const isPureImportBinding = (identifier, node) => {
+      const variable = findVariable(
+        context.sourceCode.getScope(node),
+        identifier.name,
+      );
+      return (
+        variable !== null &&
+        variable.defs.some(
+          (def) =>
+            def.type === "ImportBinding" &&
+            resolvesToPureModule(filename, def.parent.source.value),
+        )
+      );
+    };
+    return {
+      CallExpression(node) {
+        if (isViCall(node, ["mock", "doMock"])) {
+          const spec = moduleSpecifierOf(node.arguments[0]);
+          if (resolvesToPureModule(filename, spec)) {
+            context.report({ node, message: PURE_MODULE_DOUBLE_MESSAGE });
+          }
+          return;
+        }
+        if (isViCall(node, ["spyOn"])) {
+          const target = rootIdentifierOf(node.arguments[0]);
+          if (target && isPureImportBinding(target, node)) {
+            context.report({ node, message: PURE_MODULE_DOUBLE_MESSAGE });
+          }
+        }
+      },
+    };
+  },
+};
+
+const noUntypedDoubleRule = {
+  meta: {
+    type: "problem",
+    docs: { description: UNTYPED_DOUBLE_MESSAGE },
+    schema: [],
+  },
+  create(context) {
+    return {
+      'CallExpression[callee.object.name="vi"][callee.property.name="fn"] > TSTypeParameterInstantiation TSAnyKeyword'(
+        node,
+      ) {
+        context.report({ node, message: UNTYPED_DOUBLE_MESSAGE });
+      },
+    };
+  },
+};
+
+export const testDoubleRules = (files) => ({
+  files,
+  plugins: {
+    "local-test": {
+      rules: {
+        "no-pure-module-double": noPureModuleDoubleRule,
+        "no-untyped-double": noUntypedDoubleRule,
+      },
+    },
+  },
+  rules: {
+    "local-test/no-pure-module-double": "error",
+    "local-test/no-untyped-double": "error",
+  },
+});

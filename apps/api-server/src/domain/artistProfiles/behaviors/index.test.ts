@@ -49,6 +49,17 @@ describe("draftIfAbsent", () => {
     expect(draft.kind).toBe("draft");
     expect(draft.id).toBeTruthy();
     expect(draft.artistId).toBe("artist-2");
+    // toView は既知の問いに並べ替えるため、内容そのものも空であることを確かめる
+    expect(draft.content).toStrictEqual({
+      name: null,
+      tagline: null,
+      imageUrl: null,
+      chapters: [],
+      activityInfo: null,
+      genres: [],
+      links: [],
+      presentationPattern: null,
+    });
     expect(toView(draft)).toStrictEqual({
       attributes: {
         name: null,

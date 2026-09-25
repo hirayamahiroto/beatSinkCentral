@@ -33,6 +33,12 @@ describe("createTicketUrl", () => {
     expect(createTicketUrl("ftp://tickets.example.com/e/1").ok).toBe(false);
   });
 
+  it("先頭以外に https:// を含むだけの別スキームは err を返す", () => {
+    expect(
+      createTicketUrl("ftp://tickets.example.com/?next=https://x.com").ok,
+    ).toBe(false);
+  });
+
   it("http と大文字の HTTPS は受け付ける", () => {
     expect(createTicketUrl("http://tickets.example.com/e/1").ok).toBe(true);
     expect(createTicketUrl("HTTPS://tickets.example.com/e/1").ok).toBe(true);

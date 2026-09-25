@@ -77,6 +77,61 @@ const rel = (p) => relative(ROOT, p).split(sep).join("/");
 const isTest = (p) => /\.test\.tsx?$/.test(p);
 const isSource = (p) => /(^|\/)index\.tsx?$/.test(rel(p)) && !isTest(p);
 const read = (p) => readFileSync(p, "utf8");
+// 文字列・テンプレート・正規表現リテラルの中の `//` `/*` はコメントとして扱わない。
+// 依存なしを保つため AST ではなく字句を走査する（`${}` 内の入れ子のテンプレートは対象外）
+const REGEX_PRECEDER = /[(,=:[!&|?{};+\-*%<>~^]/;
+const skipLiteral = (src, start, quote) => {
+  let i = start + 1;
+  let inClass = false;
+  while (i < src.length) {
+    const ch = src[i];
+    if (ch === "\\") {
+      i += 2;
+      continue;
+    }
+    if (quote !== "`" && ch === "\n") return i;
+    if (ch === quote && !inClass) return i + 1;
+    // 正規表現の文字クラス内の `/`（例: /[/]/）は終端ではない
+    if (quote === "/" && ch === "[") inClass = true;
+    if (quote === "/" && ch === "]") inClass = false;
+    i += 1;
+  }
+  return i;
+};
+const stripComments = (src) => {
+  let out = "";
+  let prev = "";
+  let i = 0;
+  while (i < src.length) {
+    const ch = src[i];
+    const next = src[i + 1];
+    if (ch === "/" && next === "/") {
+      while (i < src.length && src[i] !== "\n") i += 1;
+    } else if (ch === "/" && next === "*") {
+      const close = src.indexOf("*/", i + 2);
+      const end = close === -1 ? src.length : close + 2;
+      out += src.slice(i, end).replace(/[^\n]/g, "");
+      i = end;
+    } else if (
+      ch === '"' ||
+      ch === "'" ||
+      ch === "`" ||
+      (ch === "/" && (prev === "" || REGEX_PRECEDER.test(prev)))
+    ) {
+      const end = skipLiteral(src, i, ch);
+      out += src.slice(i, end);
+      prev = ch;
+      i = end;
+    } else {
+      out += ch;
+      if (!/\s/.test(ch)) prev = ch;
+      i += 1;
+    }
+  }
+  return out;
+};
+// コメントに残った `vi.mock(...)` 等を違反として数えないよう、判定はコメントを除いた本文で行う
+const readCode = (p) => stripComments(read(p));
 
 const tests = files.filter(isTest);
 const sources = files.filter(isSource);
@@ -87,17 +142,47 @@ const itTitles = (src) =>
   );
 
 // ---------- 指標 1: 純粋モジュールのモック ----------
+// vi.mock / vi.doMock（文字列でも import() でも）と、純粋モジュールから import した束縛への vi.spyOn を数える。
+// 確定の違反は ESLint（local-test/no-pure-module-double）でも止めている。ここは推移の記録用。
+const isPureTarget = (from, target) => {
+  const resolved = target.startsWith(".")
+    ? "/" + rel(resolve(dirname(from), target))
+    : "/" + target;
+  const probe = resolved.endsWith("/") ? resolved : resolved + "/";
+  return PURE_SEGMENTS.some((s) => probe.includes(s));
+};
 const pureModuleMocks = [];
 for (const t of tests) {
-  const src = read(t);
-  for (const m of src.matchAll(/vi\.mock\(\s*["']([^"']+)["']/g)) {
-    const target = m[1];
-    const resolved = target.startsWith(".")
-      ? "/" + rel(resolve(dirname(t), target))
-      : "/" + target;
-    const probe = resolved.endsWith("/") ? resolved : resolved + "/";
-    if (PURE_SEGMENTS.some((s) => probe.includes(s))) {
-      pureModuleMocks.push({ file: rel(t), target });
+  const src = readCode(t);
+  for (const m of src.matchAll(
+    /vi\.(?:mock|doMock)\(\s*(?:import\(\s*)?["']([^"']+)["']/g,
+  )) {
+    if (isPureTarget(t, m[1])) {
+      pureModuleMocks.push({ file: rel(t), target: m[1] });
+    }
+  }
+  const pureBindings = [];
+  for (const m of src.matchAll(
+    /import\s+(?!type\b)([\s\S]*?)\s+from\s+["']([^"']+)["']/g,
+  )) {
+    if (!isPureTarget(t, m[2])) continue;
+    pureBindings.push(
+      ...m[1]
+        .replace(/[{}]/g, ",")
+        .split(",")
+        .map((s) =>
+          s
+            .trim()
+            .split(/\s+as\s+/)
+            .pop()
+            .replace(/^\*\s*/, ""),
+        )
+        .filter((s) => /^[A-Za-z_$][\w$]*$/.test(s)),
+    );
+  }
+  for (const m of src.matchAll(/vi\.spyOn\(\s*([A-Za-z_$][\w$]*)/g)) {
+    if (pureBindings.includes(m[1])) {
+      pureModuleMocks.push({ file: rel(t), target: `vi.spyOn(${m[1]})` });
     }
   }
 }
@@ -119,9 +204,28 @@ const resolveImport = (from, spec) => {
   return null;
 };
 const RETURN_TYPE_ANNOTATED = /\)\s*:\s*[^=;{}]+=>\s*$/;
+// `vi.fn<` 直後の型引数を、`=>` の `>` を数えずに対応する `>` まで切り出す
+const typeArgumentAt = (src, start) => {
+  let depth = 1;
+  for (let i = start; i < src.length; i += 1) {
+    const ch = src[i];
+    if (ch === "<") depth += 1;
+    else if (ch === ">" && src[i - 1] !== "=") {
+      depth -= 1;
+      if (depth === 0) return src.slice(start, i);
+    }
+  }
+  return src.slice(start);
+};
 const mockTypingOf = (src) => {
   let untyped = 0;
-  let typed = (src.match(/vi\.fn</g) ?? []).length;
+  let typed = 0;
+  for (const m of src.matchAll(/vi\.fn</g)) {
+    // vi.fn<any> は型引数があっても契約に縛られていない
+    if (/\bany\b/.test(typeArgumentAt(src, m.index + m[0].length)))
+      untyped += 1;
+    else typed += 1;
+  }
   for (const m of src.matchAll(/vi\.fn\(/g)) {
     const before = src.slice(Math.max(0, m.index - 200), m.index);
     if (RETURN_TYPE_ANNOTATED.test(before)) typed += 1;
@@ -133,7 +237,7 @@ const shellMockTyping = {};
 for (const t of tests) {
   const layer = LAYER_OF("/" + rel(t));
   if (!COMPOSITION_LAYERS.has(layer)) continue;
-  const src = read(t);
+  const src = readCode(t);
   const local = mockTypingOf(src);
   const helpers = [...src.matchAll(/from\s+["']([^"']+)["']/g)]
     .map((m) => m[1])
@@ -141,7 +245,7 @@ for (const t of tests) {
     .map((s) => resolveImport(t, s))
     .filter(Boolean);
   const helperTyping = helpers
-    .map((h) => mockTypingOf(read(h)))
+    .map((h) => mockTypingOf(readCode(h)))
     .filter((h) => h.untyped + h.typed > 0);
   const usesMock =
     local.untyped + local.typed > 0 ||
@@ -166,20 +270,75 @@ for (const t of tests) {
 }
 
 // ---------- 指標 3: フィクスチャの factory 導出率 ----------
+// 判別子だけを持ち、残りが参照（factory で作った値を指す識別子）だけのリテラルは
+// 「封筒」として数える。例: `{ status: "complete", actor }` / `{ ok: true, value }`。
+// 中身は factory 由来で、形は殻の戻り値型が縛るため、手書きフィクスチャではない。
+const DISCRIMINANT_ENTRY =
+  /^(status|kind|ok|type)\s*:\s*("[^"]*"|'[^']*'|true|false)$/;
+const REFERENCE_ENTRY = /^([A-Za-z_$][\w$]*\s*:\s*)?[A-Za-z_$][\w$]*$/;
+const balancedBlockAt = (src, open) => {
+  let depth = 0;
+  for (let i = open; i < src.length; i += 1) {
+    if ("{[(".includes(src[i])) depth += 1;
+    else if ("}])".includes(src[i])) {
+      depth -= 1;
+      if (depth === 0) return src.slice(open + 1, i);
+    }
+  }
+  return src.slice(open + 1);
+};
+const topLevelEntries = (body) => {
+  const entries = [];
+  let depth = 0;
+  let current = "";
+  for (const ch of body) {
+    if ("{[(".includes(ch)) depth += 1;
+    else if ("}])".includes(ch)) depth -= 1;
+    if (ch === "," && depth === 0) {
+      entries.push(current.trim());
+      current = "";
+    } else current += ch;
+  }
+  if (current.trim()) entries.push(current.trim());
+  return entries;
+};
+// `actor: { user, artist }` のように、参照だけを束ねた入れ子も参照として扱う
+const NESTED_ENTRY = /^[A-Za-z_$][\w$]*\s*:\s*\{([\s\S]*)\}$/;
+const isReferenceEntry = (entry) => {
+  if (REFERENCE_ENTRY.test(entry)) return true;
+  const nested = entry.match(NESTED_ENTRY);
+  return (
+    nested !== null &&
+    topLevelEntries(nested[1]).every((e) => isReferenceEntry(e))
+  );
+};
+const isEnvelopeLiteral = (body) => {
+  const entries = topLevelEntries(body);
+  return (
+    entries.some((e) => DISCRIMINANT_ENTRY.test(e)) &&
+    entries.every((e) => DISCRIMINANT_ENTRY.test(e) || isReferenceEntry(e))
+  );
+};
 let fixtureFromFactory = 0;
+let fixtureEnvelope = 0;
 let fixtureLiteral = 0;
 const fixtureLiteralFiles = new Set();
 for (const t of tests) {
   const layer = LAYER_OF("/" + rel(t));
   if (!COMPOSITION_LAYERS.has(layer)) continue;
-  const src = read(t);
+  const src = readCode(t);
   for (const m of src.matchAll(
     /mockResolvedValue(?:Once)?\(\s*([A-Za-z_$][\w$]*|\{)/g,
   )) {
     const head = m[1];
     if (head === "{") {
-      fixtureLiteral += 1;
-      fixtureLiteralFiles.add(rel(t));
+      const open = m.index + m[0].length - 1;
+      if (isEnvelopeLiteral(balancedBlockAt(src, open))) {
+        fixtureEnvelope += 1;
+      } else {
+        fixtureLiteral += 1;
+        fixtureLiteralFiles.add(rel(t));
+      }
     } else if (FACTORY_PREFIXES.some((p) => head.startsWith(p))) {
       fixtureFromFactory += 1;
     }
@@ -187,8 +346,6 @@ for (const t of tests) {
 }
 
 // ---------- 指標 4: テストのないモジュール ----------
-const stripComments = (src) =>
-  src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 const isTypeOnlyOrBarrel = (src) => {
   const code = stripComments(src);
   return (
@@ -226,7 +383,7 @@ const leakageSuspects = [];
 for (const t of tests) {
   const layer = LAYER_OF("/" + rel(t));
   if (!COMPOSITION_LAYERS.has(layer)) continue;
-  const src = read(t);
+  const src = readCode(t);
   const titles = itTitles(src);
   const invalid = titles.filter((x) => /不正|無効|超える|形式|書式/.test(x));
   const reasons = [];
@@ -243,7 +400,7 @@ for (const t of tests) {
 const builderCallAsserts = [];
 for (const t of tests) {
   if (LAYER_OF("/" + rel(t)) !== "repository") continue;
-  const src = read(t);
+  const src = readCode(t);
   const n = (src.match(/toHaveBeenCalledTimes/g) ?? []).length;
   const chains = (
     src.match(
@@ -261,7 +418,7 @@ for (const t of tests) {
 // ---------- 指標 7: 時刻・乱数の漏れ ----------
 const clockLeaks = [];
 for (const s of sources) {
-  const src = read(s);
+  const src = readCode(s);
   const hasClock = /new Date\(\)|Date\.now\(\)/.test(src);
   const hasUuid = /randomUUID\(\)/.test(src);
   const hasMathRandom = /Math\.random\(\)/.test(src);
@@ -272,7 +429,7 @@ for (const s of sources) {
     join(dirname(s), "index.test.ts"),
     join(dirname(s), "index.test.tsx"),
   ].find(existsSync);
-  const tsrc = t ? read(t) : "";
+  const tsrc = t ? readCode(t) : "";
   const controlled = /useFakeTimers|setSystemTime|spyOn\(\s*crypto/.test(tsrc);
   clockLeaks.push({
     file: rel(s),
@@ -292,7 +449,7 @@ const scripts = {}; // method -> Set(files)
 for (const t of tests) {
   const layer = LAYER_OF("/" + rel(t));
   if (layer !== "usecase" && layer !== "route") continue;
-  const src = read(t);
+  const src = readCode(t);
   for (const m of src.matchAll(
     /\b([a-zA-Z]\w*)\.(mockResolvedValue|mockRejectedValue|mockResolvedValueOnce|mockImplementation)\(/g,
   )) {
@@ -332,12 +489,14 @@ const summary = {
   ),
   fixtureDerivation: {
     fromFactory: fixtureFromFactory,
+    envelope: fixtureEnvelope,
     literal: fixtureLiteral,
     ratio:
-      fixtureFromFactory + fixtureLiteral
-        ? +(fixtureFromFactory / (fixtureFromFactory + fixtureLiteral)).toFixed(
-            2,
-          )
+      fixtureFromFactory + fixtureEnvelope + fixtureLiteral
+        ? +(
+            (fixtureFromFactory + fixtureEnvelope) /
+            (fixtureFromFactory + fixtureEnvelope + fixtureLiteral)
+          ).toFixed(2)
         : null,
     literalFiles: [...fixtureLiteralFiles],
   },
@@ -371,7 +530,7 @@ const renderMarkdown = () => {
     );
   }
   lines.push(
-    `| C. フィクスチャの factory 導出率 | ${fixtureFromFactory}/${fixtureFromFactory + fixtureLiteral} (${pct(summary.fixtureDerivation.ratio)}) | 100% |`,
+    `| C. フィクスチャの factory 導出率（封筒 ${fixtureEnvelope} を含む） | ${fixtureFromFactory + fixtureEnvelope}/${fixtureFromFactory + fixtureEnvelope + fixtureLiteral} (${pct(summary.fixtureDerivation.ratio)}) | 100% |`,
   );
   lines.push(
     `| D. 責務漏れの疑い（合成点） | ${leakageSuspects.length} | 0（要レビュー） |`,
