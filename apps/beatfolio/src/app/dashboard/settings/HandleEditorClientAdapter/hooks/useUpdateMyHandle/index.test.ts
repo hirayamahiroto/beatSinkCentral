@@ -1,34 +1,41 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { useUpdateMyHandle, type UpdateMyHandleResult } from "./index";
+import {
+  createRouterMock,
+  type RouterModule,
+} from "../../../../../../utils/navigation/testDoubles";
+import {
+  createEndpointMock,
+  upstreamJsonResponse,
+  upstreamErrorResponse,
+  upstreamMalformedJsonResponse,
+  type BeatfolioBffClient,
+  type BeatfolioBffClientMock,
+} from "../../../../../../utils/client/testDoubles";
 
-const refreshMock = vi.fn();
+const router = createRouterMock();
 
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({
-    refresh: refreshMock,
-  }),
-}));
+vi.mock(
+  "next/navigation",
+  () => ({ useRouter: () => router }) satisfies RouterModule,
+);
 
-const postMock = vi.fn();
+const post =
+  createEndpointMock<BeatfolioBffClient["api"]["artists"]["me"]["$post"]>();
+
+const bffClient = {
+  api: { artists: { me: { $post: post } } },
+} satisfies BeatfolioBffClientMock;
 
 vi.mock("../../../../../../utils/client", () => ({
-  createBeatfolioBffClient: () => ({
-    api: { artists: { me: { $post: postMock } } },
-  }),
+  createBeatfolioBffClient: () => bffClient,
 }));
 
-const buildJsonResponse = (body: unknown, status = 200): Response =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json" },
-  });
+type PostResponse = Awaited<ReturnType<typeof post>>;
 
-const buildNonJsonResponse = (status: number): Response =>
-  new Response("<html>error</html>", {
-    status,
-    headers: { "content-type": "text/html" },
-  });
+const updatedResponse = () =>
+  upstreamJsonResponse({ artistId: "artist-1", handle: "new_id" });
 
 describe("useUpdateMyHandle", () => {
   afterEach(() => {
@@ -36,7 +43,7 @@ describe("useUpdateMyHandle", () => {
   });
 
   it("更新に成功すると ok を返し、$post が json で呼ばれ、router.refresh が走る", async () => {
-    postMock.mockResolvedValueOnce(buildJsonResponse({}));
+    post.mockResolvedValueOnce(updatedResponse());
 
     const { result } = renderHook(() => useUpdateMyHandle());
 
@@ -45,15 +52,15 @@ describe("useUpdateMyHandle", () => {
       returned = await result.current.update({ handle: "new_id" });
     });
 
-    expect(postMock).toHaveBeenCalledWith({ json: { handle: "new_id" } });
+    expect(post).toHaveBeenCalledWith({ json: { handle: "new_id" } });
     expect(returned).toStrictEqual({ ok: true, value: undefined });
-    expect(refreshMock).toHaveBeenCalledTimes(1);
+    expect(router.refresh).toHaveBeenCalledTimes(1);
     expect(result.current.isLoading).toBe(false);
   });
 
   it("4xx はサーバーのエラーメッセージを rejected として返す", async () => {
-    postMock.mockResolvedValueOnce(
-      buildJsonResponse({ error: "Handle already taken: taken" }, 409),
+    post.mockResolvedValueOnce(
+      upstreamErrorResponse({ error: "Handle already taken: taken" }, 409),
     );
 
     const { result } = renderHook(() => useUpdateMyHandle());
@@ -67,12 +74,12 @@ describe("useUpdateMyHandle", () => {
       ok: false,
       error: { kind: "rejected", message: "Handle already taken: taken" },
     });
-    expect(refreshMock).not.toHaveBeenCalled();
+    expect(router.refresh).not.toHaveBeenCalled();
     expect(result.current.isLoading).toBe(false);
   });
 
   it("エラー本文が無ければフォールバックメッセージを返す", async () => {
-    postMock.mockResolvedValueOnce(buildJsonResponse({}, 400));
+    post.mockResolvedValueOnce(upstreamErrorResponse({}, 400));
 
     const { result } = renderHook(() => useUpdateMyHandle());
 
@@ -85,12 +92,12 @@ describe("useUpdateMyHandle", () => {
       ok: false,
       error: { kind: "rejected", message: "Handle の更新に失敗しました" },
     });
-    expect(refreshMock).not.toHaveBeenCalled();
+    expect(router.refresh).not.toHaveBeenCalled();
   });
 
   it("入力値に紐づかない 4xx（認証切れ等）は unexpected として返す", async () => {
-    postMock.mockResolvedValueOnce(
-      buildJsonResponse({ error: "Unauthorized" }, 401),
+    post.mockResolvedValueOnce(
+      upstreamErrorResponse({ error: "Unauthorized" }, 401),
     );
 
     const { result } = renderHook(() => useUpdateMyHandle());
@@ -107,7 +114,7 @@ describe("useUpdateMyHandle", () => {
   });
 
   it("5xx は unexpected として返す", async () => {
-    postMock.mockResolvedValueOnce(buildNonJsonResponse(500));
+    post.mockResolvedValueOnce(upstreamMalformedJsonResponse(500));
 
     const { result } = renderHook(() => useUpdateMyHandle());
 
@@ -120,12 +127,12 @@ describe("useUpdateMyHandle", () => {
       ok: false,
       error: { kind: "unexpected", message: "Handle の更新に失敗しました" },
     });
-    expect(refreshMock).not.toHaveBeenCalled();
+    expect(router.refresh).not.toHaveBeenCalled();
     expect(result.current.isLoading).toBe(false);
   });
 
   it("通信自体が失敗した場合も unexpected として返す", async () => {
-    postMock.mockRejectedValueOnce(new Error("Failed to fetch"));
+    post.mockRejectedValueOnce(new Error("Failed to fetch"));
 
     const { result } = renderHook(() => useUpdateMyHandle());
 
@@ -141,14 +148,14 @@ describe("useUpdateMyHandle", () => {
         message: "通信に失敗しました。時間をおいて再度お試しください",
       },
     });
-    expect(refreshMock).not.toHaveBeenCalled();
+    expect(router.refresh).not.toHaveBeenCalled();
   });
 
   it("更新中は isLoading が true、完了後に false になる", async () => {
-    let resolvePost: ((res: Response) => void) | undefined;
-    postMock.mockImplementationOnce(
+    let resolvePost: ((res: PostResponse) => void) | undefined;
+    post.mockImplementationOnce(
       () =>
-        new Promise<Response>((resolve) => {
+        new Promise<PostResponse>((resolve) => {
           resolvePost = resolve;
         }),
     );
@@ -165,7 +172,7 @@ describe("useUpdateMyHandle", () => {
     });
 
     await act(async () => {
-      resolvePost?.(buildJsonResponse({}));
+      resolvePost?.(updatedResponse());
       await updatePromise;
     });
 
