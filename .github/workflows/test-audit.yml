@@ -18,5 +18,8 @@ jobs:
         with:
           node-version: "22"
 
+      - name: 🧪 計測器（test-audit）自身のテスト
+        run: npm run test:audit:test
+
       - name: 🔍 テスト戦略の構造違反を検査
         run: npm run test:audit:ci

@@ -169,6 +169,17 @@ describe("reconstructStoredProfile", () => {
     ]);
   });
 
+  it("章・リンクを持たない行は空の章・リンクで復元する", () => {
+    const state = reconstructStoredProfile({
+      id: "profile-1",
+      artistId: "artist-1",
+      published: false,
+    });
+
+    expect(state.content.chapters).toStrictEqual([]);
+    expect(state.content.links).toStrictEqual([]);
+  });
+
   it("本文が空の章は保持しない", () => {
     const state = reconstructStoredProfile({
       id: "profile-1",

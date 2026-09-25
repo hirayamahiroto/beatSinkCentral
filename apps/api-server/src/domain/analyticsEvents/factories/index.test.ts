@@ -74,6 +74,33 @@ describe("createAnalyticsEvent", () => {
     expect(data.props).toEqual({ depth: 50 });
   });
 
+  it("profile_view以外はpropsにfromがあっても昇格せず、propsに残す", () => {
+    const result = createAnalyticsEvent(
+      buildInput({
+        eventType: "story_scroll",
+        props: { from: "announce", depth: 50 },
+      }),
+      OCCURRED_AT,
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const data = result.value.toPersistence();
+    expect(data.from).toBeNull();
+    expect(data.props).toStrictEqual({ from: "announce", depth: 50 });
+  });
+
+  it("profile_viewでもfromが文字列でなければ昇格しない", () => {
+    const result = createAnalyticsEvent(
+      buildInput({ props: { from: 123 } }),
+      OCCURRED_AT,
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.toPersistence().from).toBeNull();
+  });
+
   it("propsが空オブジェクトならnullとして保存する", () => {
     const result = createAnalyticsEvent(
       buildInput({ eventType: "story_expand", props: {} }),

@@ -1,0 +1,37 @@
+name: 🧬 mutation (api-server)
+
+# 検知力（mutation score）の推移を見るための定期実行。CI ゲートにはしない（stryker.config.mjs の thresholds.break: null）。
+# 読み方は scripts/test-audit/README.md「2. 検知力: Stryker」。
+on:
+  schedule:
+    - cron: "17 18 * * *" # 03:17 JST
+  workflow_dispatch:
+
+jobs:
+  mutation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: 📥 コードのチェックアウト
+        uses: actions/checkout@v4
+
+      - name: 🟢 Node.js のセットアップ
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: 📦 依存のインストール
+        run: npm ci
+
+      - name: 🧬 Stryker（全量）
+        working-directory: apps/api-server
+        run: npm run test:mutation
+
+      - name: 📤 レポートの保存
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-report
+          path: apps/api-server/reports/mutation/
+          retention-days: 30

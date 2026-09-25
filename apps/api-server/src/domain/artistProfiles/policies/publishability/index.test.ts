@@ -62,6 +62,19 @@ describe("toPublishableContent", () => {
     }
   });
 
+  it.each<[string, Partial<ReconstructArtistProfileParams>]>([
+    ["name", { name: null }],
+    ["imageUrl", { imageUrl: null }],
+    ["story", { chapters: [] }],
+    ["genres", { genres: [] }],
+    ["links", { links: [] }],
+  ])("%s だけが欠けていても公開不可として err を返す", (field, missing) => {
+    const result = toPublishableContent(contentOf(missing));
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.missingFields).toEqual([field]);
+  });
+
   it("始まりの章が無く転機・コンセプトのみでは story が不足扱いになる", () => {
     const result = toPublishableContent(
       contentOf({

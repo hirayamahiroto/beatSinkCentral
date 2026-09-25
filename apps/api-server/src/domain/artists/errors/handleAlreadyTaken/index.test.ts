@@ -25,6 +25,11 @@ describe("HandleAlreadyTakenError", () => {
   it("別のエラーや非 Error は判別しない", () => {
     expect(isHandleAlreadyTakenError(new Error("boom"))).toBe(false);
     expect(
+      isHandleAlreadyTakenError(
+        Object.assign(new Error("boom"), { type: "UserNotFoundError" }),
+      ),
+    ).toBe(false);
+    expect(
       isHandleAlreadyTakenError({
         type: "HandleAlreadyTakenError",
         handle: "taken_id",

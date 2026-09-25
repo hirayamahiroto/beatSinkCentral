@@ -9,6 +9,7 @@ import {
   usecaseCapabilityParameterExempt,
   usecaseSubjectNotFoundExempt,
   entityBehaviorRules,
+  testDoubleRules,
 } from "../../eslint.rules.mjs";
 
 const eslintConfig = [
@@ -58,6 +59,7 @@ const eslintConfig = [
   ]),
   usecaseSubjectNotFoundExempt(["src/authorization/resolution/**/*.ts"]),
   entityBehaviorRules(["src/domain/*/entities/index.ts"]),
+  testDoubleRules(["src/**/*.test.ts", "src/**/testDoubles/**/*.ts"]),
 ];
 
 export default eslintConfig;

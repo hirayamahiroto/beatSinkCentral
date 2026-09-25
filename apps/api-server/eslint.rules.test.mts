@@ -427,3 +427,64 @@ describe("local/entity-behavior-has-caller", () => {
     ).not.toContain(ENTITY_BEHAVIOR);
   });
 });
+
+const ROUTE_TEST =
+  "src/app/api/[[...route]]/artists/[artistId]/example/index.test.ts";
+const PURE_DOUBLE = "local-test/no-pure-module-double";
+const UNTYPED_DOUBLE = "local-test/no-untyped-double";
+
+describe("local-test/no-pure-module-double", () => {
+  it.each([
+    ["vi.mock", `vi.mock("../../../../../../usecases/artists/example");\n`],
+    ["vi.doMock", `vi.doMock("../../../../../../domain/artists/factories");\n`],
+    [
+      "vi.mock(import(...))",
+      `vi.mock(import("../../../../../../domain/artists/factories"));\n`,
+    ],
+    ["@/ エイリアス", `vi.mock("@/usecases/artists/example");\n`],
+  ])("%s で純粋モジュールを差し替えると検出する", async (_, code) => {
+    expect(await ruleIdsFor(ROUTE_TEST, code)).toContain(PURE_DOUBLE);
+  });
+
+  it("純粋モジュールから import した束縛への vi.spyOn を検出する", async () => {
+    const code = [
+      `import * as factories from "../../../../../../domain/artists/factories";`,
+      `vi.spyOn(factories, "createArtist");`,
+      ``,
+    ].join("\n");
+
+    expect(await ruleIdsFor(ROUTE_TEST, code)).toContain(PURE_DOUBLE);
+  });
+
+  it("殻（infrastructure）の差し替えと、グローバルへの spyOn は検出しない", async () => {
+    const code = [
+      `vi.mock("../../../../../../infrastructure/capabilities", () => ({}));`,
+      `vi.spyOn(crypto, "randomUUID");`,
+      `vi.spyOn(console, "error");`,
+      ``,
+    ].join("\n");
+
+    expect(await ruleIdsFor(ROUTE_TEST, code)).not.toContain(PURE_DOUBLE);
+  });
+});
+
+describe("local-test/no-untyped-double", () => {
+  it.each([[`vi.fn<any>()`], [`vi.fn<(...args: any[]) => any>()`]])(
+    "%s を検出する",
+    async (expression) => {
+      const code = `export const repo = { load: ${expression} };\n`;
+
+      expect(await ruleIdsFor(ROUTE_TEST, code)).toContain(UNTYPED_DOUBLE);
+    },
+  );
+
+  it("契約型で縛った vi.fn は検出しない", async () => {
+    const code = [
+      `type Reader = { load: (id: string) => Promise<string> };`,
+      `export const repo = { load: vi.fn<Reader["load"]>() };`,
+      ``,
+    ].join("\n");
+
+    expect(await ruleIdsFor(ROUTE_TEST, code)).not.toContain(UNTYPED_DOUBLE);
+  });
+});

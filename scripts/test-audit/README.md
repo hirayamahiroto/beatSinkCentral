@@ -42,6 +42,8 @@ node scripts/test-audit/index.mjs --out reports/test-audit   # 日時付き .md/
 
 依存なし。ルートの `package.json` から `npm run test:audit` / `npm run test:audit:ci`（`--strict`）/ `npm run test:audit:record`（`--out reports/test-audit`）で呼べる。
 
+計測器そのものが偽パスしないよう、違反の形ごとの検出・非検出を `index.test.mjs` で確かめている（`npm run test:audit:test`。CI では `--strict` の前に実行する）。判定を変えたら、すり抜けた形をここにケースとして足す。
+
 ### 推移の記録先（ローカル）
 
 `test:audit:record` は `reports/test-audit/`（gitignore 済み）に `<ISO 日時>.md` / `<ISO 日時>.json` と `latest.md` / `latest.json` を書く。JSON には `recordedAt` と `commit`（short SHA）が入るので、複数回分を並べれば commit 単位の推移になる。リポジトリや CI には溜めない（溜め先を変えるときは `--out` を差し替える）。
@@ -52,24 +54,25 @@ Stryker のレポート（`apps/api-server/reports/mutation/`）も gitignore �
 
 | 指標 | 条件 | 判定 | 精度 |
 | --- | --- | --- | --- |
-| 純粋モジュールをモックしているテスト数 | A | `vi.mock` の対象パスが `domain/` `usecases/` 配下 | 確定 |
-| 殻モックの型付き率（層別） | B | 合成点テストで型引数のない `vi.fn(…)` が 0 かつ `vi.fn<…>` / `satisfies` がある。`*/testDoubles/*` 経由ならそのモジュールを見る（`vi.fn` を含まないデータだけのモジュールは対象外） | 確定 |
-| フィクスチャの factory 導出率 | C | `mockResolvedValue(` の引数が `reconstruct*` / `create*` / `build*` か、オブジェクトリテラルか | **疑いまで**。BFF の上流レスポンスなど、集約でない値のリテラルも数える |
+| 純粋モジュールをモックしているテスト数 | A | `vi.mock` / `vi.doMock`（`import()` 形式を含む）の対象パスが `domain/` `usecases/` 配下、または純粋モジュールから import した束縛への `vi.spyOn` | 確定 |
+| 殻モックの型付き率（層別） | B | 合成点テストで型引数のない `vi.fn(…)`・型引数に `any` を含む `vi.fn<…>` が 0 かつ `vi.fn<…>` / `satisfies` がある。`*/testDoubles/*` 経由ならそのモジュールを見る（`vi.fn` を含まないデータだけのモジュールは対象外） | 確定 |
+| フィクスチャの factory 導出率 | C | `mockResolvedValue(` の引数が `reconstruct*` / `create*` / `build*` か、封筒か、手書きリテラルか。封筒は判別子（`status` / `kind` / `ok` / `type`）と参照だけのリテラル（`{ status: "complete", actor }` 等）で、中身は factory 由来として導出側に数える | **疑いまで**。BFF の上流レスポンスなど、集約でない値のリテラルも数える |
 | 責務漏れの疑い | D | usecase テストに異常系タイトルが 3 件以上（エントリ層の形式検証は自層の責務なので対象外）、`error.message` の検証、usecase での status 検証 | **疑いまで**。確定はレビュー |
 | 殻の契約カバー率 | E | usecase / route で `mockResolvedValue` 等の台本が書かれたメソッドが、`*.integration.test.ts` に登場するか | Phase 2 導入後に意味を持つ |
 | Repository テストのビルダ呼び出し検証 | §5 ❌例 / §12-1 / §12-4 | `toHaveBeenCalledTimes`、`mockResolvedValueOnce` の連鎖 | 確定 |
 | 時刻・乱数の直接呼び出し | §2 / §9 / ADR 0001 | 一覧は `new Date()` `Date.now()` `randomUUID()` `Math.random()` を含む全モジュール。違反として数えるのは domain の時刻・`Math.random()` と usecase の `Math.random()` だけ（`randomUUID()` は純粋扱い、usecase の時刻取得は殻の責務） | 確定 |
 | テストのないモジュール | §11 / ADR 0004 / ADR 0005 | `index.ts` に `index.test.ts(x)` がない。型のみ・バレル、マウントのみのルート、props 素通しの ClientAdapter、`NO_TEST_EXEMPT`（testDoubles / packages/ui / 薄い殻）は除外 | ほぼ確定 |
 
-「確定」の指標は lint 化して違反を入れさせないほうが安い。ESLint の `no-restricted-syntax` で A はそのまま書ける:
+コメントに書かれた `vi.mock(…)` 等は数えない（判定はコメントを除いた本文で行う）。
 
-```js
-// eslint.rules.mjs に追加（テストファイル対象）
-{
-  selector: 'CallExpression[callee.object.name="vi"][callee.property.name="mock"][arguments.0.value=/\\/(domain|usecases)\\//]',
-  message: "純粋モジュール（domain / usecases）はモックしない。実物を呼ぶ（strategy.md §5、background.md §3）。",
-},
-```
+「確定」の指標は lint で違反を入れさせない。`eslint.rules.mjs` の `testDoubleRules` が、api-server / beatfolio のテストファイルと testDoubles に次を課す（ルールのテストは `apps/api-server/eslint.rules.test.mts`）:
+
+| ルール | 条件 | 止めるもの |
+| --- | --- | --- |
+| `local-test/no-pure-module-double` | A | `vi.mock` / `vi.doMock` / `vi.mock(import())` の対象が `src/domain` `src/usecases`（相対パス・`@/` エイリアス）、純粋モジュールから import した束縛への `vi.spyOn` |
+| `local-test/no-untyped-double` | B | `vi.fn<any>` / `vi.fn<(...args: any[]) => any>` など、型引数に `any` を含む `vi.fn` |
+
+本スクリプトの A / B は、lint を通った後の推移の記録と、lint の対象外に置いたファイルの検出に使う。
 
 ### 用語との対応
 
@@ -114,6 +117,8 @@ CLI の `--mutate` は設定ファイルの `mutate` 配列を除外パターン
 - **層別の score** を見る。domain は 90% 台が目安、usecase / route は合成の責務だけ検証しているので低くて正常。層をまたいで一つの数字にしない
 - **survived mutants の一覧** が本体。「アサーションが弱い」「その分岐は仕様外（テストを足さない）」「到達不能（実装を消す）」に分類し、最初のものだけテストを直す
 - `thresholds.break` は `null` のまま。CI を落とす基準にすると数字を上げるためのテストが増える（§6）
+- **static mutant の survived は手で確かめる**。モジュール読み込み時に評価される式（`new Map(CODES.map(...))` やモジュール定数）への変異は、vitest runner がモジュールを読み直さないため、テストが落ちるはずでも survived と出ることがある。該当行に同じ変異を手で入れて `vitest run` し、落ちれば計測上の偽 survived として扱う
+- 全量は `.github/workflows/mutation.yml` が毎晩実行し、HTML / JSON レポートを artifact に残す（手動実行は `workflow_dispatch`）
 
 ## 3. 実績: 漏れたデグレの分類
 
@@ -148,6 +153,7 @@ CLI の `--mutate` は設定ファイルの `mutate` 配列を除外パターン
 ## 導入順
 
 1. ~~`index.mjs` を CI に入れ、A と「型なし殻モック」を `--strict` でゲートにする（構造の穴を塞ぐ）~~ → `.github/workflows/test-audit.yml` で全 PR に対して `npm run test:audit:ci` を実行済み
-2. Stryker を domain だけで動かし、survived を読む（アサーションの弱さを見つける）
-3. Phase 2（実 DB 統合）が入ったら、契約カバー率を 100% にする
-4. デグレが起きた瞬間から分類の記録を始める
+2. ~~Stryker を domain だけで動かし、survived を読む（アサーションの弱さを見つける）~~ → 初回 95.92%（survived 22）→ テスト追加後 98.70%（survived 7）。残る 7 件は等価変異（どの入力でも実装と区別できない: `calendarDate` の月・日の一致、`imageUrl` の catch、`settle` の下書き分岐）か、static mutant の偽 survived（`presentationPattern` / `storyChapter` の Map 構築）
+3. ~~A / B の確定指標を lint に降ろす~~ → `local-test/no-pure-module-double` / `local-test/no-untyped-double`
+4. Phase 2（実 DB 統合）が入ったら、契約カバー率を 100% にする
+5. デグレが起きた瞬間から分類の記録を始める

@@ -11,6 +11,15 @@ describe("createSnsUrl", () => {
     }
   });
 
+  it("前後の空白を正規化する", () => {
+    const result = createSnsUrl("  https://x.com/taro  ");
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.value).toBe("https://x.com/taro");
+    }
+  });
+
   it("URL でない文字列は err を返す", () => {
     expect(createSnsUrl("at-taro").ok).toBe(false);
   });

@@ -22,6 +22,10 @@ describe("createCalendarDate", () => {
     ["時刻付き", "2026-09-20T00:00:00Z"],
     ["実在しない日", "2026-02-30"],
     ["実在しない月", "2026-13-01"],
+    ["年が5桁", "12026-09-20"],
+    ["末尾に区切りが続く", "2026-09-20-01"],
+    // Date.UTC は 0〜99 年を 1900 年代に読み替えるため、年の一致で弾く
+    ["2桁以下の年", "0099-12-31"],
   ])("%s は err(InvalidCalendarDateFormatError) を返す", (_, value) => {
     const result = createCalendarDate(value);
 
