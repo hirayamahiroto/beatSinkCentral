@@ -62,7 +62,7 @@
 | 1   | テスト戦略ドキュメント       | [`docs/architecture/testing/strategy.md`](./strategy.md)                                                    | 整備済み。テストピラミッド、各層の責務、モック方針、命名・配置規約、アンチパターン                |
 | 2   | レイヤー別テストガイドライン | —                                                                                                           | 別冊にしない。具体例とアンチパターンは `strategy.md` §5・§8・§12 に置く                          |
 | 3   | テストケース設計テンプレート | —                                                                                                           | 別冊にしない。レビュー観点はチェックリスト §15、受け入れ条件は各 Issue の設計書に書く            |
-| 4   | レビューチェックリスト拡張   | [`.claude/rules/code-review-checklist.md`](../../../.claude/rules/code-review-checklist.md) §15             | 整備済み。「テストが request/response・引数の変更を検知できる状態か」                             |
+| 4   | レビューチェックリスト拡張   | [`.claude/skills/code-review-checklist/SKILL.md`](../../../.claude/skills/code-review-checklist/SKILL.md) §15             | 整備済み。「テストが request/response・引数の変更を検知できる状態か」                             |
 | 5   | 入口導線の整備               | [`CLAUDE.md`](../../../CLAUDE.md) / [`docs/README.md`](../../README.md)                                     | 整備済み。「テスト戦略」行から `strategy.md` へリンク                                             |
 
 ---

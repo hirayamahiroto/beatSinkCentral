@@ -3,7 +3,7 @@
 > **ステータス: 未合意（提案）**
 > `discussions/` は規範ではない。合意した内容は `architecture/`（規範）へ昇格させ、設定変更・スクリプトは Issue 化して実装する。
 > 着手候補の抽出: [autonomous-implementation-first-tasks.md](./autonomous-implementation-first-tasks.md)（直近 1 か月の PR 計測に基づく）
-> 関連: [testing/strategy.md](../architecture/testing/strategy.md) / [server/architecture.md](../architecture/server/architecture.md) / [refactoring-safety-net.md](./refactoring-safety-net.md) / [api-server-security-review.md](./api-server-security-review.md) / [.claude/rules/code-review-checklist.md](../../.claude/rules/code-review-checklist.md)
+> 関連: [testing/strategy.md](../architecture/testing/strategy.md) / [server/architecture.md](../architecture/server/architecture.md) / [refactoring-safety-net.md](./refactoring-safety-net.md) / [api-server-security-review.md](./api-server-security-review.md) / [.claude/skills/code-review-checklist/SKILL.md](../../.claude/skills/code-review-checklist/SKILL.md)
 
 ## 何を決めたいか
 

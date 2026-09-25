@@ -5,7 +5,7 @@
 > 種別・媒体・分類など「**固有の語彙を持つデータ**」をどうモデリングするかの設計思想を定義する。
 > スキーマ変更・新テーブル追加時の判断基準として参照する。
 > マイグレーションの手順は [`database-migration.md`](./migration.md)、接続は [`database-connection.md`](./connection.md)、全体レイヤー構成は [`architecture.md`](../architecture.md) を参照。
-> 汎用的なクエリ品質（N+1・スコープ条件・過剰取得等）は [`.claude/rules/code-review-checklist.md`](../../../../.claude/rules/code-review-checklist.md)。
+> 汎用的なクエリ品質（N+1・スコープ条件・過剰取得等）は [`.claude/skills/code-review-checklist/SKILL.md`](../../../../.claude/skills/code-review-checklist/SKILL.md)。
 
 ---
 

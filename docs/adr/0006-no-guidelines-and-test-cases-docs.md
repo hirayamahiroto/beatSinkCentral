@@ -10,7 +10,7 @@
 
 ## 決定
 
-`guidelines.md` / `test-cases.md` / `OVERVIEW.md` は作らず、参照と「想定アーティファクト」の記述を落とす。その役割は `strategy.md` §12（アンチパターン）と `code-review-checklist.md` §15 が持つ。
+`guidelines.md` / `test-cases.md` / `OVERVIEW.md` は作らず、参照と「想定アーティファクト」の記述を落とす。その役割は `strategy.md` §12（アンチパターン）と `code-review-checklist` §15 が持つ。
 
 ## 理由
 
