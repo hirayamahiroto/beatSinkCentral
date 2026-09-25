@@ -13,14 +13,18 @@ import { fileURLToPath } from "node:url";
 const SCRIPT = join(dirname(fileURLToPath(import.meta.url)), "index.mjs");
 
 // 対象は git 管理下のファイルなので、フィクスチャは一時リポジトリに置いて add する
-const check = (files) => {
-  const root = mkdtempSync(join(tmpdir(), "doc-links-"));
+const write = (root, files) => {
   for (const [path, body] of Object.entries(files)) {
     mkdirSync(dirname(join(root, path)), { recursive: true });
     writeFileSync(join(root, path), body);
   }
+};
+const check = (files, untracked = {}) => {
+  const root = mkdtempSync(join(tmpdir(), "doc-links-"));
+  write(root, files);
   execFileSync("git", ["init", "-q"], { cwd: root });
   execFileSync("git", ["add", "-A"], { cwd: root });
+  write(root, untracked);
   const result = spawnSync(
     process.execPath,
     [SCRIPT, "--root", root, "--json"],
@@ -106,6 +110,29 @@ describe("Markdown リンク", () => {
 
     assert.deepEqual(targets, []);
     assert.equal(status, 0);
+  });
+
+  test("インラインコード内の [text](path) はリンクとして扱わない", () => {
+    const { targets } = check({
+      "docs/a.md": lines(
+        "書式は `[text](path#anchor)` と `` [x](y) `` の形",
+        "[`旧パス`](./missing.md)",
+      ),
+    });
+
+    assert.deepEqual(targets, ["docs/a.md:2 ./missing.md"]);
+  });
+
+  test("git add 前の新規ファイルも検査し、gitignore 済みのファイルは検査しない", () => {
+    const { targets } = check(
+      { ".gitignore": "reports/\n" },
+      {
+        "docs/new.md": lines("[壊れ](./missing.md)"),
+        "reports/out.md": lines("[壊れ](./missing.md)"),
+      },
+    );
+
+    assert.deepEqual(targets, ["docs/new.md:1 ./missing.md"]);
   });
 
   test("規範でない場所（docs/plans 等）でも Markdown リンクは検査する", () => {

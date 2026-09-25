@@ -31,10 +31,12 @@ const PLACEHOLDER = /\.\.\.|…|[*{}<>$]/;
 
 const git = (...a) =>
   execFileSync("git", a, { cwd: ROOT, encoding: "utf8" }).trim();
+// 追跡済みに加えて未追跡（gitignore 以外）も見る。add 前の新規ファイルをローカルで取りこぼさない
 const listFiles = (...globs) =>
-  git("ls-files", "--", ...globs)
+  git("ls-files", "--cached", "--others", "--exclude-standard", "--", ...globs)
     .split("\n")
     .filter(Boolean)
+    .filter((f) => existsSync(abs(f)))
     // 自分自身のテストは、検出させるための参照切れを文字列で持つ
     .filter((f) => f !== "scripts/doc-links/index.test.mjs");
 
@@ -53,6 +55,9 @@ const isIgnored = (p) => {
 // フェンス内は検査しない。行番号を保つため改行は残す
 const blankFences = (src) =>
   src.replace(/^(```|~~~)[\s\S]*?^\1/gm, (m) => m.replace(/[^\n]/g, " "));
+// インラインコード内の `[text](path)` はリンクではない。行番号を保つため長さは変えない
+const blankInlineCode = (src) =>
+  src.replace(/(`+)[^\n]*?\1/g, (m) => " ".repeat(m.length));
 const lineOf = (src, index) => src.slice(0, index).split("\n").length;
 
 // GitHub の見出しアンカー: 小文字化し、文字・数字・結合文字・`_`・空白・`-` 以外を落とし、空白を `-` にする
@@ -98,7 +103,7 @@ const report = (file, src, index, target, reason) =>
 // ---------- 1. Markdown リンク ----------
 const markdownFiles = listFiles("*.md");
 for (const file of markdownFiles) {
-  const src = blankFences(readFileSync(abs(file), "utf8"));
+  const src = blankInlineCode(blankFences(readFileSync(abs(file), "utf8")));
   const links = [
     ...src.matchAll(/\]\(\s*<?([^)\s>]+)>?(?:\s+"[^"]*")?\s*\)/g),
     ...src.matchAll(
