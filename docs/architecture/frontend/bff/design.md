@@ -2,7 +2,7 @@
 
 > **位置づけ**
 > BFF は **フロントエンド（`apps/beatfolio`）が api-server と対話するための仲介層**であり、フロントエンドアーキテクチャの一部である。
-> api-server 側の内部設計（ドメイン / usecase / repository 等）とは責務が分かれる。サーバー内部設計は [`docs/server-architecture/`](../../server/architecture.md) を参照。
+> api-server 側の内部設計（ドメイン / usecase / repository 等）とは責務が分かれる。サーバー内部設計は [`docs/architecture/server/architecture.md`](../../server/architecture.md) を参照。
 > 認証・セッション観点での BFF の役割は [`authentication.md`](../../authentication.md) を参照。本ドキュメントは **データフローの設計基盤**を担う。
 > Web / iOS 等のマルチクライアント化で BFF がどう発展するかは [`bff-multi-client.md`](./multi-client.md) を参照。
 
@@ -23,7 +23,7 @@ api-server との仲介を通じて、**バックエンド観点とフロント�
 ```
 
 - **画面単位で考える** — BFF はリソース単位ではなく「画面が何を必要とするか」を起点にデータを返す。read route も `getMe`（リソース名）ではなく `getDashboard`（画面名）のように画面に紐づけて設計する。
-- **そぎ落とす** — api-server はドメインとして正しい完全なデータを返す。その画面に不要なフィールド・リレーションは BFF で削る。UI に「使わないデータ」を渡さない（[`.claude/rules/code-review-checklist.md`](../../) の「不要なデータの過剰取得防止」「インターフェース設計の簡潔さ」と整合）。
+- **そぎ落とす** — api-server はドメインとして正しい完全なデータを返す。その画面に不要なフィールド・リレーションは BFF で削る。UI に「使わないデータ」を渡さない（[`.claude/skills/code-review-checklist/SKILL.md`](../../) の「不要なデータの過剰取得防止」「インターフェース設計の簡潔さ」と整合）。
 - **観点を緩和する** — バックエンドは「ドメイン的に正しい単位・完全な形」で考え、フロントエンドは「画面に必要な最小限の形」で考える。両者の観点は本来ズレる。このズレ（インピーダンスミスマッチ）を BFF が吸収することで、**api-server は画面都合に縛られず**、**UI は受け取った形をそのまま表示することに専念できる**。
 
 > BFF は「バックエンドとフロントエンドのどちらの都合も持ち込ませない緩衝地帯」。

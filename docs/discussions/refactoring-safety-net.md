@@ -103,7 +103,7 @@ vi.mock(".../infrastructure/capabilities", () => ({
 
 `infrastructure/transaction/index.test.ts` は `runInTransaction` 単体を見ているだけで、「usecase がその中で走っている」ことは誰も見ていない。
 
-つまり [code-review-checklist §10（トランザクション境界 🔴 ブロッキング）](../../.claude/rules/code-review-checklist.md) が、**テストの構造上そもそも検証不能**な状態にある。
+つまり [code-review-checklist §10（トランザクション境界 🔴 ブロッキング）](../../.claude/skills/code-review-checklist/SKILL.md) が、**テストの構造上そもそも検証不能**な状態にある。
 
 ### 論点 3: リファクタと同時に書き換わるテストは、そのリファクタを検証できない
 

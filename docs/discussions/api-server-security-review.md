@@ -190,7 +190,7 @@ username === process.env.BASIC_AUTH_USERNAME &&
 
 ### 推奨対応（本 PR で対応）
 
-Issue #158 §2 でこの middleware は Hono へ移植する。その際 **自前実装をやめて `hono/basic-auth` を使う**ことで (a)〜(d) が同時に解消される（`hono/basic-auth` は scheme を検証し、`timingSafeEqual` で比較し、`:` 以降全体をパスワードとして扱う）。`.claude/rules/code-review-checklist.md` §7「ライブラリ API の優先使用」にも沿う。
+Issue #158 §2 でこの middleware は Hono へ移植する。その際 **自前実装をやめて `hono/basic-auth` を使う**ことで (a)〜(d) が同時に解消される（`hono/basic-auth` は scheme を検証し、`timingSafeEqual` で比較し、`:` 以降全体をパスワードとして扱う）。`.claude/skills/code-review-checklist/SKILL.md` §7「ライブラリ API の優先使用」にも沿う。
 
 ---
 
@@ -218,7 +218,7 @@ PR #197 でクライアント向け応答から内部詳細を切り離した（
 
 api-server の未処理例外の主な発生源は DB 層。`postgres.js` / Drizzle の例外メッセージには**失敗したクエリ文が含まれ、状況によってはパラメータ値も載る**。パラメータには email や sub といった PII が入りうる。接続失敗時のメッセージには接続先ホストが載る。
 
-`.claude/rules/code-review-checklist.md` §4-3「機密情報のログマスク」は、PII / Auth0 の sub / トークンをログに出さないことを 🔴 ブロッキングとしている。現状は**その経路が空いている**。
+`.claude/skills/code-review-checklist/SKILL.md` §4-3「機密情報のログマスク」は、PII / Auth0 の sub / トークンをログに出さないことを 🔴 ブロッキングとしている。現状は**その経路が空いている**。
 
 ### 推奨対応
 

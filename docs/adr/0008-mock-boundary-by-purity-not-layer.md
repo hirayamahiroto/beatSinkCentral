@@ -102,7 +102,7 @@ E2E からは仕様検証の責務を剥がし、デプロイ後の導線の疎�
 
 - [`testing/strategy.md`](../architecture/testing/strategy.md) §5（モック方針）/ §6（カバレッジ方針）/ §7（Integration / E2E）/ §9（時間・乱数）/ §12（アンチパターン）
 - [`testing/background.md`](../architecture/testing/background.md) 全体（本決定の背景の詳説）
-- [`.claude/rules/code-review-checklist.md`](../../.claude/rules/code-review-checklist.md) §15
+- [`.claude/skills/code-review-checklist/SKILL.md`](../../.claude/skills/code-review-checklist/SKILL.md) §15
 - [`scripts/test-audit/README.md`](../../scripts/test-audit/README.md)「何にささるか」「何を担保するか」
 
 ## 参考

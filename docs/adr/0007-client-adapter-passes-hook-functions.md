@@ -41,4 +41,4 @@
 ## 影響する規範
 
 - `docs/architecture/frontend/ui/component-design.md`「ClientAdapter から下への受け渡し」
-- `.claude/rules/code-review-checklist.md` §9
+- `.claude/skills/code-review-checklist/SKILL.md` §9

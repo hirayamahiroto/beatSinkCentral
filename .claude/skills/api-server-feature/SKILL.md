@@ -43,14 +43,15 @@ description: api-server（クリーンアーキテクチャ + 純粋 Domain + DI
 
 ### 出力（完了時に必ず返す）
 
-| 出力               | 内容                                                                                               |
-| ------------------ | -------------------------------------------------------------------------------------------------- |
-| 変更ファイル一覧   | 追加 / 変更 / 削除を区別して                                                                       |
-| 適用した規範と根拠 | 「この判断は `docs/…` のこの規範による」の対応                                                     |
-| 自分で決めた判断   | **規範に無くて暫定で決めたこと**。先例に倣って決めた箇所も判断として列挙する。レビューの焦点になる |
-| 検証結果           | test / tsc / lint の**事実**。落ちたなら出力とともに                                               |
-| 未解決の確認事項   | 判断を保留した点                                                                                   |
-| コミットの有無     | 原則コミットしない。していないことを明示する                                                       |
+| 出力               | 内容                                                                                                   |
+| ------------------ | ------------------------------------------------------------------------------------------------------ |
+| 変更ファイル一覧   | 追加 / 変更 / 削除を区別して                                                                           |
+| 適用した規範と根拠 | 「この判断は `docs/…` のこの規範による」の対応                                                         |
+| 自分で決めた判断   | **規範に無くて暫定で決めたこと**。先例に倣って決めた箇所も判断として列挙する。レビューの焦点になる     |
+| 検証結果           | test / tsc / lint の**事実**。落ちたなら出力とともに                                                   |
+| チェックリスト判定 | `code-review-checklist` Skill の判定表（§ / 優先度 / 判定 / 根拠）。Step 4b を飛ばしていないことの証跡 |
+| 未解決の確認事項   | 判断を保留した点                                                                                       |
+| コミットの有無     | 原則コミットしない。していないことを明示する                                                           |
 
 ### 出力（⛔ で中断したとき）
 
@@ -72,8 +73,9 @@ flowchart TD
     Q2 -->|"食い違う"| STOP2["⛔ 止まる<br/>方針をユーザーに確認する"]
     Q2 -->|"一致"| S3["Step 3<br/>内側から外側へ実装する"]
     S3 --> S4["Step 4<br/>検証する（機械検証）"]
-    S4 --> S4b["Step 4b<br/>意図適合をレビューする（Agent）"]
-    S4b --> S5["Step 5<br/>報告する（コミットしない）"]
+    S4 --> S4b["Step 4b<br/>code-review-checklist Skill を呼ぶ<br/>（該当 § を判定・実行）"]
+    S4b --> S4c["Step 4c<br/>意図適合をレビューする（Agent）"]
+    S4c --> S5["Step 5<br/>報告する（コミットしない）"]
 ```
 
 **⛔ の2箇所で必ず止まる。** 勝手に既存へ合わせない・勝手に決めない（CLAUDE.md）。
@@ -102,19 +104,19 @@ flowchart TD
 まず `docs/architecture/server/architecture.md` でレイヤー責務と依存方向を押さえる。
 そのうえで、着手する部分の規範だけをその都度開く。
 
-| これから作るもの            | 開く規範                                                                                                    |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| DB スキーマ設計             | `docs/architecture/server/database/design.md`（マスタ参照・DB 由来の表示語彙）                              |
-| migration 実行              | `docs/architecture/server/database/migration.md`                                                            |
-| 同時更新の扱い              | `docs/architecture/server/database/concurrency.md`                                                          |
-| VO / entity / policy        | `docs/architecture/server/architecture.md`                                                                  |
-| repository（クエリ設計）    | `.claude/rules/code-review-checklist.md` §1 N+1 / §2 過剰取得 / §3 スコープ条件 / §8 SQL とアプリの責務分離 |
-| usecase（トランザクション） | `.claude/rules/code-review-checklist.md` §10 トランザクション境界                                           |
-| route（URL・メソッド）      | `docs/architecture/server/api-design-guidelines.md`                                                         |
-| errorMap                    | `docs/architecture/server/error-handling/README.md`                                                         |
-| 外部クライアントの初期化    | `docs/architecture/server/external-clients.md`                                                              |
-| 認証・認可                  | `docs/architecture/authentication.md`                                                                       |
-| テストの書き方              | `docs/architecture/testing/strategy.md`                                                                     |
+| これから作るもの            | 開く規範                                                                                         |
+| --------------------------- | ------------------------------------------------------------------------------------------------ |
+| DB スキーマ設計             | `docs/architecture/server/database/design.md`（マスタ参照・DB 由来の表示語彙）                   |
+| migration 実行              | `docs/architecture/server/database/migration.md`                                                 |
+| 同時更新の扱い              | `docs/architecture/server/database/concurrency.md`                                               |
+| VO / entity / policy        | `docs/architecture/server/architecture.md`                                                       |
+| repository（クエリ設計）    | `code-review-checklist` Skill §1 N+1 / §2 過剰取得 / §3 スコープ条件 / §8 SQL とアプリの責務分離 |
+| usecase（トランザクション） | `code-review-checklist` Skill §10 トランザクション境界                                           |
+| route（URL・メソッド）      | `docs/architecture/server/api-design-guidelines.md`                                              |
+| errorMap                    | `docs/architecture/server/error-handling/README.md`                                              |
+| 外部クライアントの初期化    | `docs/architecture/server/external-clients.md`                                                   |
+| 認証・認可                  | `docs/architecture/authentication.md`                                                            |
+| テストの書き方              | `docs/architecture/testing/strategy.md`                                                          |
 
 **⛔ 止まる条件**: 既存コードが規範と食い違っているとき。
 **設計ドキュメントが規範、既存コードは実装結果**。既存に合わせず、ズレを共有して方針を確認する（CLAUDE.md）。
@@ -157,14 +159,32 @@ npm run test:audit                        # テストの偽パス発生源（指
 - 自分が足した `export`・Entity の振る舞い・`*Schema` が knip / lint の出力に**新たに**現れていないか。手動 grep で代替しない（`docs/architecture/server/architecture.md`「呼び手のない公開面は機械的に検出する」）。
 - `tsc` の**既存エラー**（無関係なテストモック等）と**自分の変更起因**のエラーを切り分ける（`git status` で diff 範囲を確認）。
 
-### Step 4b. 意図適合をレビューする（機械検証では拾えない）
+### Step 4b. `code-review-checklist` Skill を呼ぶ（必須・省略しない）
 
-`tsc` / lint / test は構造適合しか見ない。`.claude/rules/code-review-checklist.md` の🔴項目のうち、
+Step 4 が green になったら、**必ず Skill ツールで `code-review-checklist` を起動する**。
+
+```
+Skill: code-review-checklist
+```
+
+起動したら、その Skill の「この Skill の使い方」に従って進める。
+
+1. `git diff --stat main...HEAD` で変更ファイルを列挙する。
+2. Skill 内の「レイヤー別の適用マップ」から、**この変更が触れたレイヤーの §** を選ぶ。
+3. 選んだ § を差分に照らして `該当なし` / `準拠` / `違反` を判定する。
+4. 🔴 の `違反` はその場で修正し、Step 4 を再実行する。🟡 は修正するか、外れる理由を書く。
+5. 判定表を Step 5 の報告に含める。
+
+§6-1（呼び手のない公開面）は Step 4 の knip / lint が判定するため、ここでは結果を転記するだけでよい。
+
+### Step 4c. 意図適合をレビューする（機械検証では拾えない）
+
+`tsc` / lint / test は構造適合しか見ない。`code-review-checklist` の🔴項目のうち、
 スコープ条件の徹底（§3）・権限/機密情報の露出防止（§4）・トランザクション境界（§10）は、
 クエリや権限モデルの意味を理解しないと判定できず、機械検証では検知できない。
 
 **`Agent` を1本立てて diff を敵対的にレビューさせる。** 自分の実装を自分で見ると、意図が見えているぶん盲点が残る。
-`code-review-checklist.md` を照らし合わせて実行する。§6-1（呼び手のない公開面）は Step 4 の knip / lint が判定するため、ここでは扱わない。
+Agent には `.claude/skills/code-review-checklist/SKILL.md` を読ませ、Step 4b で `準拠` と判定した § を再判定させる。
 
 **次のいずれかに触れた変更では必須**（省略しない）:
 
@@ -198,4 +218,5 @@ npm run test:audit                        # テストの偽パス発生源（指
 - 先例の集約をフルで写す（getter・export・スキーマ・index を一式並べる）。足すのは、この PR に呼び手があるものだけ。
 - 一部 module だけテストを書いて満足する（全 module 必須）。
 - 型変更の波及を `tsc` で見ずにテストだけで判断する。
+- Step 4 が green になった時点で `code-review-checklist` Skill を呼ばずに報告へ進む（Step 4b は省略不可）。
 - 言われていないのにコミットする。

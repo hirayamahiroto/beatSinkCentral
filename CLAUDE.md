@@ -38,6 +38,7 @@ npm run build
 | QA で見つかった不具合を修正し staging/development へ二重 PR を出す                                                  | `qa-fix`                                  |                                                                                                                                                                                               |
 | PR / 期間からQAシナリオを作る                                                                                       | `qa-scenario` / `qa-scenario-release`     | 単一 PR は `qa-scenario`、リリース単位は `qa-scenario-release`                                                                                                                                |
 | 変更差分のコードレビュー                                                                                            | `code-review`                             | 効果は `low`〜`ultra` で選べる                                                                                                                                                                |
+| 変更差分をプロジェクト共通のチェックリストに照らす                                                                  | `code-review-checklist`                   | `api-server-feature` / `frontend-feature` の Step 4b から必ず呼ばれる。単体でも使える                                                                                                         |
 
 ## 設計ドキュメントの参照ルール
 
@@ -94,4 +95,4 @@ npm run build
 
 各ドキュメントの読み順や粒度は、それぞれの README / 目次に従う。
 
-汎用的なコードレビュー観点（N+1・権限・データ取得最適化・インターフェース設計・コメント方針・型安全な Optional 扱い等）は `.claude/rules/code-review-checklist.md` を参照する。
+汎用的なコードレビュー観点（N+1・権限・データ取得最適化・インターフェース設計・コメント方針・型安全な Optional 扱い等）は `code-review-checklist` Skill（`.claude/skills/code-review-checklist/SKILL.md`）にある。`api-server-feature` / `frontend-feature` の Step 4b で実装後に必ず呼び出し、変更に該当する § を判定・実行する。

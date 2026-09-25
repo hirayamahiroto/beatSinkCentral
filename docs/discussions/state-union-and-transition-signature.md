@@ -21,7 +21,7 @@ KAKEHASHI Tech Blog「サーバサイド TypeScript を選んで嬉しかった�
 | 構造的型で括りを使う側が定義する       | 権能モデル。usecase ごとに `Pick` で束ね、lint で迂回を落とす             | 記事より厳密           |
 | OIDC と SSR                            | 認証は Auth0 に委譲。自前の認可サーバを持たない                           | 対象外                 |
 | ドメインイベントの共通化               | 仕組み無し。`artistHandleHistories` が単一集約向けの手書き履歴            | 検討候補（今ではない） |
-| 似ているだけのロジックは個別に書く     | `code-review-checklist.md` §6-1 と同じ思想                                | 一致                   |
+| 似ているだけのロジックは個別に書く     | `code-review-checklist` §6-1 と同じ思想                                   | 一致                   |
 
 取り込まない点: 記事は `Result` の失敗側に「次の画面」を載せるが、本プロジェクトは失敗側をルール違反に限定する（`error-handling/concepts.md`）。分岐先は成功側の状態ユニオンで表す。
 

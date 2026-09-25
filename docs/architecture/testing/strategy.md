@@ -679,4 +679,4 @@ it("getter", () => {
 
 ### 補足
 
-本ドキュメントは方針である。アンチパターンの具体例はセクション 12、レビュー時のチェック観点は [`.claude/rules/code-review-checklist.md`](../../../.claude/rules/code-review-checklist.md) の「15. テストが request/response・引数の変更を検知できる状態か」を参照。レイヤー別ガイドラインとテストケーステンプレートは別冊にせず、本ドキュメントとチェックリストに吸収した。
+本ドキュメントは方針である。アンチパターンの具体例はセクション 12、レビュー時のチェック観点は [`.claude/skills/code-review-checklist/SKILL.md`](../../../.claude/skills/code-review-checklist/SKILL.md) の「15. テストが request/response・引数の変更を検知できる状態か」を参照。レイヤー別ガイドラインとテストケーステンプレートは別冊にせず、本ドキュメントとチェックリストに吸収した。

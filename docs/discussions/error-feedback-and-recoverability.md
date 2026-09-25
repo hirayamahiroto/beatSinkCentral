@@ -25,7 +25,7 @@
 
 ただし例外が1つある。**「壊れているのに壊れていないように見せる縮退」は選べない。**
 
-取得に失敗したリストを空配列にフォールバックして「プレイヤーがいません」と表示すれば、画面は操作可能で他の導線も生きている。しかしこれは嘘であり、ユーザーは「まだ誰も登録していない」と誤って納得して離脱する。これは [`code-review-checklist.md`](../../.claude/rules/code-review-checklist.md) §11-3（未取得と0件を区別する）・§12（`?? []` で必須値を埋めない）と同じ話で、既存原則から直接禁止が導ける。
+取得に失敗したリストを空配列にフォールバックして「プレイヤーがいません」と表示すれば、画面は操作可能で他の導線も生きている。しかしこれは嘘であり、ユーザーは「まだ誰も登録していない」と誤って納得して離脱する。これは [`code-review-checklist.md`](../../.claude/skills/code-review-checklist/SKILL.md) §11-3（未取得と0件を区別する）・§12（`?? []` で必須値を埋めない）と同じ話で、既存原則から直接禁止が導ける。
 
 **「操作可能である」と「失敗を隠さない」の両立が必須条件**であり、前者のために後者を捨てることは認めない。
 
@@ -50,7 +50,7 @@ ProfileNotPublishableError: clientMessage: () =>
 
 **2. 機械可読な識別子が落ちている** — `AppError["type"]` はログ側にしか残らず、レスポンスボディは `{ error: string; details?: unknown }`（`:200`）。UI が分岐する手がかりがない。
 
-**3. `clientMessage` に入力値が埋まっている** — `logFields` には構造化して出しているのに、メッセージにも文字列連結されている。[`code-review-checklist.md`](../../.claude/rules/code-review-checklist.md) §4-3 に反する。
+**3. `clientMessage` に入力値が埋まっている** — `logFields` には構造化して出しているのに、メッセージにも文字列連結されている。[`code-review-checklist.md`](../../.claude/skills/code-review-checklist/SKILL.md) §4-3 に反する。
 
 ```ts
 AccountIdAlreadyTakenError: clientMessage: (error) =>
@@ -279,10 +279,10 @@ flowchart TD
 
 ## 合意後の昇格先
 
-| 決まった内容                                           | 昇格先                                                                 |
-| ------------------------------------------------------ | ---------------------------------------------------------------------- |
-| `code` / `debugMessage` / `details` のレスポンス契約   | `architecture/server/error-handling/implementation.md`                 |
-| 表示文言と `recovery` を BFF が持つ責務分担            | `architecture/frontend/bff/design.md`（「エラー契約」節）              |
-| read 失敗時の縮退表示と resolver の `degraded`         | `architecture/frontend/bff/design.md`（`:272` の「未設計」を埋める）   |
-| write のフィードバック発火とトースト / inline の線引き | [toast-feedback-design.md](./toast-feedback-design.md) の昇格先に従う  |
-| 「壊れているのに壊れていないように見せない」原則       | `.claude/rules/code-review-checklist.md`（§11-3 / §12 の関連項として） |
+| 決まった内容                                           | 昇格先                                                                        |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| `code` / `debugMessage` / `details` のレスポンス契約   | `architecture/server/error-handling/implementation.md`                        |
+| 表示文言と `recovery` を BFF が持つ責務分担            | `architecture/frontend/bff/design.md`（「エラー契約」節）                     |
+| read 失敗時の縮退表示と resolver の `degraded`         | `architecture/frontend/bff/design.md`（`:272` の「未設計」を埋める）          |
+| write のフィードバック発火とトースト / inline の線引き | [toast-feedback-design.md](./toast-feedback-design.md) の昇格先に従う         |
+| 「壊れているのに壊れていないように見せない」原則       | `.claude/skills/code-review-checklist/SKILL.md`（§11-3 / §12 の関連項として） |

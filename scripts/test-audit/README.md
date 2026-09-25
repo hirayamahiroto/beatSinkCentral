@@ -16,7 +16,7 @@
 | --- | --- |
 | [`docs/architecture/testing/strategy.md`](../../docs/architecture/testing/strategy.md) §5（モック方針）/ §6（カバレッジ方針）/ §9（時間・乱数）/ §11（いつ書くか）/ §12（アンチパターン） | 規範に書かれた「〜しない」を、レビューの目ではなく機械の判定に降ろす。規範と実装のズレを PR ごとに数える |
 | [`docs/discussions/autonomous-implementation-structure.md`](../../docs/discussions/autonomous-implementation-structure.md) のマージ基準「required status checks が全緑」 | 全緑を信じてよいかは、テストが偽パスしていないかで決まる。本スクリプトはその前提（緑の信頼性）を測る。ゲートに載せる順序は [first-tasks](../../docs/discussions/autonomous-implementation-first-tasks.md) T1 → T2 の後 |
-| [`.claude/rules/code-review-checklist.md`](../../.claude/rules/code-review-checklist.md) §15（テストが変更を検知できる状態か） | 「検知できるか」を人が diff から判断する代わりに、Stryker が実装を壊して実測する |
+| [`.claude/skills/code-review-checklist/SKILL.md`](../../.claude/skills/code-review-checklist/SKILL.md) §15（テストが変更を検知できる状態か） | 「検知できるか」を人が diff から判断する代わりに、Stryker が実装を壊して実測する |
 
 ## 何を担保するか（何を担保しないか）
 
