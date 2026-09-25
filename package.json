@@ -4,6 +4,9 @@
   "type": "module",
   "private": true,
   "packageManager": "npm@11.2.0",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",

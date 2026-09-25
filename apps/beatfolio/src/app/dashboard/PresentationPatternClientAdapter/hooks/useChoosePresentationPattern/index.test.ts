@@ -1,36 +1,44 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { useChoosePresentationPattern } from "./index";
+import {
+  createRouterMock,
+  type RouterModule,
+} from "../../../../../utils/navigation/testDoubles";
+import {
+  createEndpointMock,
+  upstreamJsonResponse,
+  upstreamErrorResponse,
+  type BeatfolioBffClient,
+  type BeatfolioBffClientMock,
+} from "../../../../../utils/client/testDoubles";
 
-const refreshMock = vi.fn();
+const router = createRouterMock();
 
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ refresh: refreshMock, push: vi.fn() }),
-}));
+vi.mock(
+  "next/navigation",
+  () => ({ useRouter: () => router }) satisfies RouterModule,
+);
 
-const postMock = vi.fn();
+const presentationPost =
+  createEndpointMock<
+    BeatfolioBffClient["api"]["artists"]["me"]["presentation"]["$post"]
+  >();
+
+const bffClient = {
+  api: { artists: { me: { presentation: { $post: presentationPost } } } },
+} satisfies BeatfolioBffClientMock;
 
 vi.mock("../../../../../utils/client", () => ({
-  createBeatfolioBffClient: () => ({
-    api: { artists: { me: { presentation: { $post: postMock } } } },
-  }),
+  createBeatfolioBffClient: () => bffClient,
 }));
-
-const buildJsonResponse = (body: unknown, init: { status: number }): Response =>
-  new Response(JSON.stringify(body), {
-    status: init.status,
-    headers: { "Content-Type": "application/json" },
-  });
 
 describe("useChoosePresentationPattern", () => {
   afterEach(() => vi.clearAllMocks());
 
   it("選んだ patternCode を保存し、成功したら画面を更新する", async () => {
-    postMock.mockResolvedValueOnce(
-      buildJsonResponse(
-        { presentation: { patternCode: "editorial" } },
-        { status: 200 },
-      ),
+    presentationPost.mockResolvedValueOnce(
+      upstreamJsonResponse({ presentation: { patternCode: "editorial" } }),
     );
 
     const { result } = renderHook(() => useChoosePresentationPattern());
@@ -39,20 +47,17 @@ describe("useChoosePresentationPattern", () => {
       await result.current.choose("editorial");
     });
 
-    expect(postMock).toHaveBeenCalledExactlyOnceWith({
+    expect(presentationPost).toHaveBeenCalledExactlyOnceWith({
       json: { patternCode: "editorial" },
     });
-    expect(refreshMock).toHaveBeenCalledTimes(1);
+    expect(router.refresh).toHaveBeenCalledTimes(1);
     expect(result.current.error).toBeNull();
     expect(result.current.isLoading).toBe(false);
   });
 
   it("保存に失敗したらサーバーのメッセージを error にセットし、画面は更新しない", async () => {
-    postMock.mockResolvedValueOnce(
-      buildJsonResponse(
-        { error: "Invalid presentation pattern" },
-        { status: 422 },
-      ),
+    presentationPost.mockResolvedValueOnce(
+      upstreamErrorResponse({ error: "Invalid presentation pattern" }, 422),
     );
 
     const { result } = renderHook(() => useChoosePresentationPattern());
@@ -62,6 +67,6 @@ describe("useChoosePresentationPattern", () => {
     });
 
     expect(result.current.error).toBe("Invalid presentation pattern");
-    expect(refreshMock).not.toHaveBeenCalled();
+    expect(router.refresh).not.toHaveBeenCalled();
   });
 });

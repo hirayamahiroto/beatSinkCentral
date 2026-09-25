@@ -10,6 +10,7 @@ import { handleBffError } from "../../../../../errorMap";
 import {
   createEndpointMock,
   upstreamJsonResponse,
+  upstreamMalformedJsonResponse,
   type ApiServerClient,
   type ApiServerClientMock,
 } from "../../../../../utils/client/testDoubles";
@@ -119,13 +120,7 @@ describe("GET /players", () => {
   });
 
   it("応答の解析に失敗したら 502 を返す", async () => {
-    artistsGet.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => {
-        throw new SyntaxError("Unexpected end of JSON input");
-      },
-    });
+    artistsGet.mockResolvedValue(upstreamMalformedJsonResponse());
 
     const res = await createApp().request("/", { method: "GET" });
 

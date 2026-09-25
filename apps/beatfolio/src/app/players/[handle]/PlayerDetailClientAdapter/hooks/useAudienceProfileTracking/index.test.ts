@@ -1,12 +1,20 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { renderHook, cleanup } from "@testing-library/react";
 import { useAudienceProfileTracking } from "./index";
+import type { track } from "../../../../../../libs/analytics";
 
-const trackMock = vi.fn();
+const trackMock = vi.fn<typeof track>();
 
-vi.mock("../../../../../../libs/analytics", () => ({
-  track: (...args: unknown[]) => trackMock(...args),
-}));
+vi.mock(
+  "../../../../../../libs/analytics",
+  () =>
+    ({
+      track: (...args: Parameters<typeof track>) => trackMock(...args),
+    }) satisfies Pick<
+      typeof import("../../../../../../libs/analytics"),
+      "track"
+    >,
+);
 
 const supportLinks = [
   { platform: "youtube", label: "YouTube" },

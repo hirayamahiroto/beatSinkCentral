@@ -2,40 +2,50 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import type { WizardValues } from "@ui/design-system/components/organisms/ArtistProfileWizard";
 import { useSaveProfile } from "./index";
+import {
+  createRouterMock,
+  type RouterModule,
+} from "../../../../../../../utils/navigation/testDoubles";
+import {
+  createEndpointMock,
+  upstreamNoContentResponse,
+  upstreamErrorResponse,
+  type BeatfolioBffClient,
+  type BeatfolioBffClientMock,
+} from "../../../../../../../utils/client/testDoubles";
 
-const refreshMock = vi.fn();
-const pushMock = vi.fn();
+const router = createRouterMock();
 
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({
-    refresh: refreshMock,
-    push: pushMock,
-  }),
-}));
+vi.mock(
+  "next/navigation",
+  () => ({ useRouter: () => router }) satisfies RouterModule,
+);
 
-const saveMock = vi.fn();
-const publishMock = vi.fn();
+const profilePost =
+  createEndpointMock<
+    BeatfolioBffClient["api"]["artists"]["me"]["profile"]["$post"]
+  >();
+const publishPost =
+  createEndpointMock<
+    BeatfolioBffClient["api"]["artists"]["me"]["profile"]["publish"]["$post"]
+  >();
 
-vi.mock("../../../../../../../utils/client", () => ({
-  createBeatfolioBffClient: () => ({
-    api: {
-      artists: {
-        me: {
-          profile: {
-            $post: saveMock,
-            publish: { $post: publishMock },
-          },
+const bffClient = {
+  api: {
+    artists: {
+      me: {
+        profile: {
+          $post: profilePost,
+          publish: { $post: publishPost },
         },
       },
     },
-  }),
-}));
+  },
+} satisfies BeatfolioBffClientMock;
 
-const buildJsonResponse = (body: unknown, init: { status: number }): Response =>
-  new Response(JSON.stringify(body), {
-    status: init.status,
-    headers: { "Content-Type": "application/json" },
-  });
+vi.mock("../../../../../../../utils/client", () => ({
+  createBeatfolioBffClient: () => bffClient,
+}));
 
 const values: WizardValues = {
   name: "SAKU",
@@ -53,13 +63,26 @@ const values: WizardValues = {
   links: [{ type: "youtube", url: "https://youtube.com/@saku" }],
 };
 
+const savedRequestJson = {
+  name: "SAKU",
+  tagline: "口ひとつで、フロアを揺らす。",
+  activityInfo: "拠点: 東京 / 形態: ソロ",
+  genres: ["Beatbox"],
+  chapters: [
+    { questionCode: "beginning", body: "始めたきっかけ。" },
+    { questionCode: "turning_point", body: "" },
+    { questionCode: "concept", body: "" },
+  ],
+  links: [{ type: "youtube", url: "https://youtube.com/@saku" }],
+};
+
 describe("useSaveProfile", () => {
   afterEach(() => {
     vi.clearAllMocks();
   });
 
   it("submit は合成済みの json で保存し、公開はせずダッシュボードへ遷移する", async () => {
-    saveMock.mockResolvedValueOnce(buildJsonResponse({}, { status: 200 }));
+    profilePost.mockResolvedValueOnce(upstreamNoContentResponse());
 
     const { result } = renderHook(() => useSaveProfile());
 
@@ -68,28 +91,15 @@ describe("useSaveProfile", () => {
       returned = await result.current.submit(values);
     });
 
-    expect(saveMock).toHaveBeenCalledWith({
-      json: {
-        name: "SAKU",
-        tagline: "口ひとつで、フロアを揺らす。",
-        activityInfo: "拠点: 東京 / 形態: ソロ",
-        genres: ["Beatbox"],
-        chapters: [
-          { questionCode: "beginning", body: "始めたきっかけ。" },
-          { questionCode: "turning_point", body: "" },
-          { questionCode: "concept", body: "" },
-        ],
-        links: [{ type: "youtube", url: "https://youtube.com/@saku" }],
-      },
-    });
-    expect(publishMock).not.toHaveBeenCalled();
+    expect(profilePost).toHaveBeenCalledWith({ json: savedRequestJson });
+    expect(publishPost).not.toHaveBeenCalled();
     expect(returned).toBe(true);
-    expect(pushMock).toHaveBeenCalledWith("/dashboard");
+    expect(router.push).toHaveBeenCalledWith("/dashboard");
     expect(result.current.error).toBeNull();
   });
 
   it("saveDraft は保存して画面を更新するだけで、遷移も公開もしない", async () => {
-    saveMock.mockResolvedValueOnce(buildJsonResponse({}, { status: 200 }));
+    profilePost.mockResolvedValueOnce(upstreamNoContentResponse());
 
     const { result } = renderHook(() => useSaveProfile());
 
@@ -97,28 +107,17 @@ describe("useSaveProfile", () => {
       await result.current.saveDraft(values);
     });
 
-    expect(saveMock).toHaveBeenCalledExactlyOnceWith({
-      json: {
-        name: "SAKU",
-        tagline: "口ひとつで、フロアを揺らす。",
-        activityInfo: "拠点: 東京 / 形態: ソロ",
-        genres: ["Beatbox"],
-        chapters: [
-          { questionCode: "beginning", body: "始めたきっかけ。" },
-          { questionCode: "turning_point", body: "" },
-          { questionCode: "concept", body: "" },
-        ],
-        links: [{ type: "youtube", url: "https://youtube.com/@saku" }],
-      },
+    expect(profilePost).toHaveBeenCalledExactlyOnceWith({
+      json: savedRequestJson,
     });
-    expect(publishMock).not.toHaveBeenCalled();
-    expect(refreshMock).toHaveBeenCalledTimes(1);
-    expect(pushMock).not.toHaveBeenCalled();
+    expect(publishPost).not.toHaveBeenCalled();
+    expect(router.refresh).toHaveBeenCalledTimes(1);
+    expect(router.push).not.toHaveBeenCalled();
   });
 
   it("保存が non-ok ならサーバーのエラーを error にセットし遷移しない", async () => {
-    saveMock.mockResolvedValueOnce(
-      buildJsonResponse({ error: "保存に失敗" }, { status: 400 }),
+    profilePost.mockResolvedValueOnce(
+      upstreamErrorResponse({ error: "保存に失敗" }, 400),
     );
 
     const { result } = renderHook(() => useSaveProfile());
@@ -133,20 +132,20 @@ describe("useSaveProfile", () => {
       message: "保存に失敗",
       progress: null,
     });
-    expect(pushMock).not.toHaveBeenCalled();
-    expect(refreshMock).not.toHaveBeenCalled();
+    expect(router.push).not.toHaveBeenCalled();
+    expect(router.refresh).not.toHaveBeenCalled();
   });
 
   it("途中まで保存されて失敗したら、どのステップまで保存されたかを error に載せる", async () => {
-    saveMock.mockResolvedValueOnce(
-      buildJsonResponse(
+    profilePost.mockResolvedValueOnce(
+      upstreamErrorResponse(
         {
           error: "Invalid snsUrl format",
           code: "InvalidSnsUrlFormatError",
           saved: ["attributes", "chapter:beginning"],
           failedAt: "links",
         },
-        { status: 422 },
+        422,
       ),
     );
 
@@ -163,6 +162,6 @@ describe("useSaveProfile", () => {
         failedAt: "links",
       },
     });
-    expect(refreshMock).not.toHaveBeenCalled();
+    expect(router.refresh).not.toHaveBeenCalled();
   });
 });
