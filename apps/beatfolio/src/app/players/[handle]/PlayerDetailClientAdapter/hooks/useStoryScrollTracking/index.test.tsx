@@ -3,6 +3,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, cleanup, act } from "@testing-library/react";
 import { useStoryScrollTracking, type StoryScrollDepth } from "./index";
 
+type OnDepthReached = Parameters<
+  typeof useStoryScrollTracking
+>[0]["onDepthReached"];
+
 type IntersectionCallback = (
   entries: { target: Element; isIntersecting: boolean }[],
 ) => void;
@@ -84,7 +88,7 @@ describe("useStoryScrollTracking", () => {
   });
 
   it("章末の到達判定は「ビューポート下端より上（通過済みを含む）」を root にして観測する", () => {
-    const onDepthReached = vi.fn();
+    const onDepthReached = vi.fn<OnDepthReached>();
     render(
       <Harness
         chapterCount={3}
@@ -99,7 +103,7 @@ describe("useStoryScrollTracking", () => {
   });
 
   it("章末への到達を章数に対する 25/50/75/100% として通知し、同じ depth は一度しか通知しない", () => {
-    const onDepthReached = vi.fn();
+    const onDepthReached = vi.fn<OnDepthReached>();
     render(
       <Harness
         chapterCount={4}
@@ -120,7 +124,7 @@ describe("useStoryScrollTracking", () => {
   });
 
   it("chapterCount が 0 なら observer を作らない", () => {
-    const onDepthReached = vi.fn();
+    const onDepthReached = vi.fn<OnDepthReached>();
     render(
       <Harness
         chapterCount={0}

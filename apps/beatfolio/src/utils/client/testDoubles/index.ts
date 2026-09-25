@@ -1,9 +1,10 @@
 import { vi, type Mock } from "vitest";
 import type { ClientResponse, InferResponseType } from "hono/client";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
-import type { createApiServerClient } from "../index";
+import type { createApiServerClient, createBeatfolioBffClient } from "../index";
 
 export type ApiServerClient = ReturnType<typeof createApiServerClient>;
+export type BeatfolioBffClient = ReturnType<typeof createBeatfolioBffClient>;
 
 type AnyEndpoint = (...args: never[]) => Promise<unknown>;
 
@@ -16,15 +17,17 @@ type UpstreamResponseStub<Body, Status extends number> = {
 type UpstreamNoContentStub = {
   ok: true;
   status: 204;
-  json: () => Promise<undefined>;
+  json: () => Promise<never>;
 };
 
-type UpstreamContractViolationStub = {
+type UpstreamOffContractStub = {
   ok: boolean;
   status: number;
   json: () => Promise<unknown>;
-  violatesContract: true;
+  offContract: true;
 };
+
+type UpstreamErrorBody = { error?: string };
 
 type Mutable<T> = T extends readonly (infer Item)[]
   ? Mutable<Item>[]
@@ -61,9 +64,7 @@ type EndpointMock<E extends AnyEndpoint> = Mock<
   (
     ...args: Parameters<E>
   ) => Promise<
-    | UpstreamJsonStub<E>
-    | UpstreamNoContentStubOf<E>
-    | UpstreamContractViolationStub
+    UpstreamJsonStub<E> | UpstreamNoContentStubOf<E> | UpstreamOffContractStub
   >
 >;
 
@@ -71,10 +72,16 @@ export type ApiServerClientMock<T = ApiServerClient> = T extends AnyEndpoint
   ? EndpointMock<T>
   : { readonly [K in keyof T]?: ApiServerClientMock<T[K]> };
 
+export type BeatfolioBffClientMock = ApiServerClientMock<BeatfolioBffClient>;
+
 export const createEndpointMock = <E extends AnyEndpoint>(): EndpointMock<E> =>
   vi.fn();
 
 const isSuccessStatus = (status: number) => status >= 200 && status < 300;
+
+const throwMalformedJson = async (): Promise<never> => {
+  throw new SyntaxError("Unexpected end of JSON input");
+};
 
 export function upstreamJsonResponse<const Body>(
   body: Body,
@@ -97,26 +104,24 @@ export function upstreamJsonResponse(
 export const upstreamNoContentResponse = (): UpstreamNoContentStub => ({
   ok: true,
   status: 204,
-  json: async () => undefined,
+  json: throwMalformedJson,
 });
 
-export const upstreamContractViolationResponse = (
-  body: unknown,
+export const upstreamErrorResponse = <Body extends UpstreamErrorBody>(
+  body: Body,
   status: number,
-): UpstreamContractViolationStub => ({
-  ok: isSuccessStatus(status),
+): UpstreamOffContractStub => ({
+  ok: false,
   status,
-  json: async () => body,
-  violatesContract: true,
+  json: async () => JSON.parse(JSON.stringify(body)),
+  offContract: true,
 });
 
 export const upstreamMalformedJsonResponse = (
   status = 200,
-): UpstreamContractViolationStub => ({
+): UpstreamOffContractStub => ({
   ok: isSuccessStatus(status),
   status,
-  json: async () => {
-    throw new SyntaxError("Unexpected end of JSON input");
-  },
-  violatesContract: true,
+  json: throwMalformedJson,
+  offContract: true,
 });

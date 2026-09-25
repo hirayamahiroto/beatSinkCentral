@@ -1,33 +1,41 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { useCreateUser } from "./index";
+import {
+  createRouterMock,
+  type RouterModule,
+} from "../../../../../utils/navigation/testDoubles";
+import {
+  createEndpointMock,
+  upstreamJsonResponse,
+  upstreamErrorResponse,
+  upstreamMalformedJsonResponse,
+  type BeatfolioBffClient,
+  type BeatfolioBffClientMock,
+} from "../../../../../utils/client/testDoubles";
 
-const pushMock = vi.fn();
-const refreshMock = vi.fn();
+const router = createRouterMock();
 
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({
-    push: pushMock,
-    refresh: refreshMock,
-  }),
-}));
+vi.mock(
+  "next/navigation",
+  () => ({ useRouter: () => router }) satisfies RouterModule,
+);
 
-const postMock = vi.fn();
+const usersPost =
+  createEndpointMock<BeatfolioBffClient["api"]["users"]["$post"]>();
+
+const bffClient = {
+  api: { users: { $post: usersPost } },
+} satisfies BeatfolioBffClientMock;
 
 vi.mock("../../../../../utils/client", () => ({
-  createBeatfolioBffClient: () => ({
-    api: { users: { $post: postMock } },
-  }),
+  createBeatfolioBffClient: () => bffClient,
 }));
 
-const buildJsonResponse = (body: unknown, init: { status: number }): Response =>
-  new Response(JSON.stringify(body), {
-    status: init.status,
-    headers: { "Content-Type": "application/json" },
-  });
+type UsersPostResponse = Awaited<ReturnType<typeof usersPost>>;
 
-const buildNonJsonResponse = (init: { status: number }): Response =>
-  new Response("<html></html>", { status: init.status });
+const createdResponse = () =>
+  upstreamJsonResponse({ userId: "user-1", artistId: "artist-1" }, 201);
 
 describe("useCreateUser", () => {
   afterEach(() => {
@@ -35,7 +43,7 @@ describe("useCreateUser", () => {
   });
 
   it("POST /api/users が成功すると /dashboard に遷移し、router.refresh が呼ばれる", async () => {
-    postMock.mockResolvedValueOnce(buildJsonResponse({}, { status: 201 }));
+    usersPost.mockResolvedValueOnce(createdResponse());
 
     const { result } = renderHook(() =>
       useCreateUser({ email: "user@example.com" }),
@@ -45,20 +53,20 @@ describe("useCreateUser", () => {
       await result.current.handleSubmit({ handle: "newbie" });
     });
 
-    expect(postMock).toHaveBeenCalledWith({
+    expect(usersPost).toHaveBeenCalledWith({
       json: { email: "user@example.com", handle: "newbie" },
     });
-    expect(pushMock).toHaveBeenCalledWith("/dashboard");
-    expect(refreshMock).toHaveBeenCalledTimes(1);
+    expect(router.push).toHaveBeenCalledWith("/dashboard");
+    expect(router.refresh).toHaveBeenCalledTimes(1);
     expect(result.current.error).toBeNull();
     expect(result.current.isLoading).toBe(false);
   });
 
   it("POST が non-ok JSON を返したら、error state にメッセージがセットされる", async () => {
-    postMock.mockResolvedValueOnce(
-      buildJsonResponse(
+    usersPost.mockResolvedValueOnce(
+      upstreamErrorResponse(
         { error: "そのハンドルはすでに使用されています" },
-        { status: 409 },
+        409,
       ),
     );
 
@@ -71,13 +79,13 @@ describe("useCreateUser", () => {
     });
 
     expect(result.current.error).toBe("そのハンドルはすでに使用されています");
-    expect(pushMock).not.toHaveBeenCalled();
-    expect(refreshMock).not.toHaveBeenCalled();
+    expect(router.push).not.toHaveBeenCalled();
+    expect(router.refresh).not.toHaveBeenCalled();
     expect(result.current.isLoading).toBe(false);
   });
 
   it("POST が non-JSON ボディを返したら、フォールバックのエラーメッセージがセットされる", async () => {
-    postMock.mockResolvedValueOnce(buildNonJsonResponse({ status: 502 }));
+    usersPost.mockResolvedValueOnce(upstreamMalformedJsonResponse(502));
 
     const { result } = renderHook(() =>
       useCreateUser({ email: "user@example.com" }),
@@ -88,12 +96,12 @@ describe("useCreateUser", () => {
     });
 
     expect(result.current.error).toBe("ユーザー作成に失敗しました");
-    expect(pushMock).not.toHaveBeenCalled();
+    expect(router.push).not.toHaveBeenCalled();
     expect(result.current.isLoading).toBe(false);
   });
 
   it("通信自体が失敗しても error state にメッセージがセットされる", async () => {
-    postMock.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    usersPost.mockRejectedValueOnce(new TypeError("Failed to fetch"));
 
     const { result } = renderHook(() =>
       useCreateUser({ email: "user@example.com" }),
@@ -106,15 +114,15 @@ describe("useCreateUser", () => {
     expect(result.current.error).toBe(
       "通信に失敗しました。時間をおいて再度お試しください",
     );
-    expect(pushMock).not.toHaveBeenCalled();
+    expect(router.push).not.toHaveBeenCalled();
     expect(result.current.isLoading).toBe(false);
   });
 
   it("submit 中は isLoading が true、完了後に false になる", async () => {
-    let resolvePost: ((res: Response) => void) | undefined;
-    postMock.mockImplementationOnce(
+    let resolvePost: ((res: UsersPostResponse) => void) | undefined;
+    usersPost.mockImplementationOnce(
       () =>
-        new Promise<Response>((resolve) => {
+        new Promise<UsersPostResponse>((resolve) => {
           resolvePost = resolve;
         }),
     );
@@ -133,7 +141,7 @@ describe("useCreateUser", () => {
     });
 
     await act(async () => {
-      resolvePost?.(buildJsonResponse({}, { status: 201 }));
+      resolvePost?.(createdResponse());
       await submitPromise;
     });
 

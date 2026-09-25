@@ -2,9 +2,11 @@ import { describe, it, expect, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { useNotifySubscription } from "./index";
 
+type OnSubscribe = Parameters<typeof useNotifySubscription>[0]["onSubscribe"];
+
 describe("useNotifySubscription", () => {
   it("初期状態は email が空文字、subscribed=false で、setEmail で入力値を更新できる", () => {
-    const onSubscribe = vi.fn();
+    const onSubscribe = vi.fn<OnSubscribe>();
     const { result } = renderHook(() => useNotifySubscription({ onSubscribe }));
 
     expect(result.current.email).toBe("");
@@ -18,7 +20,7 @@ describe("useNotifySubscription", () => {
   });
 
   it("submit すると onSubscribe に入力値が渡り、email がクリアされ subscribed=true になる", () => {
-    const onSubscribe = vi.fn();
+    const onSubscribe = vi.fn<OnSubscribe>();
     const { result } = renderHook(() => useNotifySubscription({ onSubscribe }));
 
     act(() => {
