@@ -147,7 +147,7 @@ CLI の `--mutate` は設定ファイルの `mutate` 配列を除外パターン
 
 ## 導入順
 
-1. `index.mjs` を CI に入れ、A と「型なし殻モック」を `--strict` でゲートにする（構造の穴を塞ぐ）
+1. ~~`index.mjs` を CI に入れ、A と「型なし殻モック」を `--strict` でゲートにする（構造の穴を塞ぐ）~~ → `.github/workflows/test-audit.yml` で全 PR に対して `npm run test:audit:ci` を実行済み
 2. Stryker を domain だけで動かし、survived を読む（アサーションの弱さを見つける）
 3. Phase 2（実 DB 統合）が入ったら、契約カバー率を 100% にする
 4. デグレが起きた瞬間から分類の記録を始める

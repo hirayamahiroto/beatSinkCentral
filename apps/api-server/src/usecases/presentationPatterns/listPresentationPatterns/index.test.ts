@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { listPresentationPatterns } from "./index";
+import type { IPresentationPatternReader } from "../../../domain/presentationPatterns/repositories";
+import type { PublicReadCapabilities } from "../../../capabilities";
 
 describe("listPresentationPatterns", () => {
   it("マスタの一覧をそのまま返す", async () => {
@@ -7,9 +9,13 @@ describe("listPresentationPatterns", () => {
       { code: "interview", label: "インタビュー" },
       { code: "zoom_dive", label: "ズーム" },
     ];
-    const caps = {
-      presentationPatterns: { findAll: vi.fn(async () => rows) },
-    };
+    const findAll = vi.fn<IPresentationPatternReader["findAll"]>(
+      async () => rows,
+    );
+    const caps = { presentationPatterns: { findAll } } satisfies Pick<
+      PublicReadCapabilities,
+      "presentationPatterns"
+    >;
 
     const result = await listPresentationPatterns(caps);
 
@@ -17,6 +23,6 @@ describe("listPresentationPatterns", () => {
       ok: true,
       value: { presentationPatterns: rows },
     });
-    expect(caps.presentationPatterns.findAll).toHaveBeenCalledTimes(1);
+    expect(findAll).toHaveBeenCalledTimes(1);
   });
 });
