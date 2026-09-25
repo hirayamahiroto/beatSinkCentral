@@ -1,0 +1,22 @@
+name: 🔍 test-audit
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 コードのチェックアウト
+        uses: actions/checkout@v4
+
+      - name: 🟢 Node.js のセットアップ
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: 🔍 テスト戦略の構造違反を検査
+        run: npm run test:audit:ci

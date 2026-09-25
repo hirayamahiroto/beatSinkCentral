@@ -65,3 +65,6 @@ next-env.d.ts
 
 # Terraform-related sensitive scratch files
 .env*.local
+
+# test-audit のローカル記録（推移はローカルに溜める）
+/reports/
