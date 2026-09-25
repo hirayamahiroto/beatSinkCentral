@@ -1,0 +1,28 @@
+name: 📚 doc-links
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  doc-links:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 コードのチェックアウト
+        uses: actions/checkout@v4
+
+      - name: 🟢 Node.js のセットアップ
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: 🧪 検査器（doc-links）自身のテスト
+        run: npm run docs:links:test
+
+      - name: 📚 ドキュメントの参照切れを検査
+        run: npm run docs:links
