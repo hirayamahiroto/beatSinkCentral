@@ -53,7 +53,7 @@ Stryker のレポート（`apps/api-server/reports/mutation/`）も gitignore �
 | 指標 | 条件 | 判定 | 精度 |
 | --- | --- | --- | --- |
 | 純粋モジュールをモックしているテスト数 | A | `vi.mock` の対象パスが `domain/` `usecases/` 配下 | 確定 |
-| 殻モックの型付き率（層別） | B | 合成点テストで `vi.fn()` が 0 かつ `vi.fn<…>` / `satisfies` がある。`*/testDoubles/*` 経由ならそのモジュールを見る | 確定 |
+| 殻モックの型付き率（層別） | B | 合成点テストで型引数のない `vi.fn(…)` が 0 かつ `vi.fn<…>` / `satisfies` がある。`*/testDoubles/*` 経由ならそのモジュールを見る（`vi.fn` を含まないデータだけのモジュールは対象外） | 確定 |
 | フィクスチャの factory 導出率 | C | `mockResolvedValue(` の引数が `reconstruct*` / `create*` / `build*` か、オブジェクトリテラルか | **疑いまで**。BFF の上流レスポンスなど、集約でない値のリテラルも数える |
 | 責務漏れの疑い | D | usecase テストに異常系タイトルが 3 件以上（エントリ層の形式検証は自層の責務なので対象外）、`error.message` の検証、usecase での status 検証 | **疑いまで**。確定はレビュー |
 | 殻の契約カバー率 | E | usecase / route で `mockResolvedValue` 等の台本が書かれたメソッドが、`*.integration.test.ts` に登場するか | Phase 2 導入後に意味を持つ |

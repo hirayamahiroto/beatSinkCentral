@@ -118,13 +118,17 @@ const resolveImport = (from, spec) => {
   }
   return null;
 };
-const mockTypingOf = (src) => ({
-  untyped:
-    (src.match(/:\s*vi\.fn\(\)/g) ?? []).length +
-    (src.match(/=\s*vi\.fn\(\)/g) ?? []).length,
-  typed: (src.match(/vi\.fn</g) ?? []).length,
-  satisfies: /\bsatisfies\b/.test(src),
-});
+const RETURN_TYPE_ANNOTATED = /\)\s*:\s*[^=;{}]+=>\s*$/;
+const mockTypingOf = (src) => {
+  let untyped = 0;
+  let typed = (src.match(/vi\.fn</g) ?? []).length;
+  for (const m of src.matchAll(/vi\.fn\(/g)) {
+    const before = src.slice(Math.max(0, m.index - 200), m.index);
+    if (RETURN_TYPE_ANNOTATED.test(before)) typed += 1;
+    else untyped += 1;
+  }
+  return { untyped, typed, satisfies: /\bsatisfies\b/.test(src) };
+};
 const shellMockTyping = {};
 for (const t of tests) {
   const layer = LAYER_OF("/" + rel(t));
@@ -136,17 +140,20 @@ for (const t of tests) {
     .filter((s) => HELPER_PATH.test(s))
     .map((s) => resolveImport(t, s))
     .filter(Boolean);
-  const helperTyping = helpers.map((h) => mockTypingOf(read(h)));
+  const helperTyping = helpers
+    .map((h) => mockTypingOf(read(h)))
+    .filter((h) => h.untyped + h.typed > 0);
   const usesMock =
     local.untyped + local.typed > 0 ||
     /vi\.mock\(/.test(src) ||
-    helpers.length > 0;
+    helperTyping.length > 0;
   if (!usesMock) continue;
-  const helperOk =
-    helperTyping.length > 0 &&
-    helperTyping.every((h) => h.untyped === 0 && (h.typed > 0 || h.satisfies));
+  const helperUntyped = helperTyping.some((h) => h.untyped > 0);
   const localOk = local.untyped === 0 && (local.typed > 0 || local.satisfies);
-  const ok = local.untyped === 0 && (localOk || helperOk);
+  const ok =
+    local.untyped === 0 &&
+    !helperUntyped &&
+    (localOk || helperTyping.length > 0);
   shellMockTyping[layer] ??= { total: 0, typed: 0, files: [] };
   shellMockTyping[layer].total += 1;
   if (ok) shellMockTyping[layer].typed += 1;
