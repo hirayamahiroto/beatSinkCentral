@@ -1,20 +1,34 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { usePublishProfile } from "./index";
+import type { publishMyProfile } from "../../../../../fetchers/artists/publishMyProfile";
+import {
+  createRouterMock,
+  type RouterModule,
+} from "../../../../../utils/navigation/testDoubles";
 
-const refreshMock = vi.fn();
+const router = createRouterMock();
 
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({
-    refresh: refreshMock,
-  }),
-}));
+vi.mock(
+  "next/navigation",
+  () => ({ useRouter: () => router }) satisfies RouterModule,
+);
 
-const publishMyProfileMock = vi.fn();
+const publishMyProfileMock = vi.fn<typeof publishMyProfile>();
 
-vi.mock("../../../../../fetchers/artists/publishMyProfile", () => ({
-  publishMyProfile: (...args: unknown[]) => publishMyProfileMock(...args),
-}));
+vi.mock(
+  "../../../../../fetchers/artists/publishMyProfile",
+  () =>
+    ({
+      publishMyProfile: (...args: Parameters<typeof publishMyProfile>) =>
+        publishMyProfileMock(...args),
+    }) satisfies Pick<
+      typeof import("../../../../../fetchers/artists/publishMyProfile"),
+      "publishMyProfile"
+    >,
+);
+
+type PublishResult = Awaited<ReturnType<typeof publishMyProfile>>;
 
 describe("usePublishProfile", () => {
   afterEach(() => {
@@ -31,7 +45,7 @@ describe("usePublishProfile", () => {
     });
 
     expect(publishMyProfileMock).toHaveBeenCalledWith({ published: true });
-    expect(refreshMock).toHaveBeenCalledTimes(1);
+    expect(router.refresh).toHaveBeenCalledTimes(1);
     expect(result.current.error).toBeNull();
     expect(result.current.rejectedRequirements).toBeNull();
     expect(result.current.isLoading).toBe(false);
@@ -41,6 +55,7 @@ describe("usePublishProfile", () => {
     publishMyProfileMock.mockResolvedValueOnce({
       ok: false,
       error: {
+        kind: "rejected",
         message: "公開に必要な項目が足りません",
         missingRequirements: ["tagline"],
       },
@@ -54,17 +69,15 @@ describe("usePublishProfile", () => {
 
     expect(result.current.error).toBe("公開に必要な項目が足りません");
     expect(result.current.rejectedRequirements).toStrictEqual(["tagline"]);
-    expect(refreshMock).not.toHaveBeenCalled();
+    expect(router.refresh).not.toHaveBeenCalled();
     expect(result.current.isLoading).toBe(false);
   });
 
   it("実行中は isLoading が true、完了後に false になる", async () => {
-    let resolvePublish:
-      | ((value: { ok: true; value: undefined }) => void)
-      | undefined;
+    let resolvePublish: ((value: PublishResult) => void) | undefined;
     publishMyProfileMock.mockImplementationOnce(
       () =>
-        new Promise((resolve) => {
+        new Promise<PublishResult>((resolve) => {
           resolvePublish = resolve;
         }),
     );
