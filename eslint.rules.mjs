@@ -794,7 +794,7 @@ const isViCall = (node, names) =>
 const rootIdentifierOf = (node) => {
   let current = node;
   while (current?.type === "MemberExpression") current = current.object;
-  return current?.type === "Identifier" ? current.name : null;
+  return current?.type === "Identifier" ? current : null;
 };
 
 const noPureModuleDoubleRule = {
@@ -805,14 +805,22 @@ const noPureModuleDoubleRule = {
   },
   create(context) {
     const filename = context.filename;
-    const pureBindings = new Set();
+    // 名前ではなく束縛で照合する。同名の引数・ローカル変数への spyOn を誤検出しない
+    const isPureImportBinding = (identifier, node) => {
+      const variable = findVariable(
+        context.sourceCode.getScope(node),
+        identifier.name,
+      );
+      return (
+        variable !== null &&
+        variable.defs.some(
+          (def) =>
+            def.type === "ImportBinding" &&
+            resolvesToPureModule(filename, def.parent.source.value),
+        )
+      );
+    };
     return {
-      ImportDeclaration(node) {
-        if (!resolvesToPureModule(filename, node.source.value)) return;
-        for (const specifier of node.specifiers) {
-          pureBindings.add(specifier.local.name);
-        }
-      },
       CallExpression(node) {
         if (isViCall(node, ["mock", "doMock"])) {
           const spec = moduleSpecifierOf(node.arguments[0]);
@@ -823,7 +831,7 @@ const noPureModuleDoubleRule = {
         }
         if (isViCall(node, ["spyOn"])) {
           const target = rootIdentifierOf(node.arguments[0]);
-          if (target && pureBindings.has(target)) {
+          if (target && isPureImportBinding(target, node)) {
             context.report({ node, message: PURE_MODULE_DOUBLE_MESSAGE });
           }
         }

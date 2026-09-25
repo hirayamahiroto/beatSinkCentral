@@ -132,7 +132,28 @@ describe("B. 殻モックの型付き率", () => {
       "apps/api-server/src/app/testDoubles/index.ts": `export const createRepoMock = () => ({ load: vi.fn() });\n`,
     });
 
-    assert.equal(summary.shellMockTyping.route.typed, 0);
+    const route = summary.shellMockTyping.route;
+    assert.deepEqual([route.total, route.typed], [1, 0]);
+    assert.deepEqual(route.untypedFiles[0].viaHelper, [
+      "apps/api-server/src/app/testDoubles/index.ts",
+    ]);
+  });
+
+  test("文字列・テンプレート・正規表現の中の // より後ろも検査する", () => {
+    const { summary, status } = audit(
+      {
+        [ROUTE_TEST]: lines(
+          `const url = "https://example.com"; const a = { load: vi.fn<any>() };`,
+          "const path = `//cdn`; const b = { load: vi.fn<any>() };",
+          String.raw`const re = /https?:\/\//; const c = { load: vi.fn<any>() };`,
+          `const cls = /[/]/; const d = { load: vi.fn<any>() };`,
+        ),
+      },
+      "--strict",
+    );
+
+    assert.deepEqual(summary.shellMockTyping.route.untypedFiles[0].untyped, 4);
+    assert.equal(status, 1);
   });
 });
 

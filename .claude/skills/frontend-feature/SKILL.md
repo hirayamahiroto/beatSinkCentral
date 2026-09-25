@@ -139,11 +139,11 @@ Atomic Design の順＝**部品から外側へ**。
 ## Step 4. 検証する
 
 ```bash
-cd packages/ui && npx tsc --noEmit          # 型
-cd apps/beatfolio && npx tsc --noEmit       # アプリ側を変更したなら
-cd apps/beatfolio && npx vitest run         # テスト
-cd apps/beatfolio && npx next build         # ルート構成の検証（page を足したとき）
-cd packages/ui && npm run storybook         # 目視（:6006）
+(cd packages/ui && npx tsc --noEmit)        # 型
+(cd apps/beatfolio && npx tsc --noEmit)     # アプリ側を変更したなら
+(cd apps/beatfolio && npx vitest run)       # テスト
+(cd apps/beatfolio && npx next build)       # ルート構成の検証（page を足したとき）
+(cd packages/ui && npm run storybook)       # 目視（:6006）
 npm run test:audit                          # テストの偽パス発生源（BFF / hook テストを変更したとき）
 ```
 

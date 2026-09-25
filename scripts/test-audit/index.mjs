@@ -77,8 +77,59 @@ const rel = (p) => relative(ROOT, p).split(sep).join("/");
 const isTest = (p) => /\.test\.tsx?$/.test(p);
 const isSource = (p) => /(^|\/)index\.tsx?$/.test(rel(p)) && !isTest(p);
 const read = (p) => readFileSync(p, "utf8");
-const stripComments = (src) =>
-  src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+// 文字列・テンプレート・正規表現リテラルの中の `//` `/*` はコメントとして扱わない。
+// 依存なしを保つため AST ではなく字句を走査する（`${}` 内の入れ子のテンプレートは対象外）
+const REGEX_PRECEDER = /[(,=:[!&|?{};+\-*%<>~^]/;
+const skipLiteral = (src, start, quote) => {
+  let i = start + 1;
+  let inClass = false;
+  while (i < src.length) {
+    const ch = src[i];
+    if (ch === "\\") {
+      i += 2;
+      continue;
+    }
+    if (quote !== "`" && ch === "\n") return i;
+    if (ch === quote && !inClass) return i + 1;
+    // 正規表現の文字クラス内の `/`（例: /[/]/）は終端ではない
+    if (quote === "/" && ch === "[") inClass = true;
+    if (quote === "/" && ch === "]") inClass = false;
+    i += 1;
+  }
+  return i;
+};
+const stripComments = (src) => {
+  let out = "";
+  let prev = "";
+  let i = 0;
+  while (i < src.length) {
+    const ch = src[i];
+    const next = src[i + 1];
+    if (ch === "/" && next === "/") {
+      while (i < src.length && src[i] !== "\n") i += 1;
+    } else if (ch === "/" && next === "*") {
+      const close = src.indexOf("*/", i + 2);
+      const end = close === -1 ? src.length : close + 2;
+      out += src.slice(i, end).replace(/[^\n]/g, "");
+      i = end;
+    } else if (
+      ch === '"' ||
+      ch === "'" ||
+      ch === "`" ||
+      (ch === "/" && (prev === "" || REGEX_PRECEDER.test(prev)))
+    ) {
+      const end = skipLiteral(src, i, ch);
+      out += src.slice(i, end);
+      prev = ch;
+      i = end;
+    } else {
+      out += ch;
+      if (!/\s/.test(ch)) prev = ch;
+      i += 1;
+    }
+  }
+  return out;
+};
 // コメントに残った `vi.mock(...)` 等を違反として数えないよう、判定はコメントを除いた本文で行う
 const readCode = (p) => stripComments(read(p));
 

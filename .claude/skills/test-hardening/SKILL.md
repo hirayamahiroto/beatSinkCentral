@@ -69,18 +69,18 @@ flowchart TD
 
 ```bash
 npm run test:audit                                          # 構造の指標
-cd apps/api-server && npm run test:mutation:domain          # 層を絞る（全量は nightly に任せる）
-cd apps/api-server && npm run test:mutation:incremental     # 変更分だけ
+(cd apps/api-server && npm run test:mutation:domain)        # 層を絞る（全量は nightly に任せる）
+(cd apps/api-server && npm run test:mutation:incremental)   # 変更分だけ
 ```
 
 survived の一覧は JSON レポートから行番号つきで出す（HTML を目で追わない）:
 
 ```bash
-cd apps/api-server && node -e '
+(cd apps/api-server && node -e '
 const r=require("./reports/mutation/report.json");
 for (const [f,v] of Object.entries(r.files)) { const L=v.source.split("\n");
   for (const m of v.mutants) if (m.status==="Survived")
-    console.log(f.replace(/.*src\//,"")+":"+m.location.start.line, m.mutatorName, "|", L[m.location.start.line-1].trim()) }'
+    console.log(f.replace(/.*src\//,"")+":"+m.location.start.line, m.mutatorName, "|", L[m.location.start.line-1].trim()) }')
 ```
 
 ## Step 2. 分類する
@@ -113,11 +113,21 @@ test-audit の指摘も同じように分類する。C（手書きフィクス�
 
 **足したテスト・ルール・計測器の判定は、壊した実装に当てて落ちることを確かめてから完了にする。** 緑を見ただけでは「検知できる」ことは分からない。
 
-| 足したもの                        | 壊し方                                                                                           |
-| --------------------------------- | ------------------------------------------------------------------------------------------------ |
-| domain / usecase のテスト         | 再計測で該当 mutant が killed になるか。static なら手で変異を入れる                              |
-| lint ルール（`eslint.rules.mjs`） | ルールを `off` にしてルールのテスト（`eslint.rules.test.mts`）が落ちるか                         |
-| test-audit の判定                 | `git show HEAD:scripts/test-audit/index.mjs` の旧版に `npm run test:audit:test` を当てて落ちるか |
+| 足したもの                        | 壊し方                                                                   |
+| --------------------------------- | ------------------------------------------------------------------------ |
+| domain / usecase のテスト         | 再計測で該当 mutant が killed になるか。static なら手で変異を入れる      |
+| lint ルール（`eslint.rules.mjs`） | ルールを `off` にしてルールのテスト（`eslint.rules.test.mts`）が落ちるか |
+| test-audit の判定                 | 旧版を隔離した場所に置き、今のテストを旧版に当てて落ちるか（下記）       |
+
+test-audit の旧版に今のテストを当てる（`index.test.mjs` は自分と同じディレクトリの `index.mjs` を実行するため、両方を一時ディレクトリに置く）:
+
+```bash
+OLD=$(mktemp -d) && mkdir -p "$OLD/scripts/test-audit"
+git show origin/main:scripts/test-audit/index.mjs > "$OLD/scripts/test-audit/index.mjs"
+cp scripts/test-audit/index.test.mjs "$OLD/scripts/test-audit/"
+node --test "$OLD/scripts/test-audit/index.test.mjs"   # 足したケースの数だけ fail すること
+rm -rf "$OLD"
+```
 
 計測器（test-audit / lint ルール）を直したら、**すり抜けた形を `scripts/test-audit/index.test.mjs` / `eslint.rules.test.mts` にケースとして足す**。検出と非検出（誤検知しない形）の両方を置く。
 

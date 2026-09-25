@@ -142,12 +142,12 @@ flowchart TD
 
 ```bash
 npm test -- --filter api-server           # 全テスト green
-cd apps/api-server && npx tsc --noEmit    # 型（vitest は型を見ないので必須）
-cd apps/api-server && npx next lint       # lint（Entity の振る舞いの呼び手は local/entity-behavior-has-caller が見る）
+(cd apps/api-server && npx tsc --noEmit)  # 型（vitest は型を見ないので必須）
+(cd apps/api-server && npx next lint)     # lint（Entity の振る舞いの呼び手は local/entity-behavior-has-caller が見る）
 npm run knip                              # 呼び手のない export・ファイル・依存
 npm run knip:production                   # テストからしか参照されない export
 npm run test:audit                        # テストの偽パス発生源（指標 A〜E 等）
-cd apps/api-server && npm run test:mutation:incremental   # domain / usecase / route を変更したとき
+(cd apps/api-server && npm run test:mutation:incremental) # domain / usecase / route を変更したとき
 ```
 
 - 新規 module すべてに test があるか。

@@ -7,6 +7,9 @@ on:
     - cron: "17 18 * * *" # 03:17 JST
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   mutation:
     runs-on: ubuntu-latest

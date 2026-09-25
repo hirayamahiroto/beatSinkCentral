@@ -456,6 +456,20 @@ describe("local-test/no-pure-module-double", () => {
     expect(await ruleIdsFor(ROUTE_TEST, code)).toContain(PURE_DOUBLE);
   });
 
+  it("純粋モジュールの束縛と同名の引数・ローカル変数への vi.spyOn は検出しない", async () => {
+    const code = [
+      `import * as factories from "../../../../../../domain/artists/factories";`,
+      `export const run = (factories: { send: () => void }) => vi.spyOn(factories, "send");`,
+      `export const other = () => {`,
+      `  const factories = { send: () => undefined };`,
+      `  return vi.spyOn(factories, "send");`,
+      `};`,
+      ``,
+    ].join("\n");
+
+    expect(await ruleIdsFor(ROUTE_TEST, code)).not.toContain(PURE_DOUBLE);
+  });
+
   it("殻（infrastructure）の差し替えと、グローバルへの spyOn は検出しない", async () => {
     const code = [
       `vi.mock("../../../../../../infrastructure/capabilities", () => ({}));`,
