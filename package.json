@@ -25,7 +25,9 @@
     "token-report:test": "node --test scripts/token-usage-report/lib.test.mjs",
     "test:audit": "node scripts/test-audit/index.mjs",
     "test:audit:ci": "node scripts/test-audit/index.mjs --strict",
-    "test:audit:record": "node scripts/test-audit/index.mjs --out reports/test-audit"
+    "test:audit:record": "node scripts/test-audit/index.mjs --out reports/test-audit",
+    "docs:links": "node scripts/doc-links/index.mjs",
+    "docs:links:test": "node --test scripts/doc-links/index.test.mjs"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

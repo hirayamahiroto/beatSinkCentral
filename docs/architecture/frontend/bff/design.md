@@ -2,7 +2,7 @@
 
 > **位置づけ**
 > BFF は **フロントエンド（`apps/beatfolio`）が api-server と対話するための仲介層**であり、フロントエンドアーキテクチャの一部である。
-> api-server 側の内部設計（ドメイン / usecase / repository 等）とは責務が分かれる。サーバー内部設計は [`docs/server-architecture/`](../../server/architecture.md) を参照。
+> api-server 側の内部設計（ドメイン / usecase / repository 等）とは責務が分かれる。サーバー内部設計は [`docs/architecture/server/architecture.md`](../../server/architecture.md) を参照。
 > 認証・セッション観点での BFF の役割は [`authentication.md`](../../authentication.md) を参照。本ドキュメントは **データフローの設計基盤**を担う。
 > Web / iOS 等のマルチクライアント化で BFF がどう発展するかは [`bff-multi-client.md`](./multi-client.md) を参照。
 
