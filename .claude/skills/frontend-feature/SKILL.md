@@ -149,6 +149,7 @@ npm run test:audit                          # テストの偽パス発生源（B
 
 - 描画する atom/molecule/organism すべてに `index.stories.tsx` があるか。
 - `test:audit` の指標が**変更前より悪化していないか**。BFF の上流モックは型付きダブル（`utils/client/testDoubles`）から作り、手書きのボディで組まない（指標 B / C）。型なしのモックは lint（`local-test/no-untyped-double`）が先に止める。
+- 足したテストが**壊れた実装で落ちる**ことを確かめる。不具合の修正なら修正前のコードで落ちることを見る。beatfolio には Stryker が無いので、新しい振る舞いは条件の反転などを手で入れて確かめ、必ず元に戻す（`strategy.md` §11「書いたテストが検知できることを確かめる」）。
 
 ### Step 4b. 意図適合をレビューする（機械検証では拾えない）
 
