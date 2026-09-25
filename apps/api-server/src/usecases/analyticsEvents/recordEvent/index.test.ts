@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { recordEvent, type RecordEventUsecaseInput } from "./index";
+import type { IAnalyticsEventWriter } from "../../../domain/analyticsEvents/repositories";
+import type { PublicWriteCapabilities } from "../../../capabilities";
 
 const NOW = new Date("2026-09-10T03:00:00.000Z");
 
@@ -27,12 +29,15 @@ describe("recordEvent", () => {
   });
 
   it("有効な入力でイベントを現在時刻付きでrecordし、okを返す", async () => {
-    const record = vi.fn().mockResolvedValue(undefined);
-
-    const result = await recordEvent(
-      { analyticsEvents: { record } },
-      buildInput(),
+    const record = vi.fn<IAnalyticsEventWriter["record"]>(
+      async () => undefined,
     );
+    const caps = { analyticsEvents: { record } } satisfies Pick<
+      PublicWriteCapabilities,
+      "analyticsEvents"
+    >;
+
+    const result = await recordEvent(caps, buildInput());
 
     expect(result.ok).toBe(true);
     expect(record).toHaveBeenCalledTimes(1);
@@ -51,10 +56,14 @@ describe("recordEvent", () => {
   });
 
   it("未知のeventTypeはrecordを呼ばずerrを返す", async () => {
-    const record = vi.fn();
+    const record = vi.fn<IAnalyticsEventWriter["record"]>();
+    const caps = { analyticsEvents: { record } } satisfies Pick<
+      PublicWriteCapabilities,
+      "analyticsEvents"
+    >;
 
     const result = await recordEvent(
-      { analyticsEvents: { record } },
+      caps,
       buildInput({ eventType: "unknown_event" }),
     );
 
