@@ -29,7 +29,7 @@ argument-hint: <Issue URL/番号 | docs/plans/*.md のパス | 実装内容そ�
   - api-server 側の変更 → `/api-server-feature` スキルを先に読む
   - beatfolio / packages/ui 側の変更 → `/frontend-feature` スキルを先に読む
   - ドキュメントと既存コードが食い違う場合は勝手に合わせず、ユーザーに共有して方針を確認する
-- `.claude/rules/code-review-checklist.md` を遵守する（特に 🔴: スコープ条件・権限露出・トランザクション境界・型安全）。
+- 実装後は `code-review-checklist` Skill を Skill ツールで呼び、該当 § を判定・実行する（特に 🔴: スコープ条件・権限露出・トランザクション境界・型安全）。各実装 Skill の Step 4b がその手順。
 - コメントは残さない（命名・構造で表現）。`?? フォールバック` で必須値を埋めない。
 
 ## 手順

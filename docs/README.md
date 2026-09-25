@@ -89,7 +89,7 @@ DB まわり — [`architecture/server/database/`](./architecture/server/databas
 
 ## 書くときのルール
 
-- **設計判断の理由はコードのコメントではなくここに書く**（[code-review-checklist](../.claude/rules/code-review-checklist.md) §13）
+- **設計判断の理由はコードのコメントではなくここに書く**（[code-review-checklist](../.claude/skills/code-review-checklist/SKILL.md) §13）
 - **既存コードと食い違ったらドキュメントが正**。既存に合わせず、ズレを共有して方針を決める
 - 該当ドキュメントが無い設計判断が必要になったら、コードに落とす前にドキュメント側を整える
 - **時間軸を名前に入れるのは `plans/` の中だけ**。`product/` と `architecture/` は恒久的な名前にする

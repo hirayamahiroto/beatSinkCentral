@@ -36,7 +36,7 @@
 | 未知エラーの `message` / `stack`  | ×            | ○        | 内部事情の漏洩を防ぎつつ、調査可能性は落とさない        |
 | DB / 外部 API の内部事情          | ×            | ○        | 500 + 汎用文言で返し、詳細はログへ                      |
 
-**ログに出るのは `logFields` で宣言したフィールドだけ**。エラーオブジェクトを spread しないため、後からエラー型にセンシティブな値を足しても勝手にログへ流れない（`.claude/rules/code-review-checklist.md` §4-3 に対応）。
+**ログに出るのは `logFields` で宣言したフィールドだけ**。エラーオブジェクトを spread しないため、後からエラー型にセンシティブな値を足しても勝手にログへ流れない（`.claude/skills/code-review-checklist/SKILL.md` §4-3 に対応）。
 
 ### logLevel の付与ルール
 
@@ -100,7 +100,7 @@ Hono の `c.req.routePath` は**そのミドルウェア自身の登録パター
 
 ### user_id を載せない理由
 
-Auth0 の `sub` は PII に当たるためログに出さない（`.claude/rules/code-review-checklist.md` §4-3）。内部 ID は認証時点では未解決で、usecase 内の `resolveActor` を通した後にしか確定しない。ユーザー単位の絞り込みが必要になった段階で、解決済みの内部 ID を context に足す。
+Auth0 の `sub` は PII に当たるためログに出さない（`.claude/skills/code-review-checklist/SKILL.md` §4-3）。内部 ID は認証時点では未解決で、usecase 内の `resolveActor` を通した後にしか確定しない。ユーザー単位の絞り込みが必要になった段階で、解決済みの内部 ID を context に足す。
 
 ### env / service / version
 

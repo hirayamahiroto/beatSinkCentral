@@ -55,7 +55,7 @@
 | 表現       | 見せ方を選ぶ          | `POST /artists/:artistId/presentation`               | `{ patternCode }`（`presentation_patterns.code`）                                                                                                                              |
 | 翻訳段落   | —                     | **作らない**（運営が直接書く）                       | —                                                                                                                                                                              |
 
-`chapterKey` は問いマスタ `story_questions.code` の値（`beginning` / `turning_point` / `concept`）。語彙は DB マスタ由来であり、URL に別名を導入しない（[`code-review-checklist.md`](../../../.claude/rules/code-review-checklist.md) §14）。
+`chapterKey` は問いマスタ `story_questions.code` の値（`beginning` / `turning_point` / `concept`）。語彙は DB マスタ由来であり、URL に別名を導入しない（[`code-review-checklist`](../../../.claude/skills/code-review-checklist/SKILL.md) §14）。
 
 ルール:
 
@@ -80,7 +80,7 @@
 
 - 内容の書き換えは `edit(state, change)` に渡す。集約が無ければ `edit` が空の下書きを起こしてから適用するので、どの構造から書き始めてもよい。公開中に必須条件を割れば戻り値が `DraftProfile` になり、そのまま `save` する。
 - リポジトリの書き口は `save(StoredProfile)` と `publish(PublishedProfile)` の 2 つ。`save` は公開状態を立てない（下書きへ降ろすことはある）。`publish` は必須条件が揃った `PublishedProfile` しか受けないため、条件を満たさない公開は型で書けない。部分更新の最適化は必要になってから。
-- 画像は外部ストレージへのアップロードとプロフィールへの URL 書き込みを分け、前者をトランザクションの外で行う（`code-review-checklist.md` §10）。ルートが「アップロード → URL を集約へ書く」の順に 2 つの usecase を呼ぶ。
+- 画像は外部ストレージへのアップロードとプロフィールへの URL 書き込みを分け、前者をトランザクションの外で行う（`code-review-checklist` §10）。ルートが「アップロード → URL を集約へ書く」の順に 2 つの usecase を呼ぶ。
 
 ### ルート構成
 
