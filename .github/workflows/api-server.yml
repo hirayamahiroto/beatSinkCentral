@@ -35,4 +35,4 @@ jobs:
         uses: ./.github/actions/build-and-test
         with:
           package-filter: api-server
-          node-version: "20"
+          node-version: "22"
