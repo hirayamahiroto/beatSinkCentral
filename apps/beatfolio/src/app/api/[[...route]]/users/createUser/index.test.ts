@@ -98,7 +98,7 @@ describe("POST /users", () => {
 
   it("api-server の 5xx は 502 を返す", async () => {
     usersPost.mockResolvedValue(
-      upstreamJsonResponse({ error: "Internal", code: "Internal" }, 500),
+      upstreamJsonResponse({ error: "Internal" }, 500),
     );
 
     const res = await request(validBody);

@@ -10,6 +10,7 @@ import {
   createEndpointMock,
   type ApiServerClient,
   type ApiServerClientMock,
+  upstreamContractViolationResponse,
   upstreamJsonResponse,
 } from "../../../../../../utils/client/testDoubles";
 
@@ -112,7 +113,7 @@ describe("POST /artists/me", () => {
 
   it("code の無い 4xx は契約違反として 502 にする", async () => {
     handlePost.mockResolvedValue(
-      upstreamJsonResponse({ error: "handle already taken" }, 409),
+      upstreamContractViolationResponse({ error: "handle already taken" }, 409),
     );
 
     const res = await request({ handle: "saku_new" });
