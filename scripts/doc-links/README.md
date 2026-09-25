@@ -13,7 +13,7 @@ CI は `.github/workflows/doc-links.yml` で全 PR に対して実行する。�
 
 | 対象 | 範囲 | 確かめること |
 | --- | --- | --- |
-| Markdown リンク `[text](path#anchor)`・参照形式 `[ref]: path` | git 管理下の全 `.md` | ファイル（ディレクトリ可）が在ること。`.md` へのアンカーは見出しが在ること |
+| Markdown リンク `[text](path#anchor)`・参照形式 `[ref]: path` | 追跡済みの `.md` と、gitignore 対象外の未追跡 `.md` | ファイル（ディレクトリ可）が在ること。`.md` へのアンカーは見出しが在ること |
 | バッククォートのパス `` `docs/…` `` `` `.claude/…` `` `` `scripts/…` `` | 下記の除外を除く `.md` | パスが在ること（`#` `:` 以降は無視） |
 | コード中の `docs/…` `.claude/…` | `.ts` `.tsx` `.mjs` `.mts` `.yml` `.yaml` | パスが在ること |
 

@@ -29,13 +29,25 @@ const PATH_EXEMPT = [/^docs\/adr\//, /^docs\/plans\//, /^docs\/discussions\//];
 const PLACEHOLDER = /\.\.\.|…|[*{}<>$]/;
 // -------------------------
 
-const git = (...a) =>
-  execFileSync("git", a, { cwd: ROOT, encoding: "utf8" }).trim();
 // 追跡済みに加えて未追跡（gitignore 以外）も見る。add 前の新規ファイルをローカルで取りこぼさない
+// -z: 既定では日本語などのパスが引用・エスケープされ、実在するパスとして扱えなくなる
 const listFiles = (...globs) =>
-  git("ls-files", "--cached", "--others", "--exclude-standard", "--", ...globs)
-    .split("\n")
+  execFileSync(
+    "git",
+    [
+      "ls-files",
+      "-z",
+      "--cached",
+      "--others",
+      "--exclude-standard",
+      "--",
+      ...globs,
+    ],
+    { cwd: ROOT, encoding: "utf8" },
+  )
+    .split("\0")
     .filter(Boolean)
+    // --cached は作業ツリーで削除済みの追跡ファイルも返す
     .filter((f) => existsSync(abs(f)))
     // 自分自身のテストは、検出させるための参照切れを文字列で持つ
     .filter((f) => f !== "scripts/doc-links/index.test.mjs");
@@ -52,12 +64,78 @@ const isIgnored = (p) => {
   }
 };
 
-// フェンス内は検査しない。行番号を保つため改行は残す
-const blankFences = (src) =>
-  src.replace(/^(```|~~~)[\s\S]*?^\1/gm, (m) => m.replace(/[^\n]/g, " "));
-// インラインコード内の `[text](path)` はリンクではない。行番号を保つため長さは変えない
-const blankInlineCode = (src) =>
-  src.replace(/(`+)[^\n]*?\1/g, (m) => " ".repeat(m.length));
+// 検査しない範囲を空白で塗る。行番号を保つため改行は残す
+const mask = (s) => s.replace(/[^\n]/g, " ");
+
+// GFM のコードフェンス: 行頭 0〜3 空白に ``` か ~~~ を 3 文字以上。
+// 閉じは同じ文字で開きと同じ長さ以上（情報文字列なし）。閉じが無ければ末尾まで
+const blankFences = (src) => {
+  let fence = null;
+  return src
+    .split("\n")
+    .map((line) => {
+      if (fence) {
+        const close = line.match(/^ {0,3}(`{3,}|~{3,})[ \t]*$/);
+        if (
+          close &&
+          close[1][0] === fence.char &&
+          close[1].length >= fence.length
+        ) {
+          fence = null;
+        }
+        return mask(line);
+      }
+      const open = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+      // バッククォートのフェンスの情報文字列にはバッククォートを含められない（含めばコードスパン）
+      if (open && !(open[1][0] === "`" && open[2].includes("`"))) {
+        fence = { char: open[1][0], length: open[1].length };
+        return mask(line);
+      }
+      return line;
+    })
+    .join("\n");
+};
+
+// インラインコード内の `[text](path)` はリンクではない。
+// コードスパンは同じ長さのバッククォート列で閉じ、改行はまたげるが空行（段落の区切り）はまたがない。
+// 閉じが無いバッククォートは文字どおりの記号として残す
+const runLengthAt = (src, i) => {
+  let j = i;
+  while (src[j] === "`") j += 1;
+  return j - i;
+};
+const closingRunOf = (src, from, length) => {
+  let j = from;
+  while (j < src.length) {
+    const k = src.indexOf("`", j);
+    if (k === -1) return -1;
+    const n = runLengthAt(src, k);
+    if (n === length) return k;
+    j = k + n;
+  }
+  return -1;
+};
+const blankInlineCode = (src) => {
+  let out = "";
+  let i = 0;
+  while (i < src.length) {
+    if (src[i] !== "`") {
+      out += src[i];
+      i += 1;
+      continue;
+    }
+    const n = runLengthAt(src, i);
+    const close = closingRunOf(src, i + n, n);
+    if (close === -1 || /\n[ \t]*\n/.test(src.slice(i + n, close))) {
+      out += src.slice(i, i + n);
+      i += n;
+      continue;
+    }
+    out += mask(src.slice(i, close + n));
+    i = close + n;
+  }
+  return out;
+};
 const lineOf = (src, index) => src.slice(0, index).split("\n").length;
 
 // GitHub の見出しアンカー: 小文字化し、文字・数字・結合文字・`_`・空白・`-` 以外を落とし、空白を `-` にする
@@ -69,24 +147,55 @@ const slugOf = (heading) =>
     .replace(/[^\p{L}\p{M}\p{N}\p{Pc} -]/gu, "")
     .replace(/ /g, "-");
 
+// 見出し: ATX（行頭 0〜3 空白の `#`）と Setext（次の行が `===` / `---`）。
+// Setext の本文になれるのは段落の行だけなので、リスト・引用・表・見出し・空行は除く
+const ATX_HEADING = /^ {0,3}#{1,6}(?:[ \t]+(.*?))?[ \t]*$/;
+const SETEXT_UNDERLINE = /^ {0,3}(?:=+|-+)[ \t]*$/;
+const NOT_PARAGRAPH = /^\s*$|^ {0,3}(?:[-*+>|#]|\d+[.)])/;
+const headingsOf = (src) => {
+  const lines = src.split("\n");
+  const headings = [];
+  lines.forEach((line, i) => {
+    const atx = line.match(ATX_HEADING);
+    if (atx) {
+      headings.push((atx[1] ?? "").replace(/[ \t]+#+$/, ""));
+    } else if (
+      i + 1 < lines.length &&
+      SETEXT_UNDERLINE.test(lines[i + 1]) &&
+      !NOT_PARAGRAPH.test(line)
+    ) {
+      headings.push(line);
+    }
+  });
+  return headings;
+};
+
+// 見出しの slug は大文字小文字を区別せず、HTML の id / name は書かれたとおりに照合する
 const anchorCache = new Map();
 const anchorsOf = (file) => {
   if (anchorCache.has(file)) return anchorCache.get(file);
-  const src = blankFences(readFileSync(abs(file), "utf8"));
-  const anchors = new Set();
+  const fenced = blankFences(readFileSync(abs(file), "utf8"));
+  const slugs = new Set();
   const seen = new Map();
-  for (const m of src.matchAll(/^#{1,6}[ \t]+(.+?)[ \t]*#*[ \t]*$/gm)) {
-    const slug = slugOf(m[1]);
+  // 見出しの中のインラインコードは見出しの文字として slug に含まれるので、塗る前の本文から取る
+  for (const heading of headingsOf(fenced)) {
+    const slug = slugOf(heading);
     const n = seen.get(slug) ?? 0;
     seen.set(slug, n + 1);
-    anchors.add(n === 0 ? slug : `${slug}-${n}`);
+    slugs.add(n === 0 ? slug : `${slug}-${n}`);
   }
-  for (const m of src.matchAll(/<a\s+(?:name|id)=["']([^"']+)["']/g)) {
-    anchors.add(m[1]);
-  }
+  const ids = new Set(
+    [
+      ...blankInlineCode(fenced).matchAll(/<a\s+(?:name|id)=["']([^"']+)["']/g),
+    ].map((m) => m[1]),
+  );
+  const anchors = { slugs, ids };
   anchorCache.set(file, anchors);
   return anchors;
 };
+
+const hasAnchor = ({ slugs, ids }, anchor) =>
+  ids.has(anchor) || slugs.has(anchor.toLowerCase());
 
 const decode = (s) => {
   try {
@@ -96,6 +205,46 @@ const decode = (s) => {
   }
 };
 
+// インラインリンクの宛先: `<...>` か、空白を含まず括弧の釣り合いが取れた文字列（`\(` `\)` はエスケープ）
+const inlineLinksOf = (src) => {
+  const links = [];
+  for (const m of src.matchAll(/\]\(/g)) {
+    let i = m.index + 2;
+    while (src[i] === " " || src[i] === "\t") i += 1;
+    let target;
+    if (src[i] === "<") {
+      const end = src.indexOf(">", i);
+      if (end === -1) continue;
+      target = src.slice(i + 1, end);
+    } else {
+      let depth = 0;
+      let j = i;
+      for (; j < src.length; j += 1) {
+        const ch = src[j];
+        if (ch === "\\") {
+          j += 1;
+          continue;
+        }
+        if (/\s/.test(ch)) break;
+        if (ch === "(") depth += 1;
+        if (ch === ")") {
+          if (depth === 0) break;
+          depth -= 1;
+        }
+      }
+      target = src.slice(i, j).replace(/\\([()])/g, "$1");
+    }
+    if (target) links.push({ target, index: m.index });
+  }
+  return links;
+};
+const referenceLinksOf = (src) =>
+  [
+    ...src.matchAll(
+      /^[ \t]*\[[^\]]+\]:[ \t]*<?(\S+?)>?(?:[ \t]+"[^"]*")?[ \t]*$/gm,
+    ),
+  ].map((m) => ({ target: m[1], index: m.index }));
+
 const broken = [];
 const report = (file, src, index, target, reason) =>
   broken.push({ file, line: lineOf(src, index), target, reason });
@@ -104,14 +253,10 @@ const report = (file, src, index, target, reason) =>
 const markdownFiles = listFiles("*.md");
 for (const file of markdownFiles) {
   const src = blankInlineCode(blankFences(readFileSync(abs(file), "utf8")));
-  const links = [
-    ...src.matchAll(/\]\(\s*<?([^)\s>]+)>?(?:\s+"[^"]*")?\s*\)/g),
-    ...src.matchAll(
-      /^[ \t]*\[[^\]]+\]:[ \t]*<?(\S+?)>?(?:[ \t]+"[^"]*")?[ \t]*$/gm,
-    ),
-  ];
-  for (const m of links) {
-    const target = m[1];
+  for (const { target, index } of [
+    ...inlineLinksOf(src),
+    ...referenceLinksOf(src),
+  ]) {
     if (/^[a-z][a-z0-9+.-]*:/i.test(target)) continue; // http:, mailto: など
     const [rawPath, rawAnchor] = target.split("#");
     const path = decode(rawPath);
@@ -123,16 +268,16 @@ for (const file of markdownFiles) {
         )
       : file;
     if (!exists(resolved)) {
-      report(file, src, m.index, target, "ファイルが無い");
+      report(file, src, index, target, "ファイルが無い");
       continue;
     }
     if (
       rawAnchor &&
       resolved.endsWith(".md") &&
       statSync(abs(resolved)).isFile() &&
-      !anchorsOf(resolved).has(decode(rawAnchor).toLowerCase())
+      !hasAnchor(anchorsOf(resolved), decode(rawAnchor))
     ) {
-      report(file, src, m.index, target, "見出しが無い");
+      report(file, src, index, target, "見出しが無い");
     }
   }
 }

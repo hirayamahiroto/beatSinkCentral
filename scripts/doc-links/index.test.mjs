@@ -135,6 +135,88 @@ describe("Markdown リンク", () => {
     assert.deepEqual(targets, ["docs/new.md:1 ./missing.md"]);
   });
 
+  test("日本語のファイル名の Markdown も検査する", () => {
+    const { targets } = check({
+      "docs/日本語.md": lines("[壊れ](./missing.md)"),
+      "docs/a.md": lines("[日本語のファイルへ](./日本語.md)"),
+    });
+
+    assert.deepEqual(targets, ["docs/日本語.md:1 ./missing.md"]);
+  });
+
+  test("フェンスは同じ文字・開き以上の長さで閉じ、インデントと閉じ忘れも扱う", () => {
+    const { targets } = check({
+      "docs/a.md": lines(
+        "````md",
+        "```",
+        "[4 文字フェンスの中](./missing-1.md)",
+        "```",
+        "````",
+        "   ~~~",
+        "[インデントしたフェンスの中](./missing-2.md)",
+        "   ~~~",
+        "[フェンスの外](./missing-3.md)",
+        "```",
+        "[閉じていないフェンスの中](./missing-4.md)",
+      ),
+    });
+
+    assert.deepEqual(targets, ["docs/a.md:9 ./missing-3.md"]);
+  });
+
+  test("複数行のコードスパンの中は検査せず、閉じないバッククォートは段落を越えて塗らない", () => {
+    const { targets } = check({
+      "docs/a.md": lines(
+        "`",
+        "[コードスパンの中](./missing-1.md)",
+        "`",
+        "",
+        "閉じない ` バッククォート",
+        "",
+        "[段落の外](./missing-2.md)",
+      ),
+    });
+
+    assert.deepEqual(targets, ["docs/a.md:7 ./missing-2.md"]);
+  });
+
+  test("括弧を含む宛先を最後まで読む", () => {
+    const { targets } = check({
+      "docs/guide(v2).md": TARGET,
+      "docs/a.md": lines(
+        "[在る](./guide(v2).md)",
+        "[エスケープ](./guide\\(v2\\).md)",
+        "[無い](./missing(v2).md)",
+      ),
+    });
+
+    assert.deepEqual(targets, ["docs/a.md:3 ./missing(v2).md"]);
+  });
+
+  test("Setext とインデントした ATX の見出し、大文字を含む HTML の id を解決する", () => {
+    const { targets } = check({
+      "docs/guide.md": lines(
+        "Setext の見出し",
+        "===============",
+        "",
+        "   ## インデントした見出し",
+        "",
+        "- リスト",
+        "---",
+        "",
+        '<a id="CamelCase"></a>',
+      ),
+      "docs/a.md": lines(
+        "[Setext](./guide.md#setext-の見出し)",
+        "[インデント](./guide.md#インデントした見出し)",
+        "[HTML の id](./guide.md#CamelCase)",
+        "[リストは見出しでない](./guide.md#リスト)",
+      ),
+    });
+
+    assert.deepEqual(targets, ["docs/a.md:4 ./guide.md#リスト"]);
+  });
+
   test("規範でない場所（docs/plans 等）でも Markdown リンクは検査する", () => {
     const { targets } = check({
       "docs/plans/p.md": lines("[壊れ](../missing.md)"),
