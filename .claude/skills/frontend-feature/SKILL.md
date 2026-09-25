@@ -144,9 +144,11 @@ cd apps/beatfolio && npx tsc --noEmit       # アプリ側を変更したなら
 cd apps/beatfolio && npx vitest run         # テスト
 cd apps/beatfolio && npx next build         # ルート構成の検証（page を足したとき）
 cd packages/ui && npm run storybook         # 目視（:6006）
+npm run test:audit                          # テストの偽パス発生源（BFF / hook テストを変更したとき）
 ```
 
 - 描画する atom/molecule/organism すべてに `index.stories.tsx` があるか。
+- `test:audit` の指標が**変更前より悪化していないか**。BFF の上流モックは型付きダブル（`utils/client/testDoubles`）から作り、手書きのボディで組まない（指標 B / C）。型なしのモックは lint（`local-test/no-untyped-double`）が先に止める。
 
 ### Step 4b. 意図適合をレビューする（機械検証では拾えない）
 

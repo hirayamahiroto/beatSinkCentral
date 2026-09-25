@@ -115,7 +115,7 @@ CLI の `--mutate` は設定ファイルの `mutate` 配列を除外パターン
 読み方:
 
 - **層別の score** を見る。domain は 90% 台が目安、usecase / route は合成の責務だけ検証しているので低くて正常。層をまたいで一つの数字にしない
-- **survived mutants の一覧** が本体。「アサーションが弱い」「その分岐は仕様外（テストを足さない）」「到達不能（実装を消す）」に分類し、最初のものだけテストを直す
+- **survived mutants の一覧** が本体（分類から「壊した実装で落ちるか」の確認までの手順は `.claude/skills/test-hardening/SKILL.md`）。「アサーションが弱い」「その分岐は仕様外（テストを足さない）」「到達不能（実装を消す）」に分類し、最初のものだけテストを直す
 - `thresholds.break` は `null` のまま。CI を落とす基準にすると数字を上げるためのテストが増える（§6）
 - **static mutant の survived は手で確かめる**。モジュール読み込み時に評価される式（`new Map(CODES.map(...))` やモジュール定数）への変異は、vitest runner がモジュールを読み直さないため、テストが落ちるはずでも survived と出ることがある。該当行に同じ変異を手で入れて `vitest run` し、落ちれば計測上の偽 survived として扱う
 - 全量は `.github/workflows/mutation.yml` が毎晩実行し、HTML / JSON レポートを artifact に残す（手動実行は `workflow_dispatch`）
