@@ -6,7 +6,7 @@
     "dev": "next dev --turbopack -p 3001",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint src",
+    "lint": "eslint src --max-warnings 0",
     "test": "vitest",
     "test:mutation": "stryker run",
     "test:mutation:domain": "stryker run --mutate \"src/domain/**/*.ts,!src/**/*.test.ts,!src/**/testDoubles/**,!src/**/entities/index.ts,!src/**/repositories/index.ts,!src/infrastructure/**\"",

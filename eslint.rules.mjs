@@ -56,13 +56,6 @@ export const typeSafetyRules = {
   },
 };
 
-export const typeSafetyPendingWarn = (files) => ({
-  files,
-  rules: {
-    "no-restricted-syntax": ["warn", ...typeSafetySelectors],
-  },
-});
-
 // なぜ safeParse を主形として認めるか: schema.parse() は失敗時に ZodError を
 // 投げるだけで、errorMap の AppError 型（type フィールドによる errorType 分類）
 // を持たない。そのため parse() の例外は常に UnhandledError という未分類バケツに
@@ -200,14 +193,6 @@ export const responseValidationRules = (files) => ({
   plugins: { local: responseValidationPlugin },
   rules: {
     "local/response-validation": "error",
-  },
-});
-
-export const responseValidationPendingWarn = (files) => ({
-  files,
-  plugins: { local: responseValidationPlugin },
-  rules: {
-    "local/response-validation": "warn",
   },
 });
 
