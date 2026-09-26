@@ -19,12 +19,6 @@ const buildState = (
 });
 
 describe("createAnalyticsEventBehaviors", () => {
-  it("getIdでidを返す", () => {
-    const event = createAnalyticsEventBehaviors(buildState({ id: "event-2" }));
-
-    expect(event.getId()).toBe("event-2");
-  });
-
   it("toPersistenceで永続化用データを返す", () => {
     const state = buildState({
       props: { depth: 50 },

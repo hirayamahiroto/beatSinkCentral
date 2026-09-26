@@ -3,7 +3,6 @@ import type { AnalyticsEvent, AnalyticsEventState } from "../entities";
 export const createAnalyticsEventBehaviors = (
   state: AnalyticsEventState,
 ): AnalyticsEvent => ({
-  getId: () => state.id,
   toPersistence: () => ({
     id: state.id,
     eventType: state.eventType.value,

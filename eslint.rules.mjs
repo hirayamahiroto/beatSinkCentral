@@ -1,5 +1,6 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, statSync } from "node:fs";
 import { join, sep, dirname, basename } from "node:path";
+import ts from "typescript";
 
 const TYPE_ASSERTION_MESSAGE =
   "`as` による型アサーションは使用しない。型ガード関数に切り出すか、正しく型付けされた契約から値を取得する。";
@@ -553,8 +554,9 @@ export const usecaseCapabilityParameterExempt = (files) => ({
 });
 
 // Entity の振る舞いに本番コードの呼び手があるかはファイル単体では判定できないため、
-// 同じ src 配下の本番コードを読んで探す（docs/architecture/server/architecture.md
-// 「呼び手のない公開面は機械的に検出する」）。
+// 同じ src 配下の本番コードを TypeScript の型情報で辿って探す（docs/architecture/server/architecture.md
+// 「呼び手のない公開面は機械的に検出する」）。名前でなく型のメンバー単位で参照を追うので、
+// 別 Entity の同名メンバー（getId 等）は区別される。
 const entityBehaviorMessage = (typeName, memberName) =>
   `Entity \`${typeName}\` の振る舞い \`${memberName}\` に本番コード（テスト・テストダブルを除く）の呼び手が無い。` +
   "呼び手のある振る舞いだけを公開し、必要になった PR で足す。";
@@ -570,15 +572,14 @@ const sourceRootOf = (filename) => {
   return filename.slice(0, index + `${sep}src`.length);
 };
 
-const listProductionSources = (dir, excluded) => {
+const listProductionSources = (dir) => {
   const files = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
     if (entry.isDirectory()) {
-      files.push(...listProductionSources(path, excluded));
+      files.push(...listProductionSources(path));
       continue;
     }
-    if (path === excluded) continue;
     if (!PRODUCTION_SOURCE_PATTERN.test(path)) continue;
     if (NON_PRODUCTION_PATH_PATTERN.test(path)) continue;
     files.push(path);
@@ -586,11 +587,97 @@ const listProductionSources = (dir, excluded) => {
   return files;
 };
 
-const isCalledIn = (sources, memberName) => {
-  const callPattern = new RegExp(`\\.${memberName}\\s*\\(`);
-  return sources.some((source) =>
-    callPattern.test(readFileSync(source, "utf8")),
-  );
+const DEFAULT_COMPILER_OPTIONS = {
+  strict: true,
+  target: ts.ScriptTarget.ESNext,
+  module: ts.ModuleKind.ESNext,
+  moduleResolution: ts.ModuleResolutionKind.Bundler,
+  noEmit: true,
+  skipLibCheck: true,
+};
+
+const compilerOptionsOf = (sourceRoot) => {
+  const configPath = join(dirname(sourceRoot), "tsconfig.json");
+  if (!existsSync(configPath)) return DEFAULT_COMPILER_OPTIONS;
+  const { config } = ts.readConfigFile(configPath, ts.sys.readFile);
+  return ts.parseJsonConfigFileContent(config, ts.sys, dirname(configPath))
+    .options;
+};
+
+const isProductionCaller = (reference) =>
+  !reference.isDefinition &&
+  !reference.isWriteAccess &&
+  !NON_PRODUCTION_PATH_PATTERN.test(reference.fileName);
+
+const createProductionReferenceIndex = (sourceRoot) => {
+  const compilerOptions = compilerOptionsOf(sourceRoot);
+  const lintedTexts = new Map();
+  let diskVersions = new Map();
+  let lintedVersion = 0;
+
+  const refreshDiskVersions = () => {
+    diskVersions = new Map(
+      listProductionSources(sourceRoot).map((path) => [
+        path,
+        String(statSync(path).mtimeMs),
+      ]),
+    );
+  };
+
+  const service = ts.createLanguageService({
+    getScriptFileNames: () => [
+      ...new Set([...diskVersions.keys(), ...lintedTexts.keys()]),
+    ],
+    getScriptVersion: (filename) => {
+      const linted = lintedTexts.get(filename);
+      if (linted) return linted.version;
+      const disk = diskVersions.get(filename);
+      return disk ? disk : "0";
+    },
+    getScriptSnapshot: (filename) => {
+      const linted = lintedTexts.get(filename);
+      if (linted) return ts.ScriptSnapshot.fromString(linted.text);
+      const text = ts.sys.readFile(filename);
+      return text === undefined
+        ? undefined
+        : ts.ScriptSnapshot.fromString(text);
+    },
+    getCompilationSettings: () => compilerOptions,
+    getCurrentDirectory: () => sourceRoot,
+    getDefaultLibFileName: ts.getDefaultLibFilePath,
+    fileExists: ts.sys.fileExists,
+    readFile: ts.sys.readFile,
+    readDirectory: ts.sys.readDirectory,
+    directoryExists: ts.sys.directoryExists,
+    getDirectories: ts.sys.getDirectories,
+  });
+
+  return {
+    setLintedText: (filename, text) => {
+      refreshDiskVersions();
+      const linted = lintedTexts.get(filename);
+      if (linted && linted.text === text) return;
+      lintedVersion += 1;
+      lintedTexts.set(filename, { text, version: `linted-${lintedVersion}` });
+    },
+    countProductionCallers: (filename, position) => {
+      const found = service.findReferences(filename, position);
+      if (!found) return 0;
+      return found
+        .flatMap((symbol) => symbol.references)
+        .filter(isProductionCaller).length;
+    },
+  };
+};
+
+const referenceIndexes = new Map();
+
+const referenceIndexFor = (sourceRoot) => {
+  const cached = referenceIndexes.get(sourceRoot);
+  if (cached) return cached;
+  const created = createProductionReferenceIndex(sourceRoot);
+  referenceIndexes.set(sourceRoot, created);
+  return created;
 };
 
 const isBehaviorMember = (member) =>
@@ -609,6 +696,7 @@ const behaviorMembersOf = (declaration) => {
   return [];
 };
 
+/** @type {import("eslint").Rule.RuleModule} */
 const entityBehaviorHasCallerRule = {
   meta: {
     type: "problem",
@@ -622,21 +710,23 @@ const entityBehaviorHasCallerRule = {
     const sourceRoot = sourceRootOf(context.filename);
     if (!sourceRoot) return {};
 
-    let productionSources = null;
-    const callers = () => {
-      if (!productionSources) {
-        productionSources = listProductionSources(sourceRoot, context.filename);
-      }
-      return productionSources;
-    };
-
     return {
       ExportNamedDeclaration(node) {
         if (!node.declaration) return;
+        const members = behaviorMembersOf(node.declaration).filter(
+          (member) => member.key.type === "Identifier",
+        );
+        if (members.length === 0) return;
+
         const typeName = node.declaration.id?.name;
-        for (const member of behaviorMembersOf(node.declaration)) {
-          if (member.key.type !== "Identifier") continue;
-          if (isCalledIn(callers(), member.key.name)) continue;
+        const index = referenceIndexFor(sourceRoot);
+        index.setLintedText(context.filename, context.sourceCode.text);
+        for (const member of members) {
+          const callers = index.countProductionCallers(
+            context.filename,
+            member.key.range[0],
+          );
+          if (callers > 0) continue;
           context.report({
             node: member,
             message: entityBehaviorMessage(typeName, member.key.name),
@@ -653,6 +743,7 @@ const entityBehaviorPlugin = {
   },
 };
 
+/** @returns {import("eslint").Linter.Config} */
 export const entityBehaviorRules = (files) => ({
   files,
   plugins: { local: entityBehaviorPlugin },

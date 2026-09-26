@@ -23,7 +23,7 @@ describe("createAnalyticsEvent", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.toPersistence().eventType).toBe("profile_view");
-    expect(result.value.getId()).toBeTruthy();
+    expect(result.value.toPersistence().id).toEqual(expect.any(String));
   });
 
   it("anonId/sessionId/path/referrer/artistIdを入れ替えずそのまま永続化データへ渡す", () => {
