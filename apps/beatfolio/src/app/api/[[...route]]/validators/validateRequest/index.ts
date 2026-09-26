@@ -1,6 +1,7 @@
 import { zValidator } from "@hono/zod-validator";
 import type { ZodSchema } from "zod";
 import { createInvalidRequestFormatError } from "../../errors/invalidRequestFormat";
+import { throwBffError } from "../../../../../errorMap";
 
 type ValidationTarget = "json" | "form" | "param" | "query" | "header";
 
@@ -13,6 +14,6 @@ export const validateRequest = <
 ) =>
   zValidator(target, schema, (result) => {
     if (!result.success) {
-      throw createInvalidRequestFormatError(result.error.issues);
+      throwBffError(createInvalidRequestFormatError(result.error.issues));
     }
   });

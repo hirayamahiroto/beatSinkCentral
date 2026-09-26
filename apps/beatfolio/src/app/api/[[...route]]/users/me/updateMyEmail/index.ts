@@ -5,6 +5,7 @@ import { validateRequest } from "../../../validators/validateRequest";
 import { resolveMyUserId } from "../../../shared/resolveMyUserId";
 import { toUpstreamError } from "../../../shared/toUpstreamError";
 import { readUpstreamJson } from "../../../shared/readUpstreamJson";
+import { throwBffError } from "../../../../../../errorMap";
 
 const updateEmailRequestSchema = z.object({
   email: z.string().nonempty(),
@@ -23,7 +24,7 @@ const app = new Hono<RequestContextEnv>().post(
       param: { userId },
       json: { email: body.email },
     });
-    if (!res.ok) throw await toUpstreamError(res);
+    if (!res.ok) throwBffError(await toUpstreamError(res));
 
     return c.json(await readUpstreamJson(res));
   },

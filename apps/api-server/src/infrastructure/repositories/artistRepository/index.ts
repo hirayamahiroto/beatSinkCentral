@@ -16,6 +16,7 @@ import type {
 import { reconstructArtist } from "../../../domain/artists/factories";
 import { createArtistNotFoundError } from "../../../domain/artists/errors/artistNotFound";
 import { createHandleAlreadyTakenError } from "../../../domain/artists/errors/handleAlreadyTaken";
+import { raiseAlreadyTaken } from "../../../authorization/conflict";
 import { isUniqueViolation } from "../../database/uniqueViolation";
 import type { Executor } from "../../transaction";
 
@@ -36,7 +37,7 @@ const rejectTakenHandle = async <T>(
     return await write();
   } catch (error) {
     if (isUniqueViolation(error, HANDLE_UNIQUE_CONSTRAINT)) {
-      throw createHandleAlreadyTakenError(handle);
+      raiseAlreadyTaken(createHandleAlreadyTakenError(handle));
     }
     throw error;
   }

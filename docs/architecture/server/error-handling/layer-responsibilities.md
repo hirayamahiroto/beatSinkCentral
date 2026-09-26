@@ -52,13 +52,13 @@
 
 **エラー定義とルール判定は分けて置く。**
 
-- エラー型（type + factory + 型ガード）は `{domain}/errors/{errorName}/`
+- エラー型（type + factory）は `{domain}/errors/{errorName}/`
 - 中身のあるドメインルール（判定に業務知識が要るもの）は `{domain}/policies/{ruleName}/` に `ensureXxx` として置き、`Result` を返す
 - 単なる null チェック（存在しない / 既に存在する）に `policies/` は作らない。ルールを知っている呼び出し元が `if (!x) return err(...)` を書く
 
 ```text
 domain/users/errors/userNotFound/
-├── index.ts          # type / factory / 型ガード
+├── index.ts          # type / factory
 └── index.test.ts
 
 domain/artistProfiles/policies/publishability/
@@ -73,7 +73,7 @@ usecases/users/createUser/
 
 配置の分岐:
 
-- **`{domain}/errors/{errorName}/`** — エラー型と factory / 型ガード。判定ロジックは持たない
+- **`{domain}/errors/{errorName}/`** — エラー型と factory。判定ロジックは持たない
 - **`{domain}/policies/{ruleName}/`** — ドメインルールの本体を持つ判定（公開可否の最小核など）。`ensureXxx` が `Result<void, E>` を返す
 - **`usecases/{usecase}/errors.ts`** — そのユースケース専用で他から再利用しないエラー
 
@@ -81,7 +81,7 @@ usecases/users/createUser/
 
 ### co-location の原則
 
-- エラー型と、その factory / 型ガードは同じディレクトリに置く。ディレクトリ名はエラー名に揃える
+- エラー型と、その factory は同じディレクトリに置く。ディレクトリ名はエラー名に揃える
 - ルール判定は、そのルールを知っているモジュール（VO / policy / service / usecase）が持つ
 - HTTP のことを知ってはいけない（status コードはここには書かない）
 - 共通基底（`UseCaseError` 等）は **現時点では作らない**。複数ユースケースで同種の扱いが必要になった段階で導入を検討する

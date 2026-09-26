@@ -3,7 +3,8 @@ import { Hono } from "hono";
 import { reconstructUser } from "../../../../../../domain/users/factories";
 import { reconstructArtist } from "../../../../../../domain/artists/factories";
 import { createEmailAlreadyTakenError } from "../../../../../../domain/users/errors/emailAlreadyTaken";
-import { handleAppError } from "../../../../../../errorMap";
+import { raiseAlreadyTaken } from "../../../../../../authorization/conflict";
+import { handleThrownError } from "../../../../../../errorMap";
 import updateEmailRoute from "./index";
 import { createCapabilityDepsMock } from "../../../../../../infrastructure/capabilities/testDoubles";
 
@@ -33,7 +34,7 @@ const createApp = () => {
     await next();
   });
   app.route("/:userId", updateEmailRoute);
-  app.onError(handleAppError);
+  app.onError(handleThrownError);
   return app;
 };
 
@@ -123,7 +124,9 @@ describe("POST /users/:userId", () => {
   });
 
   it("emailが他ユーザーに使われていたら409を返し、emailを露出しない", async () => {
-    users.updateEmail.mockRejectedValue(createEmailAlreadyTakenError());
+    users.updateEmail.mockImplementation(async () =>
+      raiseAlreadyTaken(createEmailAlreadyTakenError()),
+    );
 
     const res = await postEmail("user-1", "taken@example.com");
 

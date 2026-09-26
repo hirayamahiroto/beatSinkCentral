@@ -1,9 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createUser, type CreateUserInput } from "./index";
-import {
-  createHandleAlreadyTakenError,
-  isHandleAlreadyTakenError,
-} from "../../../domain/artists/errors/handleAlreadyTaken";
+import { createHandleAlreadyTakenError } from "../../../domain/artists/errors/handleAlreadyTaken";
 import { reconstructUser } from "../../../domain/users/factories";
 import { reconstructArtist } from "../../../domain/artists/factories";
 import type { RegistrationCapabilities } from "../../../capabilities";
@@ -100,7 +97,7 @@ describe("createUser", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(isHandleAlreadyTakenError(result.error)).toBe(true);
+      expect(result.error.type).toBe("HandleAlreadyTakenError");
     }
     expect(caps.users.save).not.toHaveBeenCalled();
     expect(caps.artists.save).not.toHaveBeenCalled();

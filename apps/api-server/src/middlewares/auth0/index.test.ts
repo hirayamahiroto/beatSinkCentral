@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import { handleAppError } from "../../errorMap";
+import { handleThrownError } from "../../errorMap";
 
 const getSessionMock = vi.fn();
 
@@ -18,7 +18,7 @@ const buildApp = async () => {
       const auth0User = c.get("auth0User");
       return c.json({ sub: auth0User.sub });
     })
-    .onError(handleAppError);
+    .onError(handleThrownError);
 };
 
 describe("requireAuthMiddleware", () => {

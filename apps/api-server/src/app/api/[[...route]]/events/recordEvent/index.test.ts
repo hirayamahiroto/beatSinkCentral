@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import { handleAppError } from "../../../../../errorMap";
+import { handleThrownError } from "../../../../../errorMap";
 import recordEventRoute from "./index";
 import { createCapabilityDepsMock } from "../../../../../infrastructure/capabilities/testDoubles";
 
@@ -13,7 +13,7 @@ vi.mock("../../../../../infrastructure/capabilities", () => ({
 const createApp = () => {
   const app = new Hono();
   app.route("/", recordEventRoute);
-  app.onError(handleAppError);
+  app.onError(handleThrownError);
   return app;
 };
 

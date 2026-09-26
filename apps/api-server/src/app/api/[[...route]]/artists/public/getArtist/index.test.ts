@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { reconstructStoredProfile } from "../../../../../../domain/artistProfiles/factories";
 import type { PublishedProfile } from "../../../../../../domain/artistProfiles/entities";
-import { handleAppError } from "../../../../../../errorMap";
+import { handleThrownError } from "../../../../../../errorMap";
 import getArtistRoute from "./index";
 import { createCapabilityDepsMock } from "../../../../../../infrastructure/capabilities/testDoubles";
 
@@ -30,7 +30,7 @@ const publishedProfile = (): PublishedProfile => {
 const createApp = () => {
   const app = new Hono();
   app.route("/:handle", getArtistRoute);
-  app.onError(handleAppError);
+  app.onError(handleThrownError);
   return app;
 };
 

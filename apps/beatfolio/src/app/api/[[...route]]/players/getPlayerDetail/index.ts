@@ -8,6 +8,7 @@ import { resolveStoryQuestionLabels } from "../../shared/resolveStoryQuestionLab
 import { toUpstreamError } from "../../shared/toUpstreamError";
 import { readUpstreamJson } from "../../shared/readUpstreamJson";
 import { createPlayerNotFoundError } from "../../errors/playerNotFound";
+import { throwBffError } from "../../../../../errorMap";
 
 const toSupportLink = (link: ResolvedLink) => ({
   platform: link.type,
@@ -26,11 +27,12 @@ const app = new Hono<RequestContextEnv>().get("/:handle", async (c) => {
   ]);
 
   if (profileRes.status === 404 || profileRes.status === 422) {
-    throw createPlayerNotFoundError();
+    throwBffError(createPlayerNotFoundError());
   }
-  if (!profileRes.ok) throw await toUpstreamError(profileRes);
-  if (!linkTypesRes.ok) throw await toUpstreamError(linkTypesRes);
-  if (!storyQuestionsRes.ok) throw await toUpstreamError(storyQuestionsRes);
+  if (!profileRes.ok) throwBffError(await toUpstreamError(profileRes));
+  if (!linkTypesRes.ok) throwBffError(await toUpstreamError(linkTypesRes));
+  if (!storyQuestionsRes.ok)
+    throwBffError(await toUpstreamError(storyQuestionsRes));
 
   const { artistId, profile } = await readUpstreamJson(profileRes);
   const { linkTypes } = await readUpstreamJson(linkTypesRes);

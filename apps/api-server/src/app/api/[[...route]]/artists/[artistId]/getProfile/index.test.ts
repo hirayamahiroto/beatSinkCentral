@@ -4,7 +4,7 @@ import { reconstructUser } from "../../../../../../domain/users/factories";
 import { reconstructArtist } from "../../../../../../domain/artists/factories";
 import { reconstructStoredProfile } from "../../../../../../domain/artistProfiles/factories";
 import { reconstructOffer } from "../../../../../../domain/offers/factories";
-import { handleAppError } from "../../../../../../errorMap";
+import { handleThrownError } from "../../../../../../errorMap";
 import getProfileRoute from "./index";
 import { createCapabilityDepsMock } from "../../../../../../infrastructure/capabilities/testDoubles";
 
@@ -36,7 +36,7 @@ const createApp = (sub: string) => {
     await next();
   });
   app.route("/:artistId/profile", getProfileRoute);
-  app.onError(handleAppError);
+  app.onError(handleThrownError);
   return app;
 };
 

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
-import { handleBffError } from "./index";
+import { handleBffError, throwBffError } from "./index";
 import { createUpstreamUnavailableError } from "../utils/client/errors/upstreamUnavailable";
 import { createUpstreamServerError } from "../app/api/[[...route]]/errors/upstreamServerError";
 import { createUpstreamContractViolationError } from "../app/api/[[...route]]/errors/upstreamContractViolation";
@@ -11,13 +11,15 @@ import { createMyArtistNotFoundError } from "../app/api/[[...route]]/errors/myAr
 import { createPlayerNotFoundError } from "../app/api/[[...route]]/errors/playerNotFound";
 import { createPartialSaveFailedError } from "../app/api/[[...route]]/errors/partialSaveFailed";
 
-const createApp = (thrown: unknown) => {
+const createApp = (fail: () => never) => {
   const app = new Hono();
-  app.get("/", () => {
-    throw thrown;
-  });
+  app.get("/", fail);
   app.onError(handleBffError);
   return app;
+};
+
+const throwing = (thrown: unknown) => () => {
+  throw thrown;
 };
 
 describe("handleBffError", () => {
@@ -31,8 +33,10 @@ describe("handleBffError", () => {
   });
 
   it("上流に到達できないエラーを 502 へマップする", async () => {
-    const res = await createApp(
-      createUpstreamUnavailableError(new TypeError("fetch failed")),
+    const res = await createApp(() =>
+      throwBffError(
+        createUpstreamUnavailableError(new TypeError("fetch failed")),
+      ),
     ).request("/");
 
     expect(res.status).toBe(502);
@@ -43,7 +47,9 @@ describe("handleBffError", () => {
   });
 
   it("上流の 5xx を 502 へマップし、上流のボディを返さない", async () => {
-    const res = await createApp(createUpstreamServerError(503)).request("/");
+    const res = await createApp(() =>
+      throwBffError(createUpstreamServerError(503)),
+    ).request("/");
 
     expect(res.status).toBe(502);
     expect(await res.json()).toStrictEqual({
@@ -53,11 +59,13 @@ describe("handleBffError", () => {
   });
 
   it("上流の契約違反を 502 へマップし error でログする", async () => {
-    const res = await createApp(
-      createUpstreamContractViolationError({
-        upstreamStatus: 409,
-        reason: "error body without code",
-      }),
+    const res = await createApp(() =>
+      throwBffError(
+        createUpstreamContractViolationError({
+          upstreamStatus: 409,
+          reason: "error body without code",
+        }),
+      ),
     ).request("/");
 
     expect(res.status).toBe(502);
@@ -72,15 +80,17 @@ describe("handleBffError", () => {
   });
 
   it("上流の 4xx はステータスとボディを透過する", async () => {
-    const res = await createApp(
-      createUpstreamRejectedError({
-        status: 409,
-        body: {
-          error: "Handle already taken",
-          code: "HandleAlreadyTakenError",
-          details: { handle: "taken_id" },
-        },
-      }),
+    const res = await createApp(() =>
+      throwBffError(
+        createUpstreamRejectedError({
+          status: 409,
+          body: {
+            error: "Handle already taken",
+            code: "HandleAlreadyTakenError",
+            details: { handle: "taken_id" },
+          },
+        }),
+      ),
     ).request("/");
 
     expect(res.status).toBe(409);
@@ -92,15 +102,17 @@ describe("handleBffError", () => {
   });
 
   it("上流の ProfileNotPublishableError は不足項目を表示ラベルへ解決して返す", async () => {
-    const res = await createApp(
-      createUpstreamRejectedError({
-        status: 422,
-        body: {
-          error: "Profile is not publishable",
-          code: "ProfileNotPublishableError",
-          details: { missingFields: ["imageUrl"] },
-        },
-      }),
+    const res = await createApp(() =>
+      throwBffError(
+        createUpstreamRejectedError({
+          status: 422,
+          body: {
+            error: "Profile is not publishable",
+            code: "ProfileNotPublishableError",
+            details: { missingFields: ["imageUrl"] },
+          },
+        }),
+      ),
     ).request("/");
 
     expect(res.status).toBe(422);
@@ -112,10 +124,12 @@ describe("handleBffError", () => {
   });
 
   it("リクエスト形式エラーを 400 と issues にマップする", async () => {
-    const res = await createApp(
-      createInvalidRequestFormatError([
-        { code: "custom", path: ["email"], message: "Required" },
-      ]),
+    const res = await createApp(() =>
+      throwBffError(
+        createInvalidRequestFormatError([
+          { code: "custom", path: ["email"], message: "Required" },
+        ]),
+      ),
     ).request("/");
 
     expect(res.status).toBe(400);
@@ -137,7 +151,7 @@ describe("handleBffError", () => {
   ])(
     "セッション主体・対象の不在を 404 にマップする",
     async (create, error, code) => {
-      const res = await createApp(create()).request("/");
+      const res = await createApp(() => throwBffError(create())).request("/");
 
       expect(res.status).toBe(404);
       expect(await res.json()).toStrictEqual({ error, code });
@@ -145,18 +159,20 @@ describe("handleBffError", () => {
   );
 
   it("部分保存の失敗は上流エラーのステータス・ボディを保ち、保存済みと失敗ステップを添える", async () => {
-    const res = await createApp(
-      createPartialSaveFailedError({
-        saved: ["attributes", "chapter:beginning"],
-        failedAt: "links",
-        upstream: createUpstreamRejectedError({
-          status: 422,
-          body: {
-            error: "Invalid snsUrl format",
-            code: "InvalidSnsUrlFormatError",
-          },
+    const res = await createApp(() =>
+      throwBffError(
+        createPartialSaveFailedError({
+          saved: ["attributes", "chapter:beginning"],
+          failedAt: "links",
+          upstream: createUpstreamRejectedError({
+            status: 422,
+            body: {
+              error: "Invalid snsUrl format",
+              code: "InvalidSnsUrlFormatError",
+            },
+          }),
         }),
-      }),
+      ),
     ).request("/");
 
     expect(res.status).toBe(422);
@@ -170,12 +186,14 @@ describe("handleBffError", () => {
 
   it("部分保存の失敗が上流 5xx なら 502 に畳み、ログレベルも上流に合わせて warn にし、上流を cause に残す", async () => {
     const upstream = createUpstreamServerError(503);
-    const res = await createApp(
-      createPartialSaveFailedError({
-        saved: ["attributes"],
-        failedAt: "chapter:beginning",
-        upstream,
-      }),
+    const res = await createApp(() =>
+      throwBffError(
+        createPartialSaveFailedError({
+          saved: ["attributes"],
+          failedAt: "chapter:beginning",
+          upstream,
+        }),
+      ),
     ).request("/");
 
     expect(res.status).toBe(502);
@@ -194,7 +212,7 @@ describe("handleBffError", () => {
 
   it("未知のエラーは 500 にし、内部情報を応答に含めない", async () => {
     const res = await createApp(
-      new Error("connect ECONNREFUSED 10.0.0.1:5432"),
+      throwing(new Error("connect ECONNREFUSED 10.0.0.1:5432")),
     ).request("/");
 
     expect(res.status).toBe(500);
@@ -203,16 +221,16 @@ describe("handleBffError", () => {
 
   it("Object.prototype のプロパティ名を type に持つエラーも 500 にする", async () => {
     const error = Object.assign(new Error("boom"), { type: "toString" });
-    const res = await createApp(error).request("/");
+    const res = await createApp(throwing(error)).request("/");
 
     expect(res.status).toBe(500);
     expect(await res.json()).toStrictEqual({ error: "Internal Server Error" });
   });
 
   it("マップ済みエラーは warn、未知のエラーは error でログする", async () => {
-    await createApp(createUpstreamUnavailableError(new Error("x"))).request(
-      "/",
-    );
+    await createApp(() =>
+      throwBffError(createUpstreamUnavailableError(new Error("x"))),
+    ).request("/");
     expect(console.warn).toHaveBeenCalledWith(
       "[BffError]",
       expect.objectContaining({
@@ -221,7 +239,7 @@ describe("handleBffError", () => {
       }),
     );
 
-    await createApp(new Error("boom")).request("/");
+    await createApp(throwing(new Error("boom"))).request("/");
     expect(console.error).toHaveBeenCalledWith(
       "[Unhandled error]",
       expect.any(Error),

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { reconstructUser } from "../../../../../../domain/users/factories";
 import { reconstructArtist } from "../../../../../../domain/artists/factories";
-import { handleAppError } from "../../../../../../errorMap";
+import { handleThrownError } from "../../../../../../errorMap";
 import updateHandleRoute from "./index";
 import { createCapabilityDepsMock } from "../../../../../../infrastructure/capabilities/testDoubles";
 
@@ -33,7 +33,7 @@ const createApp = () => {
     await next();
   });
   app.route("/:artistId", updateHandleRoute);
-  app.onError(handleAppError);
+  app.onError(handleThrownError);
   return app;
 };
 

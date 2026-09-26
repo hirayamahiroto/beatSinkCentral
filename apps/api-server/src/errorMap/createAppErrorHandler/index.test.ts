@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 import { validateRequest } from "../../app/api/[[...route]]/validators/validateRequest";
-import { createAppErrorHandler } from "./index";
+import { type AppError, createAppErrorHandler, throwAppError } from "./index";
 import { createTypedError } from "../../utils/errors/createTypedError";
 import type { LogFields, LogLevel, Logger } from "../../utils/logger";
 import { createUserAlreadyRegisteredError } from "../../domain/users/errors/userAlreadyRegistered";
@@ -52,24 +52,41 @@ const buildIssuesCarryingInputValue = () => {
   return result.error.issues;
 };
 
-const requestWithError = async (error: unknown) => {
+const requestFailingWith = async (fail: () => never) => {
   const { logger, logs } = createRecordingLogger();
   const response = await new Hono()
-    .get("/", () => {
-      throw error;
-    })
-    .onError(createAppErrorHandler(logger))
+    .get("/", fail)
+    .onError(createAppErrorHandler(logger).handleThrownError)
     .request("/");
   return { response, logs };
 };
 
-const clientResponseOf = async (error: unknown) => {
+const requestWithError = (error: AppError) =>
+  requestFailingWith(() => throwAppError(error));
+
+const requestWithThrown = (thrown: unknown) =>
+  requestFailingWith(() => {
+    throw thrown;
+  });
+
+const clientResponseOf = async (error: AppError) => {
   const { response } = await requestWithError(error);
   return { status: response.status, body: await response.json() };
 };
 
-const logOf = async (error: unknown) => {
+const clientResponseOfThrown = async (thrown: unknown) => {
+  const { response } = await requestWithThrown(thrown);
+  return { status: response.status, body: await response.json() };
+};
+
+const logOf = async (error: AppError) => {
   const { logs } = await requestWithError(error);
+  expect(logs).toHaveLength(1);
+  return logs[0];
+};
+
+const logOfThrown = async (thrown: unknown) => {
+  const { logs } = await requestWithThrown(thrown);
   expect(logs).toHaveLength(1);
   return logs[0];
 };
@@ -264,7 +281,9 @@ describe("createAppErrorHandler", () => {
 
     it("未知のエラーは内部事情を伏せて500を返す", async () => {
       expect(
-        await clientResponseOf(new Error("connect ECONNREFUSED 10.0.0.1:5432")),
+        await clientResponseOfThrown(
+          new Error("connect ECONNREFUSED 10.0.0.1:5432"),
+        ),
       ).toStrictEqual({
         status: 500,
         body: { error: "Internal Server Error" },
@@ -276,7 +295,7 @@ describe("createAppErrorHandler", () => {
         type: "NotRegisteredErrorType" as const,
       });
 
-      expect(await clientResponseOf(unknownError)).toStrictEqual({
+      expect(await clientResponseOfThrown(unknownError)).toStrictEqual({
         status: 500,
         body: { error: "Internal Server Error" },
       });
@@ -284,7 +303,7 @@ describe("createAppErrorHandler", () => {
 
     it("HTTPException(400) を形式エラーとして 400 に変換する", async () => {
       expect(
-        await clientResponseOf(
+        await clientResponseOfThrown(
           new HTTPException(400, { message: "Malformed JSON in request body" }),
         ),
       ).toStrictEqual({
@@ -297,7 +316,9 @@ describe("createAppErrorHandler", () => {
     });
 
     it("400 以外の HTTPException は 500 のまま扱う", async () => {
-      expect(await clientResponseOf(new HTTPException(503))).toStrictEqual({
+      expect(
+        await clientResponseOfThrown(new HTTPException(503)),
+      ).toStrictEqual({
         status: 500,
         body: { error: "Internal Server Error" },
       });
@@ -361,7 +382,7 @@ describe("createAppErrorHandler", () => {
     it("未知のエラーは error で name / message / stack を記録する", async () => {
       const rawError = new Error("connect ECONNREFUSED 10.0.0.1:5432");
 
-      expect(await logOf(rawError)).toStrictEqual({
+      expect(await logOfThrown(rawError)).toStrictEqual({
         level: "error",
         event: "UnhandledError",
         fields: {
@@ -448,16 +469,14 @@ describe("createAppErrorHandler", () => {
 
   describe("リクエスト相関", () => {
     const requestWithContext = async (
-      error: unknown,
+      error: AppError,
       headers: Record<string, string>,
     ) => {
       const { logger, logs } = createRecordingLogger();
       await new Hono()
         .use("*", requestContextMiddleware)
-        .get("/artists/:handle", () => {
-          throw error;
-        })
-        .onError(createAppErrorHandler(logger))
+        .get("/artists/:handle", () => throwAppError(error))
+        .onError(createAppErrorHandler(logger).handleThrownError)
         .request("/artists/beatboxer_taro", { headers });
       expect(logs).toHaveLength(1);
       return logs[0];
@@ -512,7 +531,7 @@ describe("createAppErrorHandler", () => {
           validateRequest("json", z.object({ name: z.string() })),
           (c) => c.json(c.req.valid("json")),
         )
-        .onError(createAppErrorHandler(logger))
+        .onError(createAppErrorHandler(logger).handleThrownError)
         .request("/", {
           method: "POST",
           headers: { "Content-Type": "application/json" },

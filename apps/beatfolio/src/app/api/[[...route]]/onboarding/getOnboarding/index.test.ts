@@ -11,6 +11,7 @@ import {
   upstreamJsonResponse,
   type ApiServerClient,
   type ApiServerClientMock,
+  upstreamErrorResponse,
 } from "../../../../../utils/client/testDoubles";
 
 const meGet =
@@ -60,7 +61,7 @@ describe("GET /onboarding", () => {
   });
 
   it("api-server が 5xx なら 502 を返す", async () => {
-    meGet.mockResolvedValue(upstreamJsonResponse({ error: "Internal" }, 500));
+    meGet.mockResolvedValue(upstreamErrorResponse({ error: "Internal" }, 500));
 
     const res = await createApp().request("/", { method: "GET" });
 

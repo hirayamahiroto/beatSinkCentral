@@ -12,6 +12,7 @@ import {
   upstreamMalformedJsonResponse,
   type ApiServerClient,
   type ApiServerClientMock,
+  upstreamErrorResponse,
 } from "../../../../../utils/client/testDoubles";
 
 const usersPost =
@@ -98,7 +99,7 @@ describe("POST /users", () => {
 
   it("api-server の 5xx は 502 を返す", async () => {
     usersPost.mockResolvedValue(
-      upstreamJsonResponse({ error: "Internal" }, 500),
+      upstreamErrorResponse({ error: "Internal" }, 500),
     );
 
     const res = await request(validBody);

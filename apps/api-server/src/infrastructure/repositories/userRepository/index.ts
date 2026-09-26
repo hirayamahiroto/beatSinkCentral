@@ -9,6 +9,7 @@ import {
 } from "../../../domain/users/repositories";
 import { reconstructUser } from "../../../domain/users/factories";
 import { createEmailAlreadyTakenError } from "../../../domain/users/errors/emailAlreadyTaken";
+import { raiseAlreadyTaken } from "../../../authorization/conflict";
 import { isUniqueViolation } from "../../database/uniqueViolation";
 import type { Executor } from "../../transaction";
 
@@ -25,7 +26,7 @@ const rejectTakenEmail = async <T>(write: () => Promise<T>): Promise<T> => {
     return await write();
   } catch (error) {
     if (isUniqueViolation(error, EMAIL_UNIQUE_CONSTRAINT)) {
-      throw createEmailAlreadyTakenError();
+      raiseAlreadyTaken(createEmailAlreadyTakenError());
     }
     throw error;
   }

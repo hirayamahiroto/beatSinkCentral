@@ -1,14 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { withRegistrationCapabilities } from "./index";
-import { createCapabilityDepsStub } from "../testDoubles";
-import {
-  createHandleAlreadyTakenError,
-  isHandleAlreadyTakenError,
-} from "../../domain/artists/errors/handleAlreadyTaken";
-import {
-  createEmailAlreadyTakenError,
-  isEmailAlreadyTakenError,
-} from "../../domain/users/errors/emailAlreadyTaken";
+import { createCapabilityDepsStub, raisingConflict } from "../testDoubles";
+import { createHandleAlreadyTakenError } from "../../domain/artists/errors/handleAlreadyTaken";
+import { createEmailAlreadyTakenError } from "../../domain/users/errors/emailAlreadyTaken";
 import { ok } from "../../utils/result";
 
 describe("withRegistrationCapabilities", () => {
@@ -29,14 +23,15 @@ describe("withRegistrationCapabilities", () => {
   it("handle の衝突は HandleAlreadyTakenError の err に変換する", async () => {
     const { deps } = createCapabilityDepsStub({ status: "unregistered" });
 
-    const result = await withRegistrationCapabilities(deps, async () => {
-      throw createHandleAlreadyTakenError("test_account");
-    });
+    const result = await withRegistrationCapabilities(
+      deps,
+      raisingConflict(createHandleAlreadyTakenError("test_account")),
+    );
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(isHandleAlreadyTakenError(result.error)).toBe(true);
-      if (isHandleAlreadyTakenError(result.error)) {
+      expect(result.error.type).toBe("HandleAlreadyTakenError");
+      if (result.error.type === "HandleAlreadyTakenError") {
         expect(result.error.handle).toBe("test_account");
       }
     }
@@ -45,13 +40,14 @@ describe("withRegistrationCapabilities", () => {
   it("email の衝突は EmailAlreadyTakenError の err に変換する", async () => {
     const { deps } = createCapabilityDepsStub({ status: "unregistered" });
 
-    const result = await withRegistrationCapabilities(deps, async () => {
-      throw createEmailAlreadyTakenError();
-    });
+    const result = await withRegistrationCapabilities(
+      deps,
+      raisingConflict(createEmailAlreadyTakenError()),
+    );
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(isEmailAlreadyTakenError(result.error)).toBe(true);
+      expect(result.error.type).toBe("EmailAlreadyTakenError");
     }
   });
 

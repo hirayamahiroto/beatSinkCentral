@@ -4,11 +4,9 @@ import {
   createCapabilityDepsStub,
   testUser as user,
   testArtist as artist,
+  raisingConflict,
 } from "../testDoubles";
-import {
-  createEmailAlreadyTakenError,
-  isEmailAlreadyTakenError,
-} from "../../domain/users/errors/emailAlreadyTaken";
+import { createEmailAlreadyTakenError } from "../../domain/users/errors/emailAlreadyTaken";
 import { createHandleAlreadyTakenError } from "../../domain/artists/errors/handleAlreadyTaken";
 import { ok } from "../../utils/result";
 
@@ -98,14 +96,12 @@ describe("withUserWriteCapabilitiesById", () => {
       deps,
       "auth0|123",
       "user-1",
-      async () => {
-        throw createEmailAlreadyTakenError();
-      },
+      raisingConflict(createEmailAlreadyTakenError()),
     );
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(isEmailAlreadyTakenError(result.error)).toBe(true);
+      expect(result.error.type).toBe("EmailAlreadyTakenError");
     }
   });
 

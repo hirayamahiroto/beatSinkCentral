@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
 import { createApiServerClient } from "./index";
-import { isUpstreamUnavailableError } from "./errors/upstreamUnavailable";
 import { handleBffError } from "../../errorMap";
 
 vi.mock("../config", () => ({
@@ -26,8 +25,7 @@ describe("createApiServerClient", () => {
       .api.users.me.$get()
       .catch((e: unknown) => e);
 
-    expect(isUpstreamUnavailableError(error)).toBe(true);
-    expect(error).toMatchObject({ cause });
+    expect(error).toMatchObject({ type: "UpstreamUnavailableError", cause });
   });
 
   it("エラーステータスは throw せず Response のまま返す", async () => {

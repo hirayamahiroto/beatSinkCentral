@@ -4,6 +4,7 @@ import { toUpstreamError } from "../../shared/toUpstreamError";
 import { readUpstreamJson } from "../../shared/readUpstreamJson";
 import { createMyArtistNotFoundError } from "../../errors/myArtistNotFound";
 import { toWizardValues } from "./toWizardValues";
+import { throwBffError } from "../../../../../errorMap";
 
 const app = new Hono<RequestContextEnv>().get("/", async (c) => {
   const apiClient = c.get("apiClient");
@@ -13,21 +14,22 @@ const app = new Hono<RequestContextEnv>().get("/", async (c) => {
     apiClient.api["link-types"].$get(),
     apiClient.api["story-questions"].$get(),
   ]);
-  if (!meRes.ok) throw await toUpstreamError(meRes);
-  if (!linkTypesRes.ok) throw await toUpstreamError(linkTypesRes);
-  if (!storyQuestionsRes.ok) throw await toUpstreamError(storyQuestionsRes);
+  if (!meRes.ok) throwBffError(await toUpstreamError(meRes));
+  if (!linkTypesRes.ok) throwBffError(await toUpstreamError(linkTypesRes));
+  if (!storyQuestionsRes.ok)
+    throwBffError(await toUpstreamError(storyQuestionsRes));
 
   const me = await readUpstreamJson(meRes);
 
   if (!me.registered) {
     return c.json({ registered: false as const });
   }
-  if (me.artist === null) throw createMyArtistNotFoundError();
+  if (me.artist === null) throwBffError(createMyArtistNotFoundError());
 
   const profileRes = await apiClient.api.artists[":artistId"].profile.$get({
     param: { artistId: me.artist.artistId },
   });
-  if (!profileRes.ok) throw await toUpstreamError(profileRes);
+  if (!profileRes.ok) throwBffError(await toUpstreamError(profileRes));
 
   const { profile } = await readUpstreamJson(profileRes);
   const { linkTypes } = await readUpstreamJson(linkTypesRes);

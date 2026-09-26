@@ -5,8 +5,8 @@ import type {
 } from "../../capabilities";
 import { toAddressedActor } from "../resolution";
 import {
+  anyAlreadyTaken,
   catchAlreadyTaken,
-  isAlreadyTakenError,
   type AlreadyTakenError,
 } from "../conflict";
 import type { Result } from "../../utils/result";
@@ -20,7 +20,7 @@ export const withArtistWriteCapabilitiesById = async <T, E>(
   const actor = toAddressedActor(await deps.resolveActorState(subId), artistId);
   if (!actor.ok) return actor;
 
-  return catchAlreadyTaken(isAlreadyTakenError, () =>
+  return catchAlreadyTaken(anyAlreadyTaken, () =>
     deps.runWithArtistWriteCapabilities(actor.value, work),
   );
 };

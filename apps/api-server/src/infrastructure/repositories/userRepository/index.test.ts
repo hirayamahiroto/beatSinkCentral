@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createUserReader, createUserWriter } from "./index";
-import { isEmailAlreadyTakenError } from "../../../domain/users/errors/emailAlreadyTaken";
 
 const mockDb = {
   insert: vi.fn().mockReturnThis(),
@@ -63,9 +62,9 @@ describe("createUserWriter", () => {
         createUniqueViolation("users_email_unique"),
       );
 
-      await expect(createUserWriter(mockDb).save(row)).rejects.toSatisfy(
-        isEmailAlreadyTakenError,
-      );
+      await expect(createUserWriter(mockDb).save(row)).rejects.toMatchObject({
+        type: "EmailAlreadyTakenError",
+      });
     });
 
     it("updateEmail では EmailAlreadyTakenError を throw する", async () => {
@@ -78,7 +77,7 @@ describe("createUserWriter", () => {
           id: row.id,
           email: "taken@example.com",
         }),
-      ).rejects.toSatisfy(isEmailAlreadyTakenError);
+      ).rejects.toMatchObject({ type: "EmailAlreadyTakenError" });
     });
 
     it("email 以外の制約違反はそのまま伝播する", async () => {

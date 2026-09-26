@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import { changeArtistHandle } from "./index";
 import { reconstructArtist } from "../../artists/factories";
 import { createHandle } from "../../artists/valueObjects/handle";
-import { isHandleAlreadyTakenError } from "../../artists/errors/handleAlreadyTaken";
 import { unwrapOrThrow } from "../../../utils/result";
 
 const artist = reconstructArtist({
@@ -55,8 +54,8 @@ describe("changeArtistHandle", () => {
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(isHandleAlreadyTakenError(result.error)).toBe(true);
-    if (isHandleAlreadyTakenError(result.error)) {
+    expect(result.error.type).toBe("HandleAlreadyTakenError");
+    if (result.error.type === "HandleAlreadyTakenError") {
       expect(result.error.handle).toBe("new_handle");
     }
   });

@@ -4,15 +4,10 @@ import {
   createCapabilityDepsStub,
   testUser as user,
   testArtist as artist,
+  raisingConflict,
 } from "../testDoubles";
-import {
-  createHandleAlreadyTakenError,
-  isHandleAlreadyTakenError,
-} from "../../domain/artists/errors/handleAlreadyTaken";
-import {
-  createEmailAlreadyTakenError,
-  isEmailAlreadyTakenError,
-} from "../../domain/users/errors/emailAlreadyTaken";
+import { createHandleAlreadyTakenError } from "../../domain/artists/errors/handleAlreadyTaken";
+import { createEmailAlreadyTakenError } from "../../domain/users/errors/emailAlreadyTaken";
 import { ok } from "../../utils/result";
 
 describe("withArtistWriteCapabilitiesById", () => {
@@ -102,15 +97,13 @@ describe("withArtistWriteCapabilitiesById", () => {
       deps,
       "auth0|123",
       "artist-1",
-      async () => {
-        throw createHandleAlreadyTakenError("new_handle");
-      },
+      raisingConflict(createHandleAlreadyTakenError("new_handle")),
     );
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(isHandleAlreadyTakenError(result.error)).toBe(true);
-      if (isHandleAlreadyTakenError(result.error)) {
+      expect(result.error.type).toBe("HandleAlreadyTakenError");
+      if (result.error.type === "HandleAlreadyTakenError") {
         expect(result.error.handle).toBe("new_handle");
       }
     }
@@ -126,14 +119,12 @@ describe("withArtistWriteCapabilitiesById", () => {
       deps,
       "auth0|123",
       "artist-1",
-      async () => {
-        throw createEmailAlreadyTakenError();
-      },
+      raisingConflict(createEmailAlreadyTakenError()),
     );
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(isEmailAlreadyTakenError(result.error)).toBe(true);
+      expect(result.error.type).toBe("EmailAlreadyTakenError");
     }
   });
 

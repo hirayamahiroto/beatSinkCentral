@@ -1,4 +1,8 @@
 import { createConsoleLogger } from "../utils/logger";
 import { createAppErrorHandler } from "./createAppErrorHandler";
 
-export const handleAppError = createAppErrorHandler(createConsoleLogger());
+export { throwAppError } from "./createAppErrorHandler";
+
+export const { handleAppError, handleThrownError } = createAppErrorHandler(
+  createConsoleLogger(),
+);

@@ -1,3 +1,5 @@
+import { type AlreadyTakenError, raiseAlreadyTaken } from "../conflict";
+import type { Result } from "../../utils/result";
 import type {
   ActorResolution,
   CapabilityDeps,
@@ -150,3 +152,7 @@ export const createCapabilityDepsStub = (
 
   return { deps, calls };
 };
+
+export const raisingConflict =
+  (conflict: AlreadyTakenError) => async (): Promise<Result<never, never>> =>
+    raiseAlreadyTaken(conflict);

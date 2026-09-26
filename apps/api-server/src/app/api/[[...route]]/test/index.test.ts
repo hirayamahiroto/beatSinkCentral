@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { Hono } from "hono";
 import test from "./index";
-import { handleAppError } from "../../../../errorMap";
+import { handleThrownError } from "../../../../errorMap";
 import type { Auth0SessionModule } from "../../../../infrastructure/auth0/testDoubles";
 
 vi.mock(
@@ -12,7 +12,8 @@ vi.mock(
     }) satisfies Auth0SessionModule,
 );
 
-const createApp = () => new Hono().route("/test", test).onError(handleAppError);
+const createApp = () =>
+  new Hono().route("/test", test).onError(handleThrownError);
 
 const routeSurface = () => [
   ...new Set(test.routes.map((route) => `${route.method} ${route.path}`)),

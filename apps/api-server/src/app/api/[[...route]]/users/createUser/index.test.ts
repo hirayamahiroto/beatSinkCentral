@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import usersCreate from "./index";
-import { handleAppError } from "../../../../../errorMap";
+import { handleThrownError } from "../../../../../errorMap";
 import { reconstructUser } from "../../../../../domain/users/factories";
 import { reconstructArtist } from "../../../../../domain/artists/factories";
 import { createEmailAlreadyTakenError } from "../../../../../domain/users/errors/emailAlreadyTaken";
+import { raiseAlreadyTaken } from "../../../../../authorization/conflict";
 import { createCapabilityDepsMock } from "../../../../../infrastructure/capabilities/testDoubles";
 
 type CreateUserRequestBody = { email: string; handle: string };
@@ -15,7 +16,7 @@ vi.mock("../../../../../infrastructure/capabilities", () => ({
   getCapabilityDeps: () => deps,
 }));
 
-const app = new Hono().route("/", usersCreate).onError(handleAppError);
+const app = new Hono().route("/", usersCreate).onError(handleThrownError);
 
 const createAppWithAuth = () => {
   const authed = new Hono();
@@ -257,7 +258,9 @@ describe("User Create API", () => {
     });
 
     it("emailが他ユーザーに使われていたら409を返し、emailを露出しない", async () => {
-      users.save.mockRejectedValue(createEmailAlreadyTakenError());
+      users.save.mockImplementation(async () =>
+        raiseAlreadyTaken(createEmailAlreadyTakenError()),
+      );
 
       const res = await postCreate(validPayload);
 

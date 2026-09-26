@@ -5,6 +5,7 @@ import { validateRequest } from "../../../validators/validateRequest";
 import { resolveMyArtistId } from "../../../shared/resolveMyArtistId";
 import { toUpstreamError } from "../../../shared/toUpstreamError";
 import { readUpstreamJson } from "../../../shared/readUpstreamJson";
+import { throwBffError } from "../../../../../../errorMap";
 
 const uploadProfileImageRequestSchema = z.object({
   file: z.instanceof(File),
@@ -23,7 +24,7 @@ const app = new Hono<RequestContextEnv>().post(
       param: { artistId },
       form: { file },
     });
-    if (!res.ok) throw await toUpstreamError(res);
+    if (!res.ok) throwBffError(await toUpstreamError(res));
 
     return c.json(await readUpstreamJson(res));
   },

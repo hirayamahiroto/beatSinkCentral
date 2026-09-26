@@ -3,6 +3,7 @@ import type { AppType as ApiServerAppType } from "./../../../../api-server/src/a
 import type { AppType as BeatfolioBffAppType } from "../../app/api/[[...route]]/route";
 import { apiServerConfig } from "../config";
 import { createUpstreamUnavailableError } from "./errors/upstreamUnavailable";
+import { throwBffError } from "../../errorMap";
 
 type ClientOptions = {
   cookie?: string;
@@ -13,7 +14,7 @@ const upstreamFetch: typeof fetch = async (input, init) => {
   try {
     return await fetch(input, init);
   } catch (error) {
-    throw createUpstreamUnavailableError(error);
+    throwBffError(createUpstreamUnavailableError(error));
   }
 };
 

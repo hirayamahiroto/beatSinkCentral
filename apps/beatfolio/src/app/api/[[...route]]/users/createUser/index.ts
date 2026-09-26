@@ -4,6 +4,7 @@ import type { RequestContextEnv } from "../../../../../middlewares/requestContex
 import { validateRequest } from "../../validators/validateRequest";
 import { toUpstreamError } from "../../shared/toUpstreamError";
 import { readUpstreamJson } from "../../shared/readUpstreamJson";
+import { throwBffError } from "../../../../../errorMap";
 
 const requestSchema = z.object({
   handle: z.string().nonempty(),
@@ -20,7 +21,7 @@ const app = new Hono<RequestContextEnv>().post(
     const res = await apiClient.api.users.$post({
       json: { handle: body.handle, email: body.email },
     });
-    if (!res.ok) throw await toUpstreamError(res);
+    if (!res.ok) throwBffError(await toUpstreamError(res));
 
     return c.json(await readUpstreamJson(res), 201);
   },

@@ -1,64 +1,67 @@
 import { describe, it, expect } from "vitest";
-import { catchAlreadyTaken, isAlreadyTakenError } from "./index";
+import {
+  type AlreadyTakenError,
+  anyAlreadyTaken,
+  catchAlreadyTaken,
+  raiseAlreadyTaken,
+} from "./index";
 import {
   createHandleAlreadyTakenError,
-  isHandleAlreadyTakenError,
+  type HandleAlreadyTakenError,
 } from "../../domain/artists/errors/handleAlreadyTaken";
-import {
-  createEmailAlreadyTakenError,
-  isEmailAlreadyTakenError,
-} from "../../domain/users/errors/emailAlreadyTaken";
+import { createEmailAlreadyTakenError } from "../../domain/users/errors/emailAlreadyTaken";
 import { ok } from "../../utils/result";
 
-describe("isAlreadyTakenError", () => {
-  it("handle / email の衝突を判別する", () => {
-    expect(isAlreadyTakenError(createHandleAlreadyTakenError("taken"))).toBe(
-      true,
-    );
-    expect(isAlreadyTakenError(createEmailAlreadyTakenError())).toBe(true);
-  });
-
-  it("それ以外のエラーは判別しない", () => {
-    expect(isAlreadyTakenError(new Error("connection terminated"))).toBe(false);
-  });
-});
+const handleOnly = (
+  conflict: AlreadyTakenError,
+): HandleAlreadyTakenError | null =>
+  conflict.type === "HandleAlreadyTakenError" ? conflict : null;
 
 describe("catchAlreadyTaken", () => {
   it("成功時は結果をそのまま返す", async () => {
-    const result = await catchAlreadyTaken(isAlreadyTakenError, async () =>
+    const result = await catchAlreadyTaken(anyAlreadyTaken, async () =>
       ok("done"),
     );
 
     expect(result).toStrictEqual(ok("done"));
   });
 
-  it("判別対象の例外を err に変換する", async () => {
-    const result = await catchAlreadyTaken(isEmailAlreadyTakenError, () => {
-      throw createEmailAlreadyTakenError();
-    });
+  it("raise した衝突を同じインスタンスの err に変換する", async () => {
+    const conflict = createEmailAlreadyTakenError();
+
+    const result = await catchAlreadyTaken(anyAlreadyTaken, () =>
+      raiseAlreadyTaken(conflict),
+    );
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(isEmailAlreadyTakenError(result.error)).toBe(true);
+      expect(result.error).toBe(conflict);
     }
   });
 
-  it("判別対象でない衝突は変換せず伝播する", async () => {
+  it("select が対象外とした衝突は変換せず伝播する", async () => {
+    const emailConflict = createEmailAlreadyTakenError();
+
+    await expect(
+      catchAlreadyTaken(handleOnly, () => raiseAlreadyTaken(emailConflict)),
+    ).rejects.toBe(emailConflict);
+  });
+
+  it("raise を経ずに throw された衝突は変換せず伝播する", async () => {
     const handleConflict = createHandleAlreadyTakenError("taken");
 
     await expect(
-      catchAlreadyTaken(isEmailAlreadyTakenError, () => {
+      catchAlreadyTaken(anyAlreadyTaken, () => {
         throw handleConflict;
       }),
     ).rejects.toBe(handleConflict);
-    expect(isHandleAlreadyTakenError(handleConflict)).toBe(true);
   });
 
   it("衝突以外の例外はそのまま伝播する", async () => {
     const connectionError = new Error("connection terminated");
 
     await expect(
-      catchAlreadyTaken(isAlreadyTakenError, () => {
+      catchAlreadyTaken(anyAlreadyTaken, () => {
         throw connectionError;
       }),
     ).rejects.toBe(connectionError);

@@ -48,8 +48,9 @@ import type { ResponseContractViolationError } from "../../app/api/[[...route]]/
 import type { UnauthorizedError } from "../../middlewares/auth0/errors/unauthorized";
 import type { LogFields, LogLevel, Logger } from "../../utils/logger";
 import { getRequestContext } from "../../utils/requestContext";
+import { createErrorChannel } from "../../utils/errors/errorChannel";
 
-type AppError =
+export type AppError =
   | InvalidRequestFormatError
   | MalformedRequestBodyError
   | RequestBodyTooLargeError
@@ -98,10 +99,12 @@ type ErrorMapping<SpecificError extends AppError> = {
   logFields?: (error: SpecificError) => LogFields;
 };
 
+type ErrorType = AppError["type"];
+
+type ErrorOf<Type extends ErrorType> = Extract<AppError, { type: Type }>;
+
 type ErrorMap = {
-  [ErrorType in AppError["type"]]: ErrorMapping<
-    Extract<AppError, { type: ErrorType }>
-  >;
+  [Type in ErrorType]: ErrorMapping<ErrorOf<Type>>;
 };
 
 const errorMap: ErrorMap = {
@@ -306,13 +309,12 @@ const errorMap: ErrorMap = {
   },
 };
 
-const isAppError = (error: unknown): error is AppError => {
-  if (!(error instanceof Error) || !("type" in error)) return false;
-  return typeof error.type === "string" && error.type in errorMap;
-};
+const appError = createErrorChannel<AppError>();
+
+export const throwAppError: (error: AppError) => never = appError.raise;
 
 type ClientResponse = {
-  body: { error: string; code: AppError["type"]; details?: unknown };
+  body: { error: string; code: ErrorType; details?: unknown };
   status: ErrorStatusCode;
 };
 
@@ -325,18 +327,14 @@ type ErrorLog = {
 const APP_ERROR_EVENT = "AppError";
 const UNHANDLED_ERROR_EVENT = "UnhandledError";
 
-const resolveMapping = <SpecificError extends AppError>(
-  error: SpecificError,
-): ErrorMapping<SpecificError> =>
-  errorMap[error.type as SpecificError["type"]] as ErrorMapping<SpecificError>;
-
-const buildClientResponse = <SpecificError extends AppError>(
-  error: SpecificError,
+const buildClientResponse = <Type extends ErrorType>(
+  type: Type,
+  error: ErrorOf<Type>,
 ): ClientResponse => {
-  const mapping = resolveMapping(error);
+  const mapping = errorMap[type];
   const body: ClientResponse["body"] = {
     error: mapping.clientMessage(error),
-    code: error.type,
+    code: type,
   };
   if (mapping.clientDetails) {
     body.details = mapping.clientDetails(error);
@@ -347,12 +345,13 @@ const buildClientResponse = <SpecificError extends AppError>(
   };
 };
 
-const buildErrorLog = <SpecificError extends AppError>(
-  error: SpecificError,
+const buildErrorLog = <Type extends ErrorType>(
+  type: Type,
+  error: ErrorOf<Type>,
 ): ErrorLog => {
-  const mapping = resolveMapping(error);
+  const mapping = errorMap[type];
   const fields: LogFields = {
-    errorType: error.type,
+    errorType: type,
     status: mapping.status,
   };
   if (mapping.logFields) {
@@ -391,19 +390,24 @@ const emit = (
 
 // Hono の validator はボディのパース失敗を HTTPException(400) で throw するため、
 // AppError に載せ替えないと形式不正が想定外の例外（500 / level:error）に落ちる
-const normalizeError = (error: Error): Error =>
+const recoverAppError = (error: Error): AppError | null =>
   error instanceof HTTPException && error.status === 400
     ? createMalformedRequestBodyError()
-    : error;
+    : appError.recover(error);
 
-export const createAppErrorHandler =
-  (logger: Logger) => (error: Error, c: Context) => {
-    const normalized = normalizeError(error);
-    if (isAppError(normalized)) {
-      emit(logger, c, buildErrorLog(normalized));
-      const { body, status } = buildClientResponse(normalized);
-      return c.json(body, status);
-    }
-    emit(logger, c, buildUnhandledErrorLog(normalized));
+export const createAppErrorHandler = (logger: Logger) => {
+  const handleAppError = (error: AppError, c: Context) => {
+    emit(logger, c, buildErrorLog(error.type, error));
+    const { body, status } = buildClientResponse(error.type, error);
+    return c.json(body, status);
+  };
+
+  const handleThrownError = (error: Error, c: Context) => {
+    const recovered = recoverAppError(error);
+    if (recovered !== null) return handleAppError(recovered, c);
+    emit(logger, c, buildUnhandledErrorLog(error));
     return c.json({ error: "Internal Server Error" }, 500);
   };
+
+  return { handleAppError, handleThrownError };
+};
