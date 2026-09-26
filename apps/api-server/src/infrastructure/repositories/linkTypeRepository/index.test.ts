@@ -19,7 +19,7 @@ describe("createLinkTypeReader", () => {
     ];
     const executor = createExecutor(rows);
 
-    const result = await createLinkTypeReader(executor as never).findAll();
+    const result = await createLinkTypeReader(executor).findAll();
 
     expect(result).toStrictEqual(rows);
   });
@@ -27,7 +27,7 @@ describe("createLinkTypeReader", () => {
   it("生成時に渡した executor で読み取る", async () => {
     const executor = createExecutor([]);
 
-    await createLinkTypeReader(executor as never).findAll();
+    await createLinkTypeReader(executor).findAll();
 
     expect(executor.select).toHaveBeenCalledTimes(1);
     expect(executor.orderBy).toHaveBeenCalledTimes(1);

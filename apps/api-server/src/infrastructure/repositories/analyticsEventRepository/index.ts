@@ -4,7 +4,7 @@ import type { AnalyticsEventPersistenceData } from "../../../domain/analyticsEve
 import type { Executor } from "../../transaction";
 
 export const createAnalyticsEventWriter = (
-  executor: Executor,
+  executor: Pick<Executor, "insert">,
 ): IAnalyticsEventWriter => ({
   async record(data: AnalyticsEventPersistenceData): Promise<void> {
     await executor.insert(analyticsEventsTable).values({

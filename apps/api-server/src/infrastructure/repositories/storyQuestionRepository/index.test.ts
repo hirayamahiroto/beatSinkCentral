@@ -20,7 +20,7 @@ describe("createStoryQuestionReader", () => {
     ];
     const executor = createExecutor(rows);
 
-    const result = await createStoryQuestionReader(executor as never).findAll();
+    const result = await createStoryQuestionReader(executor).findAll();
 
     expect(result).toStrictEqual(rows);
   });
@@ -28,7 +28,7 @@ describe("createStoryQuestionReader", () => {
   it("生成時に渡した executor で読み取り、sortOrder で並べる", async () => {
     const executor = createExecutor([]);
 
-    await createStoryQuestionReader(executor as never).findAll();
+    await createStoryQuestionReader(executor).findAll();
 
     expect(executor.select).toHaveBeenCalledTimes(1);
     expect(executor.orderBy).toHaveBeenCalledTimes(1);

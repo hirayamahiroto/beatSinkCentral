@@ -42,7 +42,9 @@ const rejectTakenHandle = async <T>(
   }
 };
 
-export const createArtistReader = (executor: Executor): IArtistReader => ({
+export const createArtistReader = (
+  executor: Pick<Executor, "select">,
+): IArtistReader => ({
   async findByUserId(userId: string) {
     const results = await executor
       .select(artistColumns)
@@ -123,7 +125,9 @@ export const createArtistReader = (executor: Executor): IArtistReader => ({
   },
 });
 
-export const createArtistWriter = (executor: Executor): IArtistWriter => ({
+export const createArtistWriter = (
+  executor: Pick<Executor, "select" | "insert" | "update">,
+): IArtistWriter => ({
   async save(data: ArtistPersistenceData): Promise<Artist> {
     const [artistRow] = await rejectTakenHandle(data.handle, () =>
       executor

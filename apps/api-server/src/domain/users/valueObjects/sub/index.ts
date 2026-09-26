@@ -19,7 +19,7 @@ const isValidSub = (sub: string): boolean => {
 export const createSub = (
   value: string,
 ): Result<Sub, InvalidSubFormatError> => {
-  if (!value || !isValidSub(value)) {
+  if (!isValidSub(value)) {
     return err(createInvalidSubFormatError());
   }
   return ok({ value });

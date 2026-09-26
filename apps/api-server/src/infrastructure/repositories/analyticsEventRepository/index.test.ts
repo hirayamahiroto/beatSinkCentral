@@ -32,7 +32,7 @@ describe("createAnalyticsEventWriter", () => {
     const executor = createExecutor();
     const data = buildData();
 
-    await createAnalyticsEventWriter(executor as never).record(data);
+    await createAnalyticsEventWriter(executor).record(data);
 
     expect(executor.insert).toHaveBeenCalledTimes(1);
     expect(executor.values).toHaveBeenCalledWith(data);
@@ -41,9 +41,8 @@ describe("createAnalyticsEventWriter", () => {
   it("何も返さない（fire-and-forget）", async () => {
     const executor = createExecutor();
 
-    const result = await createAnalyticsEventWriter(executor as never).record(
-      buildData(),
-    );
+    const result =
+      await createAnalyticsEventWriter(executor).record(buildData());
 
     expect(result).toBeUndefined();
   });

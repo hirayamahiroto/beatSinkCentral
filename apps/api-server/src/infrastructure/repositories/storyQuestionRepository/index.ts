@@ -5,7 +5,7 @@ import type { StoryQuestionView } from "../../../domain/storyQuestions/entities"
 import type { Executor } from "../../transaction";
 
 export const createStoryQuestionReader = (
-  executor: Executor,
+  executor: Pick<Executor, "select">,
 ): IStoryQuestionReader => ({
   async findAll(): Promise<StoryQuestionView[]> {
     return executor

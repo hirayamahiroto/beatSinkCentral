@@ -7,6 +7,7 @@ import {
   buildUserWriteCapabilities,
   buildArtistWriteCapabilities,
 } from "./index";
+import type { Executor } from "../../transaction";
 import { createUserReader } from "../../repositories/userRepository";
 import { createArtistReader } from "../../repositories/artistRepository";
 import {
@@ -78,7 +79,12 @@ vi.mock("../../repositories/presentationPatternRepository", () => ({
   createPresentationPatternReader: vi.fn(() => ({ findAll: vi.fn() })),
 }));
 
-const executor = { marker: "executor" } as never;
+const executor: Executor = {
+  select: vi.fn(),
+  insert: vi.fn(),
+  update: vi.fn(),
+  delete: vi.fn(),
+};
 
 const user = reconstructUser({
   id: "user-1",

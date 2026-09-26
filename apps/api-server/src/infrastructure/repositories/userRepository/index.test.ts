@@ -35,7 +35,7 @@ describe("createUserWriter", () => {
     it("永続化したUserを返す", async () => {
       mockDb.returning.mockResolvedValue([row]);
 
-      const result = await createUserWriter(mockDb as never).save(row);
+      const result = await createUserWriter(mockDb).save(row);
 
       expect(mockDb.values).toHaveBeenCalledWith(row);
       expect(result.toPersistence()).toStrictEqual(row);
@@ -47,7 +47,7 @@ describe("createUserWriter", () => {
       const updated = { ...row, email: "new@example.com" };
       mockDb.returning.mockResolvedValue([updated]);
 
-      const result = await createUserWriter(mockDb as never).updateEmail({
+      const result = await createUserWriter(mockDb).updateEmail({
         id: row.id,
         email: "new@example.com",
       });
@@ -63,9 +63,9 @@ describe("createUserWriter", () => {
         createUniqueViolation("users_email_unique"),
       );
 
-      await expect(
-        createUserWriter(mockDb as never).save(row),
-      ).rejects.toSatisfy(isEmailAlreadyTakenError);
+      await expect(createUserWriter(mockDb).save(row)).rejects.toSatisfy(
+        isEmailAlreadyTakenError,
+      );
     });
 
     it("updateEmail では EmailAlreadyTakenError を throw する", async () => {
@@ -74,7 +74,7 @@ describe("createUserWriter", () => {
       );
 
       await expect(
-        createUserWriter(mockDb as never).updateEmail({
+        createUserWriter(mockDb).updateEmail({
           id: row.id,
           email: "taken@example.com",
         }),
@@ -85,7 +85,7 @@ describe("createUserWriter", () => {
       const subIdViolation = createUniqueViolation("users_sub_id_unique");
       mockDb.returning.mockRejectedValue(subIdViolation);
 
-      await expect(createUserWriter(mockDb as never).save(row)).rejects.toBe(
+      await expect(createUserWriter(mockDb).save(row)).rejects.toBe(
         subIdViolation,
       );
     });
@@ -96,9 +96,10 @@ describe("createUserWriter", () => {
       insert: vi.fn().mockReturnThis(),
       values: vi.fn().mockReturnThis(),
       returning: vi.fn().mockResolvedValue([row]),
+      update: vi.fn(),
     };
 
-    const result = await createUserWriter(tx as never).save(row);
+    const result = await createUserWriter(tx).save(row);
 
     expect(tx.insert).toHaveBeenCalledTimes(1);
     expect(mockDb.insert).not.toHaveBeenCalled();
@@ -115,9 +116,7 @@ describe("createUserReader", () => {
     it("ユーザーが存在する場合はUserを返す", async () => {
       mockDb.limit.mockResolvedValue([row]);
 
-      const result = await createUserReader(mockDb as never).findBySub(
-        row.subId,
-      );
+      const result = await createUserReader(mockDb).findBySub(row.subId);
 
       expect(result).not.toBeNull();
       expect(result?.toPersistence()).toStrictEqual(row);
@@ -126,9 +125,8 @@ describe("createUserReader", () => {
     it("ユーザーが存在しない場合はnullを返す", async () => {
       mockDb.limit.mockResolvedValue([]);
 
-      const result = await createUserReader(mockDb as never).findBySub(
-        "auth0|nonexistent",
-      );
+      const result =
+        await createUserReader(mockDb).findBySub("auth0|nonexistent");
 
       expect(result).toBeNull();
     });
@@ -142,7 +140,7 @@ describe("createUserReader", () => {
       limit: vi.fn().mockResolvedValue([row]),
     };
 
-    const result = await createUserReader(tx as never).findBySub(row.subId);
+    const result = await createUserReader(tx).findBySub(row.subId);
 
     expect(tx.select).toHaveBeenCalledTimes(1);
     expect(mockDb.select).not.toHaveBeenCalled();

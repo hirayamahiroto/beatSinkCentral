@@ -31,7 +31,9 @@ const rejectTakenEmail = async <T>(write: () => Promise<T>): Promise<T> => {
   }
 };
 
-export const createUserReader = (executor: Executor): IUserReader => ({
+export const createUserReader = (
+  executor: Pick<Executor, "select">,
+): IUserReader => ({
   async findBySub(sub: string): Promise<User | null> {
     const results = await executor
       .select(userColumns)
@@ -52,7 +54,9 @@ export const createUserReader = (executor: Executor): IUserReader => ({
   },
 });
 
-export const createUserWriter = (executor: Executor): IUserWriter => ({
+export const createUserWriter = (
+  executor: Pick<Executor, "insert" | "update">,
+): IUserWriter => ({
   async save(data: UserSaveData): Promise<User> {
     const [result] = await rejectTakenEmail(() =>
       executor.insert(usersTable).values(data).returning(userColumns),

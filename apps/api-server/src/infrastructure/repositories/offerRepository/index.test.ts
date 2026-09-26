@@ -8,35 +8,27 @@ const toSqlText = (fragment: SQL): string =>
 
 const createDbMock = () => {
   const queue: unknown[] = [];
-  const spies: Record<string, ReturnType<typeof vi.fn>> = {};
-  const builder: Record<string, unknown> = {};
-  const chain = () => builder;
-  for (const method of [
-    "select",
-    "from",
-    "leftJoin",
-    "where",
-    "limit",
-    "orderBy",
-    "insert",
-    "values",
-    "onConflictDoUpdate",
-    "returning",
-    "delete",
-  ]) {
-    const spy = vi.fn(chain);
-    spies[method] = spy;
-    builder[method] = spy;
-  }
-  builder.then = (
-    resolve: (v: unknown) => unknown,
-    reject: (e: unknown) => unknown,
-  ) => Promise.resolve(queue.shift()).then(resolve, reject);
+  const chain = () => vi.fn().mockReturnThis();
+  const db = {
+    select: chain(),
+    from: chain(),
+    leftJoin: chain(),
+    where: chain(),
+    limit: chain(),
+    orderBy: chain(),
+    insert: chain(),
+    values: chain(),
+    onConflictDoUpdate: chain(),
+    returning: chain(),
+    delete: chain(),
+    then: (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) =>
+      Promise.resolve(queue.shift()).then(resolve, reject),
+  };
 
   return {
-    db: builder,
+    db,
     enqueue: (...values: unknown[]) => queue.push(...values),
-    spy: (name: string) => spies[name],
+    spy: (name: Exclude<keyof typeof db, "then">) => db[name],
   };
 };
 
@@ -60,7 +52,7 @@ describe("offerRepository", () => {
   describe("findLatestByArtistId", () => {
     it("行が無ければ null を返す（共演者を引かない）", async () => {
       mock.enqueue([]);
-      const reader = createOfferReader(mock.db as never);
+      const reader = createOfferReader(mock.db);
 
       const result = await reader.findLatestByArtistId("artist-1");
 
@@ -79,7 +71,7 @@ describe("offerRepository", () => {
           { name: "Ken", artistId: null, handle: null },
         ],
       );
-      const reader = createOfferReader(mock.db as never);
+      const reader = createOfferReader(mock.db);
 
       const result = await reader.findLatestByArtistId("artist-1");
 
@@ -132,7 +124,7 @@ describe("offerRepository", () => {
 
     it("id で衝突したら本人の行だけ内容を更新し、共演者は消してから順序付きで入れ直す", async () => {
       mock.enqueue([{ id: "offer-1" }], undefined, undefined);
-      const writer = createOfferWriter(mock.db as never);
+      const writer = createOfferWriter(mock.db);
 
       await writer.upsert(data);
 
@@ -175,7 +167,7 @@ describe("offerRepository", () => {
 
     it("共演者が空なら削除だけして insert しない", async () => {
       mock.enqueue([{ id: "offer-1" }], undefined);
-      const writer = createOfferWriter(mock.db as never);
+      const writer = createOfferWriter(mock.db);
 
       await writer.upsert({ ...data, coPerformers: [] });
 
@@ -185,7 +177,7 @@ describe("offerRepository", () => {
 
     it("id が他の artist の行と衝突して更新されなければ例外を投げ、共演者に触れない", async () => {
       mock.enqueue([]);
-      const writer = createOfferWriter(mock.db as never);
+      const writer = createOfferWriter(mock.db);
 
       await expect(writer.upsert(data)).rejects.toThrow(
         "upsert: offer does not belong to the artist",

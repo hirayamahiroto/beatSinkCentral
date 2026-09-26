@@ -40,6 +40,9 @@ import { createInvalidStoryChapterFormatError } from "../../../domain/artistProf
 import { createInvalidPresentationPatternError } from "../../../domain/artistProfiles/valueObjects/presentationPattern";
 import type { Executor } from "../../transaction";
 
+type ReadExecutor = Pick<Executor, "select">;
+type WriteExecutor = Pick<Executor, "select" | "insert" | "delete">;
+
 type ProfileRow = {
   id: string;
   artistId: string;
@@ -91,7 +94,7 @@ const toPublishedSummaries = (
     row.name === null ? [] : [{ ...row, name: row.name }],
   );
 
-const loadChildren = async (executor: Executor, profileId: string) => {
+const loadChildren = async (executor: ReadExecutor, profileId: string) => {
   const [genreRows, linkRows, chapterRows] = await Promise.all([
     executor
       .select({ genre: artistProfileGenresTable.genre })
@@ -151,7 +154,7 @@ const toStoredProfile = (
   });
 
 const resolveLinkTypeIds = async (
-  executor: Executor,
+  executor: ReadExecutor,
   links: ProfileLinkData[],
 ): Promise<Map<string, number>> => {
   const codes = [...new Set(links.map((link) => link.linkTypeCode))];
@@ -163,7 +166,7 @@ const resolveLinkTypeIds = async (
 };
 
 const resolvePresentationPatternId = async (
-  executor: Executor,
+  executor: ReadExecutor,
   code: string | null,
 ): Promise<number | null> => {
   if (code === null) return null;
@@ -177,7 +180,7 @@ const resolvePresentationPatternId = async (
 };
 
 const resolveStoryQuestionIds = async (
-  executor: Executor,
+  executor: ReadExecutor,
   chapters: StoryChapterData[],
 ): Promise<Map<string, number>> => {
   const codes = [...new Set(chapters.map((chapter) => chapter.questionCode))];
@@ -189,7 +192,7 @@ const resolveStoryQuestionIds = async (
 };
 
 const replaceChildren = async (
-  executor: Executor,
+  executor: WriteExecutor,
   profileId: string,
   genres: string[],
   links: ProfileLinkData[],
@@ -259,7 +262,7 @@ type PublishedColumnsOnConflict = {
 };
 
 const writeProfile = async (
-  executor: Executor,
+  executor: WriteExecutor,
   data: ArtistProfilePersistenceData,
   publishedAt: Date | null,
   onConflict: PublishedColumnsOnConflict,
@@ -312,7 +315,7 @@ const writeProfile = async (
 };
 
 export const createArtistProfileReader = (
-  executor: Executor,
+  executor: ReadExecutor,
 ): IArtistProfileReader => ({
   async load(artistId: string): Promise<ProfileState> {
     const [row] = await executor
@@ -406,7 +409,7 @@ export const createArtistProfileReader = (
 });
 
 export const createArtistProfileWriter = (
-  executor: Executor,
+  executor: WriteExecutor,
 ): IArtistProfileWriter => ({
   async save(state: StoredProfile): Promise<StoredProfile> {
     return writeProfile(executor, toPersistence(state), null, {

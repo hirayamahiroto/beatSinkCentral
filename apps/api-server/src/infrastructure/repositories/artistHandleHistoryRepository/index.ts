@@ -4,7 +4,7 @@ import type { ArtistHandleHistoryPersistenceData } from "../../../domain/artistH
 import type { Executor } from "../../transaction";
 
 export const createArtistHandleHistoryWriter = (
-  executor: Executor,
+  executor: Pick<Executor, "insert">,
 ): IArtistHandleHistoryWriter => ({
   async record(data: ArtistHandleHistoryPersistenceData): Promise<void> {
     await executor.insert(artistHandleHistoriesTable).values({

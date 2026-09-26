@@ -19,9 +19,7 @@ describe("createPresentationPatternReader", () => {
     ];
     const executor = createExecutor(rows);
 
-    const result = await createPresentationPatternReader(
-      executor as never,
-    ).findAll();
+    const result = await createPresentationPatternReader(executor).findAll();
 
     expect(result).toStrictEqual(rows);
   });
@@ -29,7 +27,7 @@ describe("createPresentationPatternReader", () => {
   it("生成時に渡した executor で読み取る", async () => {
     const executor = createExecutor([]);
 
-    await createPresentationPatternReader(executor as never).findAll();
+    await createPresentationPatternReader(executor).findAll();
 
     expect(executor.select).toHaveBeenCalledTimes(1);
     expect(executor.orderBy).toHaveBeenCalledTimes(1);

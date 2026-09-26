@@ -4,7 +4,6 @@ import {
   typeSafetyRules,
   typeSafetyPendingWarn,
   responseValidationRules,
-  responseValidationPendingWarn,
   usecaseCapabilityRules,
   usecaseCapabilityParameterExempt,
   usecaseSubjectNotFoundExempt,
@@ -31,21 +30,6 @@ const eslintConfig = [
   ]),
   responseValidationRules([
     "src/app/api/\\[\\[...route\\]\\]/**/{get,post}/index.ts",
-  ]),
-  // NOTE: 既存エンドポイントは未対応のため一旦 warn に留める。対応が完了したファイルからこの一覧を削る。
-  responseValidationPendingWarn([
-    "src/app/api/\\[\\[...route\\]\\]/link-types/get/index.ts",
-    "src/app/api/\\[\\[...route\\]\\]/test/get/index.ts",
-    "src/app/api/\\[\\[...route\\]\\]/users/me/post/index.ts",
-    "src/app/api/\\[\\[...route\\]\\]/users/post/index.ts",
-    "src/app/api/\\[\\[...route\\]\\]/users/me/get/index.ts",
-    "src/app/api/\\[\\[...route\\]\\]/artists/\\[handle\\]/get/index.ts",
-    "src/app/api/\\[\\[...route\\]\\]/artists/get/index.ts",
-    "src/app/api/\\[\\[...route\\]\\]/artists/me/post/index.ts",
-    "src/app/api/\\[\\[...route\\]\\]/artists/me/profile/post/index.ts",
-    "src/app/api/\\[\\[...route\\]\\]/artists/me/profile/get/index.ts",
-    "src/app/api/\\[\\[...route\\]\\]/artists/me/profile/image/post/index.ts",
-    "src/app/api/\\[\\[...route\\]\\]/artists/me/profile/publish/post/index.ts",
   ]),
   usecaseCapabilityRules([
     "src/usecases/**/*.ts",

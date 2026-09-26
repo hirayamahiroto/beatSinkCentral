@@ -4,7 +4,9 @@ import type { ILinkTypeReader } from "../../../domain/linkTypes/repositories";
 import type { LinkTypeView } from "../../../domain/linkTypes/entities";
 import type { Executor } from "../../transaction";
 
-export const createLinkTypeReader = (executor: Executor): ILinkTypeReader => ({
+export const createLinkTypeReader = (
+  executor: Pick<Executor, "select">,
+): ILinkTypeReader => ({
   async findAll(): Promise<LinkTypeView[]> {
     return executor
       .select({ type: linkTypesTable.code, label: linkTypesTable.label })

@@ -831,9 +831,16 @@ export interface IUserWriter {
 Repository実装は常に`reconstructUser`（factory）を使ってDBレコードをEntityに変換する。
 
 ```typescript
-type Executor = DatabaseClient | TransactionContext;
+// infrastructure/transaction: db / トランザクションのうち Repository が使ってよい問い合わせ面
+type Executor = Pick<
+  DatabaseClient | TransactionContext,
+  "select" | "insert" | "update" | "delete"
+>;
 
-export const createUserReader = (executor: Executor): IUserReader => ({
+// Repository は自分が使う入口だけを Pick で要求する（Reader は select のみ）
+export const createUserReader = (
+  executor: Pick<Executor, "select">,
+): IUserReader => ({
   async findBySub(sub: string): Promise<User | null> {
     const results = await executor
       .select(userColumns)
@@ -845,7 +852,9 @@ export const createUserReader = (executor: Executor): IUserReader => ({
   },
 });
 
-export const createUserWriter = (executor: Executor): IUserWriter => ({
+export const createUserWriter = (
+  executor: Pick<Executor, "insert" | "update">,
+): IUserWriter => ({
   async save(data: UserSaveData): Promise<User> {
     const [result] = await executor
       .insert(usersTable)

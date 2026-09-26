@@ -34,21 +34,24 @@ type ErrorOf<R> = R extends { readonly ok: false; readonly error: infer E }
   ? E
   : never;
 
-export const all = <Fields extends ResultRecord>(
+export function all<Fields extends ResultRecord>(
   fields: Fields,
 ): Result<
   { [K in keyof Fields]: ValueOf<Fields[K]> },
   ErrorOf<Fields[keyof Fields]>
-> => {
+>;
+export function all(
+  fields: ResultRecord,
+): Result<Record<string, unknown>, unknown> {
   const values: Record<string, unknown> = {};
 
   for (const [key, result] of Object.entries(fields)) {
-    if (!result.ok) return err(result.error as ErrorOf<Fields[keyof Fields]>);
+    if (!result.ok) return result;
     values[key] = result.value;
   }
 
-  return ok(values as { [K in keyof Fields]: ValueOf<Fields[K]> });
-};
+  return ok(values);
+}
 
 export const unwrapOrThrow = <T, E>(
   result: Result<T, E>,
