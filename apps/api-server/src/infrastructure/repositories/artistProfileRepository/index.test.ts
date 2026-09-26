@@ -11,40 +11,32 @@ const toSqlText = (fragment: SQL): string =>
 
 const createDbMock = () => {
   const queue: unknown[] = [];
-  const spies: Record<string, ReturnType<typeof vi.fn>> = {};
-  const builder: Record<string, unknown> = {};
-  const chain = () => builder;
-  for (const method of [
-    "select",
-    "from",
-    "innerJoin",
-    "leftJoin",
-    "where",
-    "limit",
-    "orderBy",
-    "groupBy",
-    "as",
-    "insert",
-    "values",
-    "onConflictDoUpdate",
-    "returning",
-    "update",
-    "set",
-    "delete",
-  ]) {
-    const spy = vi.fn(chain);
-    spies[method] = spy;
-    builder[method] = spy;
-  }
-  builder.then = (
-    resolve: (v: unknown) => unknown,
-    reject: (e: unknown) => unknown,
-  ) => Promise.resolve(queue.shift()).then(resolve, reject);
+  const chain = () => vi.fn().mockReturnThis();
+  const db = {
+    select: chain(),
+    from: chain(),
+    innerJoin: chain(),
+    leftJoin: chain(),
+    where: chain(),
+    limit: chain(),
+    orderBy: chain(),
+    groupBy: chain(),
+    as: chain(),
+    insert: chain(),
+    values: chain(),
+    onConflictDoUpdate: chain(),
+    returning: chain(),
+    update: chain(),
+    set: chain(),
+    delete: chain(),
+    then: (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) =>
+      Promise.resolve(queue.shift()).then(resolve, reject),
+  };
 
   return {
-    db: builder,
+    db,
     enqueue: (...values: unknown[]) => queue.push(...values),
-    spy: (name: string) => spies[name],
+    spy: (name: Exclude<keyof typeof db, "then">) => db[name],
   };
 };
 
@@ -98,7 +90,7 @@ describe("artistProfileRepository", () => {
   describe("load", () => {
     it("行が無ければ noProfile を返す（子テーブルを引かない）", async () => {
       mock.enqueue([]);
-      const reader = createArtistProfileReader(mock.db as never);
+      const reader = createArtistProfileReader(mock.db);
 
       const result = await reader.load("artist-1");
 
@@ -113,7 +105,7 @@ describe("artistProfileRepository", () => {
         [{ linkTypeCode: "x", url: "https://x.com/taro" }],
         [{ questionCode: "beginning", body: "私の歩み" }],
       );
-      const reader = createArtistProfileReader(mock.db as never);
+      const reader = createArtistProfileReader(mock.db);
 
       const result = await reader.load("artist-1");
 
@@ -135,7 +127,7 @@ describe("artistProfileRepository", () => {
         [{ linkTypeCode: "x", url: "https://x.com/taro" }],
         [{ questionCode: "beginning", body: "私の歩み" }],
       );
-      const reader = createArtistProfileReader(mock.db as never);
+      const reader = createArtistProfileReader(mock.db);
 
       const result = await reader.load("artist-1");
 
@@ -147,7 +139,7 @@ describe("artistProfileRepository", () => {
 
     it("published=true なのに最小核が欠けた行はスローする（不変条件の破れ）", async () => {
       mock.enqueue([publishedRow], [], [], []);
-      const reader = createArtistProfileReader(mock.db as never);
+      const reader = createArtistProfileReader(mock.db);
 
       await expect(reader.load("artist-1")).rejects.toThrow(
         "published profile lacks required fields",
@@ -158,7 +150,7 @@ describe("artistProfileRepository", () => {
   describe("findPublishedByHandle", () => {
     it("公開行が無ければ null を返す", async () => {
       mock.enqueue([]);
-      const reader = createArtistProfileReader(mock.db as never);
+      const reader = createArtistProfileReader(mock.db);
 
       const result = await reader.findPublishedByHandle("beatboxer_taro");
 
@@ -172,7 +164,7 @@ describe("artistProfileRepository", () => {
         [{ linkTypeCode: "x", url: "https://x.com/taro" }],
         [{ questionCode: "beginning", body: "私の歩み" }],
       );
-      const reader = createArtistProfileReader(mock.db as never);
+      const reader = createArtistProfileReader(mock.db);
 
       const result = await reader.findPublishedByHandle("beatboxer_taro");
 
@@ -199,7 +191,7 @@ describe("artistProfileRepository", () => {
           genres: [],
         },
       ]);
-      const reader = createArtistProfileReader(mock.db as never);
+      const reader = createArtistProfileReader(mock.db);
 
       const result = await reader.listPublishedSummaries({ limit: 100 });
 
@@ -224,7 +216,7 @@ describe("artistProfileRepository", () => {
 
     it("ジャンルはサブクエリで集約して 1 クエリで引く（N+1 にしない）", async () => {
       mock.enqueue([]);
-      const reader = createArtistProfileReader(mock.db as never);
+      const reader = createArtistProfileReader(mock.db);
 
       await reader.listPublishedSummaries({ limit: 100 });
 
@@ -250,7 +242,7 @@ describe("artistProfileRepository", () => {
           genres: [],
         },
       ]);
-      const reader = createArtistProfileReader(mock.db as never);
+      const reader = createArtistProfileReader(mock.db);
 
       const result = await reader.listPublishedSummaries({ limit: 100 });
 
@@ -279,7 +271,7 @@ describe("artistProfileRepository", () => {
         [{ id: 1, code: "beginning" }], // resolveStoryQuestionIds select
         undefined, // insert chapters
       );
-      const writer = createArtistProfileWriter(mock.db as never);
+      const writer = createArtistProfileWriter(mock.db);
 
       const result = await writer.save(draftProfile);
 
@@ -309,7 +301,7 @@ describe("artistProfileRepository", () => {
 
     it("既存行との衝突時は published を「現在値 AND 保存値」で降格のみ反映し、降格時は publishedAt を消す（並行する publish を戻さない）", async () => {
       mock.enqueue([draftRow], undefined, undefined, undefined);
-      const writer = createArtistProfileWriter(mock.db as never);
+      const writer = createArtistProfileWriter(mock.db);
 
       await writer.save({
         kind: "draft",
@@ -343,7 +335,7 @@ describe("artistProfileRepository", () => {
         undefined, // delete links
         undefined, // delete chapters
       );
-      const writer = createArtistProfileWriter(mock.db as never);
+      const writer = createArtistProfileWriter(mock.db);
 
       const result = await writer.save({
         kind: "draft",
@@ -370,7 +362,7 @@ describe("artistProfileRepository", () => {
 
     it("マスタに無い presentationPatternCode は InvalidPresentationPatternError を投げ、保存しない", async () => {
       mock.enqueue([]); // resolvePresentationPatternId select（該当コード無し）
-      const writer = createArtistProfileWriter(mock.db as never);
+      const writer = createArtistProfileWriter(mock.db);
 
       await expect(
         writer.save({
@@ -400,7 +392,7 @@ describe("artistProfileRepository", () => {
         [{ id: 1, code: "beginning" }], // resolveStoryQuestionIds select
         undefined, // insert chapters
       );
-      const writer = createArtistProfileWriter(mock.db as never);
+      const writer = createArtistProfileWriter(mock.db);
 
       const result = await writer.publish(publishedProfile());
 

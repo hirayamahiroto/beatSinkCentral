@@ -6,7 +6,6 @@ import nextTypescript from "eslint-config-next/typescript";
 import prettier from "eslint-config-prettier";
 import {
   typeSafetyRules,
-  typeSafetyPendingWarn,
   bffRouteStatusRules,
   hookTestRules,
   testDoubleRules,
@@ -20,11 +19,11 @@ const eslintConfig = [
     ignores: ["node_modules", ".next", "dist", "build", ".turbo"],
   },
   ...storybook.configs["flat/recommended"],
+  {
+    files: ["packages/ui/**/*.tsx"],
+    rules: { "@next/next/no-img-element": "off" },
+  },
   typeSafetyRules,
-  typeSafetyPendingWarn([
-    "apps/beatfolio/src/errorMap/index.ts",
-    "apps/beatfolio/src/utils/client/errors/upstreamUnavailable/index.ts",
-  ]),
   bffRouteStatusRules("apps/beatfolio"),
   hookTestRules(["apps/beatfolio/src/app/**/hooks/**/*.ts"]),
   testDoubleRules([

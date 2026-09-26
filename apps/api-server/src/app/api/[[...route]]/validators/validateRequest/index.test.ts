@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { Hono } from "hono";
 import { z } from "zod";
 import { validateRequest } from "./index";
-import { handleAppError } from "../../../../../errorMap";
+import { handleThrownError } from "../../../../../errorMap";
 
 const createApp = () => {
   const captured: { error: Error | null } = { error: null };
@@ -25,7 +25,7 @@ const createApp = () => {
     )
     .onError((error, c) => {
       captured.error = error;
-      return handleAppError(error, c);
+      return handleThrownError(error, c);
     });
 
   return { app, captured };

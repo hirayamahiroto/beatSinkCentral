@@ -8,7 +8,7 @@ import storyQuestions from "./story-questions";
 import presentationPatterns from "./presentation-patterns";
 import events from "./events";
 import { requestContextMiddleware } from "../../../middlewares/requestContext";
-import { handleAppError } from "../../../errorMap";
+import { handleThrownError } from "../../../errorMap";
 
 const app = new Hono()
   .basePath("/api")
@@ -20,7 +20,7 @@ const app = new Hono()
   .route("/story-questions", storyQuestions)
   .route("/presentation-patterns", presentationPatterns)
   .route("/events", events)
-  .onError(handleAppError);
+  .onError(handleThrownError);
 
 export type AppType = typeof app;
 

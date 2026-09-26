@@ -5,12 +5,13 @@ import { toUpstreamError } from "../../shared/toUpstreamError";
 import { readUpstreamJson } from "../../shared/readUpstreamJson";
 import { resolvePresentationPattern } from "../../shared/resolvePresentationPattern";
 import { toOfferEditorValues } from "./toOfferEditorValues";
+import { throwBffError } from "../../../../../errorMap";
 
 const app = new Hono<RequestContextEnv>().get("/", async (c) => {
   const apiClient = c.get("apiClient");
 
   const res = await apiClient.api.users.me.$get();
-  if (!res.ok) throw await toUpstreamError(res);
+  if (!res.ok) throwBffError(await toUpstreamError(res));
 
   const me = await readUpstreamJson(res);
 
@@ -29,9 +30,9 @@ const app = new Hono<RequestContextEnv>().get("/", async (c) => {
     apiClient.api["presentation-patterns"].$get(),
   ]);
 
-  if (!profileRes.ok) throw await toUpstreamError(profileRes);
+  if (!profileRes.ok) throwBffError(await toUpstreamError(profileRes));
   if (!presentationPatternsRes.ok) {
-    throw await toUpstreamError(presentationPatternsRes);
+    throwBffError(await toUpstreamError(presentationPatternsRes));
   }
 
   const { profile, publishability, offer } = await readUpstreamJson(profileRes);

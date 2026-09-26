@@ -11,7 +11,7 @@ import {
   createPartialSaveFailedError,
   type UpstreamFailure,
 } from "../../../errors/partialSaveFailed";
-import { isUpstreamUnavailableError } from "../../../../../../utils/client/errors/upstreamUnavailable";
+import { recoverBffError, throwBffError } from "../../../../../../errorMap";
 import {
   chapterStep,
   type SaveStep,
@@ -54,10 +54,13 @@ const createSaveSteps = () => {
     try {
       res = await send();
     } catch (error) {
-      if (isUpstreamUnavailableError(error)) throw fail(error);
+      const thrown = recoverBffError(error);
+      if (thrown?.type === "UpstreamUnavailableError") {
+        throwBffError(fail(thrown));
+      }
       throw error;
     }
-    if (!res.ok) throw fail(await toUpstreamError(res));
+    if (!res.ok) throwBffError(fail(await toUpstreamError(res)));
     saved.push(step);
   };
 

@@ -1,6 +1,7 @@
 import { createMiddleware } from "hono/factory";
 import { getAuth0 } from "../../infrastructure/auth0";
 import { createUnauthorizedError } from "./errors/unauthorized";
+import { throwAppError } from "../../errorMap";
 
 type AuthenticatedUser = {
   sub: string;
@@ -14,9 +15,7 @@ declare module "hono" {
 
 export const requireAuthMiddleware = createMiddleware(async (c, next) => {
   const session = await getAuth0().getSession();
-  if (!session?.user) {
-    throw createUnauthorizedError();
-  }
+  if (!session?.user) return throwAppError(createUnauthorizedError());
 
   c.set("auth0User", { sub: session.user.sub });
 

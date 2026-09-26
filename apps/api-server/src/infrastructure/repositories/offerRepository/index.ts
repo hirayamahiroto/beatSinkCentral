@@ -41,7 +41,7 @@ const toCoPerformerInputs = (rows: CoPerformerRow[]): CoPerformerInput[] =>
   }));
 
 const loadCoPerformers = (
-  executor: Executor,
+  executor: Pick<Executor, "select">,
   offerId: string,
 ): Promise<CoPerformerRow[]> =>
   executor
@@ -55,7 +55,9 @@ const loadCoPerformers = (
     .where(eq(offerPerformersTable.offerId, offerId))
     .orderBy(asc(offerPerformersTable.sortOrder));
 
-export const createOfferReader = (executor: Executor): IOfferReader => ({
+export const createOfferReader = (
+  executor: Pick<Executor, "select">,
+): IOfferReader => ({
   async findLatestByArtistId(artistId: string): Promise<Offer | null> {
     const [row] = await executor
       .select(offerColumns)
@@ -73,7 +75,9 @@ export const createOfferReader = (executor: Executor): IOfferReader => ({
   },
 });
 
-export const createOfferWriter = (executor: Executor): IOfferWriter => ({
+export const createOfferWriter = (
+  executor: Pick<Executor, "insert" | "delete">,
+): IOfferWriter => ({
   async upsert(data: OfferPersistenceData): Promise<void> {
     const [written] = await executor
       .insert(offersTable)

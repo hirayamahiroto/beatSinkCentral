@@ -136,7 +136,7 @@ const app = new Hono<RequestContextEnv>().get("/", async (c) => {
   const apiClient = c.get("apiClient");
 
   const res = await apiClient.api.users.me.$get();
-  if (!res.ok) throw await toUpstreamError(res); // ステータスは route が決めない（errorMap が翻訳）
+  if (!res.ok) throwBffError(await toUpstreamError(res)); // ステータスは route が決めない（errorMap が翻訳）
   const me = await readUpstreamJson(res);
 
   // 集約・整形・そぎ落とし: この画面に必要なフィールドだけ返す
@@ -192,7 +192,7 @@ export default async function DashboardPage() {
 ### write の実装: HTTP ルート（`/api/*`）
 
 - 配置: `src/app/api/[[...route]]/{resource}/{操作名}/index.ts`（例: `artists/me/updateMyHandle/`。ディレクトリ構成の規約は [route の実装規約](#route-の実装規約は-api-server-と共有する) を参照）
-- 責務: 入力バリデーション（`validators/validateRequest`）→ 必要なら自分の `userId` / `artistId` を解決（`shared/resolveMyUserId` / `shared/resolveMyArtistId`、内部で `GET /users/me`。見つからなければ型付きエラーを throw）→ `apiClient` で api-server へ送信 → 成功なら結果を返し、失敗なら `throw await toUpstreamError(res)`（**薄いパススルー**。ステータスの決定は route ではなく `errorMap`）。ブラウザ向け URL は `me` のままでよい（セッション主体への読み替えは BFF の責務。api-server 側は `/:userId` / `/:artistId` でアドレスする）。
+- 責務: 入力バリデーション（`validators/validateRequest`）→ 必要なら自分の `userId` / `artistId` を解決（`shared/resolveMyUserId` / `shared/resolveMyArtistId`、内部で `GET /users/me`。見つからなければ型付きエラーを `throwBffError` で投げる）→ `apiClient` で api-server へ送信 → 成功なら結果を返し、失敗なら `throwBffError(await toUpstreamError(res))`（**薄いパススルー**。ステータスの決定は route ではなく `errorMap`）。ブラウザ向け URL は `me` のままでよい（セッション主体への読み替えは BFF の責務。api-server 側は `/:userId` / `/:artistId` でアドレスする）。
 - 認証 cookie: `requestContextMiddleware` がセッション cookie を付与した `apiClient`（= `createApiServerClient`）を `c.set("apiClient", ...)` する。ルートは `c.get("apiClient")` を使うだけ。
 
 ```ts
@@ -214,7 +214,7 @@ const app = new Hono<RequestContextEnv>().post(
       param: { artistId },
       json: { handle: body.handle },
     });
-    if (!res.ok) throw await toUpstreamError(res); // 4xx は同じステータス・ボディで透過、5xx は 502
+    if (!res.ok) throwBffError(await toUpstreamError(res)); // 4xx は同じステータス・ボディで透過、5xx は 502
 
     return c.json(await readUpstreamJson(res));
   },
@@ -228,7 +228,7 @@ JSON と同じく**薄いパススルー**で扱う。BFF はファイルの中�
 - 検証: `zValidator("form", z.object({ file: z.instanceof(File) }))`。「File であること」だけを UX 契約として弾く
 - 送信: hono RPC の `{ form: { file } }` で **File をそのまま上流へ透過**する
 - BFF で Buffer 化・再エンコード・サイズ/MIME の内容検証はしない（内容の検証は api-server のドメイン層とストレージ側の制約が担う）
-- 失敗の扱いは JSON write と同じ（`throw await toUpstreamError(res)`）
+- 失敗の扱いは JSON write と同じ（`throwBffError(await toUpstreamError(res))`）
 - 上流のパスパラメータ（`:artistId` 等）は JSON write と同じく `shared/resolveMyArtistId` で解決し、hono RPC の `{ param }` で渡す（ブラウザ向け URL は `me` のまま）
 - 実装例: `src/app/api/[[...route]]/artists/me/uploadMyProfileImage/index.ts`
 
@@ -281,7 +281,7 @@ BFF が依拠するルールは **「api-server は応答する」「契約ど�
 
 #### 不変条件: route は HTTP ステータスを書かない
 
-> **失敗のステータスを知っているのは `errorMap`（`apps/beatfolio/src/errorMap/`）だけ。route は型付きエラーを `throw` するだけで、`c.json(body, status)` に失敗系ステータスを書かない**（成功系 2xx の明示は可）。
+> **失敗のステータスを知っているのは `errorMap`（`apps/beatfolio/src/errorMap/`）だけ。route は型付きエラーを `throwBffError` で投げるだけで、`c.json(body, status)` に失敗系ステータスを書かない**（成功系 2xx の明示は可）。
 
 この不変条件は ESLint ローカルルール `local-bff/no-status-in-route`（`eslint.rules.mjs`）で機械的に検証する。ステータス決定が route に散ると「read は 502 に寄せる」「write は透過」といった判断が route ごとに手で再現され、変更が一箇所で済まなくなる。
 
@@ -305,8 +305,9 @@ api-server はエラーを型付きエラーで分類し、`errorMap` で `{ err
 
 - **到達不能の検知は route ではなく client 層**が担う。route ごとに `try/catch` を重ねない。
   - 例外は **複数の更新 API を順に呼ぶ合成 write**（`saveMyProfile`）。ステップ単位で上流の失敗（`toUpstreamError` の結果、または client 層が投げた `UpstreamUnavailableError`）を `PartialSaveFailedError` に包み、保存済みステップを添える。上流由来でない例外は包まず素通しする（500）。fetcher はボディの `saved` / `failedAt` を読んで `progress`（読めなければ `null`）として hook へ渡し、画面が「どこまで保存されたか」を示す。
-- **route の失敗パスは `if (!res.ok) throw await toUpstreamError(res);` の 1 行**（合成 write を除く）。成功応答の読み取りは `await readUpstreamJson(res)`。`route.ts` の `.onError(handleBffError)` が `errorMap` で HTTP へ変換する。
-- **read も write も同じ経路**。read で「対象の不在」を画面が区別する必要がある場合（`players/getPlayerDetail` の 404）は、route が意味を判定して専用の型付きエラー（`PlayerNotFoundError`）を throw する。ステータスは `errorMap` 側にある。
+- **route の失敗パスは `if (!res.ok) throwBffError(await toUpstreamError(res));` の 1 行**（合成 write を除く）。成功応答の読み取りは `await readUpstreamJson(res)`。`route.ts` の `.onError(handleBffError)` が `errorMap` で HTTP へ変換する。
+- `throwBffError` は `errorMap` が持つエラーチャネル（`utils/errors/errorChannel`。api-server の `throwAppError` と同じ仕組み）で、投げたインスタンスを型のまま `handleBffError` が `recover` する。型述語や `as` を使わずに `unknown` から `BffError` へ戻すための唯一の経路であり、素の `throw` で投げた型付きエラーは `recover` されず 500 になる。
+- **read も write も同じ経路**。read で「対象の不在」を画面が区別する必要がある場合（`players/getPlayerDetail` の 404）は、route が意味を判定して専用の型付きエラー（`PlayerNotFoundError`）を `throwBffError` で投げる。ステータスは `errorMap` 側にある。
 - **未知のエラーは 500 + `console.error`**。上流障害（502）と BFF 自身のバグ（500）を混ぜない（[エラーハンドリングの層責務](../../server/error-handling/layer-responsibilities.md#例外-bff-から見た-api-serverゲートウェイの上流障害)）。
 - BFF の `errorMap` が返すボディも `{ error, code }` を持つ（`code = BffError["type"]`）。`UpstreamRejectedError` は上流のボディをそのまま返すため、`code` は api-server のものになる。
 - **`page.tsx`（read 呼び出し側）**: BFF read ルートのレスポンスを純粋関数（resolver）に渡し、その判定に従って `redirect()` 実行 or 描画する（throw でエラーバウンダリに委ねる選択も resolver の戻り値で表現する）。

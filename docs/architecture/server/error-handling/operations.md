@@ -128,7 +128,7 @@ export const createDatadogLogger = (): Logger => {
 };
 ```
 
-差し替え点は `route.ts` の `onError` 配線 1 行。既定の `.onError(handleAppError)`（= `createAppErrorHandler(createConsoleLogger())` の別名）を `.onError(createAppErrorHandler(createDatadogLogger()))` に変えるだけで、errorMap / エラー定義 / ルート / リクエストコンテキストは変更ゼロ。
+差し替え点は `route.ts` の `onError` 配線 1 行。既定の `.onError(handleThrownError)`（= `createAppErrorHandler(createConsoleLogger()).handleThrownError` の別名）を `.onError(createAppErrorHandler(createDatadogLogger()).handleThrownError)` に変えるだけで、errorMap / エラー定義 / ルート / リクエストコンテキストは変更ゼロ。
 
 トレース連携で `traceId` を Datadog の予約フィールド（`dd.trace_id`）に載せ替える必要がある場合も、この Logger 実装内で名前を変換する。アプリ側のフィールド名は変えない。
 

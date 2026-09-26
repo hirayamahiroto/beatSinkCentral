@@ -5,13 +5,14 @@ import {
   type RequestContextEnv,
 } from "../../../../../../middlewares/requestContext";
 import saveMyProfile from "./index";
-import { handleBffError } from "../../../../../../errorMap";
+import { handleBffError, throwBffError } from "../../../../../../errorMap";
 import { createUpstreamUnavailableError } from "../../../../../../utils/client/errors/upstreamUnavailable";
 import {
   createEndpointMock,
   upstreamJsonResponse,
   type ApiServerClient,
   type ApiServerClientMock,
+  upstreamErrorResponse,
 } from "../../../../../../utils/client/testDoubles";
 
 const meGet =
@@ -240,7 +241,7 @@ describe("POST /artists/me/profile", () => {
 
   it("リンクの更新が 5xx なら 502 に畳み、属性と全章を保存済みとして返す", async () => {
     linksPost.mockResolvedValue(
-      upstreamJsonResponse({ error: "Internal Server Error" }, 500),
+      upstreamErrorResponse({ error: "Internal Server Error" }, 500),
     );
 
     const res = await request(fullBody);
@@ -255,8 +256,10 @@ describe("POST /artists/me/profile", () => {
   });
 
   it("途中で api-server に到達できなくなっても、そこまでの保存済みステップを返す", async () => {
-    linksPost.mockRejectedValue(
-      createUpstreamUnavailableError(new TypeError("fetch failed")),
+    linksPost.mockImplementation(async () =>
+      throwBffError(
+        createUpstreamUnavailableError(new TypeError("fetch failed")),
+      ),
     );
 
     const res = await request(fullBody);

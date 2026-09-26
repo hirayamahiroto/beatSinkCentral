@@ -16,6 +16,7 @@ import type {
 import { reconstructArtist } from "../../../domain/artists/factories";
 import { createArtistNotFoundError } from "../../../domain/artists/errors/artistNotFound";
 import { createHandleAlreadyTakenError } from "../../../domain/artists/errors/handleAlreadyTaken";
+import { raiseAlreadyTaken } from "../../../authorization/conflict";
 import { isUniqueViolation } from "../../database/uniqueViolation";
 import type { Executor } from "../../transaction";
 
@@ -36,13 +37,15 @@ const rejectTakenHandle = async <T>(
     return await write();
   } catch (error) {
     if (isUniqueViolation(error, HANDLE_UNIQUE_CONSTRAINT)) {
-      throw createHandleAlreadyTakenError(handle);
+      raiseAlreadyTaken(createHandleAlreadyTakenError(handle));
     }
     throw error;
   }
 };
 
-export const createArtistReader = (executor: Executor): IArtistReader => ({
+export const createArtistReader = (
+  executor: Pick<Executor, "select">,
+): IArtistReader => ({
   async findByUserId(userId: string) {
     const results = await executor
       .select(artistColumns)
@@ -123,7 +126,9 @@ export const createArtistReader = (executor: Executor): IArtistReader => ({
   },
 });
 
-export const createArtistWriter = (executor: Executor): IArtistWriter => ({
+export const createArtistWriter = (
+  executor: Pick<Executor, "select" | "insert" | "update">,
+): IArtistWriter => ({
   async save(data: ArtistPersistenceData): Promise<Artist> {
     const [artistRow] = await rejectTakenHandle(data.handle, () =>
       executor

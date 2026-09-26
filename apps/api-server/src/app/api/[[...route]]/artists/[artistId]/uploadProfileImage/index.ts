@@ -8,7 +8,7 @@ import { uploadMyProfileImage } from "../../../../../../usecases/artistProfiles/
 import { changeMyProfileImage } from "../../../../../../usecases/artistProfiles/changeMyProfileImage";
 import { PROFILE_IMAGE_MAX_SIZE_BYTES } from "../../../../../../domain/artistProfiles/valueObjects/profileImage";
 import { validateRequest } from "../../../validators/validateRequest";
-import { handleAppError } from "../../../../../../errorMap";
+import { handleAppError, throwAppError } from "../../../../../../errorMap";
 import { createRequestBodyTooLargeError } from "../../../errors/requestBodyTooLarge";
 import { createResponseContractViolationError } from "../../../errors/responseContractViolation";
 
@@ -30,9 +30,7 @@ const app = new Hono().post(
   "/",
   bodyLimit({
     maxSize: PROFILE_IMAGE_MAX_SIZE_BYTES + MULTIPART_FRAMING_ALLOWANCE_BYTES,
-    onError: () => {
-      throw createRequestBodyTooLargeError();
-    },
+    onError: () => throwAppError(createRequestBodyTooLargeError()),
   }),
   validateRequest("param", paramSchema),
   validateRequest("form", uploadProfileImageRequestSchema),

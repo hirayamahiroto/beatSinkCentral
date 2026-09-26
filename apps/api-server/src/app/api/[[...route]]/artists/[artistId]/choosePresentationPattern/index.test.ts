@@ -4,7 +4,7 @@ import { reconstructUser } from "../../../../../../domain/users/factories";
 import { reconstructArtist } from "../../../../../../domain/artists/factories";
 import { toPersistence } from "../../../../../../domain/artistProfiles/behaviors";
 import type { StoredProfile } from "../../../../../../domain/artistProfiles/entities";
-import { handleAppError } from "../../../../../../errorMap";
+import { handleThrownError } from "../../../../../../errorMap";
 import choosePresentationPatternRoute from "./index";
 import { createCapabilityDepsMock } from "../../../../../../infrastructure/capabilities/testDoubles";
 
@@ -35,7 +35,7 @@ const createApp = (sub: string) => {
     await next();
   });
   app.route("/:artistId/presentation", choosePresentationPatternRoute);
-  app.onError(handleAppError);
+  app.onError(handleThrownError);
   return app;
 };
 

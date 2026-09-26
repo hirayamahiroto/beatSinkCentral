@@ -12,6 +12,7 @@ import {
   type ApiServerClient,
   type ApiServerClientMock,
   type UpstreamSuccessBody,
+  upstreamErrorResponse,
 } from "../../../../../utils/client/testDoubles";
 
 const profileGet =
@@ -151,7 +152,7 @@ describe("GET /players/:handle", () => {
 
   it("api-server が 5xx で失敗したら 502 を返す", async () => {
     profileGet.mockResolvedValue(
-      upstreamJsonResponse({ error: "Internal" }, 500),
+      upstreamErrorResponse({ error: "Internal" }, 500),
     );
 
     const res = await createApp().request("/saku", { method: "GET" });
@@ -162,7 +163,7 @@ describe("GET /players/:handle", () => {
   it("問いマスタの取得が失敗したら 502 を返す", async () => {
     profileGet.mockResolvedValue(upstreamJsonResponse(publishedProfile));
     storyQuestionsGet.mockResolvedValue(
-      upstreamJsonResponse({ error: "Internal" }, 500),
+      upstreamErrorResponse({ error: "Internal" }, 500),
     );
 
     const res = await createApp().request("/saku", { method: "GET" });

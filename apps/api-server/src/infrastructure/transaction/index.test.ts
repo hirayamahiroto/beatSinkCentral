@@ -7,8 +7,8 @@ const createDbStub = () => {
   const tx = { marker: "tx" };
   const calls = { rolledBack: false };
 
-  const db: DatabaseClient = {
-    transaction: vi.fn(async (work: (tx: unknown) => Promise<unknown>) => {
+  const db: Pick<DatabaseClient, "transaction"> = {
+    transaction: vi.fn().mockImplementation(async (work) => {
       try {
         return await work(tx);
       } catch (error) {
@@ -16,7 +16,7 @@ const createDbStub = () => {
         throw error;
       }
     }),
-  } as never;
+  };
 
   return { db, tx, calls };
 };

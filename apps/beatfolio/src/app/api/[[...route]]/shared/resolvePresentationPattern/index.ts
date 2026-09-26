@@ -4,6 +4,7 @@ import {
   toImmersivePatternCode,
 } from "../../../../../libs/presentationPattern";
 import { createUpstreamContractViolationError } from "../../errors/upstreamContractViolation";
+import { throwBffError } from "../../../../../errorMap";
 
 export const resolvePresentationPattern = (
   patternCode: string | null,
@@ -12,10 +13,12 @@ export const resolvePresentationPattern = (
 
   const pattern = toImmersivePatternCode(patternCode);
   if (pattern === undefined) {
-    throw createUpstreamContractViolationError({
-      upstreamStatus: 200,
-      reason: "unknown presentation pattern",
-    });
+    throwBffError(
+      createUpstreamContractViolationError({
+        upstreamStatus: 200,
+        reason: "unknown presentation pattern",
+      }),
+    );
   }
   return pattern;
 };

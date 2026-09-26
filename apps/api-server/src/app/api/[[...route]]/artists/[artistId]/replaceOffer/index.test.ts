@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { reconstructUser } from "../../../../../../domain/users/factories";
 import { reconstructArtist } from "../../../../../../domain/artists/factories";
 import { reconstructOffer } from "../../../../../../domain/offers/factories";
-import { handleAppError } from "../../../../../../errorMap";
+import { handleThrownError } from "../../../../../../errorMap";
 import replaceOfferRoute from "./index";
 import { createCapabilityDepsMock } from "../../../../../../infrastructure/capabilities/testDoubles";
 
@@ -41,7 +41,7 @@ const createApp = (sub: string) => {
     await next();
   });
   app.route("/:artistId/offers", replaceOfferRoute);
-  app.onError(handleAppError);
+  app.onError(handleThrownError);
   return app;
 };
 

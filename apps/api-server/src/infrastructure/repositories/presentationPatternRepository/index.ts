@@ -5,7 +5,7 @@ import type { PresentationPatternView } from "../../../domain/presentationPatter
 import type { Executor } from "../../transaction";
 
 export const createPresentationPatternReader = (
-  executor: Executor,
+  executor: Pick<Executor, "select">,
 ): IPresentationPatternReader => ({
   async findAll(): Promise<PresentationPatternView[]> {
     return executor

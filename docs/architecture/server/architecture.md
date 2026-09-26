@@ -57,7 +57,7 @@ apps/api-server/src/
 │   │   ├── behaviors/        # 振る舞いの実装
 │   │   ├── factories/        # Entityの生成
 │   │   ├── repositories/     # IUserReader / IUserWriter インターフェース
-│   │   ├── errors/           # ドメインエラーの型 + factory + 型ガード
+│   │   ├── errors/           # ドメインエラーの型 + factory
 │   │   ├── policies/         # 不変条件の判定
 │   │   └── valueObjects/     # 値オブジェクト
 │   │       ├── Auth0UserId/
@@ -251,7 +251,7 @@ domain/users/
 ├── entities/      ← 型（振る舞いの契約）+ 内部状態の型
 ├── behaviors/     ← 振る舞いの実装
 ├── factories/     ← Entityの生成
-├── errors/        ← ドメインエラーの型 + factory + 型ガード
+├── errors/        ← ドメインエラーの型 + factory
 ├── policies/      ← 外部状態に依存する不変条件の判定
 └── valueObjects/  ← 値オブジェクト
 ```
@@ -505,7 +505,7 @@ user.state; // ❌ エラー: プロパティが存在しない
 ```
 domain/users/errors/
 └── {errorName}/
-    ├── index.ts         # type + factory + 型ガード
+    ├── index.ts         # type + factory
     └── index.test.ts
 ```
 
@@ -522,13 +522,6 @@ export type UserAlreadyRegisteredError = Error & {
 export const createUserAlreadyRegisteredError =
   (): UserAlreadyRegisteredError =>
     createTypedError("UserAlreadyRegisteredError");
-
-export const isUserAlreadyRegisteredError = (
-  error: unknown,
-): error is UserAlreadyRegisteredError =>
-  error instanceof Error &&
-  (error as Partial<UserAlreadyRegisteredError>).type ===
-    "UserAlreadyRegisteredError";
 ```
 
 ポイント:
@@ -831,9 +824,16 @@ export interface IUserWriter {
 Repository実装は常に`reconstructUser`（factory）を使ってDBレコードをEntityに変換する。
 
 ```typescript
-type Executor = DatabaseClient | TransactionContext;
+// infrastructure/transaction: db / トランザクションのうち Repository が使ってよい問い合わせ面
+type Executor = Pick<
+  DatabaseClient | TransactionContext,
+  "select" | "insert" | "update" | "delete"
+>;
 
-export const createUserReader = (executor: Executor): IUserReader => ({
+// Repository は自分が使う入口だけを Pick で要求する（Reader は select のみ）
+export const createUserReader = (
+  executor: Pick<Executor, "select">,
+): IUserReader => ({
   async findBySub(sub: string): Promise<User | null> {
     const results = await executor
       .select(userColumns)
@@ -845,7 +845,9 @@ export const createUserReader = (executor: Executor): IUserReader => ({
   },
 });
 
-export const createUserWriter = (executor: Executor): IUserWriter => ({
+export const createUserWriter = (
+  executor: Pick<Executor, "insert" | "update">,
+): IUserWriter => ({
   async save(data: UserSaveData): Promise<User> {
     const [result] = await executor
       .insert(usersTable)
@@ -992,15 +994,15 @@ export type StoredProfile = DraftProfile | PublishedProfile;
 
 経路モジュールが共有する部品は 2 つに分けている。
 
-| モジュール                  | 責務                                                                                                                    |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `authorization/resolution`  | `toActor` / `toAddressedActor` / `toUser` / `toAddressedUser`（`ActorResolution` の畳み込み。純粋関数）                 |
-| `authorization/conflict`    | `AlreadyTakenError` と `catchAlreadyTaken`（一意制約違反を `err` に戻す）                                               |
-| `authorization/testDoubles` | 各経路のテストが共有する `CapabilityDeps` のスタブと Entity フィクスチャ（テスト専用のため `index.test.ts` を持たない） |
+| モジュール                  | 責務                                                                                                                                      |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `authorization/resolution`  | `toActor` / `toAddressedActor` / `toUser` / `toAddressedUser`（`ActorResolution` の畳み込み。純粋関数）                                   |
+| `authorization/conflict`    | `AlreadyTakenError`・`raiseAlreadyTaken`（Repository が一意制約違反を型のまま投げる）・`catchAlreadyTaken`（`recover` して `err` に戻す） |
+| `authorization/testDoubles` | 各経路のテストが共有する `CapabilityDeps` のスタブと Entity フィクスチャ（テスト専用のため `index.test.ts` を持たない）                   |
 
 `index.ts` による再エクスポートは置かない。**どの経路に乗っているかを import パスで示す**ためで、`authorization` から何でも取れる形にすると経路の選択が見えなくなる。
 
-境界を張るヘルパは、一意制約違反として上がってきた型付きエラーを `err` へ変換する（詳細は [並行更新ポリシー](./database/concurrency.md)）。**変換する型は、その権能で書ける範囲に一致させる。**
+境界を張るヘルパは、Repository が `raiseAlreadyTaken` で投げた型付きエラーを `catchAlreadyTaken` で `recover` し、`err` へ変換する（詳細は [並行更新ポリシー](./database/concurrency.md)）。**変換する型は、その権能で書ける範囲に一致させる**（`select` 引数で選ぶ）。
 
 | ヘルパ                            | 変換する型                                           |
 | --------------------------------- | ---------------------------------------------------- |

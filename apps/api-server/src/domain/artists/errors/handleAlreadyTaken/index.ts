@@ -9,10 +9,3 @@ export const createHandleAlreadyTakenError = (
   handle: string,
 ): HandleAlreadyTakenError =>
   createTypedError("HandleAlreadyTakenError", { handle });
-
-export const isHandleAlreadyTakenError = (
-  error: unknown,
-): error is HandleAlreadyTakenError =>
-  error instanceof Error &&
-  "type" in error &&
-  error.type === "HandleAlreadyTakenError";

@@ -1,4 +1,5 @@
 import { createUpstreamContractViolationError } from "../../errors/upstreamContractViolation";
+import { throwBffError } from "../../../../../errorMap";
 
 export const readUpstreamJson = async <Body>(res: {
   status: number;
@@ -7,9 +8,11 @@ export const readUpstreamJson = async <Body>(res: {
   try {
     return await res.json();
   } catch {
-    throw createUpstreamContractViolationError({
-      upstreamStatus: res.status,
-      reason: "unparsable body",
-    });
+    throwBffError(
+      createUpstreamContractViolationError({
+        upstreamStatus: res.status,
+        reason: "unparsable body",
+      }),
+    );
   }
 };

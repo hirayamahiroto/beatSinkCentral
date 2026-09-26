@@ -12,6 +12,7 @@ import {
   type ApiServerClient,
   type ApiServerClientMock,
   type UpstreamSuccessBody,
+  upstreamErrorResponse,
 } from "../../../../../utils/client/testDoubles";
 
 const profileGet =
@@ -172,7 +173,7 @@ describe("GET /players/:handle/concept", () => {
 
   it("api-server が 5xx なら 502 を返す", async () => {
     profileGet.mockResolvedValue(
-      upstreamJsonResponse({ error: "Internal" }, 500),
+      upstreamErrorResponse({ error: "Internal" }, 500),
     );
 
     const res = await createApp().request("/saku/concept");

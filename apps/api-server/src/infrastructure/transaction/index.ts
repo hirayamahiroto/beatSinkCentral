@@ -5,7 +5,10 @@ type TransactionContext = Parameters<
   Parameters<DatabaseClient["transaction"]>[0]
 >[0];
 
-export type Executor = DatabaseClient | TransactionContext;
+export type Executor = Pick<
+  DatabaseClient | TransactionContext,
+  "select" | "insert" | "update" | "delete"
+>;
 
 // Drizzle の transaction は throw でしかロールバックしないため、業務エラー（err）を
 // 例外に載せて境界の外で復元する
@@ -16,7 +19,7 @@ class RollbackSignal<T, E> extends Error {
 }
 
 export const runInTransaction = async <Caps, T, E>(
-  db: DatabaseClient,
+  db: Pick<DatabaseClient, "transaction">,
   buildCaps: (executor: Executor) => Caps,
   work: (caps: Caps) => Promise<Result<T, E>>,
 ): Promise<Result<T, E>> => {

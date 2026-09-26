@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import artists from "./index";
-import { handleAppError } from "../../../../errorMap";
+import { handleThrownError } from "../../../../errorMap";
 import type { Auth0SessionModule } from "../../../../infrastructure/auth0/testDoubles";
 import { createCapabilityDepsMock } from "../../../../infrastructure/capabilities/testDoubles";
 
@@ -20,7 +20,7 @@ vi.mock("../../../../infrastructure/capabilities", () => ({
 }));
 
 const createApp = () =>
-  new Hono().route("/artists", artists).onError(handleAppError);
+  new Hono().route("/artists", artists).onError(handleThrownError);
 
 const routeSurface = () => [
   ...new Set(artists.routes.map((route) => `${route.method} ${route.path}`)),

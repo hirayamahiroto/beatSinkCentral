@@ -7,7 +7,7 @@ import { recordEvent } from "../../../../../usecases/analyticsEvents/recordEvent
 import { ANALYTICS_EVENT_TYPES } from "../../../../../domain/analyticsEvents/valueObjects/eventType";
 import { isBotUserAgent } from "../../../../../utils/botDetection";
 import { validateRequest } from "../../validators/validateRequest";
-import { handleAppError } from "../../../../../errorMap";
+import { handleAppError, throwAppError } from "../../../../../errorMap";
 import { createRequestBodyTooLargeError } from "../../errors/requestBodyTooLarge";
 
 const MAX_REQUEST_BODY_SIZE_BYTES = 4 * 1024;
@@ -153,9 +153,7 @@ const app = new Hono().post(
   "/",
   bodyLimit({
     maxSize: MAX_REQUEST_BODY_SIZE_BYTES,
-    onError: () => {
-      throw createRequestBodyTooLargeError();
-    },
+    onError: () => throwAppError(createRequestBodyTooLargeError()),
   }),
   rejectBotTraffic,
   validateRequest("json", recordEventRequestSchema),

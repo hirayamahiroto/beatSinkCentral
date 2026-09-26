@@ -23,7 +23,7 @@ describe("createArtistHandleHistoryWriter", () => {
   it("生成時に渡した executor で全フィールドを insert する", async () => {
     const executor = createExecutor();
 
-    await createArtistHandleHistoryWriter(executor as never).record(data);
+    await createArtistHandleHistoryWriter(executor).record(data);
 
     expect(executor.insert).toHaveBeenCalledTimes(1);
     expect(executor.values).toHaveBeenCalledExactlyOnceWith({
@@ -41,7 +41,7 @@ describe("createArtistHandleHistoryWriter", () => {
     executor.values.mockRejectedValue(failure);
 
     await expect(
-      createArtistHandleHistoryWriter(executor as never).record(data),
+      createArtistHandleHistoryWriter(executor).record(data),
     ).rejects.toBe(failure);
   });
 });

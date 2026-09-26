@@ -5,6 +5,7 @@ import type { RequestContextEnv } from "../../../../../middlewares/requestContex
 import { validateRequest } from "../../validators/validateRequest";
 import { toUpstreamError } from "../../shared/toUpstreamError";
 import { resolveVisitorIds } from "../../shared/resolveVisitorIds";
+import { throwBffError } from "../../../../../errorMap";
 
 const ANALYTICS_EVENT_TYPES = [
   "profile_view",
@@ -60,7 +61,7 @@ const app = new Hono<RequestContextEnv>().post(
     const res = await apiClient.api.events.$post({
       json: { ...body, anonId, sessionId },
     });
-    if (!res.ok) throw await toUpstreamError(res);
+    if (!res.ok) throwBffError(await toUpstreamError(res));
 
     return c.body(null, 204);
   },

@@ -7,7 +7,7 @@ import { reconstructArtist } from "../../../../../../domain/artists/factories";
 import { reconstructStoredProfile } from "../../../../../../domain/artistProfiles/factories";
 import { toPersistence } from "../../../../../../domain/artistProfiles/behaviors";
 import type { StoredProfile } from "../../../../../../domain/artistProfiles/entities";
-import { handleAppError } from "../../../../../../errorMap";
+import { handleThrownError } from "../../../../../../errorMap";
 import { ok, err } from "../../../../../../utils/result";
 import { createProfileImageUploadFailedError } from "../../../../../../domain/artistProfiles/errors/profileImageUploadFailed";
 import uploadProfileImageRoute from "./index";
@@ -41,7 +41,7 @@ const createApp = (sub: string) => {
     await next();
   });
   app.route("/:artistId/profile/image", uploadProfileImageRoute);
-  app.onError(handleAppError);
+  app.onError(handleThrownError);
   return app;
 };
 

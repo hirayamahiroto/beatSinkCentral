@@ -6,13 +6,14 @@ import {
 } from "../../../../../middlewares/requestContext";
 import listPlayers from "./index";
 import { createUpstreamUnavailableError } from "../../../../../utils/client/errors/upstreamUnavailable";
-import { handleBffError } from "../../../../../errorMap";
+import { handleBffError, throwBffError } from "../../../../../errorMap";
 import {
   createEndpointMock,
   upstreamJsonResponse,
   upstreamMalformedJsonResponse,
   type ApiServerClient,
   type ApiServerClientMock,
+  upstreamErrorResponse,
 } from "../../../../../utils/client/testDoubles";
 
 const artistsGet =
@@ -97,7 +98,7 @@ describe("GET /players", () => {
 
   it("api-server が失敗したら 502 を返す", async () => {
     artistsGet.mockResolvedValue(
-      upstreamJsonResponse({ error: "Internal" }, 500),
+      upstreamErrorResponse({ error: "Internal" }, 500),
     );
 
     const res = await createApp().request("/", { method: "GET" });
@@ -106,8 +107,10 @@ describe("GET /players", () => {
   });
 
   it("api-server への接続自体が失敗したら 502 を返す", async () => {
-    artistsGet.mockRejectedValue(
-      createUpstreamUnavailableError(new TypeError("fetch failed")),
+    artistsGet.mockImplementation(async () =>
+      throwBffError(
+        createUpstreamUnavailableError(new TypeError("fetch failed")),
+      ),
     );
 
     const res = await createApp().request("/", { method: "GET" });

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { Hono } from "hono";
-import { handleAppError } from "./index";
+import { handleThrownError, throwAppError } from "./index";
 import { createUserAlreadyRegisteredError } from "../domain/users/errors/userAlreadyRegistered";
 
 describe("handleAppError", () => {
@@ -8,18 +8,15 @@ describe("handleAppError", () => {
     vi.restoreAllMocks();
   });
 
-  const requestWithDefaultHandler = async (error: unknown) =>
-    new Hono()
-      .get("/", () => {
-        throw error;
-      })
-      .onError(handleAppError)
-      .request("/");
+  const requestWithDefaultHandler = async (fail: () => never) =>
+    new Hono().get("/", fail).onError(handleThrownError).request("/");
 
   it("既定の logger として console を使い logLevel に対応するメソッドへ出力する", async () => {
     const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
 
-    await requestWithDefaultHandler(createUserAlreadyRegisteredError());
+    await requestWithDefaultHandler(() =>
+      throwAppError(createUserAlreadyRegisteredError()),
+    );
 
     expect(infoSpy).toHaveBeenCalledWith(
       JSON.stringify({
@@ -37,7 +34,9 @@ describe("handleAppError", () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const rawError = new Error("boom");
 
-    await requestWithDefaultHandler(rawError);
+    await requestWithDefaultHandler(() => {
+      throw rawError;
+    });
 
     expect(errorSpy).toHaveBeenCalledWith(
       JSON.stringify({

@@ -3,13 +3,15 @@ import type {
   ResolveUserError,
   UserWriteCapabilities,
 } from "../../capabilities";
-import {
-  isEmailAlreadyTakenError,
-  type EmailAlreadyTakenError,
-} from "../../domain/users/errors/emailAlreadyTaken";
+import type { EmailAlreadyTakenError } from "../../domain/users/errors/emailAlreadyTaken";
 import { toAddressedUser } from "../resolution";
-import { catchAlreadyTaken } from "../conflict";
+import { type AlreadyTakenError, catchAlreadyTaken } from "../conflict";
 import type { Result } from "../../utils/result";
+
+const emailAlreadyTakenOnly = (
+  conflict: AlreadyTakenError,
+): EmailAlreadyTakenError | null =>
+  conflict.type === "EmailAlreadyTakenError" ? conflict : null;
 
 export const withUserWriteCapabilitiesById = async <T, E>(
   deps: CapabilityDeps,
@@ -20,7 +22,7 @@ export const withUserWriteCapabilitiesById = async <T, E>(
   const user = toAddressedUser(await deps.resolveActorState(subId), userId);
   if (!user.ok) return user;
 
-  return catchAlreadyTaken(isEmailAlreadyTakenError, () =>
+  return catchAlreadyTaken(emailAlreadyTakenOnly, () =>
     deps.runWithUserWriteCapabilities(user.value, work),
   );
 };

@@ -31,8 +31,8 @@ describe("createArtistReader / createArtistWriter", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    reader = createArtistReader(mockDb as never);
-    writer = createArtistWriter(mockDb as never);
+    reader = createArtistReader(mockDb);
+    writer = createArtistWriter(mockDb);
   });
 
   describe("findByUserId", () => {
@@ -276,7 +276,7 @@ describe("artists の executor 束ね", () => {
       ]),
     };
 
-    const result = await createArtistReader(tx as never).findByUserId("user-1");
+    const result = await createArtistReader(tx).findByUserId("user-1");
 
     expect(tx.select).toHaveBeenCalledTimes(1);
     expect(mockDb.select).not.toHaveBeenCalled();
@@ -290,9 +290,11 @@ describe("artists の executor 束ね", () => {
       returning: vi
         .fn()
         .mockResolvedValue([{ id: "artist-1", handle: "user_123" }]),
+      select: vi.fn(),
+      update: vi.fn(),
     };
 
-    const result = await createArtistWriter(tx as never).save({
+    const result = await createArtistWriter(tx).save({
       id: "artist-1",
       handle: "user_123",
       ownerUserId: "user-1",

@@ -13,6 +13,7 @@ import type { MyArtistNotFoundError } from "../app/api/[[...route]]/errors/myArt
 import type { PlayerNotFoundError } from "../app/api/[[...route]]/errors/playerNotFound";
 import type { PartialSaveFailedError } from "../app/api/[[...route]]/errors/partialSaveFailed";
 import { translateUpstreamBody } from "./translateUpstreamBody";
+import { createErrorChannel } from "../utils/errors/errorChannel";
 
 export type BffError =
   | UpstreamUnavailableError
@@ -37,11 +38,39 @@ type ErrorMapping<SpecificError extends BffError> = {
   logLevel: (error: SpecificError) => LogLevel;
 };
 
+type ErrorType = BffError["type"];
+
+type ErrorOf<Type extends ErrorType> = Extract<BffError, { type: Type }>;
+
 type ErrorMap = {
-  [ErrorType in BffError["type"]]: ErrorMapping<
-    Extract<BffError, { type: ErrorType }>
-  >;
+  [Type in ErrorType]: ErrorMapping<ErrorOf<Type>>;
 };
+
+type ErrorResponse = {
+  body: ErrorBody;
+  status: ErrorStatusCode;
+};
+
+const bffError = createErrorChannel<BffError>();
+
+export const throwBffError: (error: BffError) => never = bffError.raise;
+
+export const recoverBffError = bffError.recover;
+
+const statusOf = <Type extends ErrorType>(
+  type: Type,
+  error: ErrorOf<Type>,
+): ErrorStatusCode => errorMap[type].status(error);
+
+const bodyOf = <Type extends ErrorType>(
+  type: Type,
+  error: ErrorOf<Type>,
+): ErrorBody => errorMap[type].body(error);
+
+const logLevelOf = <Type extends ErrorType>(
+  type: Type,
+  error: ErrorOf<Type>,
+): LogLevel => errorMap[type].logLevel(error);
 
 const errorMap: ErrorMap = {
   UpstreamUnavailableError: {
@@ -92,51 +121,26 @@ const errorMap: ErrorMap = {
     logLevel: () => "info",
   },
   PartialSaveFailedError: {
-    status: (error) => resolveMapping(error.upstream).status(error.upstream),
+    status: (error) => statusOf(error.upstream.type, error.upstream),
     body: (error) => ({
-      ...resolveMapping(error.upstream).body(error.upstream),
+      ...bodyOf(error.upstream.type, error.upstream),
       saved: error.saved,
       failedAt: error.failedAt,
     }),
-    logLevel: (error) =>
-      resolveMapping(error.upstream).logLevel(error.upstream),
+    logLevel: (error) => logLevelOf(error.upstream.type, error.upstream),
   },
 };
 
-type ErrorResponse = {
-  body: ErrorBody;
-  status: ErrorStatusCode;
-};
-
-const isBffError = (error: unknown): error is BffError => {
-  if (!(error instanceof Error) || !("type" in error)) return false;
-  return typeof error.type === "string" && Object.hasOwn(errorMap, error.type);
-};
-
-const resolveMapping = <SpecificError extends BffError>(
-  error: SpecificError,
-): ErrorMapping<SpecificError> =>
-  errorMap[error.type as SpecificError["type"]] as ErrorMapping<SpecificError>;
-
-const buildMappedResponse = (error: BffError): ErrorResponse => {
-  const mapping = resolveMapping(error);
-  return { body: mapping.body(error), status: mapping.status(error) };
-};
-
-const logMapped = (error: BffError, status: ErrorStatusCode): void => {
-  const mapping = resolveMapping(error);
-  console[mapping.logLevel(error)]("[BffError]", {
-    type: error.type,
-    status,
-    cause: error.cause,
-  });
-};
-
 const resolveErrorResponse = (error: unknown): ErrorResponse => {
-  if (isBffError(error)) {
-    const response = buildMappedResponse(error);
-    logMapped(error, response.status);
-    return response;
+  const recovered = bffError.recover(error);
+  if (recovered !== null) {
+    const status = statusOf(recovered.type, recovered);
+    console[logLevelOf(recovered.type, recovered)]("[BffError]", {
+      type: recovered.type,
+      status,
+      cause: recovered.cause,
+    });
+    return { body: bodyOf(recovered.type, recovered), status };
   }
   console.error("[Unhandled error]", error);
   return {

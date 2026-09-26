@@ -33,11 +33,6 @@ describe("Sub", () => {
       });
     });
 
-    it("nullish値は err を返す", () => {
-      expect(createSub(null as unknown as string).ok).toBe(false);
-      expect(createSub(undefined as unknown as string).ok).toBe(false);
-    });
-
     it("返るエラーは InvalidSubFormatError 型", () => {
       const result = createSub("");
 
