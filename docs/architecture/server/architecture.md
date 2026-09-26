@@ -1071,7 +1071,7 @@ Write 系の権能は**単一操作であっても常に境界を張る**。単�
 | B. テストからしか参照されない `export`                          | knip の production モード（`*.test.ts` と test 用 entry を除いて集計）         | `npm run knip:production`            |
 | C. Entity の振る舞い（getter 等）で本番コードの呼び手が無いもの | ESLint ローカルルール `local/entity-behavior-has-caller`（`eslint.rules.mjs`） | `npm run lint`（api-server の lint） |
 
-C を knip に任せられないのは、knip / ts-prune が型のメンバーを見ないため。ルールは `src/domain/*/entities/index.ts` で **export された型の関数メンバー**を Entity の振る舞いとみなし（配置ベースの判定。State / PersistenceData のようなデータ型は関数メンバーを持たないので対象外）、同じ `src` 配下の本番コード（`*.test.ts` と `testDoubles/` を除く）に `.name(` の呼び出しがあるかを探す。判定は名前ベースで、別 Entity の同名メンバー（`getId` 等）は区別しない。
+C を knip に任せられないのは、knip / ts-prune が型のメンバーを見ないため。ルールは `src/domain/*/entities/index.ts` で **export された型の関数メンバー**を Entity の振る舞いとみなし（配置ベースの判定。State / PersistenceData のようなデータ型は関数メンバーを持たないので対象外）、同じ `src` 配下の本番コード（`*.test.ts` と `testDoubles/` を除く）だけを TypeScript の言語サービスに読ませ、そのメンバーへの参照（`findReferences`）を探す。名前でなく型のメンバー単位で追うため、別 Entity の同名メンバー（`User.getId` と `AnalyticsEvent.getId` 等）や、構造が同じだけの別の型経由の呼び出しは区別される。`behaviors/` のオブジェクトリテラルによる実装は書き込み参照として除外し、読み取り参照（呼び出し・参照渡し）だけを呼び手に数える。コンパイラオプションはアプリの `tsconfig.json` から読む。
 
 運用上の決め:
 

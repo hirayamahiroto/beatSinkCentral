@@ -395,13 +395,46 @@ describe("local/entity-behavior-has-caller", () => {
     const messages = await entityBehaviorMessagesIn({
       [ENTITY]: EXAMPLE_ENTITY,
       "src/usecases/example/index.ts": [
-        `export const run = (example?: { getId: () => string; getName: () => string; toPersistence: () => unknown }) =>`,
+        `import type { Example } from "../../domain/example/entities";`,
+        `export const run = (example?: Example) =>`,
         `  [example?.getId(), example?.getName(), example?.toPersistence()];`,
         ``,
       ].join("\n"),
     });
 
     expect(messages).toHaveLength(0);
+  });
+
+  it("別 Entity の同名メンバーへの呼び出しは呼び手に数えない", async () => {
+    const messages = await entityBehaviorMessagesIn({
+      [ENTITY]: EXAMPLE_ENTITY,
+      "src/domain/other/entities/index.ts": `export type Other = { getId: () => string; getName: () => string; toPersistence: () => unknown };\n`,
+      "src/usecases/example/index.ts": [
+        `import type { Example } from "../../domain/example/entities";`,
+        `import type { Other } from "../../domain/other/entities";`,
+        `export const run = (example: Example, other: Other) =>`,
+        `  [example.getName(), other.getId(), other.toPersistence()];`,
+        ``,
+      ].join("\n"),
+    });
+
+    expect(messages.map((message) => message.message)).toEqual([
+      expect.stringContaining("`Example` の振る舞い `getId`"),
+      expect.stringContaining("`Example` の振る舞い `toPersistence`"),
+    ]);
+  });
+
+  it("構造が同じだけの別の型経由の呼び出しは呼び手に数えない", async () => {
+    const messages = await entityBehaviorMessagesIn({
+      [ENTITY]: EXAMPLE_ENTITY,
+      "src/usecases/example/index.ts": [
+        `export const run = (example: { getId: () => string; getName: () => string; toPersistence: () => unknown }) =>`,
+        `  [example.getId(), example.getName(), example.toPersistence()];`,
+        ``,
+      ].join("\n"),
+    });
+
+    expect(messages).toHaveLength(3);
   });
 
   it("関数でないメンバー（State / PersistenceData）と非公開の型は対象外", async () => {
@@ -412,7 +445,11 @@ describe("local/entity-behavior-has-caller", () => {
         `export type Example = { getId: () => string };`,
         ``,
       ].join("\n"),
-      "src/usecases/example/index.ts": `export const run = (example: { getId: () => string }) => example.getId();\n`,
+      "src/usecases/example/index.ts": [
+        `import type { Example } from "../../domain/example/entities";`,
+        `export const run = (example: Example) => example.getId();`,
+        ``,
+      ].join("\n"),
     });
 
     expect(messages).toHaveLength(0);
